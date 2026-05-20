@@ -45,6 +45,7 @@ let business = null;
 let orders = [];
 let remittanceRecords = [];
 let activeLocTab = 'share';
+let isSubmittingBusinessOrder = false;
 
 const panelTitles = {
   overview: 'Overview',
@@ -841,14 +842,18 @@ function validateOrderForm(payload, raw) {
 
 async function submitBusinessOrder(event) {
   event?.preventDefault?.();
+  event?.stopImmediatePropagation?.();
+  if (isSubmittingBusinessOrder) return;
+  isSubmittingBusinessOrder = true;
   if (!business) {
     window.vdNotify('Dashboard Loading', 'Your business dashboard is still loading or did not load your business account. Press Ctrl + F5, log in again, and try once more.', 'warning');
     return;
   }
 
-  const submitBtn = el('#orderForm button[type="button"]') || el('#orderForm button[type="submit"]');
+  const submitBtn = el('#submitOrderBtn');
   const originalText = submitBtn?.textContent || '✅ Submit Order';
   const paymentValue = el('#paymentType')?.value || '';
+  const phoneDigits = el('#recipientPhone')?.value.replace(/\D/g, '') || '';
   const locationPayload = getLocationPayload();
   const packageDescription = el('#packageDesc')?.value.trim() || '';
   const specialNotes = el('#specialNotes')?.value.trim() || '';
@@ -889,6 +894,7 @@ async function submitBusinessOrder(event) {
     console.error('Business order submit error:', error);
     window.vdNotify('Order Not Submitted', `Sorry, this order could not be submitted. ${error?.message || 'Please try again or contact VirtuDrop.'}`, 'error');
   } finally {
+    isSubmittingBusinessOrder = false;
     if (submitBtn) {
       submitBtn.disabled = false;
       submitBtn.textContent = originalText;
@@ -1027,10 +1033,27 @@ function bindUi() {
     event.target.value = value;
   });
 
-  el('#paymentType')?.addEventListener('change', event => {
+  function syncAmountField() {
+    const paymentValue = el('#paymentType')?.value || '';
     const block = el('#codAmountBlock');
-    if (block) block.style.display = event.target.value === 'cod' ? 'flex' : 'none';
-  });
+    const amount = el('#codAmount');
+    const label = block?.querySelector('label');
+    if (!block || !amount) return;
+
+    block.style.display = paymentValue === 'all-online' ? 'none' : 'flex';
+    amount.disabled = paymentValue === 'all-online';
+    amount.required = paymentValue === 'cod';
+    if (paymentValue === 'all-online') amount.value = '';
+    if (label) {
+      label.textContent = paymentValue === 'pkg-online'
+        ? 'Delivery Fee to Collect (TTD)'
+        : 'Amount to Collect (TTD)';
+    }
+    amount.placeholder = paymentValue === 'pkg-online' ? 'e.g. 40.00' : 'e.g. 350.00';
+  }
+
+  el('#paymentType')?.addEventListener('change', syncAmountField);
+  syncAmountField();
 
   const darkToggle = el('#darkModeToggle');
   if (localStorage.getItem('vd-dark') === 'true') {
@@ -1044,7 +1067,7 @@ function bindUi() {
 
   window.submitBusinessOrder = submitBusinessOrder;
   el('#orderForm')?.addEventListener('submit', submitBusinessOrder);
-  el('#orderForm button[type="button"]')?.addEventListener('click', submitBusinessOrder);
+  el('#submitOrderBtn')?.addEventListener('click', submitBusinessOrder);
   window.resetOrderForm();
 
   const logout = el('.logout-btn');
