@@ -680,14 +680,8 @@
           </ul>
         </div>
 
-        <form action="https://api.web3forms.com/submit" method="POST" id="order-form">
-          <!-- Web3Forms Access Key -->
-          <input type="hidden" name="access_key" value="94056b71-d085-4d90-b91e-34423c9601b3">
-          
-          <!-- Configuration -->
-          <input type="hidden" name="subject" value="New Service Request - VirtuForms">
-          <input type="hidden" name="from_name" value="VirtuForms Order System">
-          <input type="hidden" name="redirect" value="https://virtuforms.net/thank-you.html">
+        <form id="order-form">
+          <!-- EmailJS will handle form submission via JavaScript -->
           
           <!-- Full Name -->
           <div class="form-group">
@@ -834,6 +828,8 @@
     // Capture timestamp when form is submitted
     const form = document.getElementById('order-form');
     form.addEventListener('submit', function(e) {
+      e.preventDefault(); // Prevent default form submission
+      
       // Get current date and time in Trinidad timezone
       const now = new Date();
       const timestamp = now.toLocaleString('en-TT', { 
@@ -849,7 +845,34 @@
       
       // Set the timestamp in the hidden field
       document.getElementById('agreement-timestamp').value = timestamp;
+      
+      // Disable submit button to prevent double submission
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const originalText = submitBtn.textContent;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Sending...';
+      
+      // Send email using EmailJS
+      emailjs.sendForm('service_ncqjttb', 'template_wfvtocf', this)
+        .then(function() {
+          // Success - redirect to thank you page
+          window.location.href = 'https://virtuforms.net/thank-you.html';
+        }, function(error) {
+          // Error - show message and re-enable button
+          alert('There was an error submitting your request. Please try again or contact us at 868-797-3543.');
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
+          console.error('EmailJS Error:', error);
+        });
     });
+  </script>
+
+  <!-- EmailJS SDK -->
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <script type="text/javascript">
+    (function(){
+      emailjs.init('LmShKjSuI7U-ZxE7G');
+    })();
   </script>
 
   <footer class="footer">
