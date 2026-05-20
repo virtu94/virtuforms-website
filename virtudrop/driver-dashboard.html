@@ -1,0 +1,1169 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-store" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <title>Driver Dashboard | VirtuDrop</title>
+  <link rel="icon" href="assets/logo.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --teal-dark:   #0d2b28;
+      --teal-mid:    #2a9d8f;
+      --teal-bright: #14d4ae;
+      --teal-pale:   #f0f9f8;
+      --teal-light:  #e8f5f3;
+      --orange:      #e07a3a;
+      --orange-pale: #fff8f0;
+      --red:         #e05555;
+      --red-pale:    #fde8e8;
+      --green:       #27ae60;
+      --green-pale:  #d4edda;
+      --yellow:      #f0c040;
+      --yellow-pale: #fff3cd;
+      --blue:        #3498db;
+      --blue-pale:   #cce5ff;
+      --white:       #ffffff;
+      --black:       #1a1a1a;
+      --grey:        #4a4a4a;
+      --grey-light:  #f8f9fa;
+      --grey-mid:    #e0e0e0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f0f4f3; color: var(--black);
+      line-height: 1.6; min-height: 100vh;
+    }
+
+    /* ── Top bar ── */
+    .topbar {
+      background: var(--teal-dark); padding: 0 1.5rem;
+      height: 64px; display: flex; align-items: center;
+      justify-content: space-between; gap: 1rem;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .topbar-brand { display: flex; align-items: center; gap: 0.8rem; }
+    .brand-mark {
+      width: 36px; height: 36px; background: var(--teal-mid);
+      border-radius: 8px; display: flex; align-items: center;
+      justify-content: center; font-weight: 800; font-size: 0.88rem;
+      color: var(--white); flex-shrink: 0;
+    }
+    .brand-name { font-size: 1rem; font-weight: 700; color: var(--white); }
+    .brand-name span { font-weight: 400; color: var(--teal-bright); font-size: 0.82rem; margin-left: 0.4rem; }
+
+    .topbar-driver {
+      display: flex; align-items: center; gap: 0.8rem;
+    }
+    .driver-info { text-align: right; }
+    .driver-name { font-size: 0.9rem; font-weight: 600; color: var(--white); }
+    .driver-zone { font-size: 0.75rem; color: var(--teal-bright); font-weight: 600; }
+    .driver-avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--blue), #5dade2);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 0.9rem; color: var(--white); flex-shrink: 0;
+    }
+
+    /* ── Day summary strip ── */
+    .day-strip {
+      background: var(--white); border-bottom: 1px solid var(--grey-mid);
+      padding: 0.8rem 1.5rem; display: flex; gap: 1.5rem;
+      align-items: center; overflow-x: auto; flex-wrap: wrap;
+    }
+    .day-stat { display: flex; flex-direction: column; align-items: center; min-width: 70px; }
+    .day-stat-val { font-size: 1.4rem; font-weight: 800; color: var(--black); line-height: 1; }
+    .day-stat-val.green  { color: var(--green); }
+    .day-stat-val.orange { color: var(--orange); }
+    .day-stat-val.blue   { color: var(--blue); }
+    .day-stat-val.red    { color: var(--red); }
+    .day-stat-label { font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--grey); margin-top: 0.2rem; }
+    .day-divider { width: 1px; height: 32px; background: var(--grey-mid); flex-shrink: 0; }
+
+    .day-strip-date { margin-left: auto; font-size: 0.82rem; color: var(--grey); white-space: nowrap; }
+
+    /* ── Filter tabs ── */
+    .filter-tabs {
+      display: flex; gap: 0.4rem; padding: 1rem 1.5rem 0;
+      overflow-x: auto; flex-shrink: 0;
+    }
+    .filter-tab {
+      padding: 0.45rem 1.1rem; border-radius: 20px; border: 2px solid var(--grey-mid);
+      background: var(--white); color: var(--grey); font-family: 'Inter', sans-serif;
+      font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .filter-tab.active { background: var(--teal-dark); border-color: var(--teal-dark); color: var(--white); }
+    .filter-tab:not(.active):hover { border-color: var(--teal-mid); color: var(--teal-mid); }
+
+    /* ── Delivery list ── */
+    .delivery-list { padding: 1rem 1.5rem 6rem; display: flex; flex-direction: column; gap: 1rem; }
+
+    /* ── Delivery card ── */
+    .delivery-card {
+      background: var(--white); border-radius: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      overflow: hidden; transition: box-shadow 0.2s;
+      border-left: 5px solid var(--teal-mid);
+    }
+    .delivery-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,0.1); }
+    .delivery-card.status-delivered { border-left-color: var(--green); opacity: 0.7; }
+    .delivery-card.status-failed    { border-left-color: var(--red); }
+    .delivery-card.status-out       { border-left-color: var(--blue); }
+    .delivery-card.status-rescheduled { border-left-color: var(--yellow); }
+
+    .card-header {
+      padding: 1.2rem 1.4rem 0.8rem;
+      display: flex; align-items: flex-start;
+      justify-content: space-between; gap: 1rem;
+    }
+    .card-order { display: flex; flex-direction: column; gap: 0.2rem; }
+    .order-num { font-family: 'Courier New', monospace; font-size: 0.82rem; color: var(--teal-mid); font-weight: 700; }
+    .client-tag { font-size: 0.75rem; color: var(--grey); }
+
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      padding: 0.3rem 0.8rem; border-radius: 20px;
+      font-size: 0.75rem; font-weight: 700; white-space: nowrap; flex-shrink: 0;
+    }
+    .badge-queued      { background: var(--teal-pale);   color: var(--teal-mid); }
+    .badge-out         { background: var(--blue-pale);   color: #004085; }
+    .badge-delivered   { background: var(--green-pale);  color: #155724; }
+    .badge-failed      { background: var(--red-pale);    color: #8b2020; }
+    .badge-rescheduled { background: var(--yellow-pale); color: #856404; }
+    .badge-collected   { background: var(--yellow-pale); color: #856404; }
+
+    /* ── Customer info ── */
+    .customer-info {
+      padding: 0 1.4rem 1rem;
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 0.5rem 1.5rem;
+    }
+    .info-row { display: flex; flex-direction: column; gap: 0.1rem; }
+    .info-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--grey); }
+    .info-value { font-size: 0.9rem; font-weight: 600; color: var(--black); }
+    .info-value.address { font-size: 0.85rem; font-weight: 500; color: var(--black); line-height: 1.4; }
+    .info-value.cod     { color: var(--orange); font-size: 1rem; font-weight: 800; }
+    .info-value.no-cod  { color: var(--grey); font-size: 0.85rem; font-weight: 500; }
+
+    /* ── Notes ── */
+    .delivery-notes {
+      margin: 0 1.4rem 1rem;
+      padding: 0.7rem 1rem; background: var(--yellow-pale);
+      border-left: 3px solid var(--yellow); border-radius: 8px;
+      font-size: 0.85rem; color: #7a5a00; line-height: 1.5;
+    }
+
+
+    /* ── Driver Update Notes ── */
+    .driver-update-box {
+      margin: 0 1.4rem 1rem;
+      padding: 1rem;
+      background: var(--teal-pale);
+      border-left: 3px solid var(--teal-mid);
+      border-radius: 10px;
+    }
+
+    .driver-update-box label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--teal-dark);
+      margin-bottom: 0.5rem;
+    }
+
+    .driver-update-box textarea {
+      width: 100%;
+      min-height: 80px;
+      resize: vertical;
+      border: 2px solid var(--grey-mid);
+      border-radius: 10px;
+      padding: 0.8rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.88rem;
+      color: var(--black);
+      outline: none;
+      background: var(--white);
+    }
+
+    .driver-update-box textarea:focus {
+      border-color: var(--teal-mid);
+      box-shadow: 0 0 0 3px rgba(42,157,143,0.12);
+    }
+
+    .driver-update-actions {
+      display: flex;
+      gap: 0.6rem;
+      margin-top: 0.8rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-note-save {
+      background: var(--teal-pale);
+      color: var(--teal-mid);
+      border-color: var(--teal-mid);
+    }
+
+    .btn-note-save:hover {
+      background: var(--teal-mid);
+      color: var(--white);
+    }
+
+    .btn-note-client {
+      background: #e8fdf1;
+      color: #1a8a3a;
+      border-color: #a3d9b5;
+    }
+
+    .btn-note-client:hover {
+      background: #1a8a3a;
+      color: var(--white);
+    }
+
+    /* ── Action buttons ── */
+    .card-actions {
+      padding: 0 1.4rem 1.4rem;
+      display: flex; flex-wrap: wrap; gap: 0.6rem;
+    }
+    .action-btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.65rem 1.1rem; border-radius: 10px;
+      font-family: 'Inter', sans-serif; font-size: 0.82rem;
+      font-weight: 700; cursor: pointer; transition: all 0.2s;
+      border: 2px solid transparent; flex: 1; min-width: 120px;
+      justify-content: center; white-space: nowrap;
+    }
+    .btn-maps      { background: #e8f4fd; color: #1a6fa8; border-color: #b3d9f5; }
+    .btn-maps:hover { background: #1a6fa8; color: var(--white); }
+    .btn-call      { background: var(--green-pale); color: var(--green); border-color: #a3d9b5; }
+    .btn-call:hover { background: var(--green); color: var(--white); }
+    .btn-collected { background: var(--yellow-pale); color: #856404; border-color: #f0c040; }
+    .btn-collected:hover { background: #f0c040; color: var(--black); }
+    .btn-delivered { background: var(--green-pale); color: #155724; border-color: #a3d9b5; }
+    .btn-delivered:hover { background: var(--green); color: var(--white); }
+    .btn-failed    { background: var(--red-pale); color: var(--red); border-color: #f5a5a5; }
+    .btn-failed:hover { background: var(--red); color: var(--white); }
+    .btn-reschedule { background: var(--orange-pale); color: var(--orange); border-color: #f5c5a3; }
+    .btn-reschedule:hover { background: var(--orange); color: var(--white); }
+    .btn-unavailable { background: #f0f0f0; color: var(--grey); border-color: var(--grey-mid); }
+    .btn-unavailable:hover { background: var(--grey); color: var(--white); }
+    .btn-whatsapp  { background: #e8fdf1; color: #1a8a3a; border-color: #a3d9b5; }
+    .btn-whatsapp:hover { background: #1a8a3a; color: var(--white); }
+
+    /* ── Empty state ── */
+    .empty-state {
+      text-align: center; padding: 4rem 2rem;
+      display: none;
+    }
+    .empty-state.show { display: block; }
+    .empty-icon { font-size: 3rem; margin-bottom: 1rem; display: block; }
+    .empty-state h3 { font-size: 1.2rem; font-weight: 700; color: var(--black); margin-bottom: 0.5rem; }
+    .empty-state p  { font-size: 0.9rem; color: var(--grey); line-height: 1.7; }
+
+    /* ── Bottom CTA bar ── */
+    .bottom-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--white); border-top: 1px solid var(--grey-mid);
+      padding: 0.8rem 1.5rem; display: flex; gap: 0.8rem;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.08); z-index: 100;
+    }
+    .bottom-btn {
+      flex: 1; padding: 0.8rem; border-radius: 10px;
+      font-family: 'Inter', sans-serif; font-size: 0.88rem;
+      font-weight: 700; cursor: pointer; transition: all 0.2s;
+      border: 2px solid transparent; text-align: center;
+    }
+    .bottom-btn.primary { background: var(--teal-mid); color: var(--white); border-color: var(--teal-mid); }
+    .bottom-btn.primary:hover { background: #238277; }
+    .bottom-btn.ghost   { background: var(--grey-light); color: var(--grey); border-color: var(--grey-mid); }
+    .bottom-btn.ghost:hover { border-color: var(--teal-mid); color: var(--teal-mid); }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5); z-index: 500;
+      align-items: flex-end; justify-content: center; padding: 0;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: var(--white); border-radius: 20px 20px 0 0;
+      padding: 2rem 1.5rem 2.5rem; width: 100%; max-width: 600px;
+      box-shadow: 0 -10px 40px rgba(0,0,0,0.2);
+      animation: slideUp 0.3s ease-out;
+    }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .modal-handle {
+      width: 40px; height: 4px; background: var(--grey-mid);
+      border-radius: 2px; margin: 0 auto 1.5rem;
+    }
+    .modal h3 { font-size: 1.1rem; font-weight: 700; color: var(--black); margin-bottom: 0.5rem; }
+    .modal p  { font-size: 0.9rem; color: var(--grey); line-height: 1.6; margin-bottom: 1.5rem; }
+    .modal-actions { display: flex; flex-direction: column; gap: 0.6rem; }
+    .modal-btn {
+      width: 100%; padding: 0.9rem; border-radius: 10px;
+      font-family: 'Inter', sans-serif; font-size: 0.92rem;
+      font-weight: 700; cursor: pointer; transition: all 0.2s;
+      border: 2px solid transparent;
+    }
+    .modal-btn.confirm  { background: var(--teal-mid); color: var(--white); border-color: var(--teal-mid); }
+    .modal-btn.confirm:hover  { background: #238277; }
+    .modal-btn.danger   { background: var(--red-pale); color: var(--red); border-color: var(--red); }
+    .modal-btn.danger:hover   { background: var(--red); color: var(--white); }
+    .modal-btn.cancel   { background: var(--grey-light); color: var(--grey); border-color: var(--grey-mid); }
+    .modal-btn.cancel:hover   { border-color: var(--grey); }
+    .collection-method-box {
+      background: var(--teal-pale);
+      border: 1px solid rgba(45,166,155,0.25);
+      border-radius: 10px;
+      padding: 0.9rem;
+      margin-bottom: 1rem;
+    }
+    .collection-method-title {
+      font-size: 0.82rem;
+      font-weight: 800;
+      color: var(--teal-dark);
+      margin-bottom: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .collection-method-options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.6rem;
+    }
+    .collection-method-options label {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      background: var(--white);
+      border: 2px solid var(--grey-mid);
+      border-radius: 10px;
+      padding: 0.75rem;
+      font-weight: 700;
+      color: var(--black);
+      cursor: pointer;
+    }
+    .collection-method-options input {
+      accent-color: var(--teal-mid);
+    }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
+      background: var(--teal-dark); color: var(--white);
+      padding: 0.8rem 1.4rem; border-radius: 10px;
+      font-size: 0.88rem; font-weight: 500;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      display: none; z-index: 999; white-space: nowrap;
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    @media (max-width: 480px) {
+      .customer-info { grid-template-columns: 1fr; }
+      .action-btn { flex: 1 1 calc(50% - 0.3rem); }
+      .day-strip { gap: 1rem; }
+    }
+  
+
+    /* Mobile launch safety layer - Codex */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    .topbar, .day-strip, .filter-tabs, .delivery-list, .delivery-card, .card-header, .customer-info, .action-row, .driver-update-box { min-width: 0; max-width: 100%; }
+    .delivery-card, .customer-name, .address-text, .info-value, .notes-content { overflow-wrap: anywhere; }
+    button, textarea, input, select { max-width: 100%; }
+
+    @media (max-width: 640px) {
+      .topbar { height: auto; min-height: 64px; padding: 0.75rem 1rem; align-items: flex-start; }
+      .brand-name { font-size: 1rem; line-height: 1.15; }
+      .brand-name span { display: block; margin-left: 0; font-size: 0.72rem; }
+      .topbar-driver { min-width: 0; }
+      .driver-info { display: none; }
+      .day-strip { padding: 0.75rem 1rem; gap: 0.8rem; flex-wrap: nowrap; }
+      .day-strip-date { display: none; }
+      .filter-tabs { padding: 0.85rem 1rem 0; }
+      .delivery-list { padding: 1rem; }
+      .card-header { padding: 1rem; gap: 0.8rem; }
+      .order-id { font-size: 0.9rem; }
+      .customer-info { grid-template-columns: 1fr; padding: 0 1rem 1rem; }
+      .address-block, .notes-block, .driver-update-box { margin-left: 1rem; margin-right: 1rem; }
+      .action-row { padding: 1rem; gap: 0.55rem; }
+      .action-btn { flex: 1 1 100%; min-width: 0; min-height: 44px; white-space: normal; }
+      .modal { max-height: 88vh; overflow-y: auto; }
+      .toast { width: calc(100vw - 2rem); max-width: 420px; }
+    }
+
+    @media (max-width: 420px) {
+      .day-stat { min-width: 58px; }
+      .day-stat-val { font-size: 1.15rem; }
+      .day-stat-label { font-size: 0.6rem; }
+      .day-divider { display: none; }
+      .delivery-list { padding: 0.75rem; }
+      .filter-tab { padding: 0.45rem 0.85rem; }
+    }
+
+  
+
+    /* Hybrid mobile cards and report tables - Codex */
+    .delivery-card,
+    .customer-name,
+    .address-text,
+    .info-value,
+    .notes-content {
+      word-break: normal;
+      overflow-wrap: break-word;
+    }
+    .order-num,
+    .client-tag,
+    .status-badge,
+    .action-btn {
+      word-break: normal;
+      overflow-wrap: normal;
+    }
+    .order-num,
+    .status-badge {
+      white-space: nowrap;
+      line-height: 1.25;
+    }
+    .card-header {
+      gap: 0.75rem;
+    }
+    .card-order {
+      min-width: 0;
+    }
+
+    @media (max-width: 640px) {
+      .card-header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .status-badge {
+        justify-self: start;
+        max-width: 100%;
+      }
+      .action-btn {
+        justify-content: center;
+      }
+    }
+
+    /* Keep driver cards clear of fixed bottom bar - Codex */
+    :root {
+      --driver-bottom-bar-space: 7.5rem;
+    }
+    .delivery-list {
+      padding-bottom: calc(var(--driver-bottom-bar-space) + env(safe-area-inset-bottom));
+    }
+    .bottom-bar {
+      padding-bottom: calc(0.8rem + env(safe-area-inset-bottom));
+    }
+    @media (max-width: 640px) {
+      :root {
+        --driver-bottom-bar-space: 8.75rem;
+      }
+      .delivery-list {
+        padding-bottom: calc(var(--driver-bottom-bar-space) + env(safe-area-inset-bottom));
+      }
+    }
+    @media (max-width: 420px) {
+      .delivery-list {
+        padding-bottom: calc(var(--driver-bottom-bar-space) + env(safe-area-inset-bottom));
+      }
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- ── Top bar ── -->
+  <div class="topbar">
+    <div class="topbar-brand">
+      <div class="brand-mark">VD</div>
+      <div class="brand-name">VirtuDrop <span>Driver</span></div>
+    </div>
+    <div class="topbar-driver">
+      <div class="driver-info">
+        <div class="driver-name">Driver A</div>
+        <div class="driver-zone">East &amp; West Zones</div>
+      </div>
+      <div class="driver-avatar">DA</div>
+    </div>
+  </div>
+
+  <!-- ── Day summary ── -->
+  <div class="day-strip">
+    <div class="day-stat">
+      <div class="day-stat-val blue" id="statTotal">8</div>
+      <div class="day-stat-label">Assigned</div>
+    </div>
+    <div class="day-divider"></div>
+    <div class="day-stat">
+      <div class="day-stat-val orange" id="statPending">5</div>
+      <div class="day-stat-label">Remaining</div>
+    </div>
+    <div class="day-divider"></div>
+    <div class="day-stat">
+      <div class="day-stat-val green" id="statDone">2</div>
+      <div class="day-stat-label">Delivered</div>
+    </div>
+    <div class="day-divider"></div>
+    <div class="day-stat">
+      <div class="day-stat-val red" id="statFailed">1</div>
+      <div class="day-stat-label">Failed</div>
+    </div>
+    <div class="day-divider"></div>
+    <div class="day-stat">
+      <div class="day-stat-val" id="statCOD">$935</div>
+      <div class="day-stat-label">COD Collected</div>
+    </div>
+    <div class="day-strip-date" id="todayDate"></div>
+  </div>
+
+  <!-- ── Filter tabs ── -->
+  <div class="filter-tabs">
+    <button class="filter-tab active" onclick="filterCards('all', this)">All (0)</button>
+    <button class="filter-tab" onclick="filterCards('queued', this)">Queued (0)</button>
+    <button class="filter-tab" onclick="filterCards('out', this)">Out for Delivery (0)</button>
+    <button class="filter-tab" onclick="filterCards('delivered', this)">Delivered (0)</button>
+    <button class="filter-tab" onclick="filterCards('failed', this)">Failed (0)</button>
+  </div>
+
+  <!-- ── Delivery list ── -->
+  <div class="delivery-list" id="deliveryList">
+    <div class="delivery-card">
+      <div class="card-header">
+        <div>Loading assigned orders...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Empty state ── -->
+  <div class="empty-state" id="emptyState">
+    <span class="empty-icon">📭</span>
+    <h3>No deliveries in this category</h3>
+    <p>All caught up! Check another filter or contact admin if you're missing assignments.</p>
+  </div>
+
+  <!-- ── Bottom bar ── -->
+  <div class="bottom-bar">
+    <button class="bottom-btn ghost" onclick="window.location.href='auth.html'">🚪 Sign Out</button>
+    <button class="bottom-btn primary" onclick="showToast('Admin has been notified of your status.')">📡 Update Admin</button>
+  </div>
+
+  <!-- ── Action modal (bottom sheet) ── -->
+  <div class="modal-overlay" id="modal" onclick="closeModalIfBg(event)">
+    <div class="modal" id="modalContent">
+      <div class="modal-handle"></div>
+      <h3 id="modalTitle">Confirm Action</h3>
+      <p id="modalBody">Are you sure?</p>
+      <div class="modal-actions" id="modalActions"></div>
+    </div>
+  </div>
+
+  <!-- ── Toast ── -->
+  <div class="toast" id="toast"></div>
+
+  <script src="vd-modal.js"></script>
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+    const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnbXp6YXZ4aHVhcmxhY252bm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Mjk4NTksImV4cCI6MjA5NDIwNTg1OX0.7-YKlwLrhUYUYbiii93ZvgX01TxVephApDNCP50Rl54';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    function showLoggedOutGate() {
+      document.body.style.margin = '0';
+      document.body.style.display = 'block';
+      document.body.style.minHeight = '100vh';
+      document.body.style.background = '#f4f8f7';
+      document.body.innerHTML = `
+        <div style="min-height:100vh; display:flex; align-items:center; justify-content:center; background:#f4f8f7; padding:1.5rem; font-family:Inter, Arial, sans-serif;">
+          <div style="width:min(440px,100%); background:#fff; border-radius:14px; box-shadow:0 12px 35px rgba(13,43,40,0.14); padding:2rem; text-align:center; border-top:4px solid #2a9d8f;">
+            <h1 style="margin:0 0 0.8rem; color:#0d2b28; font-size:1.6rem;">Please log in again</h1>
+            <p style="margin:0 0 1.4rem; color:#4a4a4a; line-height:1.6;">Your driver dashboard session has ended. Log back in to view protected information.</p>
+            <button style="border:0; border-radius:10px; background:#2a9d8f; color:#fff; padding:0.85rem 1.4rem; font-weight:700; cursor:pointer;" onclick="window.location.href='auth.html?returnTo=driver-dashboard.html'">Log In</button>
+          </div>
+        </div>
+      `;
+    }
+
+    async function hasActiveSession() {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        showLoggedOutGate();
+        return false;
+      }
+      return true;
+    }
+
+    function installSessionRestoreGuard() {
+      window.addEventListener('pageshow', () => { hasActiveSession(); });
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') hasActiveSession();
+      });
+      window.addEventListener('focus', () => { hasActiveSession(); });
+    }
+    installSessionRestoreGuard();
+
+    let toastTimer;
+    let currentDriver = null;
+    let currentProfile = null;
+    let orders = [];
+    let clientsById = new Map();
+    let activeFilter = 'all';
+
+    document.getElementById('todayDate').textContent =
+      new Date().toLocaleDateString('en-TT', { weekday:'long', day:'numeric', month:'short', year:'numeric' });
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.style.display = 'block';
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.style.display = 'none', 3500);
+    }
+    window.showToast = showToast;
+
+    function openModal(title, body, actions) {
+      document.getElementById('modalTitle').textContent = title;
+      document.getElementById('modalBody').textContent = body;
+      document.getElementById('modalActions').innerHTML = actions;
+      document.getElementById('modal').classList.add('show');
+    }
+    window.openModal = openModal;
+    window.closeModal = function() { document.getElementById('modal').classList.remove('show'); };
+    window.closeModalIfBg = function(e) { if (e.target === document.getElementById('modal')) closeModal(); };
+
+    function normalizeStatus(orderStatus) {
+      if (orderStatus === 'out_for_delivery') return 'out';
+      if (orderStatus === 'delivered') return 'delivered';
+      if (orderStatus === 'failed') return 'failed';
+      if (orderStatus === 'rescheduled') return 'rescheduled';
+      return 'queued';
+    }
+
+    function statusBadge(status) {
+      if (status === 'out') return '<span class="status-badge badge-out">🚚 Out for Delivery</span>';
+      if (status === 'delivered') return '<span class="status-badge badge-delivered">✅ Delivered</span>';
+      if (status === 'failed') return '<span class="status-badge badge-failed">❌ Failed Attempt</span>';
+      if (status === 'rescheduled') return '<span class="status-badge badge-rescheduled">🔄 Rescheduled</span>';
+      return '<span class="status-badge badge-queued">📋 Queued</span>';
+    }
+
+    function cardClass(status) {
+      if (status === 'out') return ' status-out';
+      if (status === 'delivered') return ' status-delivered';
+      if (status === 'failed') return ' status-failed';
+      if (status === 'rescheduled') return ' status-rescheduled';
+      return '';
+    }
+
+    function paymentLabel(type) {
+      if (type === 'delivery_only') return 'Package Paid Online';
+      if (type === 'prepaid') return 'Fully Paid Online';
+      return 'Cash on Delivery';
+    }
+
+    function amountToCollect(order) {
+      if (order.payment_type === 'prepaid') return 0;
+      if (order.payment_type === 'delivery_only') return Number(order.delivery_fee || 0);
+      return Number(order.cod_amount || 0);
+    }
+
+    function money(value) {
+      const n = Number(value || 0);
+      return n > 0 ? `TTD ${n.toFixed(2)}` : 'Nothing';
+    }
+
+    function cleanPhone(phone) {
+      return String(phone || '').replace(/\D/g, '');
+    }
+
+    function phoneForLink(phone) {
+      const digits = cleanPhone(phone);
+      if (digits.startsWith('868')) return digits;
+      return '868' + digits;
+    }
+
+    function clientName(order) {
+      return clientsById.get(order.business_client_id)?.business_name || 'Not listed';
+    }
+
+    function mapsTarget(order) {
+      if (order.maps_link) return order.maps_link;
+      if (order.latitude && order.longitude) return `https://www.google.com/maps/search/?api=1&query=${order.latitude},${order.longitude}`;
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((order.delivery_address || '') + ', Trinidad')}`;
+    }
+
+    function renderActions(order, status) {
+      const collect = amountToCollect(order);
+      const phone = phoneForLink(order.customer_phone);
+      const maps = mapsTarget(order);
+
+      if (status === 'delivered') {
+        return `<button class="action-btn btn-whatsapp" onclick="whatsappCustomer('${phone}', '${order.order_number}', '${order.tracking_token || ''}')" style="opacity:0.8;">💬 WhatsApp</button>`;
+      }
+
+      if (status === 'failed' || status === 'rescheduled') {
+        return `<button class="action-btn btn-reschedule" onclick="showToast('Reschedule request will be handled by admin.')">🔄 Request Reschedule</button>`;
+      }
+
+      const common = `
+        <button class="action-btn btn-maps" onclick="openMaps('${maps.replaceAll("'", "\\'")}')">🗺️ Open in Maps</button>
+        <button class="action-btn btn-call" onclick="callCustomer('${phone}')">📞 Call Customer</button>
+      `;
+
+      if (status === 'queued') {
+        return common + `<button class="action-btn btn-collected" onclick="markCollected('${order.id}')">📦 Mark Collected</button>`;
+      }
+
+      return common + `
+        <button class="action-btn btn-whatsapp" onclick="whatsappCustomer('${phone}', '${order.order_number}', '${order.tracking_token || ''}')">💬 WhatsApp</button>
+        <button class="action-btn btn-delivered" onclick="markDelivered('${order.id}', ${collect})">✅ Mark Delivered</button>
+        <button class="action-btn btn-unavailable" onclick="markUnavailable('${order.id}')">📵 Unavailable</button>
+        <button class="action-btn btn-failed" onclick="markFailed('${order.id}')">❌ Mark Failed</button>
+      `;
+    }
+
+    function renderOrders() {
+      const list = document.getElementById('deliveryList');
+      list.innerHTML = orders.map(order => {
+        const status = normalizeStatus(order.order_status);
+        const collect = amountToCollect(order);
+        const notes = order.customer_notes ? `<div class="delivery-notes">📝 ${order.customer_notes}</div>` : '';
+        const collectClass = collect > 0 ? 'cod' : 'no-cod';
+        const collectLabel = collect > 0 ? money(collect) : `${money(collect)} — ${paymentLabel(order.payment_type).toLowerCase()}`;
+
+        return `
+          <div class="delivery-card${cardClass(status)}" data-status="${status}" data-order-id="${order.id}">
+            <div class="card-header">
+              <div class="card-order">
+                <div class="order-num">${order.order_number}</div>
+                <div class="client-tag">${clientName(order)}</div>
+              </div>
+              ${statusBadge(status)}
+            </div>
+            <div class="customer-info">
+              <div class="info-row">
+                <div class="info-label">Customer</div>
+                <div class="info-value">${order.customer_name || '—'}</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">Phone</div>
+                <div class="info-value">${order.customer_phone || '—'}</div>
+              </div>
+              <div class="info-row" style="grid-column:1/-1;">
+                <div class="info-label">Delivery Address</div>
+                <div class="info-value address">${order.delivery_address || order.area_name || 'Location pending'}</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">To Collect</div>
+                <div class="info-value ${collectClass}">${collectLabel}</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">Payment Type</div>
+                <div class="info-value">${paymentLabel(order.payment_type)}</div>
+              </div>
+            </div>
+            ${notes}
+            <div class="driver-update-box">
+              <label>Driver Update / Customer Conversation Notes</label>
+              <textarea placeholder="Example: Customer asked to deliver after 3 PM, customer requested updated address, customer said to leave package with security..."></textarea>
+              <div class="driver-update-actions">
+                <button class="action-btn btn-note-save" onclick="saveDriverNote('${order.id}', this)">📝 Save Note</button>
+                <button class="action-btn btn-note-client" onclick="sendClientUpdate('${order.id}', this)">💬 Send Update to Client</button>
+              </div>
+            </div>
+            <div class="card-actions">${renderActions(order, status)}</div>
+          </div>
+        `;
+      }).join('');
+
+      applyFilter();
+      updateStats();
+    }
+
+    function updateFilterTabs() {
+      const counts = {
+        all: orders.length,
+        queued: orders.filter(o => normalizeStatus(o.order_status) === 'queued').length,
+        out: orders.filter(o => normalizeStatus(o.order_status) === 'out').length,
+        delivered: orders.filter(o => normalizeStatus(o.order_status) === 'delivered').length,
+        failed: orders.filter(o => normalizeStatus(o.order_status) === 'failed').length
+      };
+      document.querySelector('.filter-tabs').innerHTML = `
+        <button class="filter-tab ${activeFilter === 'all' ? 'active' : ''}" onclick="filterCards('all', this)">All (${counts.all})</button>
+        <button class="filter-tab ${activeFilter === 'queued' ? 'active' : ''}" onclick="filterCards('queued', this)">Queued (${counts.queued})</button>
+        <button class="filter-tab ${activeFilter === 'out' ? 'active' : ''}" onclick="filterCards('out', this)">Out for Delivery (${counts.out})</button>
+        <button class="filter-tab ${activeFilter === 'delivered' ? 'active' : ''}" onclick="filterCards('delivered', this)">Delivered (${counts.delivered})</button>
+        <button class="filter-tab ${activeFilter === 'failed' ? 'active' : ''}" onclick="filterCards('failed', this)">Failed (${counts.failed})</button>
+      `;
+    }
+
+    function applyFilter() {
+      const cards = document.querySelectorAll('.delivery-card');
+      let visible = 0;
+      cards.forEach(card => {
+        const show = activeFilter === 'all' || card.dataset.status === activeFilter;
+        card.style.display = show ? 'block' : 'none';
+        if (show) visible++;
+      });
+      document.getElementById('emptyState').classList.toggle('show', visible === 0);
+    }
+
+    window.filterCards = function(status, btn) {
+      activeFilter = status;
+      document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      applyFilter();
+    };
+
+    function updateStats() {
+      const delivered = orders.filter(o => normalizeStatus(o.order_status) === 'delivered').length;
+      const failed = orders.filter(o => normalizeStatus(o.order_status) === 'failed').length;
+      const remaining = orders.filter(o => !['delivered', 'failed'].includes(normalizeStatus(o.order_status))).length;
+      const cod = orders
+        .filter(o => normalizeStatus(o.order_status) === 'delivered')
+        .reduce((sum, o) => sum + amountToCollect(o), 0);
+
+      document.getElementById('statTotal').textContent = orders.length;
+      document.getElementById('statPending').textContent = remaining;
+      document.getElementById('statDone').textContent = delivered;
+      document.getElementById('statFailed').textContent = failed;
+      document.getElementById('statCOD').textContent = `TTD ${cod.toFixed(0)}`;
+      updateFilterTabs();
+    }
+
+    async function loadDriverData() {
+      document.getElementById('deliveryList').innerHTML = '<div class="delivery-card"><div class="card-header"><div>Loading assigned orders...</div></div></div>';
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        showLoggedOutGate();
+        return;
+      }
+
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData?.user?.id;
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, role, first_name, last_name, status')
+        .eq('id', userId)
+        .single();
+
+      if (profileError || profile?.role !== 'driver' || profile?.status !== 'active') {
+        document.getElementById('deliveryList').innerHTML = '<div class="delivery-card"><div class="card-header"><div>Driver access is required for this dashboard.</div></div></div>';
+        return;
+      }
+
+      const { data: driver, error: driverError } = await supabase
+        .from('drivers')
+        .select('id, profile_id, status')
+        .eq('profile_id', profile.id)
+        .eq('status', 'active')
+        .single();
+
+      if (driverError || !driver) {
+        document.getElementById('deliveryList').innerHTML = '<div class="delivery-card"><div class="card-header"><div>No active driver record was found for this account.</div></div></div>';
+        return;
+      }
+
+      currentProfile = profile;
+      currentDriver = driver;
+      const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || 'Driver';
+      document.querySelector('.driver-name').textContent = fullName;
+      document.querySelector('.driver-zone').textContent = 'Assigned Orders';
+      document.querySelector('.driver-avatar').textContent = fullName.split(/\s+/).map(p => p[0]).join('').slice(0, 2).toUpperCase();
+
+      const [ordersRes, clientsRes] = await Promise.all([
+        supabase
+          .from('orders')
+          .select('id, order_number, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, cod_amount, delivery_fee, order_status, assigned_driver_id, customer_notes, driver_notes, tracking_token, created_at')
+          .eq('assigned_driver_id', driver.id)
+          .order('created_at', { ascending: false }),
+        supabase.from('business_clients').select('id, business_name')
+      ]);
+
+      if (ordersRes.error) throw ordersRes.error;
+      if (clientsRes.error) throw clientsRes.error;
+
+      clientsById = new Map((clientsRes.data || []).map(client => [client.id, client]));
+      orders = ordersRes.data || [];
+      renderOrders();
+    }
+
+    async function readOrderStatus(orderId) {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('id, order_status, assigned_driver_id')
+        .eq('id', orderId)
+        .limit(1);
+
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      return row?.order_status || null;
+    }
+
+    async function directOrderStatusUpdate(orderId, status, note = null) {
+      const payload = { order_status: status };
+      if (note !== null) payload.driver_notes = note;
+      const { error } = await supabase
+        .from('orders')
+        .update(payload)
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      const savedStatus = await readOrderStatus(orderId);
+      if (savedStatus !== status) {
+        throw new Error('The order status did not change in the database. Refresh the driver dashboard and try again.');
+      }
+    }
+
+    async function saveOrderStatus(orderId, status, note = null) {
+      const rpcResult = await supabase.rpc('driver_update_order_status', {
+        p_order_id: orderId,
+        p_order_status: status,
+        p_note: note
+      });
+
+      if (rpcResult.error) {
+        console.warn('RPC driver status update failed, trying direct update:', rpcResult.error);
+        await directOrderStatusUpdate(orderId, status, note);
+        return;
+      }
+
+      const savedStatus = await readOrderStatus(orderId);
+      if (savedStatus === status) return;
+
+      console.warn('RPC completed but order status did not change, trying direct update:', {
+        orderId,
+        expected: status,
+        actual: savedStatus
+      });
+
+      await directOrderStatusUpdate(orderId, status, note);
+    }
+
+    function findOrder(orderId) {
+      return orders.find(o => o.id === orderId);
+    }
+
+    function resolveOrderRef(orderRef, maybeOrderNumber = null) {
+      if (typeof orderRef === 'string') {
+        const direct = orders.find(o => o.id === orderRef || o.order_number === orderRef);
+        if (direct) return direct;
+      }
+
+      if (typeof maybeOrderNumber === 'string') {
+        const byNumber = orders.find(o => o.order_number === maybeOrderNumber || o.id === maybeOrderNumber);
+        if (byNumber) return byNumber;
+      }
+
+      return null;
+    }
+
+    window.openMaps = function(target) {
+      window.open(target, '_blank');
+    };
+
+    window.callCustomer = function(phone) {
+      window.location.href = `tel:+${phoneForLink(phone)}`;
+    };
+
+    window.whatsappCustomer = function(phone, orderNumber, trackingToken = '') {
+      const base = window.location.origin + window.location.pathname.replace(/driver-dashboard\.html$/, 'track.html');
+      const link = orderNumber && trackingToken
+        ? ` Track it here: ${base}?order=${encodeURIComponent(orderNumber)}&token=${encodeURIComponent(trackingToken)}`
+        : '';
+      const orderText = orderNumber ? ` (${orderNumber})` : '';
+      const message = `Hi, this is VirtuDrop. Your delivery${orderText} is on the way.${link} Please be available to receive your package.`;
+      const url = `https://wa.me/${phoneForLink(phone)}?text=${encodeURIComponent(message)}`;
+      window.open(url, '_blank');
+    };
+
+    window.markCollected = function(orderRef, maybeOrderNumber = null) {
+      const order = resolveOrderRef(orderRef, maybeOrderNumber);
+      if (!order) {
+        window.vdNotify('Order Not Ready', 'This card is not connected to a live assigned order. Refresh the driver dashboard and try again.', 'error');
+        return;
+      }
+      openModal(
+        '📦 Mark as Collected',
+        `Confirm that package ${order.order_number} has been collected and is ready for delivery.`,
+        `<button class="modal-btn confirm" onclick="confirmStatus('${order.id}', 'out_for_delivery')">✅ Yes, Package Collected</button>
+         <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>`
+      );
+    };
+
+    window.markDelivered = function(orderRef, maybeOrderNumberOrCollect = 0, maybeCollectAmount = 0) {
+      const order = resolveOrderRef(orderRef, maybeOrderNumberOrCollect);
+      if (!order) {
+        window.vdNotify('Order Not Ready', 'This card is not connected to a live assigned order. Refresh the driver dashboard and try again.', 'error');
+        return;
+      }
+      const collectAmount = typeof maybeOrderNumberOrCollect === 'number' ? maybeOrderNumberOrCollect : maybeCollectAmount;
+      const codText = collectAmount > 0 ? ` Confirm how ${money(collectAmount)} was collected before completing this delivery.` : ' No payment to collect.';
+      const methodBox = collectAmount > 0
+        ? `<div class="collection-method-box">
+             <div class="collection-method-title">Collection Method Required</div>
+             <div class="collection-method-options">
+               <label><input type="radio" name="collectionMethod" value="Cash" /> 💵 Cash</label>
+               <label><input type="radio" name="collectionMethod" value="LINX" /> 💳 LINX</label>
+             </div>
+           </div>`
+        : '';
+      openModal(
+        '✅ Mark as Delivered',
+        `Confirm delivery of ${order.order_number} is complete.${codText}`,
+        `${methodBox}<button class="modal-btn confirm" onclick="confirmDeliveredWithCollection('${order.id}', ${collectAmount})">✅ Confirm Delivery</button>
+         <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>`
+      );
+    };
+
+    window.confirmDeliveredWithCollection = function(orderId, collectAmount = 0) {
+      let note = null;
+      if (Number(collectAmount) > 0) {
+        const method = document.querySelector('input[name="collectionMethod"]:checked')?.value;
+        if (!method) {
+          showToast('Select Cash or LINX before confirming delivery.');
+          return;
+        }
+        note = `Customer payment collected by driver: ${method} - ${money(collectAmount)}`;
+      }
+      window.confirmStatus(orderId, 'delivered', note);
+    };
+
+    window.markUnavailable = function(orderRef, maybeOrderNumber = null) {
+      const order = resolveOrderRef(orderRef, maybeOrderNumber);
+      if (!order) {
+        window.vdNotify('Order Not Ready', 'This card is not connected to a live assigned order. Refresh the driver dashboard and try again.', 'error');
+        return;
+      }
+      window.confirmStatus(order.id, 'failed', 'Customer unavailable - did not answer');
+    };
+
+    window.markFailed = function(orderRef, maybeOrderNumber = null) {
+      const order = resolveOrderRef(orderRef, maybeOrderNumber);
+      if (!order) {
+        window.vdNotify('Order Not Ready', 'This card is not connected to a live assigned order. Refresh the driver dashboard and try again.', 'error');
+        return;
+      }
+      openModal(
+        '❌ Mark as Failed',
+        'Select a reason for the failed delivery:',
+        `<button class="modal-btn danger" onclick="confirmStatus('${order.id}', 'failed', 'Customer unavailable')">📵 Customer unavailable</button>
+         <button class="modal-btn danger" onclick="confirmStatus('${order.id}', 'failed', 'Customer refused item')">🚫 Customer refused item</button>
+         <button class="modal-btn danger" onclick="confirmStatus('${order.id}', 'failed', 'Wrong address')">📍 Wrong address</button>
+         <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>`
+      );
+    };
+
+    window.confirmStatus = async function(orderId, status, note = null) {
+      closeModal();
+      try {
+        await saveOrderStatus(orderId, status, note);
+        const order = findOrder(orderId);
+        if (order) order.order_status = status;
+        showToast('Order updated.');
+        renderOrders();
+      } catch (error) {
+        console.error('Driver order update error:', error);
+        window.vdNotify('Order Not Updated', error.message || 'Could not update order status.', 'error');
+      }
+    };
+
+    async function saveAdminUpdateForOrder(orderId, note) {
+      const order = findOrder(orderId);
+      if (!order) throw new Error('Could not find this order.');
+      await saveOrderStatus(orderId, order.order_status || 'assigned', note);
+      order.driver_notes = note;
+    }
+
+    window.saveDriverNote = async function(orderId, btn) {
+      const note = btn.closest('.delivery-card').querySelector('textarea')?.value.trim();
+      if (!note) {
+        showToast('Please enter a note before saving.');
+        return;
+      }
+      btn.disabled = true;
+      const originalText = btn.textContent;
+      btn.textContent = 'Saving...';
+      try {
+        await saveAdminUpdateForOrder(orderId, note);
+        showToast('Admin update saved.');
+      } catch (error) {
+        console.error('Driver note save error:', error);
+        window.vdNotify('Update Not Saved', error.message || 'Could not save the admin update.', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    };
+
+    window.sendClientUpdate = function(orderId, btn) {
+      const order = findOrder(orderId);
+      const note = btn.closest('.delivery-card').querySelector('textarea')?.value.trim();
+      if (!note) {
+        showToast('Please enter an update before sending.');
+        return;
+      }
+      const tracking = order?.order_number && order?.tracking_token ? ` Track it here: ${window.location.origin + window.location.pathname.replace(/driver-dashboard\.html$/, 'track.html')}?order=${encodeURIComponent(order.order_number)}&token=${encodeURIComponent(order.tracking_token)}` : '';
+      const message = `VirtuDrop Update for ${order?.order_number || 'your delivery'}: ${note}${tracking}`;
+      const url = `https://wa.me/${phoneForLink(order?.customer_phone)}?text=${encodeURIComponent(message)}`;
+      window.open(url, '_blank');
+    };
+
+    document.querySelector('.bottom-btn.ghost').onclick = async () => {
+      await supabase.auth.signOut();
+      window.location.href = 'auth.html';
+    };
+
+    document.querySelector('.bottom-btn.primary').onclick = async () => {
+      const cards = [...document.querySelectorAll('.delivery-card[data-order-id]')];
+      const updates = cards
+        .map(card => ({
+          orderId: card.dataset.orderId,
+          note: card.querySelector('textarea')?.value.trim() || ''
+        }))
+        .filter(item => item.note);
+
+      if (!updates.length) {
+        window.vdNotify('No Update Entered', 'Type an update in an order note box, then tap Update Admin again.', 'warning');
+        return;
+      }
+
+      const btn = document.querySelector('.bottom-btn.primary');
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Updating...';
+      try {
+        for (const update of updates) {
+          await saveAdminUpdateForOrder(update.orderId, update.note);
+        }
+        showToast(`${updates.length} admin update${updates.length === 1 ? '' : 's'} saved.`);
+      } catch (error) {
+        console.error('Update admin error:', error);
+        window.vdNotify('Admin Update Failed', error.message || 'Could not save the admin update.', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    };
+
+    loadDriverData().catch(error => {
+      console.error('Driver dashboard load error:', error);
+      document.getElementById('deliveryList').innerHTML = `<div class="delivery-card"><div class="card-header"><div>${error.message || 'Could not load driver dashboard.'}</div></div></div>`;
+    });
+  </script>
+
+</body>
+</html>
+
+

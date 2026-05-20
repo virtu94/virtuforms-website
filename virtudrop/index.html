@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Home | VirtuDrop</title>
+  <meta name="description" content="VirtuDrop – structured zone-based delivery for businesses in Trinidad.">
+  <link rel="icon" href="assets/logo.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      line-height: 1.7;
+      color: #1a1a1a;
+      background: #f8f9fa;
+    }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
+
+    /* Nav Bar */
+    .nav {
+      background: #ffffff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    /* Navbar container */
+    .nav .container {
+      max-width: none;
+      width: 100%;
+      margin: 0;
+      padding: 0 2.5rem;
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      gap: 2rem;
+      padding: 1rem 0;
+    }
+
+    /* Logo + slogan */
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      text-decoration: none;
+      flex-shrink: 0;
+      margin-right: auto;
+    }
+
+    .brand img {
+      height: 52px;
+      width: auto;
+    }
+
+    .badge {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #2a9d8f;
+      letter-spacing: 0.4px;
+      white-space: nowrap;
+    }
+
+    /* Nav links */
+    .links {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 1.8rem;
+      margin-left: auto;
+      flex-wrap: nowrap;
+      white-space: nowrap;
+    }
+
+    .links a {
+      text-decoration: none;
+      color: #1a1a1a;
+      font-weight: 500;
+      font-size: 0.92rem;
+      white-space: nowrap;
+    }
+
+    /* Login button */
+    .links a.nav-login {
+      background: #2a9d8f;
+      color: #ffffff !important;
+      padding: 0.5rem 1.2rem;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+
+    .links a.nav-login:hover {
+      background: #238277;
+    }
+
+    /* Mobile */
+    .mobile-toggle {
+      display: none;
+      align-items: center;
+      justify-content: center;
+
+      background: linear-gradient(135deg, #2a9d8f 0%, #238277 100%);
+      color: #ffffff;
+
+      border: none;
+      border-radius: 10px;
+
+      padding: 0.7rem 1rem;
+
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+
+      cursor: pointer;
+
+      box-shadow: 0 4px 12px rgba(42,157,143,0.25);
+
+      transition: all 0.25s ease;
+    }
+
+    .mobile-toggle:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(42,157,143,0.35);
+      background: linear-gradient(135deg, #31b3a3 0%, #2a9d8f 100%);
+    }
+
+    .mobile-toggle:active {
+      transform: scale(0.97);
+    }
+
+    .mobile-toggle::before {
+      content: "☰";
+      margin-right: 0.5rem;
+      font-size: 1rem;
+    }
+
+    /* ── Hero ── */
+    .hero { padding: 5rem 0; animation: fadeIn 0.8s ease-out; }
+
+    @keyframes fadeIn    { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes fadeInUp  { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideInLeft  { from { opacity: 0; transform: translateX(-40px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes slideInRight { from { opacity: 0; transform: translateX(40px); }  to { opacity: 1; transform: translateX(0); } }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 3rem;
+      align-items: start;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 3rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      transition: all 0.4s ease;
+    }
+    .card:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.1); transform: translateY(-5px); }
+
+    .hero-card h1 {
+      font-size: 3.2rem; font-weight: 700; color: #1a1a1a;
+      line-height: 1.2; margin-bottom: 1.5rem;
+      animation: slideInLeft 0.8s ease-out;
+    }
+    .hero-card p {
+      font-size: 1.2rem; line-height: 1.8; color: #4a4a4a;
+      margin-bottom: 2.5rem;
+      animation: slideInLeft 0.8s ease-out 0.2s both;
+    }
+
+    .cta-row {
+      display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem;
+      animation: slideInLeft 0.8s ease-out 0.4s both;
+    }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.9rem 1.8rem; border-radius: 10px;
+      text-decoration: none; font-weight: 600; font-size: 0.95rem;
+      transition: all 0.3s ease; border: 2px solid #e0e0e0;
+      color: #1a1a1a; background: #ffffff; cursor: pointer;
+    }
+    .btn:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.12); border-color: #2a9d8f; color: #2a9d8f; }
+    .btn-primary { background: #2a9d8f; color: #ffffff; border-color: #2a9d8f; }
+    .btn-primary:hover { background: #238277; border-color: #238277; color: #ffffff; }
+    .btn-dark { background: #0d2b28; color: #ffffff; border-color: #0d2b28; }
+    .btn-dark:hover { background: #1a4a44; border-color: #1a4a44; color: #ffffff; }
+
+    .notice {
+      padding: 1.2rem 1.5rem; background: #f0f9f8;
+      border-left: 4px solid #2a9d8f; border-radius: 8px;
+      font-size: 0.92rem; color: #4a4a4a; line-height: 1.7;
+      animation: slideInLeft 0.8s ease-out 0.6s both;
+    }
+
+    /* ── Side Card KPIs ── */
+    .side-card {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem; /* controls spacing between bubbles */
+      animation: slideInRight 0.8s ease-out 0.3s both;
+    }
+
+    .kpi {
+      display: flex;
+      gap: 1.2rem;
+      align-items: flex-start;
+
+      padding: 1.5rem;
+      margin-bottom: 1rem; /* spacing between each bubble */
+
+      background: #f8f9fa;
+      border-radius: 16px;
+
+      transition: all 0.3s ease;
+    }
+
+    .kpi:hover { background: #f0f9f8; transform: translateX(5px); }
+    .dot {
+      width: 11px; height: 11px; background: #2a9d8f; border-radius: 50%;
+      flex-shrink: 0; margin-top: 7px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.7; transform: scale(1.1); }
+    }
+    .kpi h3 { font-size: 1.05rem; font-weight: 700; color: #1a1a1a; margin-bottom: 0.3rem; }
+    .kpi p  { font-size: 0.92rem; color: #4a4a4a; line-height: 1.6; }
+
+    /* ── Track Delivery Widget ── */
+    .track-widget {
+      background: #0d2b28;
+      border-radius: 16px;
+      padding: 2rem 2.5rem;
+      animation: slideInRight 0.8s ease-out 0.5s both;
+    }
+    .track-widget h3 { font-size: 1.1rem; font-weight: 700; color: #14d4ae; margin-bottom: 0.4rem; }
+    .track-widget p  { font-size: 0.88rem; color: rgba(255,255,255,0.65); margin-bottom: 1.2rem; line-height: 1.5; }
+    .track-form { display: flex; flex-direction: column; gap: 0.8rem; }
+    .track-input {
+      width: 100%; padding: 0.75rem 1rem;
+      background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.15);
+      border-radius: 8px; font-family: 'Inter', sans-serif;
+      font-size: 0.9rem; color: #ffffff; transition: border-color 0.25s ease;
+    }
+    .track-input::placeholder { color: rgba(255,255,255,0.4); }
+    .track-input:focus { outline: none; border-color: #14d4ae; }
+    .track-btn {
+      width: 100%; padding: 0.8rem;
+      background: #2a9d8f; border: none; border-radius: 8px;
+      color: #ffffff; font-size: 0.92rem; font-weight: 700;
+      font-family: 'Inter', sans-serif; cursor: pointer;
+      transition: background 0.25s ease;
+    }
+    .track-btn:hover { background: #238277; }
+    .track-link { text-align: center; margin-top: 0.5rem; }
+    .track-link a { font-size: 0.82rem; color: rgba(255,255,255,0.5); text-decoration: none; transition: color 0.2s; }
+    .track-link a:hover { color: #14d4ae; }
+
+    /* ── How It Works ── */
+    .section { padding: 6rem 0; }
+
+    .section-heading { text-align: center; margin-bottom: 4rem; }
+    .section-heading .section-line {
+      display: flex; align-items: center; gap: 1rem;
+      justify-content: center; margin-bottom: 1rem;
+    }
+    .section-heading .section-line::before,
+    .section-heading .section-line::after {
+      content: ''; flex: 1; max-width: 80px;
+      height: 2px; background: #2a9d8f; border-radius: 2px;
+    }
+    .section-heading .section-line span {
+      font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1.5px; color: #2a9d8f;
+    }
+    .section-heading h2 { font-size: 2.5rem; font-weight: 700; color: #1a1a1a; margin-bottom: 1rem; }
+    .section-heading p  { font-size: 1.1rem; color: #4a4a4a; line-height: 1.7; max-width: 600px; margin: 0 auto; }
+
+    /* Steps grid */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0;
+      position: relative;
+      margin-bottom: 3rem;
+    }
+    .steps-grid::before {
+      content: '';
+      position: absolute;
+      top: 2rem; left: calc(12.5% + 1.5rem); right: calc(12.5% + 1.5rem);
+      height: 2px; background: linear-gradient(90deg, #2a9d8f, #14d4ae);
+      z-index: 0;
+    }
+
+    .step {
+      display: flex; flex-direction: column; align-items: center;
+      text-align: center; padding: 0 1rem;
+      position: relative; z-index: 1;
+      animation: fadeInUp 0.8s ease-out both;
+    }
+    .step:nth-child(1) { animation-delay: 0.1s; }
+    .step:nth-child(2) { animation-delay: 0.2s; }
+    .step:nth-child(3) { animation-delay: 0.3s; }
+    .step:nth-child(4) { animation-delay: 0.4s; }
+    .step:nth-child(5) { animation-delay: 0.5s; }
+    .step:nth-child(6) { animation-delay: 0.6s; }
+
+    .step-num {
+      width: 4rem; height: 4rem;
+      background: linear-gradient(135deg, #2a9d8f, #14d4ae);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; font-weight: 800; color: #ffffff;
+      margin-bottom: 1.2rem; flex-shrink: 0;
+      box-shadow: 0 4px 16px rgba(42,157,143,0.3);
+      transition: transform 0.3s ease;
+    }
+    .step:hover .step-num { transform: scale(1.1); }
+    .step-icon { font-size: 1.2rem; }
+    .step h3 { font-size: 0.95rem; font-weight: 700; color: #1a1a1a; margin-bottom: 0.5rem; line-height: 1.3; }
+    .step p  { font-size: 0.82rem; color: #6a6a6a; line-height: 1.5; }
+
+    /* Audience tabs */
+    .audience-tabs {
+      display: flex; gap: 0.5rem; justify-content: center;
+      margin-bottom: 3rem;
+    }
+    .tab-btn {
+      padding: 0.6rem 1.8rem; border-radius: 30px;
+      font-size: 0.9rem; font-weight: 600; cursor: pointer;
+      border: 2px solid #e0e0e0; background: #ffffff; color: #4a4a4a;
+      transition: all 0.25s ease;
+    }
+    .tab-btn.active { background: #2a9d8f; border-color: #2a9d8f; color: #ffffff; }
+    .tab-btn:hover:not(.active) { border-color: #2a9d8f; color: #2a9d8f; }
+
+    .steps-panel { display: none; }
+    .steps-panel.active { display: block; }
+
+    /* ── Service Cards ── */
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2rem;
+    }
+    .service-card {
+      background: #ffffff; border-radius: 16px; padding: 2.2rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      border-top: 4px solid #2a9d8f;
+      transition: all 0.3s ease;
+      animation: fadeInUp 0.8s ease-out both;
+    }
+    .service-card:hover { transform: translateY(-6px); box-shadow: 0 12px 35px rgba(0,0,0,0.1); }
+    .service-card:nth-child(1) { animation-delay: 0.1s; }
+    .service-card:nth-child(2) { animation-delay: 0.2s; }
+    .service-card:nth-child(3) { animation-delay: 0.3s; }
+    .service-icon-lg { font-size: 2.2rem; margin-bottom: 1rem; display: block; }
+    .service-card h3 { font-size: 1.2rem; font-weight: 700; color: #1a1a1a; margin-bottom: 0.6rem; }
+    .service-card p  { font-size: 0.92rem; color: #4a4a4a; line-height: 1.7; margin-bottom: 1rem; }
+    .service-price { font-size: 1.5rem; font-weight: 800; color: #2a9d8f; }
+    .service-price span { font-size: 0.85rem; font-weight: 500; color: #6a6a6a; }
+
+    /* ── CTA Section ── */
+    .cta-section {
+      background: linear-gradient(135deg, #0d2b28 0%, #2a9d8f 100%);
+      border-radius: 20px; padding: 4rem 3rem; text-align: center;
+      margin: 4rem 0;
+      box-shadow: 0 10px 40px rgba(13,43,40,0.3);
+      animation: fadeInUp 0.8s ease-out 0.3s both;
+    }
+    .cta-section h2 { font-size: 2.4rem; font-weight: 700; color: #ffffff; margin-bottom: 1rem; }
+    .cta-section p  { font-size: 1.1rem; color: rgba(255,255,255,0.85); margin-bottom: 2.5rem; line-height: 1.7; }
+    .cta-row-center { display: flex; gap: 1.2rem; justify-content: center; flex-wrap: wrap; }
+    .btn-white { background: #ffffff; color: #0d2b28; border-color: #ffffff; }
+    .btn-white:hover { background: #f0f9f8; border-color: #f0f9f8; color: #0d2b28; }
+    .btn-outline-white { background: transparent; color: #ffffff; border-color: rgba(255,255,255,0.5); }
+    .btn-outline-white:hover { background: rgba(255,255,255,0.1); border-color: #ffffff; color: #ffffff; transform: translateY(-3px); }
+
+    /* ── Footer ── */
+    .footer {
+      background: #1a1a1a; color: #ffffff;
+      padding: 4rem 0 2rem; margin-top: 4rem;
+    }
+    .footer-grid {
+      display: grid; grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 3rem; margin-bottom: 3rem;
+    }
+    .footer-brand img { height: 44px; margin-bottom: 1rem; }
+    .footer-brand p { font-size: 0.88rem; color: rgba(255,255,255,0.55); line-height: 1.7; }
+    .footer-col h4 { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #14d4ae; margin-bottom: 1rem; }
+    .footer-col a { display: block; font-size: 0.88rem; color: rgba(255,255,255,0.55); text-decoration: none; margin-bottom: 0.5rem; transition: color 0.2s; }
+    .footer-col a:hover { color: #ffffff; }
+    .footer-bottom { border-top: 1px solid rgba(255,255,255,0.08); padding-top: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
+    .footer-bottom p { font-size: 0.82rem; color: rgba(255,255,255,0.4); }
+
+    /* ── Responsive ── */
+    @media (max-width: 1100px) {
+      .steps-grid { grid-template-columns: repeat(4, 1fr); }
+      .steps-grid::before { display: none; }
+    }
+
+    @media (max-width: 968px) {
+      .links {
+        display: none; position: absolute; top: 100%; left: 0; right: 0;
+        background: #ffffff; flex-direction: column; align-items: stretch;
+        gap: 0; box-shadow: 0 8px 20px rgba(0,0,0,0.1); z-index: 99;
+      }
+      .links.open { display: flex; }
+      .links a { padding: 1rem 2rem; border-bottom: 1px solid #f0f0f0; font-size: 0.95rem; }
+      .links a:last-child { border-bottom: none; }
+      .links a::after { display: none; }
+      .links a.nav-login { margin: 0.8rem 1.5rem; text-align: center; }
+      .nav-inner { position: relative; }
+      .mobile-toggle { display: block; }
+
+      .hero-grid { grid-template-columns: 1fr; gap: 2rem; }
+      .hero-card h1 { font-size: 2.4rem; }
+      .services-grid { grid-template-columns: 1fr; }
+      .steps-grid { grid-template-columns: repeat(2, 1fr); gap: 2rem; }
+      .footer-grid { grid-template-columns: 1fr 1fr; gap: 2rem; }
+      .section-heading h2 { font-size: 2rem; }
+    }
+
+    @media (max-width: 640px) {
+      .container { padding: 0 1.5rem; }
+      .brand { flex-direction: column; align-items: flex-start; gap: 0.3rem; }
+      .hero { padding: 3rem 0; }
+      .hero-card h1 { font-size: 2rem; }
+      .hero-card p { font-size: 1.1rem; }
+      .card { padding: 2rem; }
+      .cta-row { flex-direction: column; }
+      .btn { width: 100%; justify-content: center; }
+      .section { padding: 4rem 0; }
+      .steps-grid { grid-template-columns: 1fr; }
+      .footer-grid { grid-template-columns: 1fr; }
+      .cta-section { padding: 3rem 1.5rem; }
+      .cta-section h2 { font-size: 1.8rem; }
+      .cta-row-center { flex-direction: column; }
+      .footer-bottom { flex-direction: column; text-align: center; }
+    }
+  
+
+    /* Mobile header fit fix */
+    @media (max-width: 768px) {
+      .nav .container {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+      }
+
+      .nav-inner {
+        gap: 0.75rem !important;
+        min-width: 0;
+      }
+
+      .brand {
+        flex: 1 1 auto !important;
+        min-width: 0;
+        gap: 0.55rem !important;
+        margin-right: 0 !important;
+      }
+
+      .brand img {
+        height: 42px !important;
+        flex: 0 0 auto;
+      }
+
+      .badge {
+        white-space: normal !important;
+        line-height: 1.25;
+        font-size: 0.7rem !important;
+        max-width: 150px;
+      }
+
+      .mobile-toggle {
+        display: flex !important;
+        flex: 0 0 auto;
+        padding: 0.65rem 0.8rem !important;
+        min-width: 72px;
+        max-width: 92px;
+        white-space: nowrap;
+      }
+
+      .mobile-toggle::before {
+        content: "☰" !important;
+        margin-right: 0.4rem !important;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .badge {
+        max-width: 126px;
+        font-size: 0.66rem !important;
+      }
+
+      .mobile-toggle {
+        min-width: 64px;
+        max-width: 78px;
+        padding: 0.6rem 0.65rem !important;
+      }
+    }
+
+  </style>
+</head>
+<body>
+
+  <header class="nav">
+    <div class="container">
+      <div class="nav-inner">
+        <a class="brand" href="index.html" aria-label="VirtuDrop Home">
+          <img src="assets/logo.png" alt="VirtuDrop logo" />
+          <span class="badge">Professional • Reliable • Structured</span>
+        </a>
+        <button class="mobile-toggle" type="button" data-mobile-toggle aria-label="Toggle navigation">Menu</button>
+        <nav class="links" data-nav-links>
+          <a href="index.html" aria-current="page">Home</a>
+          <a href="how-it-works.html">How It Works</a>
+          <a href="pricing.html">Pricing</a>
+          <a href="zones.html">Delivery Zones</a>
+          <a href="business-clients.html">Business Clients</a>
+          <a href="calculator.html">Calculator</a>
+          <a href="track.html">Track Delivery</a>
+          <a href="contact.html">Contact</a>
+          <a href="auth.html" class="nav-login">Login/Register</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ── Hero ── -->
+    <section class="hero">
+      <div class="container">
+        <div class="hero-grid">
+
+          <div class="card hero-card">
+            <h1>Structured delivery for your business.</h1>
+            <p>VirtuDrop is a zone-based, scheduled delivery service built for businesses in Trinidad. Share your unique link — we handle the rest.</p>
+            <div class="cta-row">
+              <a class="btn btn-primary" href="auth.html">Get Started</a>
+              <a class="btn" href="how-it-works.html">How It Works</a>
+              <a class="btn" href="pricing.html">View Pricing</a>
+            </div>
+            <div class="notice">
+              📦 Orders submitted by 8:00 PM are processed in the next delivery cycle — delivered within 1–2 business days.
+            </div>
+          </div>
+
+          <div class="side-card">
+            <div class="card">
+              <div class="kpi">
+                <div class="dot"></div>
+                <div>
+                  <h3>Zone-based delivery</h3>
+                  <p>Clear pricing by zone — same zone $40, cross zone $50. No hidden fees.</p>
+                </div>
+              </div>
+              <div class="kpi">
+                <div class="dot"></div>
+                <div>
+                  <h3>Built for businesses</h3>
+                  <p>Get your own unique delivery link. Customers fill in their details — you stay focused on selling.</p>
+                </div>
+              </div>
+              <div class="kpi">
+                <div class="dot"></div>
+                <div>
+                  <h3>Monthly plans available</h3>
+                  <p>From Bronze to Gold — choose a recurring plan and lock in a lower per-drop rate.</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Track Delivery Widget -->
+            <div class="track-widget">
+              <h3>📍 Track a Delivery</h3>
+              <p>Enter your phone number and order ID to check your delivery status.</p>
+              <form class="track-form" onsubmit="handleTrack(event)">
+                <input type="tel" class="track-input" id="trackPhone" placeholder="Phone number (e.g. 868-797-3542)" />
+                <input type="text" class="track-input" id="trackOrderId" placeholder="Order ID (e.g. VDYYMMDD-001)" />
+                <button type="submit" class="track-btn">Track My Delivery →</button>
+              </form>
+              <div class="track-link">
+                <a href="track.html">Have a tracking link? Click here →</a>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── How It Works ── -->
+    <section class="section" style="background:#ffffff; padding: 5rem 0;">
+      <div class="container">
+        <div class="section-heading">
+          <div class="section-line"><span>How It Works</span></div>
+          <h2>Simple. Structured. Reliable.</h2>
+          <p>Whether you are a business client or a customer, here is how VirtuDrop works for you.</p>
+        </div>
+
+        <div class="audience-tabs">
+          <button class="tab-btn active" onclick="switchTab('client')">🏢 For Business Clients</button>
+          <button class="tab-btn" onclick="switchTab('customer')">📦 For Customers</button>
+        </div>
+
+        <!-- Client steps -->
+        <div class="steps-panel active" id="panel-client">
+          <div class="steps-grid">
+            <div class="step">
+              <div class="step-num"><span class="step-icon">📝</span></div>
+              <h3>Register your business</h3>
+              <p>Create your VirtuDrop account and get your unique delivery link.</p>
+            </div>
+            <div class="step">
+              <div class="step-num"><span class="step-icon">🔗</span></div>
+              <h3>Share your link</h3>
+              <p>Send your unique link to customers — they fill in their delivery details directly.</p>
+            </div>
+            <div class="step">
+              <div class="step-num"><span class="step-icon">🚚</span></div>
+              <h3>We collect &amp; deliver</h3>
+              <p>Orders are picked up and delivered within 1–2 cycles based on your zone.</p>
+            </div>
+            <div class="step">
+              <div class="step-num"><span class="step-icon">💸</span></div>
+              <h3>Receive remittance</h3>
+              <p>Online payments remitted same evening. Cash returned on collection day.</p>
+            </div>
+          </div>
+          <div style="text-align:center; margin-top:1.5rem;">
+            <a href="business-clients.html" class="btn btn-primary">Learn more about client accounts →</a>
+          </div>
+        </div>
+
+        <!-- Customer steps -->
+        <div class="steps-panel" id="panel-customer">
+          <div class="steps-grid">
+            <div class="step">
+              <div class="step-num"><span class="step-icon">🔗</span></div>
+              <h3>Click your link</h3>
+              <p>Open the unique delivery link sent to you by the business.</p>
+            </div>
+            <div class="step">
+              <div class="step-num"><span class="step-icon">📋</span></div>
+              <h3>Fill in your details</h3>
+              <p>Enter your name, phone number, delivery address and any payment details.</p>
+            </div>
+            <div class="step">
+              <div class="step-num"><span class="step-icon">📍</span></div>
+              <h3>Share your location</h3>
+              <p>Drop a Google Maps pin or enter your address — we detect your zone automatically.</p>
+            </div>
+            <div class="step">
+              <div class="step-num"><span class="step-icon">📲</span></div>
+              <h3>Track your delivery</h3>
+              <p>Get a tracking link via WhatsApp. See your status in real time — no account needed.</p>
+            </div>
+          </div>
+          <div style="text-align:center; margin-top:1.5rem;">
+            <a href="track.html" class="btn btn-primary">Track a delivery →</a>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── Services ── -->
+    <section class="section">
+      <div class="container">
+        <div class="section-heading">
+          <div class="section-line"><span>Our Services</span></div>
+          <h2>Simple, transparent pricing</h2>
+          <p>Two straightforward delivery options with clear rates.</p>
+        </div>
+
+        <div class="services-grid">
+          <div class="service-card">
+            <span class="service-icon-lg">📦</span>
+            <h3>Same Zone Delivery</h3>
+            <p>Pickup and drop-off within the same delivery zone. Delivered within 1–2 cycles on your zone's scheduled days.</p>
+            <div class="service-price">$40 <span>per package</span></div>
+          </div>
+
+          <div class="service-card" style="border-top-color:#0d2b28;">
+            <span class="service-icon-lg">🔄</span>
+            <h3>Cross Zone Delivery</h3>
+            <p>Pickup and drop-off in different zones. Delivery follows the destination zone's schedule.</p>
+            <div class="service-price" style="color:#0d2b28;">$50 <span>per package</span></div>
+          </div>
+
+          <div class="service-card" style="border-top-color:#e07a3a;">
+            <span class="service-icon-lg">⚡</span>
+            <h3>Priority Same-Day</h3>
+            <p>Urgent delivery within the day's active route. Subject to availability. Contact us to confirm and get a quoted price.</p>
+            <div class="service-price" style="color:#e07a3a; font-size:1.1rem;">Contact Us</div>
+          </div>
+        </div>
+
+        <div style="text-align:center; margin-top:2.5rem;">
+          <a href="pricing.html" class="btn">View full pricing details →</a>
+          <a href="calculator.html" class="btn btn-primary" style="margin-left:1rem;">Calculate your cost →</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── CTA ── -->
+    <section class="section" style="padding: 0 0 5rem;">
+      <div class="container">
+        <div class="cta-section">
+          <h2>Ready to streamline your deliveries?</h2>
+          <p>Join VirtuDrop and give your business a structured, reliable delivery system — starting today.</p>
+          <div class="cta-row-center">
+            <a href="auth.html" class="btn btn-white">Create a Business Account</a>
+            <a href="contact.html" class="btn btn-outline-white">Talk to Us First</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ── Footer ── -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <img src="assets/logo.png" alt="VirtuDrop" onerror="this.style.display='none'" />
+          <p>Zone-based, scheduled delivery for businesses across Trinidad. Structured logistics you can count on.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Services</h4>
+          <a href="pricing.html">Pricing</a>
+          <a href="zones.html">Delivery Zones</a>
+          <a href="calculator.html">Calculator</a>
+          <a href="business-clients.html">Business Clients</a>
+        </div>
+        <div class="footer-col">
+          <h4>Company</h4>
+          <a href="how-it-works.html">How It Works</a>
+          <a href="about.html">About</a>
+          <a href="contact.html">Contact</a>
+          <a href="faq.html">FAQ</a>
+        </div>
+        <div class="footer-col">
+          <h4>Account</h4>
+          <a href="auth.html">Login</a>
+          <a href="auth.html">Register</a>
+          <a href="track.html">Track Delivery</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>© 2026 VirtuDrop · A VirtuForms Ltd Service · Trinidad and Tobago</p>
+        <p>797-3542 &nbsp;|&nbsp; 470-3704</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="vd-modal.js"></script>
+  <script>
+    // ── Mobile menu ───────────────────────────────────────────
+    const toggle   = document.querySelector('[data-mobile-toggle]');
+    const navLinks = document.querySelector('[data-nav-links]');
+    if (toggle && navLinks) {
+      toggle.addEventListener('click', () => {
+        navLinks.classList.toggle('open');
+        toggle.textContent = navLinks.classList.contains('open') ? 'Close' : 'Menu';
+      });
+    }
+
+    // ── How It Works tabs ─────────────────────────────────────
+    function switchTab(audience) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.steps-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('panel-' + audience).classList.add('active');
+      event.target.classList.add('active');
+    }
+
+    // ── Track delivery form ───────────────────────────────────
+    function handleTrack(e) {
+      e.preventDefault();
+      const phone   = document.getElementById('trackPhone').value.trim();
+      const orderId = document.getElementById('trackOrderId').value.trim();
+      if (!phone || !orderId) {
+        window.vdNotify('Tracking Details Needed', 'Please enter both your phone number and order ID.', 'warning');
+        return;
+      }
+      // Redirect to track page with params
+      window.location.href = `track.html?phone=${encodeURIComponent(phone)}&order=${encodeURIComponent(orderId)}`;
+    }
+
+    // ── Scroll animations ─────────────────────────────────────
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.style.opacity  = '1';
+          entry.target.style.transform = 'translateY(0)';
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+    document.querySelectorAll('.card, .service-card, .step').forEach(el => observer.observe(el));
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Request Service - VirtuForms</title>
+  <link rel="icon" type="image/png" href="assets/virtuforms-logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #0b1616;
+      color: #b8e6dc;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    /* Navigation */
+    .nav {
+      background: #0f2020;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      border-bottom: 2px solid #1a5656;
+      animation: slideDown 0.5s ease-out;
+    }
+
+    @keyframes slideDown {
+      from {
+        transform: translateY(-100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .nav-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem 0;
+      gap: 2rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      text-decoration: none;
+      transition: transform 0.3s ease;
+    }
+
+    .brand:hover {
+      transform: scale(1.02);
+    }
+
+    .brand img {
+      height: 60px;
+      width: auto;
+    }
+
+    .brand-logo {
+      height: 50px;
+      width: auto;
+      display: block;
+    }
+
+    .brand-text {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: #7dd3c0;
+      letter-spacing: -0.5px;
+    }
+
+    /* Form Section */
+    .form-section {
+      padding: 5rem 0;
+      min-height: calc(100vh - 80px);
+    }
+
+    .form-container {
+      max-width: 700px;
+      margin: 0 auto;
+      background: #0f2020;
+      border-radius: 20px;
+      padding: 3rem;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      border: 2px solid #1a5656;
+    }
+
+    .form-header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .form-header h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 2.5rem;
+      color: #7dd3c0;
+      margin-bottom: 1rem;
+    }
+
+    .form-header p {
+      color: #b8e6dc;
+      font-size: 1.1rem;
+      line-height: 1.6;
+    }
+
+    .payment-notice {
+      background: rgba(42, 157, 143, 0.1);
+      border: 2px solid #2a9d8f;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .payment-notice h3 {
+      color: #7dd3c0;
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+    }
+
+    .payment-notice p {
+      color: #b8e6dc;
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    .payment-notice ul {
+      margin: 0.75rem 0 0 1.5rem;
+      color: #b8e6dc;
+    }
+
+    .payment-notice li {
+      margin: 0.25rem 0;
+      font-size: 0.95rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: #7dd3c0;
+      font-weight: 600;
+      font-size: 1rem;
+    }
+
+    .form-group label .required {
+      color: #ff6b6b;
+      margin-left: 0.25rem;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 1rem;
+      background: #0b1616;
+      border: 2px solid #1a5656;
+      border-radius: 8px;
+      color: #b8e6dc;
+      font-size: 1rem;
+      font-family: 'Inter', sans-serif;
+      transition: all 0.3s ease;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: #2a9d8f;
+      box-shadow: 0 0 0 3px rgba(42, 157, 143, 0.1);
+    }
+
+    .form-group select {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%237dd3c0' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 1rem center;
+      padding-right: 3rem;
+    }
+
+    .form-group textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .form-group .helper-text {
+      font-size: 0.85rem;
+      color: #7dd3c0;
+      margin-top: 0.5rem;
+      font-style: italic;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #2a9d8f 0%, #1a5656 100%);
+      color: #ffffff;
+      padding: 1.25rem 3rem;
+      border: none;
+      border-radius: 50px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+      box-shadow: 0 4px 15px rgba(42, 157, 143, 0.3);
+      width: 100%;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(42, 157, 143, 0.4);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Navigation Links */
+    .links {
+      display: flex;
+      gap: 2.5rem;
+      align-items: center;
+    }
+
+    .links a {
+      text-decoration: none;
+      color: #b8e6dc;
+      font-weight: 500;
+      font-size: 0.95rem;
+      position: relative;
+      transition: color 0.3s ease;
+    }
+
+    .links a::after {
+      content: '';
+      position: absolute;
+      bottom: -5px;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: #7dd3c0;
+      transition: width 0.3s ease;
+    }
+
+    .links a:hover {
+      color: #7dd3c0;
+    }
+
+    .links a:hover::after {
+      width: 100%;
+    }
+
+    .links a[aria-current="page"] {
+      color: #7dd3c0;
+    }
+
+    .links a[aria-current="page"]::after {
+      width: 100%;
+    }
+
+    .mobile-toggle {
+      display: none;
+      background: none;
+      border: 2px solid #7dd3c0;
+      color: #7dd3c0;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      position: relative;
+      z-index: 1001;
+      font-size: 1rem;
+    }
+
+    /* Mobile menu open state - works at all screen sizes */
+    .links.mobile-open {
+      display: flex !important;
+      position: fixed;
+      top: 76px;
+      left: 0;
+      right: 0;
+      background: #0f2020;
+      flex-direction: column;
+      padding: 2rem;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+      border-top: 2px solid #1a5656;
+      gap: 0;
+      z-index: 999;
+      max-height: calc(100vh - 76px);
+      overflow-y: auto;
+    }
+
+    .links.mobile-open a,
+    .links.mobile-open .dropdown-toggle {
+      padding: 1rem;
+      border-bottom: 1px solid #1a5656;
+    }
+
+    .links.mobile-open a:last-child {
+      border-bottom: none;
+    }
+
+    .dropdown-menu.mobile-open {
+      display: block !important;
+      position: static;
+      opacity: 1;
+      visibility: visible;
+      transform: none;
+      margin-top: 0;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+      background: #0b1616;
+    }
+
+    .dropdown-menu.mobile-open a {
+      padding: 1rem 1rem 1rem 2rem;
+    }
+
+    /* Dropdown styles */
+    .dropdown {
+      position: relative;
+    }
+
+    .dropdown-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      background: none;
+      border: none;
+      color: #b8e6dc;
+      font-weight: 500;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: color 0.3s ease;
+    }
+
+    .dropdown-toggle:hover {
+      color: #7dd3c0;
+    }
+
+    .dropdown-menu {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background: #0f2020;
+      border: 1px solid #1a5656;
+      border-radius: 8px;
+      margin-top: 0.5rem;
+      min-width: 200px;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-10px);
+      transition: all 0.3s ease;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      z-index: 1000;
+      display: none;
+    }
+
+    .dropdown:hover .dropdown-menu {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+      display: block;
+    }
+
+    .dropdown-menu a {
+      display: block;
+      padding: 0.8rem 1.2rem;
+      color: #b8e6dc;
+      text-decoration: none;
+      transition: all 0.3s ease;
+    }
+
+    .dropdown-menu a:hover {
+      background: rgba(42, 157, 143, 0.1);
+      color: #7dd3c0;
+      padding-left: 1.5rem;
+    }
+
+    /* Nav CTA Button */
+    .nav-cta {
+      background: linear-gradient(135deg, #2a9d8f 0%, #1a5656 100%) !important;
+      color: #ffffff !important;
+      padding: 0.65rem 1.5rem !important;
+      border-radius: 50px !important;
+      font-weight: 600 !important;
+      box-shadow: 0 2px 10px rgba(42, 157, 143, 0.3) !important;
+      transition: all 0.3s ease !important;
+      text-decoration: none !important;
+      border: none !important;
+    }
+
+    .nav-cta::after {
+      display: none !important;
+      content: none !important;
+    }
+
+    .nav-cta:hover {
+      transform: translateY(-2px) !important;
+      box-shadow: 0 4px 15px rgba(42, 157, 143, 0.4) !important;
+      color: #ffffff !important;
+      background: linear-gradient(135deg, #2a9d8f 0%, #1a5656 100%) !important;
+    }
+
+    /* Footer */
+    .footer {
+      background: #000000;
+      color: #b8e6dc;
+      padding: 4rem 0 2rem;
+      border-top: 2px solid #1a5656;
+      margin-top: 4rem;
+    }
+
+    .footer-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 3rem;
+      margin-bottom: 3rem;
+    }
+
+    .footer-section h3 {
+      color: #7dd3c0;
+      font-size: 1.3rem;
+      margin-bottom: 1.5rem;
+      font-weight: 700;
+    }
+
+    .footer-section p,
+    .footer-section a {
+      color: #b8e6dc;
+      text-decoration: none;
+      display: block;
+      margin-bottom: 0.8rem;
+      transition: color 0.3s ease;
+    }
+
+    .footer-section a:hover {
+      color: #7dd3c0;
+    }
+
+    .footer-bottom {
+      text-align: center;
+      padding-top: 2rem;
+      border-top: 1px solid #1a5656;
+      color: #7dd3c0;
+      opacity: 0.8;
+    }
+
+    /* Price Display */
+    .price-display {
+      background: rgba(42, 157, 143, 0.05);
+      border: 1px solid #2a9d8f;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-top: 0.5rem;
+      display: none;
+    }
+
+    .price-display.show {
+      display: block;
+    }
+
+    .price-display .price-label {
+      color: #7dd3c0;
+      font-size: 0.9rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .price-display .price-value {
+      color: #ffffff;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 968px) {
+      .nav-inner {
+        padding: 1rem 0;
+      }
+
+      .brand-logo {
+        height: 40px;
+      }
+
+      .brand-text {
+        font-size: 1.3rem;
+      }
+
+      .container {
+        padding: 0 1rem;
+      }
+
+      /* Hide navigation links on mobile */
+      .links {
+        display: none;
+        position: fixed;
+        top: 76px;
+        left: 0;
+        right: 0;
+        background: #0f2020;
+        flex-direction: column;
+        padding: 2rem;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        border-top: 2px solid #1a5656;
+        gap: 0;
+        z-index: 999;
+        max-height: calc(100vh - 76px);
+        overflow-y: auto;
+      }
+
+      .links.mobile-open {
+        display: flex !important;
+      }
+
+      .links a,
+      .links .dropdown-toggle {
+        padding: 1rem;
+        border-bottom: 1px solid #1a5656;
+      }
+
+      .links a:last-child {
+        border-bottom: none;
+      }
+
+      .dropdown-menu {
+        position: static;
+        opacity: 1;
+        visibility: visible;
+        transform: none;
+        margin-top: 0;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        background: #0b1616;
+        display: none;
+      }
+
+      .dropdown-menu.mobile-open {
+        display: block;
+      }
+
+      .dropdown-menu a {
+        padding: 1rem 1rem 1rem 2rem;
+      }
+
+      .dropdown-menu a:hover {
+        padding-left: 2.5rem;
+      }
+
+      /* Show mobile toggle button */
+      .mobile-toggle {
+        display: block;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .container {
+        padding: 0 1rem;
+      }
+
+      .nav-inner {
+        padding: 0.75rem 0;
+      }
+
+      .brand-logo {
+        height: 35px;
+      }
+
+      .brand-text {
+        font-size: 1.1rem;
+      }
+
+      .form-section {
+        padding: 3rem 0;
+      }
+
+      .form-container {
+        padding: 2rem 1.5rem;
+      }
+
+      .form-header h1 {
+        font-size: 2rem;
+      }
+
+      .form-header p {
+        font-size: 1rem;
+      }
+
+      .btn {
+        padding: 1rem 2rem;
+        font-size: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="container">
+      <div class="nav-inner">
+        <a class="brand" href="index.html" aria-label="VirtuForms Home">
+          <img src="assets/virtuforms-logo.png" alt="VirtuForms logo" class="brand-logo" />
+          <span class="brand-text">VirtuForms</span>
+        </a>
+        <button class="mobile-toggle" type="button" data-mobile-toggle aria-label="Toggle navigation" onclick="var nav = document.querySelector('[data-nav-links]'); if(nav.style.display === 'flex' && nav.style.position === 'fixed') { nav.style.display = 'none'; nav.style.position = ''; } else { nav.style.display = 'flex'; nav.style.position = 'fixed'; nav.style.flexDirection = 'column'; nav.style.top = '76px'; nav.style.left = '0'; nav.style.right = '0'; nav.style.background = '#0f2020'; nav.style.padding = '2rem'; nav.style.zIndex = '999'; nav.style.borderTop = '2px solid #1a5656'; }">Menu</button>
+        <nav class="links" data-nav-links>
+          <a href="index.html">Home</a>
+          <div class="dropdown">
+            <button class="dropdown-toggle" onclick="var menu = this.nextElementSibling; if(menu.style.display === 'block') { menu.style.display = 'none'; } else { menu.style.display = 'block'; menu.style.position = 'static'; menu.style.background = '#0b1616'; menu.style.border = 'none'; menu.style.borderRadius = '0'; menu.style.boxShadow = 'none'; menu.style.marginTop = '0'; menu.style.padding = '0'; } event.stopPropagation();">
+              Services
+              <span style="font-size: 0.7rem;">▼</span>
+            </button>
+            <div class="dropdown-menu">
+              <a href="business-services.html">Business Services</a>
+              <a href="government-services.html">Government Services</a>
+              <a href="travel-services.html">Travel Services</a>
+              <a href="personal-services.html">Personal Services</a>
+              <a href="virtudrop/index.html">VirtuDrop</a>
+            </div>
+          </div>
+          <a href="about.html">About</a>
+          <a href="contact.html">Contact</a>
+          <a href="order-form.html" class="nav-cta" aria-current="page">Get Started</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <section class="form-section">
+    <div class="container">
+      <div class="form-container">
+        <div class="form-header">
+          <h1>Request a Service</h1>
+          <p>Fill out the form below and we'll get back to you within 24 hours with next steps.</p>
+        </div>
+
+        <div class="payment-notice">
+          <h3>💳 Payment Terms (Business Registration Packages)</h3>
+          <p>For all LLC, Sole Trader, and Partnership packages:</p>
+          <ul>
+            <li><strong>50% deposit</strong> required to begin processing</li>
+            <li><strong>50% balance</strong> due upon completion</li>
+          </ul>
+        </div>
+
+        <form action="https://formsubmit.co/info@virtuforms.net" method="POST" id="order-form">
+          <!-- Hidden fields for FormSubmit configuration -->
+          <input type="hidden" name="_subject" value="New Service Request - VirtuForms">
+          <input type="hidden" name="_captcha" value="false">
+          <input type="hidden" name="_next" value="https://virtuforms.com/thank-you.html">
+          <input type="hidden" name="_autoresponse" value="Thank you for choosing VirtuForms! We have received your service request and will contact you within 24 hours to discuss your requirements and provide a detailed quote. If you have any urgent questions, please call us at 868-797-3543 or 868-470-3704. Best regards, VirtuForms Team">
+          <input type="hidden" id="agreement-timestamp" name="terms_agreed_at" value="">
+          <input type="hidden" name="terms_agreed" value="Yes">
+          
+          <!-- Full Name -->
+          <div class="form-group">
+            <label for="name">Full Name <span class="required">*</span></label>
+            <input type="text" id="name" name="name" required placeholder="Enter your full name">
+          </div>
+
+          <!-- Email Address -->
+          <div class="form-group">
+            <label for="email">Email Address <span class="required">*</span></label>
+            <input type="email" id="email" name="email" required placeholder="your.email@example.com">
+          </div>
+
+          <!-- Phone Number -->
+          <div class="form-group">
+            <label for="phone">Phone Number <span class="required">*</span></label>
+            <input type="tel" id="phone" name="phone" required placeholder="868-XXX-XXXX">
+          </div>
+
+          <!-- Service Type -->
+          <div class="form-group">
+            <label for="service-type">Service Type <span class="required">*</span></label>
+            <select id="service-type" name="service_type" required>
+              <option value="">-- Select Service Type --</option>
+              <option value="Business Services">Business Services</option>
+              <option value="Government Services">Government Services</option>
+              <option value="Travel Services">Travel Services</option>
+              <option value="Personal Services">Personal Services</option>
+            </select>
+          </div>
+
+          <!-- Package Selection -->
+          <div class="form-group">
+            <label for="package">Package / Service <span class="required">*</span></label>
+            <select id="package" name="package" required disabled>
+              <option value="">-- Select a service type first --</option>
+            </select>
+            <div id="price-display" class="price-display">
+              <div class="price-label">Price:</div>
+              <div class="price-value" id="price-value">--</div>
+            </div>
+          </div>
+
+          <!-- Additional Notes -->
+          <div class="form-group">
+            <label for="notes">Additional Notes (Optional)</label>
+            <textarea id="notes" name="notes" placeholder="Any special requirements or questions..."></textarea>
+            <p class="helper-text">Let us know if you have any specific deadlines or requirements</p>
+          </div>
+
+          <!-- Terms Agreement -->
+          <div class="form-group" style="margin-top: 2rem;">
+            <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer; color: #b8e6dc; font-weight: 400;">
+              <input type="checkbox" id="terms-agreement" name="terms_agreement" required style="margin-top: 0.25rem; width: 18px; height: 18px; cursor: pointer; accent-color: #2a9d8f;">
+              <span style="line-height: 1.6;">
+                I agree to the <a href="terms-of-service.html" target="_blank" style="color: #2a9d8f; text-decoration: none; font-weight: 600;">Terms of Service</a> and <a href="privacy-policy.html" target="_blank" style="color: #2a9d8f; text-decoration: none; font-weight: 600;">Privacy Policy</a> <span class="required">*</span>
+              </span>
+            </label>
+          </div>
+
+          <!-- Submit Button -->
+          <button type="submit" class="btn">Submit Request</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    // Package data with prices
+    const packages = {
+      'Business Services': [
+        { name: 'LLC Basic Registration', price: '$1,300' },
+        { name: 'LLC Compliance Launch', price: '$1,500' },
+        { name: 'LLC Pro Launch', price: '$2,000' },
+        { name: 'LLC Amendment', price: 'From $500 (+ gov fees)' },
+        { name: 'Sole Trader Basic', price: '$650' },
+        { name: 'Sole Trader Business Ready', price: '$950' },
+        { name: 'Convert Sole Trader to LLC', price: '$1,450' },
+        { name: 'Partnership Essentials', price: '$800' },
+        { name: 'Partnership Business Ready', price: '$1,200' },
+        { name: 'Bank Account Assistance', price: '$500' },
+        { name: 'Annual Return Filing', price: '$400' },
+        { name: 'Annual Return + Update', price: '$600' }
+      ],
+      'Government Services': [
+        { name: "Driver's Permit (New/Renewal)", price: '$835 / $1,335 or $335' },
+        { name: 'Birth Certificate', price: '$200' },
+        { name: 'Death Certificate', price: '$200' },
+        { name: 'Marriage Certificate', price: '$200' },
+        { name: 'Certified Copy', price: '$200' }
+      ],
+      'Travel Services': [
+        { name: 'Passport Application/Renewal', price: '$750' }
+      ],
+      'Personal Services': [
+        { name: 'Individual Tax Return', price: '$150' },
+        { name: 'Sole Trader Tax Return', price: '$250' },
+        { name: 'BIR Number Application', price: '$200' }
+      ]
+    };
+
+    const serviceTypeSelect = document.getElementById('service-type');
+    const packageSelect = document.getElementById('package');
+    const priceDisplay = document.getElementById('price-display');
+    const priceValue = document.getElementById('price-value');
+
+    // Update package dropdown when service type changes
+    serviceTypeSelect.addEventListener('change', function() {
+      const selectedService = this.value;
+      
+      // Clear previous options
+      packageSelect.innerHTML = '<option value="">-- Select a package --</option>';
+      priceDisplay.classList.remove('show');
+      
+      if (selectedService && packages[selectedService]) {
+        // Enable package select
+        packageSelect.disabled = false;
+        
+        // Add options for selected service
+        packages[selectedService].forEach(pkg => {
+          const option = document.createElement('option');
+          option.value = pkg.name;
+          option.textContent = pkg.name;
+          option.dataset.price = pkg.price;
+          packageSelect.appendChild(option);
+        });
+      } else {
+        packageSelect.disabled = true;
+      }
+    });
+
+    // Show price when package is selected
+    packageSelect.addEventListener('change', function() {
+      const selectedOption = this.options[this.selectedIndex];
+      
+      if (selectedOption.dataset.price) {
+        priceValue.textContent = selectedOption.dataset.price;
+        priceDisplay.classList.add('show');
+      } else {
+        priceDisplay.classList.remove('show');
+      }
+    });
+
+    // Capture timestamp when form is submitted
+    const form = document.getElementById('order-form');
+    form.addEventListener('submit', function(e) {
+      // Get current date and time in Trinidad timezone
+      const now = new Date();
+      const timestamp = now.toLocaleString('en-TT', { 
+        timeZone: 'America/Port_of_Spain',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      });
+      
+      // Set the timestamp in the hidden field
+      document.getElementById('agreement-timestamp').value = timestamp;
+    });
+  </script>
+
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-grid">
+        <div class="footer-section">
+          <h3>VirtuForms</h3>
+          <p>Professional administrative solutions for Trinidad. From business services to travel documents, we handle the paperwork so you don't have to.</p>
+        </div>
+
+        <div class="footer-section">
+          <h3>Services</h3>
+          <a href="business-services.html">Business Services</a>
+          <a href="government-services.html">Government Services</a>
+          <a href="travel-services.html">Travel Services</a>
+          <a href="personal-services.html">Personal Services</a>
+          <a href="virtudrop/index.html">VirtuDrop</a>
+        </div>
+
+        <div class="footer-section">
+          <h3>Company</h3>
+          <a href="about.html">About Us</a>
+          <a href="contact.html">Contact</a>
+          <a href="order-form.html">Get Started</a>
+          <a href="privacy-policy.html">Privacy Policy</a>
+          <a href="terms-of-service.html">Terms of Service</a>
+        </div>
+
+        <div class="footer-section">
+          <h3>Contact</h3>
+          <p>Email: info@virtuforms.net</p>
+          <p>Phone: 868-797-3543</p>
+          <p>Phone: 868-470-3704</p>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <small>© 2026 VirtuForms. Professional administrative solutions for Trinidad. All rights reserved.</small>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

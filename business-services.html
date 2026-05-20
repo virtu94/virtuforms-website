@@ -1,0 +1,2258 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Business Services | VirtuForms</title>
+  <meta name="description" content="Complete business solutions in Trinidad including LLC registration, sole trader services, partnerships, and bank account support.">
+  <link rel="icon" href="assets/virtuforms-logo.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      line-height: 1.7;
+      color: #f8f9fa;
+      background: #0b1616;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    /* Navigation */
+    .nav {
+      background: #0f2020;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      border-bottom: 2px solid #1a5656;
+    }
+
+    .nav-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem 0;
+      gap: 2rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      text-decoration: none;
+      transition: transform 0.3s ease;
+    }
+
+    .brand:hover {
+      transform: scale(1.02);
+    }
+
+    .brand-logo {
+      height: 50px;
+      width: auto;
+      display: block;
+    }
+
+    .brand-text {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: #7dd3c0;
+      letter-spacing: -0.5px;
+    }
+
+    .links {
+      display: flex;
+      gap: 2rem;
+      align-items: center;
+      position: relative;
+    }
+
+    .links a,
+    .links .dropdown-toggle {
+      text-decoration: none;
+      color: #b8e6dc;
+      font-weight: 500;
+      font-size: 0.95rem;
+      position: relative;
+      transition: color 0.3s ease;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0.5rem 0;
+    }
+
+    .links a::after,
+    .links .dropdown-toggle::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: #7dd3c0;
+      transition: width 0.3s ease;
+    }
+
+    .links a:hover,
+    .links .dropdown-toggle:hover {
+      color: #7dd3c0;
+    }
+
+    .links a:hover::after,
+    .links .dropdown-toggle:hover::after {
+      width: 100%;
+    }
+
+    /* Nav CTA Button */
+    .nav-cta {
+      background: linear-gradient(135deg, #2a9d8f 0%, #1a5656 100%) !important;
+      color: #ffffff !important;
+      padding: 0.65rem 1.5rem !important;
+      border-radius: 50px !important;
+      font-weight: 600 !important;
+      box-shadow: 0 2px 10px rgba(42, 157, 143, 0.3) !important;
+      transition: all 0.3s ease !important;
+      text-decoration: none !important;
+      border: none !important;
+    }
+
+    .nav-cta::after {
+      display: none !important;
+      content: none !important;
+    }
+
+    .nav-cta:hover {
+      transform: translateY(-2px) !important;
+      box-shadow: 0 4px 15px rgba(42, 157, 143, 0.4) !important;
+      color: #ffffff !important;
+      background: linear-gradient(135deg, #2a9d8f 0%, #1a5656 100%) !important;
+    }
+
+    .dropdown {
+      position: relative;
+    }
+
+    .dropdown-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .dropdown-menu {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background: #0f2020;
+      border: 2px solid #2a9d8f;
+      border-radius: 8px;
+      padding: 1rem 0;
+      min-width: 220px;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-10px);
+      transition: all 0.3s ease;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+      margin-top: 0.5rem;
+    }
+
+    .dropdown:hover .dropdown-menu {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .dropdown-menu a {
+      display: block;
+      padding: 0.8rem 1.5rem;
+      color: #b8e6dc;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      font-size: 0.95rem;
+    }
+
+    .dropdown-menu a::after {
+      display: none;
+    }
+
+    .dropdown-menu a:hover {
+      background: #1a5656;
+      color: #7dd3c0;
+      padding-left: 2rem;
+    }
+
+    .mobile-toggle {
+      display: none;
+      background: none;
+      border: 2px solid #7dd3c0;
+      color: #7dd3c0;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* Hero Section */
+    .hero {
+      padding: 6rem 0 4rem;
+      background: linear-gradient(135deg, #0b1616 0%, #1a5656 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: -20%;
+      width: 60%;
+      height: 100%;
+      background: radial-gradient(circle, rgba(125, 211, 192, 0.1) 0%, transparent 70%);
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+    }
+
+    .hero-content h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 4rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #7dd3c0 0%, #b8e6dc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 1.5rem;
+    }
+
+    .hero-content p {
+      font-size: 1.4rem;
+      color: #b8e6dc;
+      margin-bottom: 2rem;
+    }
+
+    .breadcrumb {
+      font-size: 0.95rem;
+      color: #7dd3c0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-top: 1.5rem;
+    }
+
+    .breadcrumb a {
+      color: #b8e6dc;
+      text-decoration: none;
+      transition: color 0.3s ease;
+    }
+
+    .breadcrumb a:hover {
+      color: #7dd3c0;
+    }
+
+    /* Tabs Section */
+    .tabs-section {
+      padding: 4rem 0;
+      background: #0f2020;
+    }
+
+    .tabs-nav {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 4rem;
+      border-bottom: 2px solid #1a5656;
+      overflow-x: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #2a9d8f #0f2020;
+    }
+
+    .tabs-nav::-webkit-scrollbar {
+      height: 6px;
+    }
+
+    .tabs-nav::-webkit-scrollbar-track {
+      background: #0f2020;
+    }
+
+    .tabs-nav::-webkit-scrollbar-thumb {
+      background: #2a9d8f;
+      border-radius: 3px;
+    }
+
+    .tab-button {
+      padding: 1.2rem 2rem;
+      background: none;
+      border: none;
+      color: #b8e6dc;
+      font-size: 1.1rem;
+      font-weight: 600;
+      font-family: 'Poppins', sans-serif;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border-bottom: 3px solid transparent;
+      white-space: nowrap;
+      position: relative;
+    }
+
+    .tab-button:hover {
+      color: #7dd3c0;
+      background: rgba(42, 157, 143, 0.1);
+    }
+
+    .tab-button.active {
+      color: #7dd3c0;
+      border-bottom-color: #2a9d8f;
+      background: rgba(42, 157, 143, 0.15);
+    }
+
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.5s ease;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .tab-header {
+      text-align: center;
+      margin-bottom: 4rem;
+    }
+
+    .tab-header h2 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #7dd3c0;
+      margin-bottom: 1rem;
+    }
+
+    .tab-header p {
+      font-size: 1.2rem;
+      color: #b8e6dc;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    /* Service Cards Grid */
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 2.5rem;
+      margin-bottom: 5rem;
+    }
+
+    .service-package {
+      background: linear-gradient(135deg, #1a5656 0%, #0f2020 100%);
+      border: 2px solid #2a9d8f;
+      border-radius: 16px;
+      padding: 3rem;
+      transition: all 0.4s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .service-package::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, #7dd3c0 0%, #3fb8a8 100%);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.4s ease;
+    }
+
+    .service-package:hover::before {
+      transform: scaleX(1);
+    }
+
+    .service-package:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 20px 50px rgba(42, 157, 143, 0.3);
+      border-color: #7dd3c0;
+    }
+
+    .package-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .package-title {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #7dd3c0;
+      flex: 1;
+    }
+
+    .package-price {
+      font-family: 'Poppins', sans-serif;
+      font-size: 2rem;
+      font-weight: 800;
+      color: #ffffff;
+      text-align: right;
+      min-width: fit-content;
+      flex-shrink: 0;
+    }
+
+    .package-price small {
+      display: inline;
+      font-size: 0.9rem;
+      color: #b8e6dc;
+      font-weight: 500;
+      margin-left: 0.3rem;
+    }
+
+    .package-features {
+      margin-bottom: 2rem;
+    }
+
+    .package-features h4 {
+      font-size: 1.1rem;
+      color: #b8e6dc;
+      margin-bottom: 1rem;
+      font-weight: 600;
+    }
+
+    .package-features ul {
+      list-style: none;
+      margin-bottom: 1.5rem;
+    }
+
+    .package-features li {
+      padding: 0.6rem 0;
+      color: #b8e6dc;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.8rem;
+      font-size: 1rem;
+    }
+
+    .package-features li::before {
+      content: '✓';
+      color: #2a9d8f;
+      font-weight: bold;
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+
+    .package-meta {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem 0;
+      border-top: 1px solid rgba(125, 211, 192, 0.2);
+      margin-top: 1.5rem;
+      font-size: 0.95rem;
+      color: #b8e6dc;
+    }
+
+    .package-meta::before {
+      content: '⏱';
+      font-size: 1.2rem;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 1.2rem 2.5rem;
+      border-radius: 10px;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 1.1rem;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      border: none;
+      width: 100%;
+      text-align: center;
+      margin-top: 1rem;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #2a9d8f 0%, #3fb8a8 100%);
+      color: #ffffff;
+      box-shadow: 0 6px 20px rgba(42, 157, 143, 0.4);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 30px rgba(42, 157, 143, 0.6);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: #7dd3c0;
+      border: 2px solid #7dd3c0;
+    }
+
+    .btn-secondary:hover {
+      background: #7dd3c0;
+      color: #0b1616;
+      transform: translateY(-3px);
+    }
+
+    /* Comparison Table */
+    .comparison-section {
+      margin: 6rem 0;
+      padding: 4rem;
+      background: #0b1616;
+      border-radius: 20px;
+      border: 2px solid #1a5656;
+    }
+
+    .comparison-header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .comparison-header h2 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #7dd3c0;
+      margin-bottom: 1rem;
+    }
+
+    .comparison-header p {
+      font-size: 1.1rem;
+      color: #b8e6dc;
+    }
+
+    .comparison-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      overflow: hidden;
+      border-radius: 12px;
+      margin-bottom: 2rem;
+    }
+
+    .comparison-table thead {
+      background: linear-gradient(135deg, #1a5656 0%, #2a9d8f 100%);
+    }
+
+    .comparison-table th {
+      padding: 1.5rem;
+      text-align: left;
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 1.1rem;
+      border-bottom: 2px solid #7dd3c0;
+    }
+
+    .comparison-table th:first-child {
+      border-radius: 12px 0 0 0;
+    }
+
+    .comparison-table th:last-child {
+      border-radius: 0 12px 0 0;
+    }
+
+    .comparison-table td {
+      padding: 1.2rem 1.5rem;
+      border-bottom: 1px solid rgba(125, 211, 192, 0.1);
+      color: #b8e6dc;
+      font-size: 1rem;
+    }
+
+    .comparison-table tbody tr {
+      background: #0f2020;
+      transition: background 0.3s ease;
+    }
+
+    .comparison-table tbody tr:hover {
+      background: rgba(42, 157, 143, 0.1);
+    }
+
+    .comparison-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .comparison-table tbody tr:last-child td:first-child {
+      border-radius: 0 0 0 12px;
+    }
+
+    .comparison-table tbody tr:last-child td:last-child {
+      border-radius: 0 0 12px 0;
+    }
+
+    .check-icon {
+      color: #2a9d8f;
+      font-weight: bold;
+      font-size: 1.3rem;
+    }
+
+    .cross-icon {
+      color: #666;
+      font-size: 1.1rem;
+    }
+
+    .price-row {
+      background: rgba(42, 157, 143, 0.15) !important;
+      font-weight: 700;
+      font-size: 1.2rem;
+    }
+
+    .price-row td {
+      padding: 1.5rem;
+      color: #7dd3c0;
+    }
+
+    /* FAQ Section */
+    .faq-section {
+      margin: 5rem 0;
+    }
+
+    .faq-header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .faq-header h2 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #7dd3c0;
+    }
+
+    .faq-list {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .faq-item {
+      background: #0f2020;
+      border: 2px solid #1a5656;
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .faq-item:hover {
+      border-color: #2a9d8f;
+    }
+
+    .faq-question {
+      width: 100%;
+      padding: 1.5rem 2rem;
+      background: none;
+      border: none;
+      color: #b8e6dc;
+      font-size: 1.2rem;
+      font-weight: 600;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.3s ease;
+    }
+
+    .faq-question:hover {
+      color: #7dd3c0;
+    }
+
+    .faq-question::after {
+      content: '▼';
+      font-size: 0.9rem;
+      transition: transform 0.3s ease;
+      color: #2a9d8f;
+    }
+
+    .faq-item.active .faq-question::after {
+      transform: rotate(180deg);
+    }
+
+    .faq-answer {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+
+    .faq-item.active .faq-answer {
+      max-height: 500px;
+    }
+
+    .faq-answer-content {
+      padding: 0 2rem 1.5rem 2rem;
+      color: #b8e6dc;
+      line-height: 1.8;
+      font-size: 1rem;
+    }
+
+    /* CTA Section */
+    .cta-section {
+      margin: 6rem auto;
+      padding: 4rem;
+      background: linear-gradient(135deg, #2a9d8f 0%, #3fb8a8 100%);
+      border-radius: 20px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(42, 157, 143, 0.4);
+    }
+
+    .cta-section h2 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 1rem;
+    }
+
+    .cta-section p {
+      font-size: 1.3rem;
+      color: #ffffff;
+      margin-bottom: 2.5rem;
+      opacity: 0.95;
+    }
+
+    .cta-buttons {
+      display: flex;
+      gap: 1.5rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .cta-section .btn {
+      background: #ffffff;
+      color: #2a9d8f;
+      width: auto;
+      padding: 1.3rem 3rem;
+    }
+
+    .cta-section .btn:hover {
+      background: #f8f9fa;
+      transform: translateY(-3px);
+    }
+
+    /* Footer */
+    .footer {
+      background: #000000;
+      color: #b8e6dc;
+      padding: 4rem 0 2rem;
+      border-top: 2px solid #1a5656;
+      margin-top: 6rem;
+    }
+
+    .footer-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 3rem;
+      margin-bottom: 3rem;
+    }
+
+    .footer-section h3 {
+      color: #7dd3c0;
+      font-size: 1.3rem;
+      margin-bottom: 1.5rem;
+      font-weight: 700;
+    }
+
+    .footer-section p,
+    .footer-section a {
+      color: #b8e6dc;
+      text-decoration: none;
+      display: block;
+      margin-bottom: 0.8rem;
+      transition: color 0.3s ease;
+    }
+
+    .footer-section a:hover {
+      color: #7dd3c0;
+    }
+
+    .footer-bottom {
+      text-align: center;
+      padding-top: 2rem;
+      border-top: 1px solid #1a5656;
+      color: #7dd3c0;
+      opacity: 0.8;
+    }
+
+    /* Responsive */
+    @media (max-width: 968px) {
+      .links {
+        display: none;
+        position: fixed;
+        top: 76px;
+        left: 0;
+        right: 0;
+        background: #0f2020;
+        flex-direction: column;
+        padding: 2rem;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        border-top: 2px solid #1a5656;
+        gap: 0;
+        z-index: 999;
+        max-height: calc(100vh - 76px);
+        overflow-y: auto;
+      }
+
+      .links.mobile-open {
+        display: flex;
+      }
+
+      .links a,
+      .links .dropdown-toggle {
+        padding: 1rem;
+        border-bottom: 1px solid #1a5656;
+      }
+
+      .links a:last-child {
+        border-bottom: none;
+      }
+
+      .dropdown-menu {
+        position: static;
+        opacity: 1;
+        visibility: visible;
+        transform: none;
+        margin-top: 0;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        background: #0b1616;
+        display: none;
+      }
+
+      .dropdown-menu.mobile-open {
+        display: block;
+      }
+
+      .dropdown-menu a {
+        padding: 1rem 1rem 1rem 2rem;
+      }
+
+      .dropdown-menu a:hover {
+        padding-left: 2.5rem;
+      }
+
+      .mobile-toggle {
+        display: block;
+      }
+
+      .hero-content h1 {
+        font-size: 2.8rem;
+      }
+
+      .tabs-nav {
+        gap: 0.5rem;
+      }
+
+      .tab-button {
+        padding: 1rem 1.5rem;
+        font-size: 1rem;
+      }
+
+      .services-grid {
+        grid-template-columns: 1fr;
+      }
+
+      /* Wrap tables in scrollable container on mobile */
+      .comparison-table {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin-bottom: 1.5rem;
+      }
+
+      .comparison-table table,
+      .comparison-table thead,
+      .comparison-table tbody,
+      .comparison-table tr {
+        display: table;
+        width: 100%;
+      }
+
+      .comparison-table thead {
+        display: table-header-group;
+      }
+
+      .comparison-table tbody {
+        display: table-row-group;
+      }
+
+      .comparison-table tr {
+        display: table-row;
+      }
+
+      .comparison-table th,
+      .comparison-table td {
+        display: table-cell;
+        padding: 0.85rem;
+        font-size: 0.85rem;
+        text-align: left;
+        vertical-align: middle;
+      }
+
+      .comparison-table th {
+        min-width: 100px;
+      }
+
+      .comparison-table td:first-child,
+      .comparison-table th:first-child {
+        min-width: 180px;
+      }
+
+      /* Add visible scroll indicator */
+      .tab-content::before {
+        content: '👈 Swipe table left/right to see all columns 👉';
+        display: block;
+        text-align: center;
+        color: #7dd3c0;
+        font-size: 0.85rem;
+        padding: 0.75rem;
+        margin-bottom: 1rem;
+        background: rgba(42, 157, 143, 0.1);
+        border-radius: 8px;
+        border: 1px dashed #2a9d8f;
+      }
+
+      .cta-section {
+        padding: 3rem 2rem;
+      }
+
+      .cta-buttons {
+        flex-direction: column;
+      }
+
+      .cta-section .btn {
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .container {
+        padding: 0 1rem;
+      }
+
+      .nav-inner {
+        padding: 0.75rem 0;
+      }
+
+      .brand-logo {
+        height: 35px;
+      }
+
+      .brand-text {
+        font-size: 1.1rem;
+      }
+
+      .mobile-toggle {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.9rem;
+      }
+
+      .hero-content h1 {
+        font-size: 1.8rem;
+        line-height: 1.2;
+      }
+
+      .hero-content p {
+        font-size: 1rem;
+      }
+
+      .tabs-nav {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .tab-button {
+        font-size: 0.9rem;
+        padding: 0.75rem 1rem;
+        flex: 1 1 45%;
+        min-width: 140px;
+      }
+
+      .service-package {
+        padding: 1.5rem;
+      }
+
+      .package-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+      }
+
+      .package-title {
+        font-size: 1.4rem;
+      }
+
+      .package-price {
+        font-size: 1.8rem;
+        text-align: left;
+      }
+
+      .package-features h4 {
+        font-size: 1.1rem;
+      }
+
+      .package-features li {
+        font-size: 0.95rem;
+        padding: 0.5rem 0;
+      }
+
+      .comparison-table {
+        font-size: 0.8rem;
+      }
+
+      .comparison-table th,
+      .comparison-table td {
+        padding: 0.6rem 0.4rem;
+      }
+
+      .comparison-section {
+        padding: 2rem 1rem;
+      }
+
+      .comparison-table {
+        display: block;
+        overflow-x: auto;
+      }
+
+      .faq-question {
+        font-size: 1.1rem;
+        padding: 1.2rem 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="container">
+      <div class="nav-inner">
+        <a class="brand" href="index.html" aria-label="VirtuForms Home">
+          <img src="assets/virtuforms-logo.png" alt="VirtuForms logo" class="brand-logo" />
+          <span class="brand-text">VirtuForms</span>
+        </a>
+        <button class="mobile-toggle" type="button" data-mobile-toggle aria-label="Toggle navigation">Menu</button>
+        <nav class="links" data-nav-links>
+          <a href="index.html">Home</a>
+          <div class="dropdown">
+            <button class="dropdown-toggle">
+              Services
+              <span style="font-size: 0.7rem;">▼</span>
+            </button>
+            <div class="dropdown-menu">
+              <a href="business-services.html">Business Services</a>
+              <a href="government-services.html">Government Services</a>
+              <a href="travel-services.html">Travel Services</a>
+              <a href="personal-services.html">Personal Services</a>
+              <a href="virtudrop/index.html">VirtuDrop</a>
+            </div>
+          </div>
+          <a href="about.html">About</a>
+          <a href="contact.html">Contact</a>
+          <a href="order-form.html" class="nav-cta">Get Started</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="container">
+        <div class="hero-content">
+          <h1>Business Services</h1>
+          <p>Complete solutions for Trinidad businesses</p>
+          <div class="breadcrumb">
+            <a href="index.html">Home</a>
+            <span>›</span>
+            <span>Business Services</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tabs Section -->
+    <section class="tabs-section">
+      <div class="container">
+        <!-- Tabs Navigation -->
+        <div class="tabs-nav">
+          <button class="tab-button active" data-tab="llc">LLC Services</button>
+          <button class="tab-button" data-tab="sole-trader">Sole Trader</button>
+          <button class="tab-button" data-tab="partnership">Partnership</button>
+          <button class="tab-button" data-tab="bank">Bank Account</button>
+          <button class="tab-button" data-tab="additional">Additional Services</button>
+        </div>
+
+        <!-- LLC Services Tab -->
+        <div class="tab-content active" id="llc">
+          <div class="tab-header">
+            <h2>Limited Liability Company Services</h2>
+            <p>Professional LLC registration and compliance solutions tailored for Trinidad businesses</p>
+          </div>
+
+          <div class="services-grid">
+            <!-- LLC Basic -->
+            <div class="service-package">
+              <div class="package-header">
+                <h3 class="package-title">LLC Basic Registration</h3>
+                <div class="package-price">$1,300</div>
+              </div>
+              
+              <div class="package-features">
+                <h4>What's Included:</h4>
+                <ul>
+                  <li>CROS Account Creation</li>
+                  <li>Name Search</li>
+                  <li>Name Reservation (x2 attempts)</li>
+                  <li>Business Registration</li>
+                  <li>Notice of Secretary</li>
+                  <li>Certificate Delivery</li>
+                </ul>
+              </div>
+
+              <div class="package-meta">
+                Turnaround: 1-2 weeks
+              </div>
+
+              <a href="order-form.html" class="btn btn-primary">Get Started</a>
+            </div>
+
+            <!-- LLC Compliance -->
+            <div class="service-package">
+              <div class="package-header">
+                <h3 class="package-title">LLC Compliance Launch</h3>
+                <div class="package-price">$1,500</div>
+              </div>
+              
+              <div class="package-features">
+                <h4>Everything in Basic PLUS:</h4>
+                <ul>
+                  <li>BIR Registration</li>
+                  <li>Digital Company Seal</li>
+                </ul>
+              </div>
+
+              <div class="package-meta">
+                Turnaround: 2-3 weeks
+              </div>
+
+              <a href="order-form.html" class="btn btn-primary">Get Started</a>
+            </div>
+
+            <!-- LLC Pro -->
+            <div class="service-package">
+              <div class="package-header">
+                <h3 class="package-title">LLC Pro Launch</h3>
+                <div class="package-price">$2,000</div>
+              </div>
+              
+              <div class="package-features">
+                <h4>Everything in Compliance PLUS:</h4>
+                <ul>
+                  <li>Bank Account Letter Request</li>
+                  <li>3-Year Cash Flow Projection</li>
+                  <li>Complete bank-ready documentation</li>
+                </ul>
+              </div>
+
+              <div class="package-meta">
+                Turnaround: 3-4 weeks
+              </div>
+
+              <a href="order-form.html" class="btn btn-primary">Get Started</a>
+            </div>
+
+            <!-- LLC Amendment -->
+            <div class="service-package">
+              <div class="package-header">
+                <h3 class="package-title">LLC Amendment</h3>
+                <div class="package-price">From $500 <small>(+ gov fees)</small></div>
+              </div>
+              
+              <div class="package-features">
+                <h4>Amend:</h4>
+                <ul>
+                  <li>Company Name</li>
+                  <li>Share Structure & Classes</li>
+                  <li>Director Powers & Restrictions</li>
+                  <li>Business Activities</li>
+                  <li>Other provisions as needed</li>
+                </ul>
+                <p style="color: #7dd3c0; margin-top: 1rem; font-size: 0.95rem;">
+                  ℹ️ Requirements determined in free consultation
+                </p>
+              </div>
+
+              <div class="package-meta">
+                Turnaround: 3-4 weeks
+              </div>
+
+              <a href="order-form.html" class="btn btn-secondary">Schedule Consultation</a>
+            </div>
+          </div>
+
+          <!-- Comparison Table -->
+          <div class="comparison-section">
+            <div class="comparison-header">
+              <h2>Compare Our LLC Packages</h2>
+              <p>Choose the package that best fits your business needs</p>
+            </div>
+
+            <table class="comparison-table">
+              <thead>
+                <tr>
+                  <th>Feature</th>
+                  <th>Basic</th>
+                  <th>Compliance</th>
+                  <th>Pro Launch</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>CROS Account Creation</td>
+                  <td><span class="check-icon">✓</span></td>
+                  <td><span class="check-icon">✓</span></td>
+                  <td><span class="check-icon">✓</span></td>
+                </tr>
+                <tr>
+                  <td>Name Search & Reservation</td>
+                  <td><span class="check-icon">✓</span></td>
+                  <td><span class="check-icon">✓</span></td>
+                  <td><span class="check-icon">✓</span></td>
+                </tr>
+                <tr>
+                  <td>Business Registration</td>
+                  <td><span class="check-icon">✓</span></td>
+                  <td><span class="check-icon">✓</span></td>
+                  <td><span class="check-icon">✓</span></td>
+                </tr>
+                <tr>
+                  <td>Notice of Secretary</td>
+                  <td><span class="check-icon">✓</span></td>
+                  <td><span class="check-icon">✓</span></td>
+                  <td><span class="check-icon">✓</span></td>
+                </tr>
+                <tr>
+                  <td>BIR Registration</td>
+                  <td><span class="cross-icon">✗</span></td>
+                  <td><span class="check-icon">✓</span></td>
+                  <td><span class="check-icon">✓</span></td>
+                </tr>
+                <tr>
+                  <td>Digital Company Seal</td>
+                  <td><span class="cross-icon">✗</span></td>
+                  <td><span class="check-icon">✓</span></td>
+                  <td><span class="check-icon">✓</span></td>
+                </tr>
+                <tr>
+                  <td>Bank Account Letter</td>
+                  <td><span class="cross-icon">✗</span></td>
+                  <td><span class="cross-icon">✗</span></td>
+                  <td><span class="check-icon">✓</span></td>
+                </tr>
+                <tr>
+                  <td>3-Year Cash Flow Projection</td>
+                  <td><span class="cross-icon">✗</span></td>
+                  <td><span class="cross-icon">✗</span></td>
+                  <td><span class="check-icon">✓</span></td>
+                </tr>
+                <tr class="price-row">
+                  <td><strong>Total Price</strong></td>
+                  <td><strong>$1,300</strong></td>
+                  <td><strong>$1,500</strong></td>
+                  <td><strong>$2,000</strong></td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div style="text-align: center; margin-top: 2rem;">
+              <a href="order-form.html" class="btn btn-primary" style="width: auto; padding: 1.3rem 3rem;">Get Started Today</a>
+            </div>
+          </div>
+
+          <!-- FAQ -->
+          <div class="faq-section">
+            <div class="faq-header">
+              <h2>Frequently Asked Questions</h2>
+            </div>
+
+            <div class="faq-list">
+              <div class="faq-item">
+                <button class="faq-question">
+                  How long does LLC registration take?
+                </button>
+                <div class="faq-answer">
+                  <div class="faq-answer-content">
+                    The LLC Basic Registration typically takes 1-2 weeks from the time all required documents are submitted. This includes name reservation (1-2 business days) and full registration processing. More comprehensive packages like Pro Launch may take 3-4 weeks due to additional services included.
+                  </div>
+                </div>
+              </div>
+
+              <div class="faq-item">
+                <button class="faq-question">
+                  What documents do I need to provide?
+                </button>
+                <div class="faq-answer">
+                  <div class="faq-answer-content">
+                    For each director/shareholder, you'll need: two forms of valid ID, scanned birth certificate, proof of address (utility bill or bank statement), contact information, occupation details, and BIR number. You'll also need to provide proposed business names, nature of business, and share capital structure. We'll guide you through everything during your consultation.
+                  </div>
+                </div>
+              </div>
+
+              <div class="faq-item">
+                <button class="faq-question">
+                  What's the difference between the packages?
+                </button>
+                <div class="faq-answer">
+                  <div class="faq-answer-content">
+                    Basic covers essential registration only. Compliance adds BIR registration and your company seal. Pro Launch is our most comprehensive package, adding bank-ready documentation (account letter and 3-year cash flow projection) so you can open your business bank account immediately after registration.
+                  </div>
+                </div>
+              </div>
+
+              <div class="faq-item">
+                <button class="faq-question">
+                  Can non-citizens register an LLC in Trinidad?
+                </button>
+                <div class="faq-answer">
+                  <div class="faq-answer-content">
+                    Yes, non-citizens can register an LLC in Trinidad and Tobago. However, foreign shareholders are limited to controlling a maximum of 40% of the total shares. The remaining 60% must be held by Trinidad and Tobago citizens. Contact us to discuss your specific situation during a free consultation.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sole Trader Tab -->
+        <div class="tab-content" id="sole-trader">
+          <div class="tab-header">
+            <h2>Sole Trader Services</h2>
+            <p>Simple, affordable business registration for individual entrepreneurs</p>
+          </div>
+
+          <div class="services-grid">
+            <!-- Sole Trader Basic -->
+            <div class="service-package">
+              <div class="package-header">
+                <h3 class="package-title">Sole Trader Basic</h3>
+                <div class="package-price">$650</div>
+              </div>
+              
+              <div class="package-features">
+                <h4>What's Included:</h4>
+                <ul>
+                  <li>CROS Account Creation</li>
+                  <li>Name Search</li>
+                  <li>Name Reservation (x2 attempts)</li>
+                  <li>Business Registration</li>
+                  <li>Certificate of Registration</li>
+                  <li>Delivery</li>
+                </ul>
+              </div>
+
+              <div class="package-meta">
+                Turnaround: 1-2 weeks
+              </div>
+
+              <a href="order-form.html" class="btn btn-primary">Get Started</a>
+            </div>
+
+            <!-- Sole Trader Business Ready -->
+            <div class="service-package">
+              <div class="package-header">
+                <h3 class="package-title">Sole Trader Business Ready</h3>
+                <div class="package-price">$950</div>
+              </div>
+              
+              <div class="package-features">
+                <h4>Everything in Basic PLUS:</h4>
+                <ul>
+                  <li>Bank Account Request Letter</li>
+                  <li>3-Year Cash Flow Projection</li>
+                  <li>Complete bank-ready package</li>
+                </ul>
+              </div>
+
+              <div class="package-meta">
+                Turnaround: 2-3 weeks
+              </div>
+
+              <a href="order-form.html" class="btn btn-primary">Get Started</a>
+            </div>
+
+            <!-- Convert to LLC -->
+            <div class="service-package">
+              <div class="package-header">
+                <h3 class="package-title">Convert Sole Trader to LLC</h3>
+                <div class="package-price">$1,450</div>
+              </div>
+              
+              <div class="package-features">
+                <h4>Complete Conversion Package:</h4>
+                <ul>
+                  <li>Notice of Cessation (close sole trader)</li>
+                  <li>LLC Basic Registration</li>
+                  <li>All government fees included</li>
+                  <li>Seamless business transition</li>
+                </ul>
+                <p style="color: #7dd3c0; margin-top: 1rem; font-size: 0.95rem;">
+                  ℹ️ Requirements determined in free consultation
+                </p>
+              </div>
+
+              <div class="package-meta">
+                Turnaround: 3-4 weeks
+              </div>
+
+              <a href="order-form.html" class="btn btn-secondary">Schedule Consultation</a>
+            </div>
+          </div>
+
+          <!-- Comparison Table -->
+          <div class="comparison-section">
+            <div class="comparison-header">
+              <h2>Compare Sole Trader Packages</h2>
+              <p>Choose the right level of support for your business</p>
+            </div>
+
+            <table class="comparison-table">
+              <thead>
+                <tr>
+                  <th>Feature</th>
+                  <th>Basic</th>
+                  <th>Business Ready</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>CROS Account Creation</td>
+                  <td><span class="check-icon">✓</span></td>
+                  <td><span class="check-icon">✓</span></td>
+                </tr>
+                <tr>
+                  <td>Name Search & Reservation</td>
+                  <td><span class="check-icon">✓</span></td>
+                  <td><span class="check-icon">✓</span></td>
+                </tr>
+                <tr>
+                  <td>Business Registration</td>
+                  <td><span class="check-icon">✓</span></td>
+                  <td><span class="check-icon">✓</span></td>
+                </tr>
+                <tr>
+                  <td>Certificate of Registration</td>
+                  <td><span class="check-icon">✓</span></td>
+                  <td><span class="check-icon">✓</span></td>
+                </tr>
+                <tr>
+                  <td>Bank Account Request Letter</td>
+                  <td><span class="cross-icon">✗</span></td>
+                  <td><span class="check-icon">✓</span></td>
+                </tr>
+                <tr>
+                  <td>3-Year Cash Flow Projection</td>
+                  <td><span class="cross-icon">✗</span></td>
+                  <td><span class="check-icon">✓</span></td>
+                </tr>
+                <tr class="price-row">
+                  <td><strong>Total Price</strong></td>
+                  <td><strong>$650</strong></td>
+                  <td><strong>$950</strong></td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div style="text-align: center; margin-top: 2rem;">
+              <a href="order-form.html" class="btn btn-primary" style="width: auto; padding: 1.3rem 3rem;">Get Started Today</a>
+            </div>
+          </div>
+
+          <!-- FAQ -->
+          <div class="faq-section">
+            <div class="faq-header">
+              <h2>Frequently Asked Questions</h2>
+            </div>
+
+            <div class="faq-list">
+              <div class="faq-item">
+                <button class="faq-question">
+                  What's the difference between Sole Trader and LLC?
+                </button>
+                <div class="faq-answer">
+                  <div class="faq-answer-content">
+                    A Sole Trader is simpler and cheaper to set up, but you are personally liable for all business debts. An LLC provides limited liability protection, separating your personal assets from business liabilities. LLCs are better for businesses with employees, significant assets, or growth plans.
+                  </div>
+                </div>
+              </div>
+
+              <div class="faq-item">
+                <button class="faq-question">
+                  Should I start with Sole Trader or LLC?
+                </button>
+                <div class="faq-answer">
+                  <div class="faq-answer-content">
+                    Start with Sole Trader if you're testing a business idea, operating solo with minimal risk, or want lower setup costs. Choose LLC if you plan to hire employees, need liability protection, want to attract investors, or plan significant growth. We offer free consultations to help you decide.
+                  </div>
+                </div>
+              </div>
+
+              <div class="faq-item">
+                <button class="faq-question">
+                  Can I convert my Sole Trader to an LLC later?
+                </button>
+                <div class="faq-answer">
+                  <div class="faq-answer-content">
+                    Yes! Our "Convert to LLC" package handles the entire process. We close your sole trader business (Notice of Cessation) and register your new LLC with the same or similar business name. This typically takes 3-4 weeks and costs $1,450 total.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Partnership Tab -->
+        <div class="tab-content" id="partnership">
+          <div class="tab-header">
+            <h2>Partnership Services</h2>
+            <p>Professional partnership registration for business collaborations</p>
+          </div>
+
+          <div class="services-grid">
+            <!-- Partnership Essentials -->
+            <div class="service-package">
+              <div class="package-header">
+                <h3 class="package-title">Partnership Essentials</h3>
+                <div class="package-price">$900</div>
+              </div>
+              
+              <div class="package-features">
+                <h4>What's Included:</h4>
+                <ul>
+                  <li>CROS Account Creation (all partners)</li>
+                  <li>Name Search</li>
+                  <li>Name Reservation (x2 attempts)</li>
+                  <li>Partnership Registration</li>
+                  <li>Certificate of Registration</li>
+                  <li>Delivery</li>
+                </ul>
+              </div>
+
+              <div class="package-meta">
+                Turnaround: 1-2 weeks
+              </div>
+
+              <a href="order-form.html" class="btn btn-primary">Get Started</a>
+            </div>
+
+            <!-- PartnerBank Package -->
+            <div class="service-package">
+              <div class="package-header">
+                <h3 class="package-title">PartnerBank Package</h3>
+                <div class="package-price">$1,300</div>
+              </div>
+              
+              <div class="package-features">
+                <h4>Everything in Essentials PLUS:</h4>
+                <ul>
+                  <li>BIR Number for Partnership</li>
+                  <li>Bank Account Request Letter</li>
+                  <li>3-Year Cash Flow Projection</li>
+                  <li>Complete bank-ready documentation</li>
+                </ul>
+              </div>
+
+              <div class="package-meta">
+                Turnaround: 2-3 weeks
+              </div>
+
+              <a href="order-form.html" class="btn btn-primary">Get Started</a>
+            </div>
+          </div>
+
+          <!-- Comparison Table -->
+          <div class="comparison-section">
+            <div class="comparison-header">
+              <h2>Compare Partnership Packages</h2>
+              <p>Select the best option for your partnership</p>
+            </div>
+
+            <table class="comparison-table">
+              <thead>
+                <tr>
+                  <th>Feature</th>
+                  <th>Essentials</th>
+                  <th>PartnerBank</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>CROS Account Creation (All Partners)</td>
+                  <td><span class="check-icon">✓</span></td>
+                  <td><span class="check-icon">✓</span></td>
+                </tr>
+                <tr>
+                  <td>Name Search & Reservation</td>
+                  <td><span class="check-icon">✓</span></td>
+                  <td><span class="check-icon">✓</span></td>
+                </tr>
+                <tr>
+                  <td>Partnership Registration</td>
+                  <td><span class="check-icon">✓</span></td>
+                  <td><span class="check-icon">✓</span></td>
+                </tr>
+                <tr>
+                  <td>Certificate of Registration</td>
+                  <td><span class="check-icon">✓</span></td>
+                  <td><span class="check-icon">✓</span></td>
+                </tr>
+                <tr>
+                  <td>BIR Number</td>
+                  <td><span class="cross-icon">✗</span></td>
+                  <td><span class="check-icon">✓</span></td>
+                </tr>
+                <tr>
+                  <td>Bank Account Request Letter</td>
+                  <td><span class="cross-icon">✗</span></td>
+                  <td><span class="check-icon">✓</span></td>
+                </tr>
+                <tr>
+                  <td>3-Year Cash Flow Projection</td>
+                  <td><span class="cross-icon">✗</span></td>
+                  <td><span class="check-icon">✓</span></td>
+                </tr>
+                <tr class="price-row">
+                  <td><strong>Total Price</strong></td>
+                  <td><strong>$900</strong></td>
+                  <td><strong>$1,300</strong></td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div style="text-align: center; margin-top: 2rem;">
+              <a href="order-form.html" class="btn btn-primary" style="width: auto; padding: 1.3rem 3rem;">Get Started Today</a>
+            </div>
+          </div>
+
+          <!-- FAQ -->
+          <div class="faq-section">
+            <div class="faq-header">
+              <h2>Frequently Asked Questions</h2>
+            </div>
+
+            <div class="faq-list">
+              <div class="faq-item">
+                <button class="faq-question">
+                  How many partners can a partnership have?
+                </button>
+                <div class="faq-answer">
+                  <div class="faq-answer-content">
+                    A partnership in Trinidad and Tobago can have 2 or more partners. There's no strict maximum limit, but partnerships with many partners may want to consider registering as an LLC for better liability protection and management structure.
+                  </div>
+                </div>
+              </div>
+
+              <div class="faq-item">
+                <button class="faq-question">
+                  What documents does each partner need to provide?
+                </button>
+                <div class="faq-answer">
+                  <div class="faq-answer-content">
+                    Each partner needs to provide: valid government-issued ID (National ID, Passport, or Driver's Permit), residential address with proof of address if not on ID, contact information (email and phone), occupation details, and an authorization letter appointing VirtuForms as your representative.
+                  </div>
+                </div>
+              </div>
+
+              <div class="faq-item">
+                <button class="faq-question">
+                  What's the liability difference between Partnership and LLC?
+                </button>
+                <div class="faq-answer">
+                  <div class="faq-answer-content">
+                    In a Partnership, all partners are personally liable for business debts and obligations. Your personal assets can be at risk. An LLC provides limited liability protection - the company is a separate legal entity, and your personal assets are generally protected from business liabilities. We recommend free consultation to discuss which structure suits your situation.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bank Account Tab -->
+        <div class="tab-content" id="bank">
+          <div class="tab-header">
+            <h2>Bank Account Services</h2>
+            <p>Professional support for opening your business bank account</p>
+          </div>
+
+          <div style="background: rgba(42, 157, 143, 0.1); border-left: 4px solid #2a9d8f; padding: 2rem; margin-bottom: 4rem; border-radius: 8px;">
+            <p style="font-size: 1.1rem; color: #b8e6dc; margin: 0;">
+              <strong style="color: #7dd3c0;">Note:</strong> These services are for already-registered businesses. If you need business registration, please see our LLC, Sole Trader, or Partnership packages above.
+            </p>
+          </div>
+
+          <div class="services-grid">
+            <!-- LLC Business Bank Package -->
+            <div class="service-package">
+              <div class="package-header">
+                <h3 class="package-title">LLC Business Bank Package</h3>
+                <div class="package-price">$880</div>
+              </div>
+              
+              <div class="package-features">
+                <h4>Complete Bank Account Support:</h4>
+                <ul>
+                  <li>Company Resolution ($300 value)</li>
+                  <li>Bank Request Letter ($150 value)</li>
+                  <li>3-Year Cash Flow Projection ($500 value)</li>
+                  <li>Liaison with Bank ($150 value)</li>
+                  <li>Professional formatting & presentation</li>
+                </ul>
+                <p style="color: #7dd3c0; margin-top: 1rem; font-size: 0.95rem;">
+                  💰 Save $220 with this package vs individual services
+                </p>
+              </div>
+
+              <div class="package-meta">
+                Turnaround: 1 week
+              </div>
+
+              <a href="order-form.html" class="btn btn-primary">Get Started</a>
+            </div>
+
+            <!-- Sole Trader Business Bank Package -->
+            <div class="service-package">
+              <div class="package-header">
+                <h3 class="package-title">Sole Trader Business Bank Package</h3>
+                <div class="package-price">$480</div>
+              </div>
+              
+              <div class="package-features">
+                <h4>Complete Bank Account Support:</h4>
+                <ul>
+                  <li>Bank Request Letter ($150 value)</li>
+                  <li>3-Year Cash Flow Projection ($300 value)</li>
+                  <li>Liaison with Bank ($150 value)</li>
+                  <li>Professional formatting & presentation</li>
+                </ul>
+                <p style="color: #7dd3c0; margin-top: 1rem; font-size: 0.95rem;">
+                  💰 Save $120 with this package vs individual services
+                </p>
+              </div>
+
+              <div class="package-meta">
+                Turnaround: 1 week
+              </div>
+
+              <a href="order-form.html" class="btn btn-primary">Get Started</a>
+            </div>
+          </div>
+
+          <!-- Individual Services -->
+          <div style="margin-top: 5rem;">
+            <div class="tab-header">
+              <h2>Individual Bank Services</h2>
+              <p>Need just one service? Purchase them individually</p>
+            </div>
+
+            <div class="services-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+              <!-- Bank Request Letter -->
+              <div class="service-package">
+                <div class="package-header">
+                  <h3 class="package-title">Bank Request Letter</h3>
+                  <div class="package-price">$150</div>
+                </div>
+                
+                <div class="package-features">
+                  <ul>
+                    <li>Professional letter for bank</li>
+                    <li>Proper formatting</li>
+                    <li>All required details included</li>
+                  </ul>
+                </div>
+
+                <div class="package-meta">
+                  Turnaround: 2-3 days
+                </div>
+
+                <a href="order-form.html" class="btn btn-secondary">Get Started</a>
+              </div>
+
+              <!-- 3-Year Cash Flow (ST) -->
+              <div class="service-package">
+                <div class="package-header">
+                  <h3 class="package-title">3-Year Cash Flow<br/>(Sole Trader)</h3>
+                  <div class="package-price">$300</div>
+                </div>
+                
+                <div class="package-features">
+                  <ul>
+                    <li>Detailed 3-year projection</li>
+                    <li>Bank-ready format</li>
+                    <li>Professional presentation</li>
+                  </ul>
+                </div>
+
+                <div class="package-meta">
+                  Turnaround: 3-5 days
+                </div>
+
+                <a href="order-form.html" class="btn btn-secondary">Get Started</a>
+              </div>
+
+              <!-- 3-Year Cash Flow (LLC) -->
+              <div class="service-package">
+                <div class="package-header">
+                  <h3 class="package-title">3-Year Cash Flow<br/>(LLC)</h3>
+                  <div class="package-price">$500</div>
+                </div>
+                
+                <div class="package-features">
+                  <ul>
+                    <li>Comprehensive LLC projection</li>
+                    <li>Bank-ready format</li>
+                    <li>Professional presentation</li>
+                  </ul>
+                </div>
+
+                <div class="package-meta">
+                  Turnaround: 3-5 days
+                </div>
+
+                <a href="order-form.html" class="btn btn-secondary">Get Started</a>
+              </div>
+
+              <!-- Company Resolution -->
+              <div class="service-package">
+                <div class="package-header">
+                  <h3 class="package-title">Company Resolution</h3>
+                  <div class="package-price">$300</div>
+                </div>
+                
+                <div class="package-features">
+                  <ul>
+                    <li>LLC only</li>
+                    <li>Board resolution for banking</li>
+                    <li>Proper legal formatting</li>
+                  </ul>
+                </div>
+
+                <div class="package-meta">
+                  Turnaround: 2-3 days
+                </div>
+
+                <a href="order-form.html" class="btn btn-secondary">Get Started</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- FAQ -->
+          <div class="faq-section">
+            <div class="faq-header">
+              <h2>Frequently Asked Questions</h2>
+            </div>
+
+            <div class="faq-list">
+              <div class="faq-item">
+                <button class="faq-question">
+                  Do I need all these documents to open a bank account?
+                </button>
+                <div class="faq-answer">
+                  <div class="faq-answer-content">
+                    Most Trinidad banks require: business registration certificate, bank request letter, 3-year cash flow projection, and company resolution (for LLCs). Requirements vary by bank, but our packages ensure you have everything needed for a smooth account opening process.
+                  </div>
+                </div>
+              </div>
+
+              <div class="faq-item">
+                <button class="faq-question">
+                  What's included in "Liaison with Bank"?
+                </button>
+                <div class="faq-answer">
+                  <div class="faq-answer-content">
+                    We communicate with the bank on your behalf, submit your documentation, follow up on your application status, and address any additional requirements the bank may have. This saves you time and ensures professional presentation of your business to the bank.
+                  </div>
+                </div>
+              </div>
+
+              <div class="faq-item">
+                <button class="faq-question">
+                  Can I purchase individual services if I already have some documents?
+                </button>
+                <div class="faq-answer">
+                  <div class="faq-answer-content">
+                    Yes! If you already have some bank documents, you can purchase only what you need from our individual services. However, if you need 2 or more services, our packages offer significant savings compared to buying services individually.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Additional Services Tab -->
+        <div class="tab-content" id="additional">
+          <div class="tab-header">
+            <h2>Additional Business Services</h2>
+            <p>Essential services for ongoing business compliance and operations</p>
+          </div>
+
+          <div class="services-grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
+            <!-- Annual Return -->
+            <div class="service-package">
+              <div class="package-header">
+                <h3 class="package-title">Annual Return</h3>
+                <div class="package-price">$500</div>
+              </div>
+              
+              <div class="package-features">
+                <h4>What's Included:</h4>
+                <ul>
+                  <li>Form 28 completion</li>
+                  <li>Government filing ($40 included)</li>
+                  <li>Submission to Companies Registry</li>
+                  <li>Confirmation of filing</li>
+                </ul>
+                <p style="color: #ff9800; margin-top: 1rem; font-size: 0.95rem; background: rgba(255, 152, 0, 0.1); padding: 0.8rem; border-radius: 6px;">
+                  ⚠️ <strong>Late fees:</strong> $300/month penalty if filed late
+                </p>
+              </div>
+
+              <div class="package-meta">
+                Turnaround: 1 week
+              </div>
+
+              <a href="order-form.html" class="btn btn-primary">Get Started</a>
+            </div>
+
+            <!-- BIR Number -->
+            <div class="service-package">
+              <div class="package-header">
+                <h3 class="package-title">BIR Number</h3>
+                <div class="package-price">$200</div>
+              </div>
+              
+              <div class="package-features">
+                <h4>What's Included:</h4>
+                <ul>
+                  <li>BIR number application</li>
+                  <li>Form completion & submission</li>
+                  <li>Confirmation certificate</li>
+                  <li>No government fees required</li>
+                </ul>
+              </div>
+
+              <div class="package-meta">
+                Turnaround: 1 week
+              </div>
+
+              <a href="order-form.html" class="btn btn-primary">Get Started</a>
+            </div>
+
+            <!-- CROS Account Recovery -->
+            <div class="service-package">
+              <div class="package-header">
+                <h3 class="package-title">CROS Account Recovery</h3>
+                <div class="package-price">$150</div>
+              </div>
+              
+              <div class="package-features">
+                <h4>What's Included:</h4>
+                <ul>
+                  <li>Password recovery assistance</li>
+                  <li>Account unlock support</li>
+                  <li>Liaison with Companies Registry</li>
+                  <li>Account restoration</li>
+                </ul>
+                <p style="color: #7dd3c0; margin-top: 1rem; font-size: 0.95rem;">
+                  ℹ️ Specific requirements determined by issue type
+                </p>
+              </div>
+
+              <div class="package-meta">
+                Turnaround: 1-3 weeks
+              </div>
+
+              <a href="order-form.html" class="btn btn-secondary">Schedule Consultation</a>
+            </div>
+
+            <!-- Notice of Cessation -->
+            <div class="service-package">
+              <div class="package-header">
+                <h3 class="package-title">Notice of Cessation</h3>
+                <div class="package-price">
+                  $190
+                  <small>inc. gov fees</small>
+                </div>
+              </div>
+              
+              <div class="package-features">
+                <h4>What's Included:</h4>
+                <ul>
+                  <li>Form 9 completion</li>
+                  <li>Government filing ($40 included)</li>
+                  <li>Business closure documentation</li>
+                  <li>Confirmation of cessation</li>
+                </ul>
+                <p style="color: #7dd3c0; margin-top: 1rem; font-size: 0.95rem;">
+                  ℹ️ Additional add-ons available based on business setup
+                </p>
+              </div>
+
+              <div class="package-meta">
+                Turnaround: 1-2 weeks
+              </div>
+
+              <a href="order-form.html" class="btn btn-primary">Get Started</a>
+            </div>
+
+            <!-- Digital Company Seal -->
+            <div class="service-package">
+              <div class="package-header">
+                <h3 class="package-title">Digital Company Seal</h3>
+                <div class="package-price">$150</div>
+              </div>
+              
+              <div class="package-features">
+                <h4>What's Included:</h4>
+                <ul>
+                  <li>Professional seal design</li>
+                  <li>Transparent PNG & JPG files</li>
+                  <li>High-resolution formats</li>
+                  <li>Optional: Physical self-inking stamp available</li>
+                </ul>
+                <div style="margin-top: 1.5rem; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                  <img src="assets/seal-example-1.png" alt="Seal example" style="width: 100%; height: auto; border-radius: 8px; background: white; padding: 0.5rem;" onerror="this.style.display='none'">
+                  <img src="assets/seal-example-2.png" alt="Seal example" style="width: 100%; height: auto; border-radius: 8px; background: white; padding: 0.5rem;" onerror="this.style.display='none'">
+                  <img src="assets/seal-example-3.png" alt="Seal example" style="width: 100%; height: auto; border-radius: 8px; background: white; padding: 0.5rem;" onerror="this.style.display='none'">
+                </div>
+              </div>
+
+              <div class="package-meta">
+                Turnaround: 1-2 weeks
+              </div>
+
+              <a href="order-form.html" class="btn btn-primary">Get Started</a>
+            </div>
+          </div>
+
+          <!-- FAQ -->
+          <div class="faq-section">
+            <div class="faq-header">
+              <h2>Frequently Asked Questions</h2>
+            </div>
+
+            <div class="faq-list">
+              <div class="faq-item">
+                <button class="faq-question">
+                  When do I need to file my Annual Return?
+                </button>
+                <div class="faq-answer">
+                  <div class="faq-answer-content">
+                    Your Annual Return is due on your company's anniversary date each year. For example, if your LLC was incorporated on March 15th, your Annual Return is due by March 15th every year. Late filing incurs a $300/month penalty, so we recommend filing at least 2 weeks before your deadline.
+                  </div>
+                </div>
+              </div>
+
+              <div class="faq-item">
+                <button class="faq-question">
+                  What's the difference between BIR Number and Tax Returns?
+                </button>
+                <div class="faq-answer">
+                  <div class="faq-answer-content">
+                    A BIR Number is your unique tax identification number that you obtain once. Tax Returns are annual filings you submit each year reporting your income and taxes. You need a BIR Number before you can file Tax Returns. This service gets you your initial BIR Number.
+                  </div>
+                </div>
+              </div>
+
+              <div class="faq-item">
+                <button class="faq-question">
+                  Do I need a company seal?
+                </button>
+                <div class="faq-answer">
+                  <div class="faq-answer-content">
+                    While not legally required for all businesses, a company seal adds professionalism to your documents and is often expected by banks and some business partners. Our digital seal can be used on electronic documents, contracts, and official correspondence. Physical stamps are available upon request.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Final CTA -->
+    <div class="container">
+      <section class="cta-section">
+        <h2>Need Help Choosing the Right Service?</h2>
+        <p>Schedule a free consultation with our team to discuss your business needs</p>
+        <div class="cta-buttons">
+          <a href="order-form.html" class="btn">Schedule Consultation</a>
+          <a href="order-form.html" class="btn">Contact Us Directly</a>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-grid">
+        <div class="footer-section">
+          <h3>VirtuForms</h3>
+          <p>Professional administrative solutions for Trinidad. From business services to travel documents, we handle the paperwork so you don't have to.</p>
+        </div>
+
+        <div class="footer-section">
+          <h3>Services</h3>
+          <a href="business-services.html">Business Services</a>
+          <a href="government-services.html">Government Services</a>
+          <a href="travel-services.html">Travel Services</a>
+          <a href="personal-services.html">Personal Services</a>
+          <a href="virtudrop/index.html">VirtuDrop</a>
+        </div>
+
+        <div class="footer-section">
+          <h3>Company</h3>
+          <a href="about.html">About Us</a>
+          <a href="contact.html">Contact</a>
+          <a href="order-form.html">Get Started</a>
+          <a href="privacy-policy.html">Privacy Policy</a>
+          <a href="terms-of-service.html">Terms of Service</a>
+        </div>
+
+        <div class="footer-section">
+          <h3>Contact</h3>
+          <p>Email: info@virtuforms.net</p>
+          <p>Phone: 868-797-3543</p>
+          <p>Phone: 868-470-3704</p>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <small>© 2026 VirtuForms. Professional administrative solutions for Trinidad. All rights reserved.</small>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Mobile menu toggle
+    const toggle = document.querySelector('[data-mobile-toggle]');
+    const navLinks = document.querySelector('[data-nav-links]');
+    const dropdownToggle = document.querySelector('.dropdown-toggle');
+    const dropdownMenu = document.querySelector('.dropdown-menu');
+    
+    if (toggle && navLinks) {
+      toggle.addEventListener('click', () => {
+        navLinks.classList.toggle('mobile-open');
+        
+        // Close dropdown when closing main menu
+        if (!navLinks.classList.contains('mobile-open') && dropdownMenu) {
+          dropdownMenu.classList.remove('mobile-open');
+        }
+      });
+    }
+
+    // Mobile dropdown toggle
+    if (dropdownToggle && dropdownMenu) {
+      dropdownToggle.addEventListener('click', (e) => {
+        // Only toggle on mobile
+        if (window.innerWidth <= 968) {
+          e.preventDefault();
+          dropdownMenu.classList.toggle('mobile-open');
+        }
+      });
+    }
+
+    // Close mobile menu when clicking outside
+    document.addEventListener('click', (e) => {
+      if (window.innerWidth <= 968) {
+        if (!e.target.closest('.nav-inner') && navLinks?.classList.contains('mobile-open')) {
+          navLinks.classList.remove('mobile-open');
+          dropdownMenu?.classList.remove('mobile-open');
+        }
+      }
+    });
+
+    // Close mobile menu when clicking a link
+    const navLinksElements = document.querySelectorAll('[data-nav-links] a');
+    navLinksElements.forEach(link => {
+      link.addEventListener('click', () => {
+        if (window.innerWidth <= 968) {
+          navLinks?.classList.remove('mobile-open');
+          dropdownMenu?.classList.remove('mobile-open');
+        }
+      });
+    });
+
+    // Tabs functionality
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const targetTab = button.dataset.tab;
+
+        // Remove active class from all buttons and contents
+        tabButtons.forEach(btn => btn.classList.remove('active'));
+        tabContents.forEach(content => content.classList.remove('active'));
+
+        // Add active class to clicked button and corresponding content
+        button.classList.add('active');
+        document.getElementById(targetTab).classList.add('active');
+
+        // Scroll to top of tabs section smoothly
+        document.querySelector('.tabs-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+
+    // FAQ accordion
+    const faqQuestions = document.querySelectorAll('.faq-question');
+
+    faqQuestions.forEach(question => {
+      question.addEventListener('click', () => {
+        const faqItem = question.parentElement;
+        const isActive = faqItem.classList.contains('active');
+
+        // Close all FAQ items
+        document.querySelectorAll('.faq-item').forEach(item => {
+          item.classList.remove('active');
+        });
+
+        // Open clicked item if it wasn't active
+        if (!isActive) {
+          faqItem.classList.add('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

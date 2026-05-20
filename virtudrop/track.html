@@ -1,0 +1,864 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Track Delivery | VirtuDrop</title>
+  <meta name="description" content="Track your VirtuDrop delivery using your phone number and order ID, or your unique tracking link.">
+  <link rel="icon" href="assets/logo.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      line-height: 1.7; color: #1a1a1a; background: #f8f9fa;
+    }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
+
+    /* Nav Bar */
+    .nav {
+      background: #ffffff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    /* Navbar container */
+    .nav .container {
+      max-width: none;
+      width: 100%;
+      margin: 0;
+      padding: 0 2.5rem;
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      gap: 2rem;
+      padding: 1rem 0;
+    }
+
+    /* Logo + slogan */
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      text-decoration: none;
+      flex-shrink: 0;
+      margin-right: auto;
+    }
+
+    .brand img {
+      height: 52px;
+      width: auto;
+    }
+
+    .badge {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #2a9d8f;
+      letter-spacing: 0.4px;
+      white-space: nowrap;
+    }
+
+    /* Nav links */
+    .links {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 1.8rem;
+      margin-left: auto;
+      flex-wrap: nowrap;
+      white-space: nowrap;
+    }
+
+    .links a {
+      text-decoration: none;
+      color: #1a1a1a;
+      font-weight: 500;
+      font-size: 0.92rem;
+      white-space: nowrap;
+    }
+
+    /* Login button */
+    .links a.nav-login {
+      background: #2a9d8f;
+      color: #ffffff !important;
+      padding: 0.5rem 1.2rem;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+
+    .links a.nav-login:hover {
+      background: #238277;
+    }
+
+    /* Mobile */
+    .mobile-toggle {
+      display: none;
+      align-items: center;
+      justify-content: center;
+
+      background: linear-gradient(135deg, #2a9d8f 0%, #238277 100%);
+      color: #ffffff;
+
+      border: none;
+      border-radius: 10px;
+
+      padding: 0.7rem 1rem;
+
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+
+      cursor: pointer;
+
+      box-shadow: 0 4px 12px rgba(42,157,143,0.25);
+
+      transition: all 0.25s ease;
+    }
+
+    .mobile-toggle:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(42,157,143,0.35);
+      background: linear-gradient(135deg, #31b3a3 0%, #2a9d8f 100%);
+    }
+
+    .mobile-toggle:active {
+      transform: scale(0.97);
+    }
+
+    .mobile-toggle::before {
+      content: "☰";
+      margin-right: 0.5rem;
+      font-size: 1rem;
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeIn   { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes spin     { to { transform: rotate(360deg); } }
+    @keyframes pulse    { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+    /* ── Page ── */
+    .page { padding: 5rem 0 6rem; animation: fadeIn 0.7s ease-out; }
+
+    .page-header { text-align: center; margin-bottom: 3.5rem; animation: fadeInUp 0.8s ease-out; }
+    .page-header h1 { font-size: 3rem; font-weight: 700; color: #1a1a1a; margin-bottom: 1rem; }
+    .page-header p  { font-size: 1.15rem; color: #4a4a4a; line-height: 1.7; }
+
+    /* ── Track Container ── */
+    .track-container { max-width: 680px; margin: 0 auto; }
+
+    /* ── Method tabs ── */
+    .method-tabs {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+      background: #e8f5f3; border-radius: 14px; padding: 5px;
+      margin-bottom: 2rem; animation: fadeInUp 0.8s ease-out 0.1s both;
+    }
+    .method-tab {
+      padding: 0.9rem 1rem; border-radius: 10px; border: none;
+      font-family: 'Inter', sans-serif; font-size: 0.9rem; font-weight: 600;
+      cursor: pointer; transition: all 0.25s ease;
+      background: transparent; color: #4a4a4a; text-align: center;
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+    }
+    .method-tab.active {
+      background: #0d2b28; color: #ffffff;
+      box-shadow: 0 2px 10px rgba(13,43,40,0.2);
+    }
+    .method-tab:not(.active):hover { background: rgba(42,157,143,0.1); color: #2a9d8f; }
+
+    /* ── Forms ── */
+    .track-panel { display: none; }
+    .track-panel.active { display: block; animation: fadeInUp 0.4s ease-out; }
+
+    .track-card {
+      background: #ffffff; border-radius: 16px; padding: 2.5rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+      animation: fadeInUp 0.8s ease-out 0.2s both;
+    }
+
+    .field { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.4rem; }
+    .field:last-of-type { margin-bottom: 1.8rem; }
+    .field label { font-size: 0.9rem; font-weight: 600; color: #1a1a1a; }
+    .field label span { font-weight: 400; color: #6a6a6a; font-size: 0.82rem; }
+
+    .input {
+      width: 100%; padding: 0.9rem 1rem;
+      border: 2px solid #e0e0e0; border-radius: 10px;
+      font-family: 'Inter', sans-serif; font-size: 0.95rem;
+      color: #1a1a1a; background: #ffffff; transition: all 0.3s ease;
+    }
+    .input:focus { outline: none; border-color: #2a9d8f; box-shadow: 0 0 0 3px rgba(42,157,143,0.1); }
+    .input::placeholder { color: #aaa; }
+
+    .phone-row { display: flex; }
+    .phone-prefix {
+      padding: 0.9rem 1rem; background: #f8f9fa;
+      border: 2px solid #e0e0e0; border-right: none;
+      border-radius: 10px 0 0 10px; font-size: 0.95rem;
+      font-weight: 600; color: #4a4a4a; white-space: nowrap;
+    }
+    .phone-row .input { border-radius: 0 10px 10px 0; }
+
+    .error-msg {
+      font-size: 0.82rem; color: #e05555; font-weight: 500;
+      display: none; margin-top: 0.2rem;
+    }
+    .error-msg.show { display: block; }
+    .input.error { border-color: #e05555; }
+
+    .submit-btn {
+      width: 100%; padding: 1rem;
+      background: #2a9d8f; border: none; border-radius: 10px;
+      color: #ffffff; font-family: 'Inter', sans-serif;
+      font-size: 1rem; font-weight: 700; cursor: pointer;
+      transition: all 0.3s ease; display: flex;
+      align-items: center; justify-content: center; gap: 0.6rem;
+    }
+    .submit-btn:hover { background: #238277; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(42,157,143,0.3); }
+    .submit-btn:active { transform: translateY(0); }
+    .submit-btn .spinner {
+      width: 18px; height: 18px; border: 2.5px solid rgba(255,255,255,0.4);
+      border-top-color: #ffffff; border-radius: 50%;
+      animation: spin 0.7s linear infinite; display: none;
+    }
+    .submit-btn.loading .btn-text { display: none; }
+    .submit-btn.loading .spinner { display: block; }
+
+    /* Link panel specific */
+    .link-instructions {
+      background: #f0f9f8; border-radius: 12px; padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .link-instructions h4 { font-size: 0.9rem; font-weight: 700; color: #0d2b28; margin-bottom: 0.8rem; }
+    .link-instructions ol { padding-left: 1.3rem; }
+    .link-instructions li { font-size: 0.88rem; color: #4a4a4a; line-height: 1.7; margin-bottom: 0.3rem; }
+
+    .link-example {
+      background: #0d2b28; border-radius: 8px; padding: 0.75rem 1rem;
+      font-family: 'Courier New', monospace; font-size: 0.82rem;
+      color: #14d4ae; margin: 0.8rem 0; word-break: break-all;
+    }
+
+    /* ── Result panel ── */
+    .result-panel {
+      margin-top: 2rem; display: none;
+      animation: fadeInUp 0.5s ease-out;
+    }
+    .result-panel.show { display: block; }
+
+    /* Status card */
+    .status-card {
+      background: #0d2b28; border-radius: 16px; padding: 2rem;
+      margin-bottom: 1.5rem;
+    }
+    .status-card-top {
+      display: flex; align-items: flex-start;
+      justify-content: space-between; margin-bottom: 1.5rem;
+      flex-wrap: wrap; gap: 1rem;
+    }
+    .order-id-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.4); margin-bottom: 0.3rem; }
+    .order-id-value { font-size: 1.1rem; font-weight: 700; color: #14d4ae; font-family: 'Courier New', monospace; }
+    .status-badge {
+      padding: 0.4rem 1rem; border-radius: 20px;
+      font-size: 0.82rem; font-weight: 700;
+    }
+    .status-badge.received    { background: rgba(42,157,143,0.2); color: #14d4ae; }
+    .status-badge.collected   { background: rgba(255,193,7,0.2);  color: #ffc107; }
+    .status-badge.out         { background: rgba(33,150,243,0.2); color: #64b5f6; }
+    .status-badge.delivered   { background: rgba(76,175,80,0.2);  color: #81c784; }
+    .status-badge.failed      { background: rgba(244,67,54,0.2);  color: #ef9a9a; }
+    .status-badge.rescheduled { background: rgba(255,152,0,0.2);  color: #ffb74d; }
+
+    /* Progress track */
+    .progress-track { margin-bottom: 1.5rem; }
+    .progress-steps {
+      display: flex; align-items: flex-start;
+      position: relative; gap: 0;
+    }
+    .progress-steps::before {
+      content: '';
+      position: absolute; top: 14px; left: 14px; right: 14px;
+      height: 2px; background: rgba(255,255,255,0.12); z-index: 0;
+    }
+    .progress-fill {
+      position: absolute; top: 14px; left: 14px;
+      height: 2px; background: linear-gradient(90deg, #14d4ae, #2a9d8f);
+      z-index: 1; transition: width 0.6s ease;
+    }
+    .prog-step {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      text-align: center; position: relative; z-index: 2;
+    }
+    .prog-dot {
+      width: 28px; height: 28px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.05);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.7rem; margin-bottom: 0.5rem;
+      transition: all 0.4s ease;
+    }
+    .prog-dot.done    { background: #14d4ae; border-color: #14d4ae; color: #0d2b28; font-weight: 700; }
+    .prog-dot.current { background: #2a9d8f; border-color: #2a9d8f; color: #ffffff; font-weight: 700; animation: pulse 1.5s ease-in-out infinite; }
+    .prog-label { font-size: 0.65rem; color: rgba(255,255,255,0.45); line-height: 1.3; max-width: 60px; }
+    .prog-label.done    { color: #14d4ae; font-weight: 600; }
+    .prog-label.current { color: #ffffff; font-weight: 600; }
+
+    /* Details row */
+    .detail-rows { display: flex; flex-direction: column; gap: 0.6rem; }
+    .detail-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0.6rem 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+      font-size: 0.88rem;
+    }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-key   { color: rgba(255,255,255,0.45); }
+    .detail-value { color: #ffffff; font-weight: 600; text-align: right; }
+    .detail-value.accent { color: #14d4ae; }
+
+    /* Phase 1 notice */
+    .phase-notice {
+      background: #fff8f0; border-left: 4px solid #e07a3a;
+      border-radius: 10px; padding: 1.2rem 1.4rem;
+      font-size: 0.9rem; color: #7a4a1a; line-height: 1.6;
+      margin-bottom: 1.5rem;
+    }
+    .phase-notice strong { color: #e07a3a; }
+
+    /* Help card */
+    .help-card {
+      background: #ffffff; border-radius: 14px; padding: 1.8rem;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+      animation: fadeInUp 0.8s ease-out 0.4s both;
+    }
+    .help-card h3 { font-size: 1rem; font-weight: 700; color: #1a1a1a; margin-bottom: 1rem; }
+    .help-row {
+      display: flex; align-items: flex-start; gap: 1rem;
+      padding: 0.9rem; background: #f8f9fa; border-radius: 10px;
+      margin-bottom: 0.8rem; transition: background 0.2s;
+    }
+    .help-row:last-child { margin-bottom: 0; }
+    .help-row:hover { background: #f0f9f8; }
+    .help-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 2px; }
+    .help-text h4 { font-size: 0.9rem; font-weight: 700; color: #1a1a1a; margin-bottom: 0.2rem; }
+    .help-text p  { font-size: 0.85rem; color: #4a4a4a; line-height: 1.5; }
+    .help-text a  { color: #2a9d8f; font-weight: 600; text-decoration: none; }
+    .help-text a:hover { text-decoration: underline; }
+
+    /* ── Footer ── */
+    .footer { background: #1a1a1a; color: #ffffff; padding: 4rem 0 2rem; margin-top: 4rem; }
+    .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 3rem; margin-bottom: 3rem; }
+    .footer-brand img { height: 44px; margin-bottom: 1rem; }
+    .footer-brand p { font-size: 0.88rem; color: rgba(255,255,255,0.55); line-height: 1.7; }
+    .footer-col h4 { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #14d4ae; margin-bottom: 1rem; }
+    .footer-col a { display: block; font-size: 0.88rem; color: rgba(255,255,255,0.55); text-decoration: none; margin-bottom: 0.5rem; transition: color 0.2s; }
+    .footer-col a:hover { color: #ffffff; }
+    .footer-bottom { border-top: 1px solid rgba(255,255,255,0.08); padding-top: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
+    .footer-bottom p { font-size: 0.82rem; color: rgba(255,255,255,0.4); }
+
+    /* ── Responsive ── */
+    @media (max-width: 968px) {
+      .links {
+        display: none; position: absolute; top: 100%; left: 0; right: 0;
+        background: #ffffff; flex-direction: column; align-items: stretch;
+        gap: 0; box-shadow: 0 8px 20px rgba(0,0,0,0.1); z-index: 99;
+      }
+      .links.open { display: flex; }
+      .links a { padding: 1rem 2rem; border-bottom: 1px solid #f0f0f0; font-size: 0.95rem; }
+      .links a:last-child { border-bottom: none; }
+      .links a::after { display: none; }
+      .links a.nav-login { margin: 0.8rem 1.5rem; text-align: center; }
+      .nav-inner { position: relative; }
+      .mobile-toggle { display: block; }
+      .page-header h1 { font-size: 2.4rem; }
+      .footer-grid { grid-template-columns: 1fr 1fr; gap: 2rem; }
+    }
+
+    @media (max-width: 640px) {
+      .container { padding: 0 1.5rem; }
+      .brand { flex-direction: column; align-items: flex-start; gap: 0.3rem; }
+      .page { padding: 3rem 0 4rem; }
+      .page-header h1 { font-size: 2rem; }
+      .track-card { padding: 1.8rem; }
+      .prog-label { font-size: 0.6rem; max-width: 50px; }
+      .footer-grid { grid-template-columns: 1fr; }
+      .footer-bottom { flex-direction: column; text-align: center; }
+    }
+  
+
+    /* Mobile header fit fix */
+    @media (max-width: 768px) {
+      .nav .container {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+      }
+
+      .nav-inner {
+        gap: 0.75rem !important;
+        min-width: 0;
+      }
+
+      .brand {
+        flex: 1 1 auto !important;
+        min-width: 0;
+        gap: 0.55rem !important;
+        margin-right: 0 !important;
+      }
+
+      .brand img {
+        height: 42px !important;
+        flex: 0 0 auto;
+      }
+
+      .badge {
+        white-space: normal !important;
+        line-height: 1.25;
+        font-size: 0.7rem !important;
+        max-width: 150px;
+      }
+
+      .mobile-toggle {
+        display: flex !important;
+        flex: 0 0 auto;
+        padding: 0.65rem 0.8rem !important;
+        min-width: 72px;
+        max-width: 92px;
+        white-space: nowrap;
+      }
+
+      .mobile-toggle::before {
+        content: "☰" !important;
+        margin-right: 0.4rem !important;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .badge {
+        max-width: 126px;
+        font-size: 0.66rem !important;
+      }
+
+      .mobile-toggle {
+        min-width: 64px;
+        max-width: 78px;
+        padding: 0.6rem 0.65rem !important;
+      }
+    }
+
+  </style>
+</head>
+<body>
+
+  <header class="nav">
+    <div class="container">
+      <div class="nav-inner">
+        <a class="brand" href="index.html" aria-label="VirtuDrop Home">
+          <img src="assets/logo.png" alt="VirtuDrop logo" />
+          <span class="badge">Professional • Reliable • Structured</span>
+        </a>
+        <button class="mobile-toggle" type="button" data-mobile-toggle>Menu</button>
+        <nav class="links" data-nav-links>
+          <a href="index.html">Home</a>
+          <a href="how-it-works.html">How It Works</a>
+          <a href="pricing.html">Pricing</a>
+          <a href="zones.html">Delivery Zones</a>
+          <a href="business-clients.html">Business Clients</a>
+          <a href="calculator.html">Calculator</a>
+          <a href="track.html" aria-current="page">Track Delivery</a>
+          <a href="contact.html">Contact</a>
+          <a href="auth.html" class="nav-login">Login/Register</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="page">
+      <div class="container">
+
+        <div class="page-header">
+          <h1>Track Your Delivery</h1>
+          <p>Enter your order details or use your tracking link to check your delivery status.</p>
+        </div>
+
+        <div class="track-container">
+
+          <!-- ── Method Tabs ── -->
+          <div class="method-tabs">
+            <button class="method-tab active" onclick="switchTab('lookup', this)">
+              🔍 Phone &amp; Order ID
+            </button>
+            <button class="method-tab" onclick="switchTab('link', this)">
+              🔗 Tracking Link
+            </button>
+          </div>
+
+          <!-- ── Panel 1: Phone + Order ID ── -->
+          <div class="track-panel active" id="panel-lookup">
+            <div class="track-card">
+              <div class="field">
+                <label for="trackPhone">Phone Number <span>(used when your order was placed)</span></label>
+                <div class="phone-row">
+                  <span class="phone-prefix">868 –</span>
+                  <input class="input" type="tel" id="trackPhone" placeholder="XXX-XXXX" maxlength="8" />
+                </div>
+                <span class="error-msg" id="phoneErr">Please enter a valid 7-digit phone number.</span>
+              </div>
+
+              <div class="field">
+                <label for="trackOrderId">Order ID <span>(e.g. VDYYMMDD-001)</span></label>
+                <input class="input" type="text" id="trackOrderId" placeholder="VDYYMMDD-001" style="text-transform:uppercase;" />
+                <span class="error-msg" id="orderErr">Please enter your Order ID.</span>
+              </div>
+
+              <button class="submit-btn" onclick="handleLookup()">
+                <span class="btn-text">Track My Delivery →</span>
+                <div class="spinner"></div>
+              </button>
+            </div>
+
+            <!-- Result panel -->
+            <div class="result-panel" id="lookupResult"></div>
+          </div>
+
+          <!-- ── Panel 2: Tracking Link ── -->
+          <div class="track-panel" id="panel-link">
+            <div class="track-card">
+              <div class="link-instructions">
+                <h4>Where is my tracking link?</h4>
+                <ol>
+                  <li>After you submitted your delivery order, a tracking link was sent to your WhatsApp number.</li>
+                  <li>The message will be from VirtuDrop and will include a link like the one below.</li>
+                  <li>Click the link in your WhatsApp to open this page with your order loaded automatically.</li>
+                </ol>
+                <div class="link-example">virtuforms.net/virtudrop/track.html?order=VDYYMMDD-001&token=tracking-token</div>
+              </div>
+
+              <div class="field">
+                <label for="trackToken">Paste Your Tracking Link <span>(optional — paste the full link here)</span></label>
+                <input class="input" type="url" id="trackToken" placeholder="https://virtuforms.net/virtudrop/track.html?order=VDYYMMDD-001&token=..." />
+                <span class="error-msg" id="tokenErr">Please paste your full tracking link.</span>
+              </div>
+
+              <button class="submit-btn" onclick="handleLink()">
+                <span class="btn-text">Load My Order →</span>
+                <div class="spinner"></div>
+              </button>
+            </div>
+
+            <!-- Result panel -->
+            <div class="result-panel" id="linkResult"></div>
+          </div>
+
+          <!-- ── Help Card ── -->
+          <div class="help-card" style="margin-top:2rem;">
+            <h3>Need help?</h3>
+            <div class="help-row">
+              <span class="help-icon">📲</span>
+              <div class="help-text">
+                <h4>Check your WhatsApp</h4>
+                <p>Your tracking link and order updates are sent directly to your WhatsApp number. Check for a message from VirtuDrop.</p>
+              </div>
+            </div>
+            <div class="help-row">
+              <span class="help-icon">🔍</span>
+              <div class="help-text">
+                <h4>Lost your Order ID?</h4>
+                <p>Your Order ID starts with <strong>VD</strong> followed by the date and a number — for example <strong>VDYYMMDD-001</strong>. It was included in your WhatsApp confirmation.</p>
+              </div>
+            </div>
+            <div class="help-row">
+              <span class="help-icon">💬</span>
+              <div class="help-text">
+                <h4>Still can't find your order?</h4>
+                <p><a href="contact.html">Contact VirtuDrop</a> with your name and phone number and we'll look it up for you.</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ── Footer ── -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <img src="assets/logo.png" alt="VirtuDrop" onerror="this.style.display='none'" />
+          <p>Zone-based, scheduled delivery for businesses across Trinidad. Structured logistics you can count on.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Services</h4>
+          <a href="pricing.html">Pricing</a>
+          <a href="zones.html">Delivery Zones</a>
+          <a href="calculator.html">Calculator</a>
+          <a href="business-clients.html">Business Clients</a>
+        </div>
+        <div class="footer-col">
+          <h4>Company</h4>
+          <a href="how-it-works.html">How It Works</a>
+          <a href="about.html">About</a>
+          <a href="contact.html">Contact</a>
+          <a href="faq.html">FAQ</a>
+        </div>
+        <div class="footer-col">
+          <h4>Account</h4>
+          <a href="auth.html">Login</a>
+          <a href="auth.html">Register</a>
+          <a href="track.html">Track Delivery</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>© 2026 VirtuDrop · A VirtuForms Ltd Service · Trinidad and Tobago</p>
+        <p>797-3542 &nbsp;|&nbsp; 470-3704</p>
+      </div>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+    const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnbXp6YXZ4aHVhcmxhY252bm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Mjk4NTksImV4cCI6MjA5NDIwNTg1OX0.7-YKlwLrhUYUYbiii93ZvgX01TxVephApDNCP50Rl54';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const toggle = document.querySelector('[data-mobile-toggle]');
+    const navLinks = document.querySelector('[data-nav-links]');
+    if (toggle && navLinks) {
+      toggle.addEventListener('click', () => {
+        navLinks.classList.toggle('open');
+        toggle.textContent = navLinks.classList.contains('open') ? 'Close' : 'Menu';
+      });
+    }
+
+    window.switchTab = function(id, btn) {
+      document.querySelectorAll('.track-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.method-tab').forEach(b => b.classList.remove('active'));
+      document.getElementById('panel-' + id).classList.add('active');
+      btn.classList.add('active');
+    };
+
+    const STATUS = {
+      zone_pending: { label: 'Request Received', icon: '📋', badge: 'received', step: 0, message: 'Your order has been received and is waiting for zone confirmation.' },
+      confirmed: { label: 'Confirmed', icon: '✅', badge: 'received', step: 0, message: 'Your delivery has been confirmed and is waiting for driver assignment.' },
+      assigned: { label: 'Driver Assigned', icon: '📦', badge: 'collected', step: 1, message: 'A driver has been assigned to your order.' },
+      out_for_delivery: { label: 'Out for Delivery', icon: '🚚', badge: 'out', step: 2, message: 'Your package is out for delivery today. The driver will contact you shortly.' },
+      delivered: { label: 'Delivered', icon: '✅', badge: 'delivered', step: 3, message: 'Your package has been delivered successfully.' },
+      failed: { label: 'Failed Attempt', icon: '❌', badge: 'failed', step: 3, message: 'A delivery attempt was made but was unsuccessful. Please contact the seller or VirtuDrop.' },
+      rescheduled: { label: 'Rescheduled', icon: '🔄', badge: 'rescheduled', step: 3, message: 'Your delivery has been rescheduled to the next available cycle.' }
+    };
+
+    const STEP_LABELS = ['Received', 'Driver Assigned', 'Out for Delivery', 'Delivered'];
+
+    function statusFor(order) {
+      return STATUS[order.order_status] || STATUS.zone_pending;
+    }
+
+    function buildResultHTML(order) {
+      const st = statusFor(order);
+      const step = st.step;
+      const prog = step / 3 * 100;
+
+      const progressSteps = STEP_LABELS.map((label, i) => {
+        let dotClass = '';
+        let labelClass = '';
+        if (i < step || (order.order_status === 'delivered' && i === 3)) {
+          dotClass = 'done';
+          labelClass = 'done';
+        } else if (i === step && order.order_status !== 'delivered') {
+          dotClass = 'current';
+          labelClass = 'current';
+        }
+        return `
+          <div class="prog-step">
+            <div class="prog-dot ${dotClass}">${i < step || order.order_status === 'delivered' ? '✓' : i + 1}</div>
+            <div class="prog-label ${labelClass}">${label}</div>
+          </div>`;
+      }).join('');
+
+      return `
+        <div class="status-card">
+          <div class="status-card-top">
+            <div>
+              <div class="order-id-label">Order ID</div>
+              <div class="order-id-value">${order.order_number}</div>
+            </div>
+            <span class="status-badge ${st.badge}">${st.icon} ${st.label}</span>
+          </div>
+
+          <div class="progress-track">
+            <div class="progress-steps">
+              <div class="progress-fill" style="width: calc(${prog}% - 28px);"></div>
+              ${progressSteps}
+            </div>
+          </div>
+
+          <div class="detail-rows">
+            <div class="detail-row">
+              <span class="detail-key">Customer</span>
+              <span class="detail-value">${order.customer_name || 'Customer'}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-key">Client / Business</span>
+              <span class="detail-value">${order.business_name || 'VirtuDrop Client'}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-key">Delivery Area</span>
+              <span class="detail-value accent">${order.area_name || 'To be confirmed'}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-key">Order Date</span>
+              <span class="detail-value">${order.created_at ? new Date(order.created_at).toLocaleDateString('en-TT') : '—'}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-key">Status Message</span>
+              <span class="detail-value" style="text-align:right; font-size:0.82rem; font-weight:400; color:rgba(255,255,255,0.65);">${st.message}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function showNotFound(result, message) {
+      result.innerHTML = `
+        <div style="background:#fff3f3; border-left:4px solid #e05555; border-radius:12px; padding:1.5rem; font-size:0.95rem; color:#8b2020; line-height:1.7;">
+          ❌ <strong>Order not found.</strong> ${message} If you need help, <a href="contact.html" style="color:#2a9d8f; font-weight:600;">contact us</a>.
+        </div>`;
+      result.classList.add('show');
+      result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    async function lookupOrder({ orderNumber, phone, token, result, button }) {
+      button.classList.add('loading');
+      result.classList.remove('show');
+
+      try {
+        const { data, error } = await supabase.rpc('public_track_order', {
+          p_order_number: orderNumber || null,
+          p_customer_phone: phone || null,
+          p_tracking_token: token || null
+        });
+
+        if (error) throw error;
+        const order = Array.isArray(data) ? data[0] : data;
+
+        if (!order) {
+          showNotFound(result, 'Please check your details and try again.');
+          return;
+        }
+
+        result.innerHTML = buildResultHTML(order);
+        result.classList.add('show');
+        result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } catch (error) {
+        console.error('Tracking lookup error:', error);
+        showNotFound(result, error.message || 'Please check your details and try again.');
+      } finally {
+        button.classList.remove('loading');
+      }
+    }
+
+    window.handleLookup = function() {
+      const phone = document.getElementById('trackPhone').value.trim().replace(/\D/g, '');
+      const orderId = document.getElementById('trackOrderId').value.trim().toUpperCase();
+      const btn = document.querySelector('#panel-lookup .submit-btn');
+      const result = document.getElementById('lookupResult');
+      let valid = true;
+
+      document.getElementById('trackPhone').classList.remove('error');
+      document.getElementById('trackOrderId').classList.remove('error');
+      document.getElementById('phoneErr').classList.remove('show');
+      document.getElementById('orderErr').classList.remove('show');
+
+      if (!phone || phone.length !== 7) {
+        document.getElementById('trackPhone').classList.add('error');
+        document.getElementById('phoneErr').classList.add('show');
+        valid = false;
+      }
+      if (!orderId) {
+        document.getElementById('trackOrderId').classList.add('error');
+        document.getElementById('orderErr').classList.add('show');
+        valid = false;
+      }
+      if (!valid) return;
+
+      lookupOrder({ orderNumber: orderId, phone: '868' + phone, result, button: btn });
+    };
+
+    function parseTrackingLink(value) {
+      let order = null;
+      let token = null;
+      try {
+        const url = new URL(value, window.location.origin);
+        order = url.searchParams.get('order');
+        token = url.searchParams.get('token');
+        if (!order) {
+          const match = url.pathname.match(/track\/?([A-Z0-9-]+)?/i);
+          order = match?.[1] || null;
+        }
+      } catch {
+        const orderMatch = value.match(/VD\d{6}-\d+/i);
+        const tokenMatch = value.match(/token=([^&\s]+)/i);
+        order = orderMatch?.[0] || null;
+        token = tokenMatch?.[1] || null;
+      }
+      return { order: order ? order.toUpperCase() : null, token };
+    }
+
+    window.handleLink = function() {
+      const linkVal = document.getElementById('trackToken').value.trim();
+      const btn = document.querySelector('#panel-link .submit-btn');
+      const result = document.getElementById('linkResult');
+
+      document.getElementById('trackToken').classList.remove('error');
+      document.getElementById('tokenErr').classList.remove('show');
+
+      if (!linkVal) {
+        document.getElementById('trackToken').classList.add('error');
+        document.getElementById('tokenErr').classList.add('show');
+        return;
+      }
+
+      const parsed = parseTrackingLink(linkVal);
+      if (!parsed.order || !parsed.token) {
+        showNotFound(result, 'Please paste the full tracking link from WhatsApp.');
+        return;
+      }
+
+      lookupOrder({ orderNumber: parsed.order, token: parsed.token, result, button: btn });
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
+      const phone = params.get('phone');
+      const orderId = params.get('order');
+      const token = params.get('token');
+
+      if (token && orderId) {
+        document.querySelectorAll('.track-panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.method-tab').forEach(b => b.classList.remove('active'));
+        document.getElementById('panel-link').classList.add('active');
+        document.querySelectorAll('.method-tab')[1].classList.add('active');
+        document.getElementById('trackToken').value = window.location.href;
+        handleLink();
+      } else if (phone && orderId) {
+        const cleaned = phone.replace(/[^0-9]/g, '').slice(-7);
+        document.getElementById('trackPhone').value = cleaned;
+        document.getElementById('trackOrderId').value = orderId.toUpperCase();
+        handleLookup();
+      }
+    });
+  </script>
+
+
+</body>
+</html>

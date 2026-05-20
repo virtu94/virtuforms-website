@@ -1,0 +1,2900 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-store" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <title>Admin Dashboard | VirtuDrop</title>
+  <link rel="icon" href="assets/logo.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --teal-dark:   #0d2b28;
+      --teal-mid:    #2a9d8f;
+      --teal-bright: #14d4ae;
+      --teal-pale:   #f0f9f8;
+      --teal-light:  #e8f5f3;
+      --orange:      #e07a3a;
+      --orange-pale: #fff8f0;
+      --red:         #e05555;
+      --red-pale:    #fde8e8;
+      --green:       #27ae60;
+      --green-pale:  #d4edda;
+      --yellow:      #f0c040;
+      --yellow-pale: #fff3cd;
+      --blue:        #3498db;
+      --blue-pale:   #cce5ff;
+      --white:       #ffffff;
+      --black:       #1a1a1a;
+      --grey:        #4a4a4a;
+      --grey-light:  #f8f9fa;
+      --grey-mid:    #e0e0e0;
+      --sidebar-w:   260px;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f0f4f3; color: var(--black);
+      line-height: 1.6; min-height: 100vh; display: flex;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: var(--sidebar-w); min-width: var(--sidebar-w);
+      background: var(--teal-dark); color: var(--white);
+      display: flex; flex-direction: column;
+      position: fixed; top: 0; left: 0; height: 100vh;
+      z-index: 200; transition: transform 0.3s ease;
+    }
+
+    .sidebar-brand {
+      display: flex; align-items: center; gap: 0.8rem;
+      padding: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.08);
+      text-decoration: none;
+    }
+    .brand-mark {
+      width: 38px; height: 38px; background: var(--teal-mid);
+      border-radius: 10px; display: flex; align-items: center;
+      justify-content: center; font-weight: 800; font-size: 0.9rem; color: var(--white);
+      flex-shrink: 0;
+    }
+    .brand-text { font-size: 1rem; font-weight: 700; color: var(--white); line-height: 1.2; }
+    .brand-text span { display: block; font-size: 0.68rem; font-weight: 500; color: var(--teal-bright); letter-spacing: 0.5px; }
+
+    .sidebar-admin {
+      padding: 1rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.08);
+      display: flex; align-items: center; gap: 0.8rem;
+    }
+    .admin-avatar {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, var(--orange), #f0a060);
+      border-radius: 50%; display: flex; align-items: center;
+      justify-content: center; font-weight: 700; font-size: 0.9rem; color: var(--white); flex-shrink: 0;
+    }
+    .admin-info .admin-name { font-size: 0.9rem; font-weight: 600; color: var(--white); }
+    .admin-info .admin-role { font-size: 0.72rem; color: var(--orange); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .sidebar-nav { flex: 1; padding: 0.8rem 0; overflow-y: auto; }
+
+    .nav-section-label {
+      font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1.2px; color: rgba(255,255,255,0.3);
+      padding: 0.8rem 1.5rem 0.4rem;
+    }
+
+    .nav-item {
+      display: flex; align-items: center; gap: 0.9rem;
+      padding: 0.8rem 1.5rem; color: rgba(255,255,255,0.6);
+      text-decoration: none; font-size: 0.9rem; font-weight: 500;
+      cursor: pointer; transition: all 0.2s; border-left: 3px solid transparent;
+      background: none; border-top: none; border-right: none; border-bottom: none;
+      width: 100%; text-align: left;
+    }
+    .nav-item:hover { color: var(--white); background: rgba(255,255,255,0.05); }
+    .nav-item.active { color: var(--teal-bright); border-left-color: var(--teal-bright); background: rgba(20,212,174,0.08); font-weight: 600; }
+    .nav-icon { font-size: 1rem; width: 20px; text-align: center; flex-shrink: 0; }
+    .nav-badge {
+      margin-left: auto; padding: 0.15rem 0.5rem; border-radius: 10px;
+      font-size: 0.68rem; font-weight: 700;
+    }
+    .nav-badge.alert { background: var(--red); color: var(--white); }
+    .nav-badge.info  { background: var(--teal-bright); color: var(--teal-dark); }
+
+    .sidebar-footer {
+      padding: 1rem 1.5rem; border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .logout-btn {
+      display: flex; align-items: center; gap: 0.7rem;
+      color: rgba(255,255,255,0.4); font-size: 0.88rem; font-weight: 500;
+      cursor: pointer; background: none; border: none; width: 100%;
+      text-align: left; transition: color 0.2s; padding: 0.4rem 0;
+    }
+    .logout-btn:hover { color: var(--red); }
+
+    /* ── Main ── */
+    .main {
+      margin-left: var(--sidebar-w); flex: 1;
+      display: flex; flex-direction: column; min-height: 100vh;
+    }
+
+    .topbar {
+      background: var(--white); padding: 0 2rem;
+      height: 60px; display: flex; align-items: center;
+      justify-content: space-between; gap: 1.5rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .page-title { font-size: 1.1rem; font-weight: 700; color: var(--black); }
+    .topbar-right { display: flex; align-items: center; gap: 1rem; }
+    .topbar-date { font-size: 0.82rem; color: var(--grey); }
+    .topbar-notif {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: var(--grey-light); display: flex; align-items: center;
+      justify-content: center; font-size: 1rem; cursor: pointer;
+      position: relative; transition: background 0.2s;
+    }
+    .topbar-notif:hover { background: var(--teal-light); }
+    .notif-dot {
+      width: 8px; height: 8px; background: var(--red);
+      border-radius: 50%; position: absolute; top: 6px; right: 6px;
+      border: 2px solid var(--white);
+    }
+
+    .content { flex: 1; padding: 2rem; overflow-y: auto; }
+
+    /* ── Panels ── */
+    .panel { display: none; animation: fadeIn 0.4s ease-out; }
+    .panel.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    .section-heading { margin-bottom: 1.5rem; }
+    .section-heading h2 { font-size: 1.3rem; font-weight: 700; color: var(--black); }
+    .section-heading p  { font-size: 0.88rem; color: var(--grey); margin-top: 0.2rem; }
+
+    /* ── Stat Cards ── */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1.2rem; margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: var(--white); border-radius: 14px; padding: 1.4rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      border-left: 4px solid var(--teal-mid); transition: transform 0.2s;
+    }
+    .stat-card:hover { transform: translateY(-3px); }
+    .stat-card.alert { border-left-color: var(--red); }
+    .stat-card.warn  { border-left-color: var(--orange); }
+    .stat-card.ok    { border-left-color: var(--green); }
+    .stat-card.blue  { border-left-color: var(--blue); }
+    .stat-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--grey); margin-bottom: 0.4rem; }
+    .stat-val   { font-size: 2rem; font-weight: 800; color: var(--black); line-height: 1; margin-bottom: 0.2rem; }
+    .stat-sub   { font-size: 0.78rem; color: var(--grey); }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--white); border-radius: 14px; padding: 1.5rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 1.5rem;
+    }
+    .card-title {
+      font-size: 0.88rem; font-weight: 700; color: var(--black);
+      margin-bottom: 1.2rem; display: flex; align-items: center;
+      justify-content: space-between; gap: 1rem;
+    }
+
+    /* ── Tables ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 600px; }
+    thead th {
+      text-align: left; padding: 0.7rem 1rem;
+      font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; color: var(--grey);
+      border-bottom: 2px solid #f0f0f0; white-space: nowrap;
+    }
+    tbody td { padding: 0.85rem 1rem; border-bottom: 1px solid #f5f5f5; vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: var(--grey-light); }
+    .td-id { font-family: 'Courier New', monospace; font-size: 0.8rem; color: var(--teal-mid); font-weight: 700; white-space: nowrap; }
+    .td-name { font-weight: 600; color: var(--black); }
+    .td-sub  { font-size: 0.78rem; color: var(--grey); }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      padding: 0.25rem 0.7rem; border-radius: 20px;
+      font-size: 0.72rem; font-weight: 700; white-space: nowrap;
+    }
+    .badge-pending    { background: var(--yellow-pale); color: #856404; }
+    .badge-confirmed  { background: var(--green-pale);  color: #155724; }
+    .badge-active     { background: var(--blue-pale);   color: #004085; }
+    .badge-delivered  { background: #d4edda;            color: #155724; }
+    .badge-failed     { background: var(--red-pale);    color: #8b2020; }
+    .badge-remote     { background: #e8e8e8;            color: #4a4a4a; }
+    .badge-locked     { background: var(--red-pale);    color: var(--red); }
+    .badge-active-acc { background: var(--green-pale);  color: var(--green); }
+    .badge-paid       { background: var(--green-pale);  color: #155724; }
+    .badge-unpaid     { background: var(--yellow-pale); color: #856404; }
+    .badge-cod        { background: var(--orange-pale); color: var(--orange); }
+    .badge-online     { background: var(--teal-light);  color: var(--teal-mid); }
+    .badge-rescheduled { background: var(--yellow-pale); color: #856404; }
+
+    /* ── Action buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.45rem 1rem; border-radius: 8px; font-family: 'Inter', sans-serif;
+      font-size: 0.8rem; font-weight: 600; cursor: pointer;
+      transition: all 0.2s; border: 2px solid transparent; white-space: nowrap;
+    }
+    .btn-primary { background: var(--teal-mid); color: var(--white); border-color: var(--teal-mid); }
+    .btn-primary:hover { background: #238277; border-color: #238277; }
+    .btn-danger  { background: var(--red-pale); color: var(--red); border-color: var(--red); }
+    .btn-danger:hover { background: var(--red); color: var(--white); }
+    .btn-ghost   { background: var(--grey-light); color: var(--grey); border-color: var(--grey-mid); }
+    .btn-ghost:hover { border-color: var(--teal-mid); color: var(--teal-mid); }
+    .btn-warn    { background: var(--orange-pale); color: var(--orange); border-color: var(--orange); }
+    .btn-warn:hover { background: var(--orange); color: var(--white); }
+    .btn-sm { padding: 0.35rem 0.8rem; font-size: 0.75rem; }
+
+    /* ── Filter bar ── */
+    .filter-bar {
+      display: flex; gap: 0.6rem; flex-wrap: wrap;
+      margin-bottom: 1.2rem; align-items: center;
+    }
+    .filter-input {
+      padding: 0.55rem 1rem; border: 2px solid var(--grey-mid);
+      border-radius: 8px; font-family: 'Inter', sans-serif;
+      font-size: 0.85rem; color: var(--black); background: var(--white);
+      transition: border-color 0.2s; min-width: 180px;
+    }
+    .filter-input:focus { outline: none; border-color: var(--teal-mid); }
+    .filter-select {
+      padding: 0.55rem 2rem 0.55rem 0.9rem;
+      border: 2px solid var(--grey-mid); border-radius: 8px;
+      font-family: 'Inter', sans-serif; font-size: 0.85rem;
+      color: var(--black); background: var(--white);
+      appearance: none; cursor: pointer; transition: border-color 0.2s;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%232a9d8f' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 0.7rem center;
+    }
+    .filter-select:focus { outline: none; border-color: var(--teal-mid); }
+
+    /* ── Zone confirm card ── */
+    .zone-card {
+      background: var(--white); border-radius: 14px; padding: 1.4rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 1rem;
+      border-left: 4px solid var(--yellow);
+      display: grid; grid-template-columns: 1fr auto;
+      gap: 1rem; align-items: start;
+    }
+    .zone-card-order { font-family: 'Courier New', monospace; font-size: 0.82rem; color: var(--teal-mid); font-weight: 700; }
+    .zone-card-client { font-size: 0.82rem; color: var(--grey); margin-bottom: 0.6rem; }
+    .zone-card-address { font-size: 0.9rem; color: var(--black); font-weight: 500; margin-bottom: 0.4rem; }
+    .zone-card-coords  { font-size: 0.78rem; color: var(--grey); font-family: 'Courier New', monospace; }
+    .zone-card-suggest { margin-top: 0.6rem; display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; }
+    .zone-card-actions { display: flex; flex-direction: column; gap: 0.5rem; min-width: 150px; }
+    .zone-select {
+      width: 100%; padding: 0.5rem 0.8rem; border: 2px solid var(--grey-mid);
+      border-radius: 8px; font-family: 'Inter', sans-serif; font-size: 0.82rem;
+      color: var(--black); background: var(--white); cursor: pointer;
+      appearance: none;
+    }
+    .zone-select:focus { outline: none; border-color: var(--teal-mid); }
+    .maps-link { font-size: 0.78rem; color: var(--teal-mid); text-decoration: none; font-weight: 600; }
+    .maps-link:hover { text-decoration: underline; }
+
+    /* Live accounting layout - Codex */
+    .accounting-note {
+      padding: 0.9rem 1rem;
+      background: var(--teal-light);
+      border: 1px solid rgba(45,166,155,0.25);
+      border-radius: 8px;
+      color: var(--teal-dark);
+      font-size: 0.88rem;
+      line-height: 1.55;
+      margin-bottom: 1rem;
+    }
+    .accounting-total {
+      font-weight: 800;
+      color: var(--teal-mid);
+    }
+    .accounting-muted {
+      color: var(--grey);
+      font-size: 0.82rem;
+    }
+    .finance-actions {
+      display: flex;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+    }
+    .finance-filter-grid,
+    .historical-form-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.85rem;
+      align-items: end;
+      margin-bottom: 1rem;
+    }
+    .finance-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+    .finance-field label {
+      font-size: 0.74rem;
+      font-weight: 700;
+      color: var(--black);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .csv-drop {
+      border: 2px dashed rgba(45,166,155,0.4);
+      background: var(--teal-light);
+      border-radius: 8px;
+      padding: 1rem;
+      display: grid;
+      gap: 0.75rem;
+    }
+    .csv-help {
+      color: var(--grey);
+      font-size: 0.84rem;
+      line-height: 1.6;
+    }
+    .preview-status {
+      font-size: 0.84rem;
+      font-weight: 700;
+    }
+    .preview-status.ok { color: var(--green); }
+    .preview-status.bad { color: var(--red); }
+    .payment-modal-form {
+      display: grid;
+      gap: 0.8rem;
+      margin: 1rem 0;
+      text-align: left;
+    }
+    .payment-modal-form label {
+      display: grid;
+      gap: 0.3rem;
+      color: var(--black);
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .payment-modal-form input,
+    .payment-modal-form select,
+    .payment-modal-form textarea {
+      width: 100%;
+      padding: 0.65rem 0.8rem;
+      border: 2px solid var(--grey-mid);
+      border-radius: 8px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.88rem;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .payment-modal-form textarea {
+      min-height: 76px;
+      resize: vertical;
+    }
+    @media (max-width: 900px) {
+      .finance-filter-grid,
+      .historical-form-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+    @media (max-width: 520px) {
+      .finance-filter-grid,
+      .historical-form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ── Remittance log form ── */
+    .remit-form {
+      display: grid; grid-template-columns: 1fr 1fr 1fr auto;
+      gap: 0.8rem; align-items: end; margin-bottom: 1.5rem; flex-wrap: wrap;
+    }
+    .remit-field { display: flex; flex-direction: column; gap: 0.3rem; }
+    .remit-field label { font-size: 0.78rem; font-weight: 600; color: var(--black); }
+    .remit-input {
+      padding: 0.6rem 0.9rem; border: 2px solid var(--grey-mid); border-radius: 8px;
+      font-family: 'Inter', sans-serif; font-size: 0.85rem; color: var(--black);
+      background: var(--white); transition: border-color 0.2s;
+    }
+    .remit-input:focus { outline: none; border-color: var(--teal-mid); }
+
+    /* ── Account cards ── */
+    .accounts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    .account-card {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 1.2rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr);
+      gap: 1rem;
+      align-items: start;
+      transition: box-shadow 0.2s;
+    }
+    .account-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+    .account-card.locked { border-left: 4px solid var(--red); }
+    .acc-avatar {
+      width: 44px; height: 44px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 1rem; color: var(--white);
+      flex-shrink: 0;
+    }
+    .acc-avatar.client  { background: linear-gradient(135deg, var(--teal-mid), var(--teal-bright)); }
+    .acc-avatar.driver  { background: linear-gradient(135deg, var(--blue), #5dade2); }
+    .acc-avatar.admin   { background: linear-gradient(135deg, var(--orange), #f0a060); }
+    .acc-avatar.customer { background: linear-gradient(135deg, #8e44ad, #a569bd); }
+    .acc-info { min-width: 0; }
+    .acc-name { font-size: 0.9rem; font-weight: 700; color: var(--black); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .acc-meta {
+      font-size: 0.78rem;
+      color: var(--grey);
+      margin-top: 0.1rem;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+    .acc-actions {
+      grid-column: 2;
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 0.8rem;
+    }
+    .acc-actions .btn {
+      min-width: 90px;
+      justify-content: center;
+    }
+
+    /* ── Settings ── */
+    .settings-section { margin-bottom: 2rem; }
+    .settings-section h3 { font-size: 1rem; font-weight: 700; color: var(--black); margin-bottom: 1rem; padding-bottom: 0.6rem; border-bottom: 2px solid #f0f0f0; }
+    .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 0.9rem 0; border-bottom: 1px solid #f5f5f5; gap: 1rem; }
+    .setting-row:last-child { border-bottom: none; }
+    .setting-label h4 { font-size: 0.9rem; font-weight: 600; color: var(--black); }
+    .setting-label p  { font-size: 0.8rem; color: var(--grey); margin-top: 0.1rem; }
+    .toggle {
+      width: 44px; height: 24px; background: var(--grey-mid); border-radius: 12px;
+      cursor: pointer; transition: background 0.3s; position: relative; flex-shrink: 0;
+    }
+    .toggle.on { background: var(--teal-mid); }
+    .toggle::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 18px; height: 18px; background: var(--white);
+      border-radius: 50%; transition: transform 0.3s;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    }
+    .toggle.on::after { transform: translateX(20px); }
+    .setting-input {
+      padding: 0.5rem 0.9rem; border: 2px solid var(--grey-mid); border-radius: 8px;
+      font-family: 'Inter', sans-serif; font-size: 0.88rem; color: var(--black);
+      background: var(--white); width: 120px;
+    }
+    .setting-input:focus { outline: none; border-color: var(--teal-mid); }
+
+    /* ── Quick action pending strip ── */
+    .pending-strip {
+      background: var(--yellow-pale); border: 1px solid #f0c040;
+      border-radius: 12px; padding: 1rem 1.4rem;
+      display: flex; align-items: center; gap: 1rem;
+      margin-bottom: 1.5rem; flex-wrap: wrap;
+    }
+    .pending-strip-icon { font-size: 1.4rem; flex-shrink: 0; }
+    .pending-strip-text { flex: 1; }
+    .pending-strip-text h4 { font-size: 0.92rem; font-weight: 700; color: #7a5a00; }
+    .pending-strip-text p  { font-size: 0.82rem; color: #856404; }
+
+    /* ── Overview two-col ── */
+    .overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+
+    /* ── Mobile ── */
+    .hamburger {
+      display: none; background: none; border: none; font-size: 1.4rem;
+      cursor: pointer; color: var(--black); padding: 0.3rem;
+    }
+    .sidebar-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5); z-index: 150;
+    }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5); z-index: 500;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: var(--white); border-radius: 16px; padding: 2rem;
+      max-width: 420px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+      animation: fadeIn 0.3s ease;
+    }
+    .modal h3 { font-size: 1.1rem; font-weight: 700; color: var(--black); margin-bottom: 0.6rem; }
+    .modal p  { font-size: 0.9rem; color: var(--grey); line-height: 1.6; margin-bottom: 1.5rem; }
+    .modal-actions { display: flex; gap: 0.8rem; justify-content: flex-end; }
+
+    @media (max-width: 968px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-overlay.show { display: block; }
+      .main { margin-left: 0; }
+      .hamburger { display: block; }
+      .overview-grid { grid-template-columns: 1fr; }
+      .remit-form { grid-template-columns: 1fr 1fr; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 640px) {
+      .content { padding: 1.2rem; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .accounts-grid { grid-template-columns: 1fr; }
+      .zone-card { grid-template-columns: 1fr; }
+      .zone-card-actions { flex-direction: row; flex-wrap: wrap; }
+      .remit-form { grid-template-columns: 1fr; }
+    }
+  
+
+    /* Mobile launch safety layer - Codex */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    .main, .content, .panel, .card, .topbar, .overview-grid, .stats-grid, .accounts-grid, .pending-strip, .zone-card, .remit-form { min-width: 0; max-width: 100%; }
+    .table-wrap, div[style*="overflow-x:auto"] { max-width: 100%; -webkit-overflow-scrolling: touch; }
+    table { min-width: 620px; }
+    .card, .stat-card, .account-card, .zone-card, .pending-strip, .td-name, .acc-meta { overflow-wrap: anywhere; }
+    .filter-input, .filter-select, .zone-select, select, input, textarea, button { max-width: 100%; }
+    .topbar { min-width: 0; }
+    .page-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .modal { max-width: min(420px, calc(100vw - 2rem)); }
+
+    @media (max-width: 968px) {
+      .sidebar { width: min(84vw, 300px); min-width: 0; }
+      .topbar { padding: 0 1rem; gap: 0.8rem; }
+      .topbar-right { gap: 0.5rem; flex-shrink: 0; }
+      .topbar-date { display: none; }
+      .filter-bar { flex-direction: column; align-items: stretch; }
+      .filter-input, .filter-select { min-width: 0; width: 100%; }
+      .pending-strip { grid-template-columns: 1fr; }
+      .zone-card-actions { min-width: 0; }
+      .modal { width: calc(100vw - 2rem); padding: 1.5rem; }
+      .modal-actions { flex-direction: column; }
+      .modal-actions .btn { width: 100%; justify-content: center; }
+    }
+
+    @media (max-width: 640px) {
+      .content { padding: 1rem 0.75rem; }
+      .stats-grid { grid-template-columns: 1fr; }
+      .section-heading h2 { font-size: 1.15rem; line-height: 1.25; }
+      .section-heading p { font-size: 0.86rem; line-height: 1.5; }
+      .account-card { grid-template-columns: 40px minmax(0, 1fr); gap: 0.8rem; padding: 1rem; }
+      .acc-actions { grid-column: 1 / -1; }
+      .acc-actions .btn { flex: 1 1 120px; }
+      .zone-card-actions { flex-direction: column; }
+      .zone-card-actions .btn { width: 100%; justify-content: center; }
+      table { min-width: 560px; }
+    }
+
+  
+
+    /* Hybrid mobile cards and report tables - Codex */
+    .table-wrap table,
+    div[style*="overflow-x:auto"] table,
+    table {
+      table-layout: auto;
+      min-width: 760px;
+    }
+    .table-wrap th,
+    .table-wrap td,
+    div[style*="overflow-x:auto"] th,
+    div[style*="overflow-x:auto"] td,
+    table th,
+    table td {
+      white-space: nowrap;
+      word-break: normal;
+      overflow-wrap: normal;
+    }
+    .badge,
+    .td-id,
+    .btn-sm {
+      white-space: nowrap;
+      word-break: normal;
+      overflow-wrap: normal;
+      line-height: 1.25;
+    }
+    .td-name,
+    .td-sub,
+    .zone-card-client,
+    .zone-card-address {
+      word-break: normal;
+      overflow-wrap: break-word;
+    }
+    .zone-card,
+    .account-card,
+    .pending-strip {
+      overflow-wrap: normal;
+      word-break: normal;
+    }
+    .zone-card > div:first-child {
+      min-width: 0;
+    }
+    .zone-card-order {
+      white-space: nowrap;
+      word-break: normal;
+      overflow-wrap: normal;
+    }
+    .zone-card-actions {
+      min-width: 190px;
+    }
+    .fee-input {
+      min-width: 110px;
+      text-align: left;
+    }
+    .driver-select {
+      min-width: 170px;
+    }
+    .route-date {
+      min-width: 145px;
+    }
+
+    @media (max-width: 968px) {
+      .zone-card {
+        grid-template-columns: 1fr;
+      }
+      .zone-card-actions {
+        min-width: 0;
+        width: 100%;
+      }
+      .zone-card-actions .btn,
+      .zone-card-actions select,
+      .zone-card-actions input {
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 640px) {
+      table {
+        min-width: 720px;
+      }
+      .pending-strip .btn {
+        width: 100%;
+        justify-content: center;
+      }
+      .zone-card-suggest {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+
+  </style>
+</head>
+<body>
+
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar" id="sidebar">
+    <a class="sidebar-brand" href="index.html">
+      <div class="brand-mark">VD</div>
+      <div class="brand-text">VirtuDrop <span>Admin Panel</span></div>
+    </a>
+
+    <div class="sidebar-admin">
+      <div class="admin-avatar">AD</div>
+      <div class="admin-info">
+        <div class="admin-name">Admin User</div>
+        <div class="admin-role">Administrator</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Dashboard</div>
+      <button class="nav-item active" data-panel="overview">
+        <span class="nav-icon">📊</span> Overview
+      </button>
+
+      <div class="nav-section-label">Orders</div>
+      <button class="nav-item" data-panel="all-orders">
+        <span class="nav-icon">📋</span> All Orders
+        <span class="nav-badge info">34</span>
+      </button>
+      <button class="nav-item" data-panel="zone-confirm">
+        <span class="nav-icon">📍</span> Zone Confirmation
+        <span class="nav-badge alert">5</span>
+      </button>
+      <button class="nav-item" data-panel="driver-assign">
+        <span class="nav-icon">🚚</span> Driver Assignment
+        <span class="nav-badge alert">8</span>
+      </button>
+
+      <div class="nav-section-label">Finance</div>
+      <button class="nav-item" data-panel="cod-mgmt">
+        <span class="nav-icon">💰</span> COD Management
+      </button>
+      <button class="nav-item" data-panel="remittance">
+        <span class="nav-icon">💸</span> Remittance
+      </button>
+      <button class="nav-item" data-panel="historical-import">
+        <span class="nav-icon">📥</span> Historical Import
+      </button>
+
+      <div class="nav-section-label">System</div>
+      <button class="nav-item" data-panel="accounts">
+        <span class="nav-icon">👥</span> Accounts
+        <span class="nav-badge alert">2</span>
+      </button>
+      <button class="nav-item" data-panel="settings">
+        <span class="nav-icon">⚙️</span> Settings
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="logout-btn" id="adminLogoutBtn">
+        🚪 Sign Out
+      </button>
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <div class="main">
+    <div class="topbar">
+      <div style="display:flex; align-items:center; gap:1rem;">
+        <button class="hamburger" onclick="openSidebar()">☰</button>
+        <div class="page-title" id="pageTitle">Overview</div>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-date" id="topbarDate"></div>
+        <div class="topbar-notif" title="Notifications">
+          🔔 <div class="notif-dot"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ════════ OVERVIEW ════════ -->
+      <div class="panel active" id="panel-overview">
+        <div class="section-heading">
+          <h2>Good morning, Admin 👋</h2>
+          <p>Here is a live snapshot of today's operations.</p>
+        </div>
+
+        <div class="pending-strip">
+          <div class="pending-strip-icon">⚠️</div>
+          <div class="pending-strip-text">
+            <h4>Loading pending zone orders...</h4>
+            <p>These orders cannot be assigned to a driver until the delivery zone is confirmed.</p>
+          </div>
+          <button class="btn btn-warn btn-sm" onclick="showPanel('zone-confirm')">Review Now →</button>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Orders Today</div>
+            <div class="stat-val">0</div>
+            <div class="stat-sub">Live order records</div>
+          </div>
+          <div class="stat-card warn">
+            <div class="stat-label">Pending Zone</div>
+            <div class="stat-val">0</div>
+            <div class="stat-sub">Need manual confirmation</div>
+          </div>
+          <div class="stat-card ok">
+            <div class="stat-label">Assigned</div>
+            <div class="stat-val">0</div>
+            <div class="stat-sub">With active drivers</div>
+          </div>
+          <div class="stat-card alert">
+            <div class="stat-label">Locked Accounts</div>
+            <div class="stat-val">0</div>
+            <div class="stat-sub">Profiles needing review</div>
+          </div>
+        </div>
+
+        <div class="overview-grid">
+          <div class="card">
+            <div class="card-title">⚡ Pending Actions</div>
+            <div id="overviewPendingActions">
+              <div style="padding:0.65rem 0; color:var(--grey);">Loading live actions...</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">📦 Recent Orders</div>
+            <div id="overviewRecentOrders">
+              <div style="padding:0.65rem 0; color:var(--grey);">Loading recent orders...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════ ALL ORDERS ════════ -->
+      <div class="panel" id="panel-all-orders">
+        <div class="section-heading">
+          <h2>All Orders</h2>
+          <p>Review every live delivery request from business clients and public delivery links.</p>
+        </div>
+
+        <div class="filter-bar">
+          <select class="filter-select" id="orderStatusFilter" onchange="renderAllOrders()">
+            <option value="">All Statuses</option>
+            <option value="zone_pending">Zone Pending</option>
+            <option value="assigned">Assigned</option>
+            <option value="delivered">Delivered</option>
+            <option value="failed">Failed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <select class="filter-select" id="orderClientFilter" onchange="renderAllOrders()">
+            <option value="">All Clients</option>
+          </select>
+          <input class="filter-input" id="orderSearchInput" type="search" placeholder="Search order, customer, phone" oninput="renderAllOrders()" />
+        </div>
+
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Order ID</th>
+                  <th>Client</th>
+                  <th>Customer</th>
+                  <th>Zone</th>
+                  <th>COD</th>
+                  <th>Status</th>
+                  <th>Driver</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="8">Loading orders...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════ ZONE CONFIRMATION ════════ -->
+      <div class="panel" id="panel-zone-confirm">
+        <div class="section-heading">
+          <h2>Zone Confirmation</h2>
+          <p>Review the customer location, choose the delivery zone, and set the delivery fee before assigning a driver.</p>
+        </div>
+
+        <div class="card" data-live-empty="true">
+          <p>Loading pending zone orders...</p>
+        </div>
+      </div>
+
+      <!-- ════════ DRIVER ASSIGNMENT ════════ -->
+      <div class="panel" id="panel-driver-assign">
+        <div class="section-heading">
+          <h2>Driver Assignment</h2>
+          <p>Assign drivers and route dates to zone-confirmed orders.</p>
+        </div>
+
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Order ID</th>
+                  <th>Client</th>
+                  <th>Customer</th>
+                  <th>Zone</th>
+                  <th>COD</th>
+                  <th>Assign Driver</th>
+                  <th>Route Date</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="8">Loading driver assignments...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════ COD MANAGEMENT ════════ -->
+      <div class="panel" id="panel-cod-mgmt">
+        <div class="section-heading">
+          <h2>COD Management</h2>
+          <p>Track what drivers should collect, what VirtuDrop keeps, and what is owed back to business clients.</p>
+        </div>
+
+        <div class="accounting-note">
+          COD totals are calculated from live orders. For Cash on Delivery, the entered amount is treated as the full amount the driver collects, and the delivery fee is deducted to calculate the client payout.
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card ok">
+            <div class="stat-label">Received Today</div>
+            <div class="stat-val" id="accCollectedToday">TTD 0</div>
+            <div class="stat-sub" id="accCollectedTodaySub">Driver cash records logged today</div>
+          </div>
+          <div class="stat-card warn">
+            <div class="stat-label">Pending Driver Handover</div>
+            <div class="stat-val" id="accPendingCollection">TTD 0</div>
+            <div class="stat-sub" id="accPendingCollectionSub">Delivered collections not yet received</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Delivery Fees</div>
+            <div class="stat-val" id="accDeliveryFees">TTD 0</div>
+            <div class="stat-sub">Fees on confirmed live orders</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Client Payouts</div>
+            <div class="stat-val" id="accClientPayouts">TTD 0</div>
+            <div class="stat-sub">Delivered COD orders less delivery fees</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">💰 Driver Collection Records</div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Order ID</th>
+                  <th>Client</th>
+                  <th>Customer</th>
+                  <th>Driver Collects</th>
+                  <th>Del. Fee</th>
+                  <th>Net to Client</th>
+                  <th>Payment</th>
+                  <th>Status</th>
+                  <th>Driver</th>
+                </tr>
+              </thead>
+              <tbody id="accountingRecordsBody">
+                <tr><td colspan="9">Loading accounting records...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════ REMITTANCE ════════ -->
+      <div class="panel" id="panel-remittance">
+        <div class="section-heading">
+          <h2>Remittance</h2>
+          <p>Review business client payout totals from delivered Cash on Delivery orders.</p>
+        </div>
+
+        <div class="accounting-note">
+          This view shows what is currently ready to pay to each business client from delivered COD orders. Use the copy button to prepare a payout note while we keep the website totals tied directly to the order table.
+        </div>
+
+        <div class="card">
+          <div class="card-title">💸 Client Payout Summary</div>
+          <div class="finance-filter-grid">
+            <div class="finance-field">
+              <label for="remitClientFilter">Client</label>
+              <select class="filter-select" id="remitClientFilter">
+                <option value="">All clients</option>
+              </select>
+            </div>
+            <div class="finance-field">
+              <label for="remitPeriodFilter">Period</label>
+              <select class="filter-select" id="remitPeriodFilter">
+                <option value="all">All time</option>
+                <option value="day">Day</option>
+                <option value="week">Week</option>
+                <option value="month">Month</option>
+                <option value="year">Year</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+            <div class="finance-field">
+              <label for="remitStartDate">Start Date</label>
+              <input class="filter-input" type="date" id="remitStartDate" />
+            </div>
+            <div class="finance-field">
+              <label for="remitEndDate">End Date</label>
+              <input class="filter-input" type="date" id="remitEndDate" />
+            </div>
+            <button class="btn btn-ghost" type="button" onclick="applyRemittanceFilters()">Apply Filters</button>
+            <button class="btn btn-primary" type="button" onclick="exportRemittanceXlsx()">📊 Export XLSX</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Client</th>
+                  <th>Delivered COD Orders</th>
+                  <th>Total Collected</th>
+                  <th>Delivery Fees</th>
+                  <th>Amount to Pay Client</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="clientPayoutBody">
+                <tr><td colspan="7">Loading client payouts...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════ HISTORICAL IMPORT ════════ -->
+      <div class="panel" id="panel-historical-import">
+        <div class="section-heading">
+          <h2>Historical Import</h2>
+          <p>Add completed deliveries from before the website, either one by one or by CSV upload.</p>
+        </div>
+
+        <div class="accounting-note">
+          Historical deliveries are saved as completed orders and marked as admin-entered or CSV-imported. They can be included in accounting exports without appearing as active driver work.
+        </div>
+
+        <div class="card">
+          <div class="card-title">✍️ Manual Completed Delivery</div>
+          <div class="historical-form-grid">
+            <div class="finance-field">
+              <label for="histClient">Client</label>
+              <select class="filter-select" id="histClient"></select>
+            </div>
+            <div class="finance-field">
+              <label for="histDate">Delivery Date</label>
+              <input class="filter-input" type="date" id="histDate" />
+            </div>
+            <div class="finance-field">
+              <label for="histCustomer">Customer Name</label>
+              <input class="filter-input" type="text" id="histCustomer" placeholder="Customer name" />
+            </div>
+            <div class="finance-field">
+              <label for="histPhone">Customer Phone</label>
+              <input class="filter-input" type="text" id="histPhone" placeholder="868-000-0000" />
+            </div>
+            <div class="finance-field">
+              <label for="histPayment">Payment Type</label>
+              <select class="filter-select" id="histPayment">
+                <option value="cod">Cash on Delivery</option>
+                <option value="delivery_only">Delivery Fee Only</option>
+                <option value="prepaid">Fully Paid Online</option>
+              </select>
+            </div>
+            <div class="finance-field">
+              <label for="histCod">Collected Amount</label>
+              <input class="filter-input" type="number" min="0" step="0.01" id="histCod" placeholder="0.00" />
+            </div>
+            <div class="finance-field">
+              <label for="histFee">Delivery Fee</label>
+              <input class="filter-input" type="number" min="0" step="0.01" id="histFee" placeholder="40.00" />
+            </div>
+            <div class="finance-field">
+              <label for="histAddress">Delivery Area / Address</label>
+              <input class="filter-input" type="text" id="histAddress" placeholder="Area or full address" />
+            </div>
+          </div>
+          <button class="btn btn-primary" type="button" onclick="saveManualHistoricalDelivery()">Save Completed Delivery</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📥 CSV Import</div>
+          <div class="csv-drop">
+            <input class="filter-input" type="file" id="csvImportFile" accept=".csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+            <div class="csv-help">
+              Required columns: client, delivery_date, customer_name, customer_phone, payment_type, collected_amount, delivery_fee, address. Payment type can be cod, delivery_only, or prepaid.
+            </div>
+            <div class="finance-actions">
+              <button class="btn btn-ghost" type="button" onclick="downloadCsvTemplate()">Download Template</button>
+              <button class="btn btn-primary" type="button" onclick="previewCsvImport()">Preview CSV</button>
+              <button class="btn btn-primary" type="button" onclick="confirmCsvImport()" id="confirmCsvImportBtn" disabled>Import Valid Rows</button>
+            </div>
+          </div>
+          <div class="table-wrap" style="margin-top:1rem;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Client</th>
+                  <th>Date</th>
+                  <th>Customer</th>
+                  <th>Phone</th>
+                  <th>Payment</th>
+                  <th>Collected</th>
+                  <th>Fee</th>
+                  <th>Issue</th>
+                </tr>
+              </thead>
+              <tbody id="csvPreviewBody">
+                <tr><td colspan="9">Upload a CSV file to preview rows before importing.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════ ACCOUNTS ════════ -->
+      <div class="panel" id="panel-accounts">
+        <div class="section-heading">
+          <h2>Accounts</h2>
+          <p>Approve pending registrations, lock accounts, unlock accounts, and deactivate profiles.</p>
+        </div>
+
+        <div class="filter-bar">
+          <input class="filter-input" id="accountSearch" type="text" placeholder="🔍 Search name..." oninput="renderAccounts()" />
+          <select class="filter-select" id="accountTypeFilter" onchange="renderAccounts()">
+            <option value="">All Types</option>
+            <option value="business">Business</option>
+            <option value="driver">Driver</option>
+            <option value="admin">Admin</option>
+          </select>
+          <select class="filter-select" id="accountStatusFilter" onchange="renderAccounts()">
+            <option value="">All Statuses</option>
+            <option value="pending">Pending Approval</option>
+            <option value="active">Active</option>
+            <option value="locked">Locked</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+
+        <div class="pending-strip" id="accountsPendingStrip">
+          <div class="pending-strip-icon">⏳</div>
+          <div class="pending-strip-text">
+            <h4>Loading accounts...</h4>
+            <p>Pending approvals and locked accounts will appear here.</p>
+          </div>
+        </div>
+
+        <div class="accounts-grid" id="accountsGrid">
+          <div class="account-card">
+            <div class="acc-avatar admin">…</div>
+            <div class="acc-info">
+              <div class="acc-name">Loading accounts...</div>
+              <div class="acc-meta">Please wait while VirtuDrop checks Supabase.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════ SETTINGS ════════ -->
+      <div class="panel" id="panel-settings">
+        <div class="section-heading">
+          <h2>Settings</h2>
+          <p>Manage system-wide operational settings.</p>
+        </div>
+
+        <div class="card">
+          <div class="settings-section">
+            <h3>Operations</h3>
+            <div class="setting-row">
+              <div class="setting-label">
+                <h4>Daily Order Cut-Off Time</h4>
+                <p>Orders submitted after this time move to the next delivery cycle.</p>
+              </div>
+              <input class="setting-input" id="settingCutoffTime" type="time" value="20:00" />
+            </div>
+            <div class="setting-row">
+              <div class="setting-label">
+                <h4>Same-Day Delivery Available</h4>
+                <p>Enable or disable same-day delivery wording and options across the website.</p>
+              </div>
+              <button class="toggle on" id="settingSameDay" type="button" onclick="toggleSetting('settingSameDay')" title="Toggle same-day delivery"></button>
+            </div>
+            <div class="setting-row">
+              <div class="setting-label">
+                <h4>Default Delivery Fee</h4>
+                <p>Starting fee used when confirming a delivery zone.</p>
+              </div>
+              <div style="display:flex; align-items:center; gap:0.4rem;">
+                <span style="font-size:0.9rem; color:var(--grey);">TTD</span>
+                <input class="setting-input" id="settingDefaultFee" type="number" min="0" step="1" value="40" style="width:90px;" />
+              </div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-label">
+                <h4>Pickup Fee (under 3 packages)</h4>
+                <p>Fee applied when fewer than 3 packages are collected per visit.</p>
+              </div>
+              <div style="display:flex; align-items:center; gap:0.4rem;">
+                <span style="font-size:0.9rem; color:var(--grey);">TTD</span>
+                <input class="setting-input" id="settingPickupFee" type="number" min="0" step="1" value="20" style="width:90px;" />
+              </div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-label">
+                <h4>Accept New Registrations</h4>
+                <p>Allow new business clients to register via the auth page.</p>
+              </div>
+              <button class="toggle on" id="settingRegistration" type="button" onclick="toggleSetting('settingRegistration')" title="Toggle new registrations"></button>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h3>Contact & Messaging</h3>
+            <div class="setting-row">
+              <div class="setting-label">
+                <h4>WhatsApp Business Number</h4>
+                <p>Used for website WhatsApp contact links and operational messages.</p>
+              </div>
+              <input class="setting-input" id="settingWhatsapp" type="text" placeholder="868-000-0000" style="width:180px;" />
+            </div>
+            <div class="setting-row">
+              <div class="setting-label">
+                <h4>Google Maps API Key</h4>
+                <p>Used by admin zone confirmation to reverse-geocode GPS coordinates and suggest a zone.</p>
+              </div>
+              <input class="setting-input" id="settingGoogleMapsKey" type="password" placeholder="AIza..." style="width:220px;" />
+            </div>
+            <div class="setting-row">
+              <div class="setting-label">
+                <h4>Site Name</h4>
+                <p>Displayed in exported reports and app messages.</p>
+              </div>
+              <input class="setting-input" id="settingSiteName" type="text" value="VirtuDrop" style="width:180px;" />
+            </div>
+            <div class="setting-row">
+              <div class="setting-label">
+                <h4>Currency</h4>
+                <p>Displayed on pricing, calculator, dashboards, and exports.</p>
+              </div>
+              <input class="setting-input" id="settingCurrency" type="text" value="TTD" style="width:90px;" />
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h3>Admin Profile</h3>
+            <div class="setting-row">
+              <div class="setting-label">
+                <h4>Admin Name</h4>
+                <p>Displayed in the dashboard header for this session.</p>
+              </div>
+              <input class="setting-input" id="settingAdminName" type="text" value="Admin User" style="width:180px;" />
+            </div>
+            <div class="setting-row">
+              <div class="setting-label">
+                <h4>Change Password</h4>
+                <p>Password changes are handled through Supabase Auth email reset.</p>
+              </div>
+              <button class="btn btn-ghost btn-sm" type="button" onclick="sendAdminPasswordReset()">Send Reset Email</button>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:0.8rem; justify-content:flex-end; flex-wrap:wrap;">
+            <button class="btn btn-ghost" type="button" onclick="applySettingsToControls()">Cancel</button>
+            <button class="btn btn-primary" type="button" onclick="saveAppSettings()">Save Settings</button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Confirm modal ── -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <h3 id="modalTitle">Confirm Action</h3>
+      <p id="modalBody">Are you sure?</p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" id="modalConfirm">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Toast ── -->
+  <div id="toast" style="
+    position:fixed; bottom:2rem; right:2rem; background:#0d2b28; color:#ffffff;
+    padding:0.9rem 1.4rem; border-radius:10px; font-size:0.9rem; font-weight:500;
+    box-shadow:0 8px 24px rgba(0,0,0,0.2); display:none; z-index:999;
+    animation:fadeIn 0.3s ease; max-width:320px; line-height:1.5;
+  "></div>
+
+  <script src="vd-modal.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+    const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnbXp6YXZ4aHVhcmxhY252bm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Mjk4NTksImV4cCI6MjA5NDIwNTg1OX0.7-YKlwLrhUYUYbiii93ZvgX01TxVephApDNCP50Rl54';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    function showLoggedOutGate() {
+      document.body.style.margin = '0';
+      document.body.style.display = 'block';
+      document.body.style.minHeight = '100vh';
+      document.body.style.background = '#f4f8f7';
+      document.body.innerHTML = `
+        <div style="min-height:100vh; display:flex; align-items:center; justify-content:center; background:#f4f8f7; padding:1.5rem; font-family:Inter, Arial, sans-serif;">
+          <div style="width:min(440px,100%); background:#fff; border-radius:14px; box-shadow:0 12px 35px rgba(13,43,40,0.14); padding:2rem; text-align:center; border-top:4px solid #2a9d8f;">
+            <h1 style="margin:0 0 0.8rem; color:#0d2b28; font-size:1.6rem;">Please log in again</h1>
+            <p style="margin:0 0 1.4rem; color:#4a4a4a; line-height:1.6;">Your admin dashboard session has ended. Log back in to view protected information.</p>
+            <button style="border:0; border-radius:10px; background:#2a9d8f; color:#fff; padding:0.85rem 1.4rem; font-weight:700; cursor:pointer;" onclick="window.location.href='auth.html?returnTo=admin-dashboard.html'">Log In</button>
+          </div>
+        </div>
+      `;
+    }
+
+    async function hasActiveSession() {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        showLoggedOutGate();
+        return false;
+      }
+      return true;
+    }
+
+    function installSessionRestoreGuard() {
+      window.addEventListener('pageshow', () => { hasActiveSession(); });
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') hasActiveSession();
+      });
+      window.addEventListener('focus', () => { hasActiveSession(); });
+    }
+    installSessionRestoreGuard();
+
+    const pageTitles = {
+      overview: 'Overview',
+      'all-orders': 'All Orders',
+      'zone-confirm': 'Zone Confirmation',
+      'driver-assign': 'Driver Assignment',
+      'cod-mgmt': 'COD Management',
+      remittance: 'Remittance',
+      'historical-import': 'Historical Import',
+      accounts: 'Accounts',
+      settings: 'Settings',
+    };
+
+    let toastTimer;
+    let modalCb = null;
+    let orders = [];
+    let clientsById = new Map();
+    let zones = [];
+    let drivers = [];
+    let driverProfilesById = new Map();
+    let allProfiles = [];
+    let currentProfile = null;
+    let csvImportRows = [];
+    let latestPayoutRows = [];
+    let remittanceRecords = [];
+    let driverCashRecords = [];
+    let appSettings = {
+      daily_cutoff_time: '20:00',
+      same_day_enabled: true,
+      default_delivery_fee: 40,
+      pickup_fee_under_3: 20,
+      registration_enabled: true,
+      whatsapp_business_number: '',
+      google_maps_api_key: '',
+      site_name: 'VirtuDrop',
+      currency: 'TTD'
+    };
+
+    window.showPanel = function(id) {
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      document.getElementById('panel-' + id)?.classList.add('active');
+      document.querySelector(`[data-panel="${id}"]`)?.classList.add('active');
+      document.getElementById('pageTitle').textContent = pageTitles[id] || id;
+      closeSidebar();
+    };
+
+    document.querySelectorAll('[data-panel]').forEach(btn => {
+      btn.addEventListener('click', () => showPanel(btn.dataset.panel));
+    });
+
+    window.openSidebar = function() {
+      document.getElementById('sidebar').classList.add('open');
+      document.getElementById('sidebarOverlay').classList.add('show');
+    };
+
+    window.closeSidebar = function() {
+      document.getElementById('sidebar').classList.remove('open');
+      document.getElementById('sidebarOverlay').classList.remove('show');
+    };
+
+    document.getElementById('topbarDate').textContent = new Date().toLocaleDateString('en-TT', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.style.display = 'block';
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.style.display = 'none', 3500);
+    }
+    window.showToast = showToast;
+
+    function showModal(title, body, cb) {
+      document.getElementById('modalTitle').textContent = title;
+      document.getElementById('modalBody').textContent = body;
+      document.getElementById('modal').classList.add('show');
+      modalCb = cb;
+    }
+    window.showModal = showModal;
+
+    window.closeModal = function() {
+      document.getElementById('modal').classList.remove('show');
+      modalCb = null;
+    };
+
+    document.getElementById('modalConfirm').onclick = async () => {
+      const cb = modalCb;
+      closeModal();
+      if (cb) await cb();
+    };
+
+    function money(value) {
+      const n = Number(value || 0);
+      return n > 0 ? `TTD ${n.toFixed(2).replace('.00', '')}` : '—';
+    }
+
+    /* Live accounting helpers - Codex */
+    function amount(value) {
+      return Number(value || 0);
+    }
+
+    function moneyFull(value) {
+      const n = Number(value || 0);
+      return `TTD ${n.toFixed(2).replace('.00', '')}`;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[char]));
+    }
+
+    function paymentLabel(type) {
+      if (type === 'delivery_only') return 'Delivery Fee Only';
+      if (type === 'prepaid') return 'Fully Paid Online';
+      return 'Cash on Delivery';
+    }
+
+    function localDate(value) {
+      if (!value) return '';
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return String(value).slice(0, 10);
+      return d.toISOString().slice(0, 10);
+    }
+
+    function makeOrderNumber(prefix = 'VDHIST') {
+      const stamp = new Date().toISOString().replace(/\D/g, '').slice(2, 14);
+      return `${prefix}-${stamp}-${Math.floor(Math.random() * 900 + 100)}`;
+    }
+
+    function clientOptionsHtml(includeAll = false) {
+      const options = [...clientsById.entries()]
+        .sort((a, b) => String(a[1].business_name || '').localeCompare(String(b[1].business_name || '')))
+        .map(([id, client]) => `<option value="${id}">${escapeHtml(client.business_name || client.slug || id)}</option>`)
+        .join('');
+      return includeAll ? '<option value="">All clients</option>' + options : '<option value="">— Select client —</option>' + options;
+    }
+
+    function syncAccountingControls() {
+      const remitClient = document.getElementById('remitClientFilter');
+      const histClient = document.getElementById('histClient');
+      if (remitClient) remitClient.innerHTML = clientOptionsHtml(true);
+      if (histClient) histClient.innerHTML = clientOptionsHtml(false);
+      const today = new Date().toISOString().slice(0, 10);
+      if (document.getElementById('histDate') && !document.getElementById('histDate').value) {
+        document.getElementById('histDate').value = today;
+      }
+      const histFee = document.getElementById('histFee');
+      if (histFee && !histFee.value) {
+        histFee.value = Number(appSettings.default_delivery_fee || 40);
+      }
+    }
+
+    function setToggle(id, enabled) {
+      document.getElementById(id)?.classList.toggle('on', Boolean(enabled));
+    }
+
+    function isToggleOn(id) {
+      return document.getElementById(id)?.classList.contains('on') || false;
+    }
+
+    window.toggleSetting = function(id) {
+      document.getElementById(id)?.classList.toggle('on');
+    };
+
+    window.applySettingsToControls = function() {
+      const setValue = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.value = value ?? '';
+      };
+      setValue('settingCutoffTime', appSettings.daily_cutoff_time || '20:00');
+      setValue('settingDefaultFee', Number(appSettings.default_delivery_fee || 40));
+      setValue('settingPickupFee', Number(appSettings.pickup_fee_under_3 || 20));
+      setValue('settingWhatsapp', appSettings.whatsapp_business_number || '');
+      setValue('settingGoogleMapsKey', appSettings.google_maps_api_key || '');
+      setValue('settingSiteName', appSettings.site_name || 'VirtuDrop');
+      setValue('settingCurrency', appSettings.currency || 'TTD');
+      setValue('settingAdminName', document.querySelector('.admin-name')?.textContent || 'Admin User');
+      setToggle('settingSameDay', appSettings.same_day_enabled !== false);
+      setToggle('settingRegistration', appSettings.registration_enabled !== false);
+    };
+
+    window.saveAppSettings = async function() {
+      const cutoff = document.getElementById('settingCutoffTime')?.value || '20:00';
+      const defaultFee = Number(document.getElementById('settingDefaultFee')?.value || 0);
+      const pickupFee = Number(document.getElementById('settingPickupFee')?.value || 0);
+      const currency = (document.getElementById('settingCurrency')?.value || 'TTD').trim().toUpperCase();
+      const siteName = (document.getElementById('settingSiteName')?.value || 'VirtuDrop').trim();
+
+      if (!/^\d{2}:\d{2}$/.test(cutoff)) {
+        window.vdNotify('Settings Not Saved', 'Enter a valid cut-off time.', 'error');
+        return;
+      }
+      if (!Number.isFinite(defaultFee) || defaultFee < 0 || !Number.isFinite(pickupFee) || pickupFee < 0) {
+        window.vdNotify('Settings Not Saved', 'Fees must be zero or higher.', 'error');
+        return;
+      }
+      if (!currency) {
+        window.vdNotify('Settings Not Saved', 'Currency cannot be blank.', 'error');
+        return;
+      }
+
+      const rows = [
+        { key: 'daily_cutoff_time', value: cutoff },
+        { key: 'same_day_enabled', value: isToggleOn('settingSameDay') },
+        { key: 'default_delivery_fee', value: defaultFee },
+        { key: 'pickup_fee_under_3', value: pickupFee },
+        { key: 'registration_enabled', value: isToggleOn('settingRegistration') },
+        { key: 'whatsapp_business_number', value: (document.getElementById('settingWhatsapp')?.value || '').trim() },
+        { key: 'google_maps_api_key', value: (document.getElementById('settingGoogleMapsKey')?.value || '').trim() },
+        { key: 'site_name', value: siteName },
+        { key: 'currency', value: currency }
+      ];
+
+      const { error } = await supabase
+        .from('app_settings')
+        .upsert(rows, { onConflict: 'key' });
+
+      if (error) {
+        window.vdNotify('Settings Not Saved', error.message || 'Could not save app settings.', 'error');
+        return;
+      }
+
+      appSettings = { ...appSettings, ...Object.fromEntries(rows.map(row => [row.key, row.value])) };
+      const adminName = (document.getElementById('settingAdminName')?.value || '').trim();
+      if (adminName) document.querySelector('.admin-name').textContent = adminName;
+      showToast('Settings saved successfully.');
+      renderZoneConfirm();
+    };
+
+    window.sendAdminPasswordReset = async function() {
+      const { data } = await supabase.auth.getUser();
+      const email = data?.user?.email;
+      if (!email) {
+        window.vdNotify('Reset Not Sent', 'Could not find the current admin email.', 'error');
+        return;
+      }
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + window.location.pathname.replace('admin-dashboard.html', 'auth.html')
+      });
+      if (error) {
+        window.vdNotify('Reset Not Sent', error.message || 'Could not send reset email.', 'error');
+        return;
+      }
+      showToast('Password reset email sent.');
+    };
+
+    function driverCollects(order) {
+      if (order.payment_type === 'prepaid') return 0;
+      if (order.payment_type === 'delivery_only') return amount(order.delivery_fee);
+      return amount(order.cod_amount);
+    }
+
+    function clientPayout(order) {
+      if (order.payment_type !== 'cod') return 0;
+      return Math.max(amount(order.cod_amount) - amount(order.delivery_fee), 0);
+    }
+
+    function isDelivered(order) {
+      return order.order_status === 'delivered';
+    }
+
+    function isFailed(order) {
+      return order.order_status === 'failed' || order.order_status === 'cancelled';
+    }
+
+    function badgeForStatus(order) {
+      if (order.zone_status === 'pending' || order.order_status === 'zone_pending') {
+        return '<span class="badge badge-pending">Zone Pending</span>';
+      }
+      const label = (order.order_status || 'confirmed').replaceAll('_', ' ');
+      const cls = order.order_status === 'delivered' ? 'badge-delivered'
+        : order.order_status === 'failed' ? 'badge-failed'
+        : order.order_status === 'assigned' ? 'badge-active'
+        : 'badge-confirmed';
+      return `<span class="badge ${cls}">${label}</span>`;
+    }
+
+    function zoneLabel(order) {
+      if (order.zone_status === 'pending' || order.order_status === 'zone_pending') {
+        return '<span class="badge badge-pending">Pending</span>';
+      }
+      return '<span class="badge badge-confirmed">Confirmed</span>';
+    }
+
+    function clientName(order) {
+      return clientsById.get(order.business_client_id)?.business_name || 'Not listed';
+    }
+
+    function phoneForWhatsApp(phone) {
+      const digits = String(phone || '').replace(/\D/g, '');
+      if (!digits) return '';
+      if (digits.startsWith('1868') && digits.length === 11) return digits.slice(1);
+      if (digits.startsWith('868') && digits.length === 10) return digits;
+      if (digits.length === 7) return `868${digits}`;
+      return digits;
+    }
+
+    function trackingLink(order) {
+      if (!order?.order_number || !order?.tracking_token) return '';
+      const base = window.location.origin + window.location.pathname.replace(/admin-dashboard\.html$/, 'track.html');
+      return `${base}?order=${encodeURIComponent(order.order_number)}&token=${encodeURIComponent(order.tracking_token)}`;
+    }
+
+    function statusLabel(order) {
+      return String(order?.order_status || 'confirmed').replaceAll('_', ' ');
+    }
+
+    window.openCustomerTrackingWhatsApp = function(orderId) {
+      const order = orders.find(item => item.id === orderId);
+      const phone = phoneForWhatsApp(order?.customer_phone);
+      if (!order || !phone) {
+        showToast('This order does not have a valid customer phone number.');
+        return;
+      }
+      const firstName = String(order.customer_name || 'there').trim().split(/\s+/)[0] || 'there';
+      const link = trackingLink(order);
+      const linkText = link ? ` Track it here: ${link}` : '';
+      const message = `Hi ${firstName}, this is VirtuDrop. Your delivery ${order.order_number} is currently ${statusLabel(order)}.${linkText}`;
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
+    };
+
+    function driverName(driverId) {
+      const driver = drivers.find(d => d.id === driverId);
+      if (!driver) return 'Assigned';
+      const profile = driverProfilesById.get(driver.profile_id);
+      return [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'Driver';
+    }
+
+    function driverOptions() {
+      if (!drivers.length) return '<option value="">No active drivers</option>';
+      return '<option value="">— Driver —</option>' + drivers.map(driver => {
+        const profile = driverProfilesById.get(driver.profile_id);
+        const label = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'Driver';
+        return `<option value="${driver.id}">${label}</option>`;
+      }).join('');
+    }
+
+    function updateBadgesAndStats() {
+      const pendingZone = orders.filter(o => o.zone_status === 'pending' || o.order_status === 'zone_pending').length;
+      const unassigned = orders.filter(o => o.zone_status === 'confirmed' && !o.assigned_driver_id).length;
+      const today = new Date().toISOString().slice(0, 10);
+      const todayOrders = orders.filter(o => (o.created_at || '').slice(0, 10) === today).length;
+
+      const allBadge = document.querySelector('[data-panel="all-orders"] .nav-badge');
+      if (allBadge) allBadge.textContent = orders.length;
+      const zoneBadge = document.querySelector('[data-panel="zone-confirm"] .nav-badge');
+      if (zoneBadge) zoneBadge.textContent = pendingZone;
+      const driverBadge = document.querySelector('[data-panel="driver-assign"] .nav-badge');
+      if (driverBadge) driverBadge.textContent = unassigned;
+
+      const stripTitle = document.querySelector('.pending-strip h4');
+      if (stripTitle) stripTitle.textContent = `${pendingZone} orders pending zone confirmation`;
+
+      const statVals = document.querySelectorAll('#panel-overview .stat-val');
+      if (statVals[0]) statVals[0].textContent = todayOrders;
+      if (statVals[1]) statVals[1].textContent = pendingZone;
+      if (statVals[2]) statVals[2].textContent = orders.filter(o => o.order_status === 'assigned').length;
+
+      const actions = document.getElementById('overviewPendingActions');
+      if (actions) {
+        const locked = allProfiles.filter(profile => String(profile.status || '').toLowerCase() === 'locked').length;
+        const unpaid = latestPayoutRows.filter(row => !row.paidRecord).length;
+        actions.innerHTML = [
+          ['Zone confirmation', pendingZone, 'pending', 'var(--yellow-pale)'],
+          ['Driver assignment', unassigned, 'unassigned', '#f0f0f0'],
+          ['Locked accounts', locked, 'locked', 'var(--red-pale)'],
+          ['Remittance pending', unpaid, 'ready', 'var(--orange-pale)']
+        ].map(([label, count, suffix, bg]) => `
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:0.7rem; background:${bg}; border-radius:8px;">
+            <span style="font-size:0.88rem; font-weight:600;">${label}</span>
+            <span class="badge ${count ? 'badge-pending' : 'badge-confirmed'}">${count} ${suffix}</span>
+          </div>
+        `).join('');
+      }
+
+      const recent = document.getElementById('overviewRecentOrders');
+      if (recent) {
+        const rows = orders.slice(0, 4);
+        recent.innerHTML = rows.length ? rows.map((order, index) => `
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:0.65rem 0; ${index < rows.length - 1 ? 'border-bottom:1px solid #f5f5f5;' : ''}">
+            <div><div class="td-id">${escapeHtml(order.order_number)}</div><div class="td-sub">${escapeHtml(clientName(order))}</div></div>
+            ${badgeForStatus(order)}
+          </div>
+        `).join('') : '<div style="padding:0.65rem 0; color:var(--grey);">No live orders yet.</div>';
+      }
+    }
+
+    /* Live accounting render - Codex */
+    function collectionStatusBadge(order) {
+      if (order.payment_type === 'prepaid') {
+        return '<span class="badge badge-online">No Collection</span>';
+      }
+      if (isFailed(order)) {
+        return '<span class="badge badge-failed">Not Collected</span>';
+      }
+      if (isDelivered(order)) {
+        return '<span class="badge badge-paid">Collected</span>';
+      }
+      return '<span class="badge badge-unpaid">Pending</span>';
+    }
+
+    function driverCashRecordForOrder(orderId) {
+      return driverCashRecords.find(record => record.order_id === orderId) || null;
+    }
+
+    function adminReceivedBadge(order) {
+      if (!isDelivered(order) || driverCollects(order) <= 0) {
+        return '<span class="badge badge-online">Not Due</span>';
+      }
+      return driverCashRecordForOrder(order.id)
+        ? '<span class="badge badge-paid">Received</span>'
+        : '<span class="badge badge-unpaid">Pending</span>';
+    }
+
+    function selectedRemittanceOrders() {
+      const clientId = document.getElementById('remitClientFilter')?.value || '';
+      const period = document.getElementById('remitPeriodFilter')?.value || 'all';
+      let start = document.getElementById('remitStartDate')?.value || '';
+      let end = document.getElementById('remitEndDate')?.value || '';
+      const now = new Date();
+
+      if (period === 'day' && !start) start = now.toISOString().slice(0, 10);
+      if (period === 'week' && !start) {
+        const first = new Date(now);
+        first.setDate(now.getDate() - now.getDay());
+        start = first.toISOString().slice(0, 10);
+      }
+      if (period === 'month' && !start) start = now.toISOString().slice(0, 7) + '-01';
+      if (period === 'year' && !start) start = now.getFullYear() + '-01-01';
+      if (period !== 'all' && !end) end = now.toISOString().slice(0, 10);
+
+      return orders.filter(order => {
+        if (clientId && order.business_client_id !== clientId) return false;
+        const orderDate = localDate(order.updated_at || order.created_at);
+        if (start && orderDate < start) return false;
+        if (end && orderDate > end) return false;
+        return true;
+      });
+    }
+
+    function renderAccounting() {
+      const baseOrders = selectedRemittanceOrders();
+      const collectionOrders = baseOrders.filter(order => ['cod', 'delivery_only'].includes(order.payment_type));
+      const today = new Date().toISOString().slice(0, 10);
+      const deliveredCollectable = collectionOrders.filter(order => isDelivered(order));
+      const receivedToday = driverCashRecords.filter(record => String(record.received_at || record.created_at || '').slice(0, 10) === today);
+      const pendingCollection = deliveredCollectable.filter(order => driverCollects(order) > 0 && !driverCashRecordForOrder(order.id));
+      const confirmedFeeOrders = baseOrders.filter(order => order.zone_status === 'confirmed' || ['confirmed', 'assigned', 'out_for_delivery', 'delivered'].includes(order.order_status));
+
+      const collectedTodayTotal = receivedToday.reduce((sum, record) => sum + amount(record.amount), 0);
+      const pendingTotal = pendingCollection.reduce((sum, order) => sum + driverCollects(order), 0);
+      const deliveryFeeTotal = confirmedFeeOrders.reduce((sum, order) => sum + amount(order.delivery_fee), 0);
+      const clientPayoutTotal = deliveredCollectable.reduce((sum, order) => sum + clientPayout(order), 0);
+
+      const setText = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+      };
+
+      setText('accCollectedToday', moneyFull(collectedTodayTotal));
+      setText('accCollectedTodaySub', `${receivedToday.length} cash record${receivedToday.length === 1 ? '' : 's'} logged today`);
+      setText('accPendingCollection', moneyFull(pendingTotal));
+      setText('accPendingCollectionSub', `${pendingCollection.length} order${pendingCollection.length === 1 ? '' : 's'} awaiting collection`);
+      setText('accDeliveryFees', moneyFull(deliveryFeeTotal));
+      setText('accClientPayouts', moneyFull(clientPayoutTotal));
+
+      const accountingBody = document.getElementById('accountingRecordsBody');
+      if (accountingBody) {
+        accountingBody.innerHTML = collectionOrders.map(order => `
+          <tr>
+            <td class="td-id">${escapeHtml(order.order_number)}</td>
+            <td><div class="td-name">${escapeHtml(clientName(order))}</div></td>
+            <td><div class="td-name">${escapeHtml(order.customer_name || '—')}</div><div class="td-sub">${escapeHtml(order.customer_phone || '')}</div></td>
+            <td class="accounting-total">${moneyFull(driverCollects(order))}</td>
+            <td>${moneyFull(order.delivery_fee)}</td>
+            <td class="accounting-total">${moneyFull(clientPayout(order))}</td>
+            <td><span class="badge ${order.payment_type === 'delivery_only' ? 'badge-online' : 'badge-cod'}">${escapeHtml(paymentLabel(order.payment_type))}</span></td>
+            <td>${collectionStatusBadge(order)}</td>
+            <td>${escapeHtml(order.assigned_driver_id ? driverName(order.assigned_driver_id) : 'Unassigned')}</td>
+            <td>${adminReceivedBadge(order)}</td>
+            <td>
+              <div class="finance-actions">
+                ${driverCashRecordForOrder(order.id)
+                  ? `<button class="btn btn-ghost btn-sm" onclick="viewDriverCashRecord('${driverCashRecordForOrder(order.id).id}')">View</button>`
+                  : isDelivered(order) && driverCollects(order) > 0
+                    ? `<button class="btn btn-primary btn-sm" onclick="openMarkDriverCashReceived('${order.id}')">Mark Received</button>`
+                    : '&mdash;'}
+              </div>
+            </td>
+          </tr>
+        `).join('') || '<tr><td colspan="11">No COD or delivery-fee collection orders found yet.</td></tr>';
+      }
+
+      renderClientPayouts(deliveredCollectable);
+    }
+
+    function renderClientPayouts(deliveredCollectable) {
+      const payoutBody = document.getElementById('clientPayoutBody');
+      if (!payoutBody) return;
+
+      const byClient = new Map();
+      deliveredCollectable
+        .filter(order => order.payment_type === 'cod' && clientPayout(order) > 0)
+        .forEach(order => {
+          const key = order.business_client_id || 'unknown';
+          const current = byClient.get(key) || {
+            client: clientName(order),
+            count: 0,
+            collected: 0,
+            fees: 0,
+            payout: 0
+          };
+          current.count += 1;
+          current.collected += driverCollects(order);
+          current.fees += amount(order.delivery_fee);
+          current.payout += clientPayout(order);
+          current.orderIds = current.orderIds || [];
+          current.orderNumbers = current.orderNumbers || [];
+          current.orderIds.push(order.id);
+          current.orderNumbers.push(order.order_number);
+          byClient.set(key, current);
+        });
+
+      const rows = [...byClient.entries()].sort((a, b) => b[1].payout - a[1].payout);
+      latestPayoutRows = rows.map(([clientId, item]) => {
+        const paidRecord = findPaidRemittance(clientId, item.orderIds, item.payout);
+        return { clientId, ...item, paidRecord };
+      });
+      payoutBody.innerHTML = latestPayoutRows.map(item => `
+        <tr>
+          <td><div class="td-name">${escapeHtml(item.client)}</div></td>
+          <td>${item.count}</td>
+          <td>${moneyFull(item.collected)}</td>
+          <td>${moneyFull(item.fees)}</td>
+          <td class="accounting-total">${moneyFull(item.payout)}</td>
+          <td>${item.paidRecord ? '<span class="badge badge-paid">Paid</span>' : '<span class="badge badge-unpaid">Ready to Pay</span>'}</td>
+          <td>
+            <div class="finance-actions">
+              <button class="btn btn-ghost btn-sm" onclick="copyClientPayout('${item.clientId}')">Copy Summary</button>
+              ${item.paidRecord
+                ? `<button class="btn btn-ghost btn-sm" onclick="viewRemittanceRecord('${item.paidRecord.id}')">View Paid</button>`
+                : `<button class="btn btn-primary btn-sm" onclick="openMarkRemittancePaid('${item.clientId}')">Mark Paid</button>`}
+            </div>
+          </td>
+        </tr>
+      `).join('') || '<tr><td colspan="7">No delivered COD payouts are ready yet.</td></tr>';
+    }
+
+    window.openMarkDriverCashReceived = function(orderId) {
+      const order = orders.find(item => item.id === orderId);
+      if (!order) {
+        showToast('Could not find this order.');
+        return;
+      }
+
+      document.getElementById('modalTitle').textContent = 'Mark Driver Cash Received';
+      document.getElementById('modalBody').innerHTML = `
+        <strong>${escapeHtml(order.order_number)}</strong><br>
+        Driver: <strong>${escapeHtml(order.assigned_driver_id ? driverName(order.assigned_driver_id) : 'Unassigned')}</strong><br>
+        Amount received: <strong>${moneyFull(driverCollects(order))}</strong>
+        <div class="payment-modal-form">
+          <label>Method
+            <select id="driverCashMethod">
+              <option value="cash">Cash</option>
+              <option value="linx">LINX</option>
+              <option value="bank_transfer">Bank Transfer</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+          <label>Reference / Note
+            <input id="driverCashReference" type="text" placeholder="Receipt, handover note, or reference" />
+          </label>
+          <label>Admin Notes
+            <textarea id="driverCashNotes" placeholder="Optional admin note"></textarea>
+          </label>
+        </div>
+      `;
+      document.getElementById('modal').classList.add('show');
+      modalCb = async () => markDriverCashReceived(orderId);
+    };
+
+    async function markDriverCashReceived(orderId) {
+      const order = orders.find(item => item.id === orderId);
+      if (!order) {
+        showToast('Could not find this order.');
+        return;
+      }
+
+      const reference = document.getElementById('driverCashReference')?.value.trim();
+      const notes = document.getElementById('driverCashNotes')?.value.trim();
+      const payload = {
+        driver_id: order.assigned_driver_id || null,
+        order_id: order.id,
+        amount: driverCollects(order),
+        method: document.getElementById('driverCashMethod')?.value || 'cash',
+        received_by: currentProfile?.id || null,
+        received_at: new Date().toISOString(),
+        notes: [reference, notes].filter(Boolean).join(' | ') || null
+      };
+
+      const { error } = await supabase.from('driver_cash_records').insert(payload);
+      if (error) {
+        window.vdNotify('Cash Record Not Saved', error.message || 'Could not save driver cash record.', 'error');
+        return;
+      }
+
+      showToast(`Cash received for ${order.order_number}.`);
+      await loadData();
+    }
+
+    window.viewDriverCashRecord = function(recordId) {
+      const record = driverCashRecords.find(item => item.id === recordId);
+      if (!record) {
+        showToast('Could not find driver cash record.');
+        return;
+      }
+      const driver = record.driver_id ? driverName(record.driver_id) : 'Unassigned';
+      showModal(
+        'Driver Cash Record',
+        `${driver} | ${moneyFull(record.amount)} | ${record.method.replaceAll('_', ' ')} | ${record.notes || 'No notes'} | ${new Date(record.received_at || record.created_at).toLocaleString('en-TT')}`
+      );
+    };
+
+    function accountDisplayName(profile) {
+      const business = [...clientsById.values()].find(client => client.profile_id === profile.id);
+      if (profile.role === 'business' && business) return business.business_name || business.slug || 'Business Client';
+      return [profile.first_name, profile.last_name].filter(Boolean).join(' ') || profile.role || 'Account';
+    }
+
+    function accountInitials(name, role) {
+      const parts = String(name || role || 'A').trim().split(/\s+/).filter(Boolean);
+      return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '') || String(role || 'A').slice(0, 2)).toUpperCase();
+    }
+
+    function accountStatusBadge(status) {
+      const normalized = String(status || 'pending').toLowerCase();
+      if (normalized === 'active') return '<span class="badge badge-active-acc">✓ Active</span>';
+      if (normalized === 'locked') return '<span class="badge badge-locked">🔒 Locked</span>';
+      if (normalized === 'inactive') return '<span class="badge badge-unpaid">Inactive</span>';
+      return '<span class="badge badge-pending">Pending Approval</span>';
+    }
+
+    function renderAccounts() {
+      const grid = document.getElementById('accountsGrid');
+      if (!grid) return;
+
+      const search = (document.getElementById('accountSearch')?.value || '').trim().toLowerCase();
+      const roleFilter = document.getElementById('accountTypeFilter')?.value || '';
+      const statusFilter = document.getElementById('accountStatusFilter')?.value || '';
+      const accounts = allProfiles.filter(profile => ['admin', 'business', 'driver'].includes(profile.role));
+      const filtered = accounts.filter(profile => {
+        const name = accountDisplayName(profile).toLowerCase();
+        const status = String(profile.status || 'pending').toLowerCase();
+        if (roleFilter && profile.role !== roleFilter) return false;
+        if (statusFilter && status !== statusFilter) return false;
+        if (search && !name.includes(search)) return false;
+        return true;
+      });
+
+      const pendingCount = accounts.filter(profile => String(profile.status || '').toLowerCase() === 'pending').length;
+      const lockedCount = accounts.filter(profile => String(profile.status || '').toLowerCase() === 'locked').length;
+      const strip = document.getElementById('accountsPendingStrip');
+      if (strip) {
+        strip.style.background = lockedCount ? 'var(--red-pale)' : pendingCount ? 'var(--yellow-pale)' : 'var(--green-pale)';
+        strip.style.borderColor = lockedCount ? 'var(--red)' : pendingCount ? '#f0c040' : 'var(--green)';
+        strip.querySelector('.pending-strip-icon').textContent = lockedCount ? '🔒' : pendingCount ? '⏳' : '✓';
+        strip.querySelector('h4').textContent = pendingCount || lockedCount
+          ? `${pendingCount} pending approval, ${lockedCount} locked`
+          : 'All accounts are active';
+        strip.querySelector('p').textContent = pendingCount
+          ? 'Approve new business and driver registrations before they can use their dashboards.'
+          : lockedCount
+            ? 'Review locked accounts and unlock only when you are ready.'
+            : 'No pending or locked account action is needed right now.';
+      }
+
+      const accountsBadge = document.querySelector('[data-panel="accounts"] .nav-badge');
+      if (accountsBadge) accountsBadge.textContent = pendingCount + lockedCount;
+
+      if (!filtered.length) {
+        grid.innerHTML = '<div class="account-card"><div class="acc-avatar admin">0</div><div class="acc-info"><div class="acc-name">No accounts found</div><div class="acc-meta">Try changing the filters.</div></div></div>';
+        return;
+      }
+
+      grid.innerHTML = filtered.map(profile => {
+        const name = accountDisplayName(profile);
+        const role = profile.role === 'business' ? 'Business' : profile.role === 'driver' ? 'Driver' : 'Admin';
+        const status = String(profile.status || 'pending').toLowerCase();
+        const isSelf = currentProfile?.id === profile.id;
+        const lockedClass = status === 'locked' ? ' locked' : '';
+        const approveButton = status === 'pending'
+          ? `<button class="btn btn-primary btn-sm" onclick="approveAccount('${profile.id}')">Approve</button>`
+          : '';
+        const lockButton = status === 'active' && !isSelf
+          ? `<button class="btn btn-warn btn-sm" onclick="lockAccount('${profile.id}')">Lock</button>`
+          : '';
+        const unlockButton = status === 'locked'
+          ? `<button class="btn btn-primary btn-sm" onclick="unlockAccount('${profile.id}')">Unlock</button>`
+          : '';
+        const reactivateButton = status === 'inactive'
+          ? `<button class="btn btn-primary btn-sm" onclick="reactivateAccount('${profile.id}')">Reactivate</button>`
+          : '';
+        const deactivateButton = !isSelf && status !== 'inactive'
+          ? `<button class="btn btn-ghost btn-sm" onclick="deactivateAccount('${profile.id}')">Deactivate</button>`
+          : '';
+
+        return `
+          <div class="account-card${lockedClass}">
+            <div class="acc-avatar ${escapeHtml(profile.role || 'admin')}">${escapeHtml(accountInitials(name, profile.role))}</div>
+            <div class="acc-info">
+              <div class="acc-name">${escapeHtml(name)}</div>
+              <div class="acc-meta">${role}${isSelf ? ' · Current admin' : ''}</div>
+              <div style="margin-top:0.3rem;">${accountStatusBadge(status)}</div>
+            </div>
+            <div class="acc-actions">
+              ${approveButton}
+              ${unlockButton}
+              ${reactivateButton}
+              ${lockButton}
+              ${deactivateButton}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+    window.renderAccounts = renderAccounts;
+
+    async function setAccountStatus(profileId, status) {
+      const profile = allProfiles.find(item => item.id === profileId);
+      if (!profile) {
+        showToast('Could not find this account.');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({ status })
+        .eq('id', profileId);
+
+      if (error) {
+        window.vdNotify('Account Not Updated', error.message || 'Could not update this account.', 'error');
+        return;
+      }
+
+      if (profile.role === 'business') {
+        const clientStatus = status === 'active' ? 'active' : status === 'pending' ? 'pending' : 'inactive';
+        const { error: clientError } = await supabase
+          .from('business_clients')
+          .update({ status: clientStatus })
+          .eq('profile_id', profileId);
+        if (clientError) {
+          console.warn('Business client status update skipped:', clientError);
+        }
+      }
+
+      if (profile.role === 'driver') {
+        const driverStatus = status === 'active' ? 'active' : 'inactive';
+        const { error: driverError } = await supabase
+          .from('drivers')
+          .update({ status: driverStatus })
+          .eq('profile_id', profileId);
+        if (driverError) {
+          console.warn('Driver status update skipped:', driverError);
+        }
+      }
+
+      showToast('Account updated.');
+      await loadData();
+    }
+
+    function confirmAccountAction(profileId, action, status) {
+      const profile = allProfiles.find(item => item.id === profileId);
+      if (!profile) {
+        showToast('Could not find this account.');
+        return;
+      }
+      showModal(action, `${action} ${accountDisplayName(profile)}?`, async () => setAccountStatus(profileId, status));
+    }
+
+    window.approveAccount = profileId => confirmAccountAction(profileId, 'Approve Account', 'active');
+    window.lockAccount = profileId => confirmAccountAction(profileId, 'Lock Account', 'locked');
+    window.unlockAccount = profileId => confirmAccountAction(profileId, 'Unlock Account', 'active');
+    window.reactivateAccount = profileId => confirmAccountAction(profileId, 'Reactivate Account', 'active');
+    window.deactivateAccount = profileId => confirmAccountAction(profileId, 'Deactivate Account', 'inactive');
+
+    function normalizedIds(ids = []) {
+      return [...ids].filter(Boolean).map(String).sort().join('|');
+    }
+
+    function findPaidRemittance(clientId, orderIds, amountValue) {
+      const targetIds = normalizedIds(orderIds);
+      return remittanceRecords.find(record => {
+        if (record.business_client_id !== clientId || record.status !== 'paid') return false;
+        if (Math.abs(amount(record.amount) - amount(amountValue)) > 0.009) return false;
+        return normalizedIds(record.order_ids || []) === targetIds;
+      }) || null;
+    }
+
+    function payoutRowByClient(clientId) {
+      return latestPayoutRows.find(row => row.clientId === clientId);
+    }
+
+    window.applyRemittanceFilters = function() {
+      renderAccounting();
+      showToast('Remittance filters applied.');
+    };
+
+    window.exportRemittanceXlsx = function() {
+      if (!latestPayoutRows.length) {
+        showToast('No remittance rows to export for the selected filters.');
+        return;
+      }
+
+      const period = document.getElementById('remitPeriodFilter')?.selectedOptions[0]?.textContent || 'All time';
+      const start = document.getElementById('remitStartDate')?.value || 'Start';
+      const end = document.getElementById('remitEndDate')?.value || 'End';
+      const client = document.getElementById('remitClientFilter')?.selectedOptions[0]?.textContent || 'All clients';
+      const exportedAt = new Date().toLocaleString('en-TT');
+      const rows = [
+        ['VirtuDrop Remittance Report'],
+        ['Client Filter', client],
+        ['Period', period],
+        ['Date Range', `${start} to ${end}`],
+        ['Exported', exportedAt],
+        [],
+        ['Client', 'Delivered COD Orders', 'Total Collected', 'Delivery Fees', 'Amount to Pay Client', 'Status']
+      ];
+      latestPayoutRows.forEach(row => {
+        rows.push([row.client, row.count, row.collected, row.fees, row.payout, row.paidRecord ? 'Paid' : 'Ready to Pay']);
+      });
+      rows.push([]);
+      rows.push(['Totals', latestPayoutRows.reduce((s, r) => s + r.count, 0), latestPayoutRows.reduce((s, r) => s + r.collected, 0), latestPayoutRows.reduce((s, r) => s + r.fees, 0), latestPayoutRows.reduce((s, r) => s + r.payout, 0)]);
+
+      if (!window.XLSX) {
+        showToast('XLSX export library is still loading. Try again in a few seconds.');
+        return;
+      }
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols'] = [{ wch: 28 }, { wch: 20 }, { wch: 18 }, { wch: 16 }, { wch: 22 }];
+      XLSX.utils.book_append_sheet(wb, ws, 'Remittance');
+      XLSX.writeFile(wb, `VirtuDrop-Remittance-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    };
+
+    window.openMarkRemittancePaid = function(clientId) {
+      const row = payoutRowByClient(clientId);
+      if (!row) {
+        showToast('Could not find this payout row.');
+        return;
+      }
+
+      document.getElementById('modalTitle').textContent = 'Mark Remittance Paid';
+      document.getElementById('modalBody').innerHTML = `
+        <strong>${escapeHtml(row.client)}</strong><br>
+        Amount to pay: <strong>${moneyFull(row.payout)}</strong>
+        <div class="payment-modal-form">
+          <label>Method
+            <select id="remitPaidMethod">
+              <option value="bank_transfer">Bank Transfer</option>
+              <option value="cash">Cash</option>
+              <option value="linx">LINX</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+          <label>Reference
+            <input id="remitPaidReference" type="text" placeholder="Bank ref, receipt number, or note" />
+          </label>
+          <label>Notes
+            <textarea id="remitPaidNotes" placeholder="Optional admin note"></textarea>
+          </label>
+        </div>
+      `;
+      document.getElementById('modal').classList.add('show');
+      modalCb = async () => markRemittancePaid(clientId);
+    };
+
+    async function markRemittancePaid(clientId) {
+      const row = payoutRowByClient(clientId);
+      if (!row) {
+        showToast('Could not find this payout row.');
+        return;
+      }
+
+      const payload = {
+        business_client_id: clientId,
+        amount: row.payout,
+        order_ids: row.orderIds,
+        method: document.getElementById('remitPaidMethod')?.value || 'bank_transfer',
+        reference: document.getElementById('remitPaidReference')?.value.trim() || null,
+        notes: document.getElementById('remitPaidNotes')?.value.trim() || null,
+        status: 'paid',
+        paid_by: currentProfile?.id || null,
+        paid_at: new Date().toISOString()
+      };
+
+      const { error } = await supabase.from('remittance_records').insert(payload);
+      if (error) {
+        window.vdNotify('Remittance Not Saved', error.message || 'Could not save remittance record.', 'error');
+        return;
+      }
+
+      showToast(`Remittance saved for ${row.client}.`);
+      await loadData();
+    }
+
+    window.viewRemittanceRecord = function(recordId) {
+      const record = remittanceRecords.find(item => item.id === recordId);
+      if (!record) {
+        showToast('Could not find saved remittance record.');
+        return;
+      }
+      const client = clientsById.get(record.business_client_id)?.business_name || 'Client';
+      showModal(
+        'Saved Remittance',
+        `${client} | ${moneyFull(record.amount)} | ${record.method.replaceAll('_', ' ')} | ${record.reference || 'No reference'} | ${new Date(record.paid_at || record.created_at).toLocaleString('en-TT')}`
+      );
+    };
+
+    window.copyClientPayout = async function(clientId) {
+      const deliveredCollectable = orders.filter(order => isDelivered(order) && order.payment_type === 'cod' && clientPayout(order) > 0 && (order.business_client_id || 'unknown') === clientId);
+      if (!deliveredCollectable.length) {
+        showToast('No payout summary is available for this client.');
+        return;
+      }
+
+      const client = clientName(deliveredCollectable[0]);
+      const collected = deliveredCollectable.reduce((sum, order) => sum + driverCollects(order), 0);
+      const fees = deliveredCollectable.reduce((sum, order) => sum + amount(order.delivery_fee), 0);
+      const payout = deliveredCollectable.reduce((sum, order) => sum + clientPayout(order), 0);
+      const orderList = deliveredCollectable.map(order => order.order_number).join(', ');
+      const text = `VirtuDrop payout summary\nClient: ${client}\nOrders: ${orderList}\nTotal collected: ${moneyFull(collected)}\nDelivery fees: ${moneyFull(fees)}\nAmount to pay client: ${moneyFull(payout)}`;
+
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast(`Payout summary copied for ${client}.`);
+      } catch (error) {
+        showModal('Payout Summary', text.replaceAll('\n', ' | '));
+      }
+    };
+
+    function renderAllOrders() {
+      const tbody = document.querySelector('#panel-all-orders tbody');
+      tbody.innerHTML = orders.map(order => `
+        <tr>
+          <td class="td-id">${order.order_number}</td>
+          <td><div class="td-name">${clientName(order)}</div></td>
+          <td><div class="td-name">${order.customer_name || '—'}</div><div class="td-sub">${order.customer_phone || ''}</div>${order.driver_notes ? `<div class="td-sub" style="color:var(--teal-dark); font-weight:700;">Driver: ${escapeHtml(order.driver_notes)}</div>` : ''}</td>
+          <td>${zoneLabel(order)}</td>
+          <td>${money(order.cod_amount)}</td>
+          <td>${badgeForStatus(order)}</td>
+          <td>${order.assigned_driver_id ? driverName(order.assigned_driver_id) : '—'}</td>
+          <td>
+            <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+              <button class="btn btn-ghost btn-sm" onclick="openCustomerTrackingWhatsApp('${order.id}')">WhatsApp</button>
+              ${order.zone_status === 'pending' || order.order_status === 'zone_pending'
+                ? '<button class="btn btn-warn btn-sm" onclick="showPanel(\'zone-confirm\')">Confirm Zone</button>'
+                : '<button class="btn btn-primary btn-sm" onclick="showPanel(\'driver-assign\')">Assign Driver</button>'}
+            </div>
+          </td>
+        </tr>
+      `).join('') || '<tr><td colspan="8">No orders found.</td></tr>';
+    }
+
+    function zoneOptions(selectedZoneId = '') {
+      return zones.map(zone => `<option value="${zone.id}" data-code="${zone.code}" ${zone.id === selectedZoneId ? 'selected' : ''}>${zone.name}</option>`).join('');
+    }
+
+    function normalizeZoneText(value) {
+      return String(value || '')
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/&/g, ' and ')
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim();
+    }
+
+    function zoneAreaEntries() {
+      return zones.flatMap(zone => (zone.zone_areas || []).map(area => ({
+        zone,
+        area: area.area_name,
+        normalized: normalizeZoneText(area.area_name)
+      }))).filter(entry => entry.normalized);
+    }
+
+    function matchZoneFromText(text) {
+      const normalized = normalizeZoneText(text);
+      if (!normalized) return null;
+      return zoneAreaEntries()
+        .sort((a, b) => b.normalized.length - a.normalized.length)
+        .find(entry => normalized.includes(entry.normalized) || entry.normalized.includes(normalized)) || null;
+    }
+
+    function setSuggestedZone(card, suggestion, source = 'address text') {
+      const message = card.querySelector('.zone-suggestion');
+      const select = card.querySelector('.zone-select');
+      if (!message || !select) return;
+
+      if (!suggestion) {
+        message.textContent = 'No automatic zone match found. Please review manually.';
+        message.style.color = 'var(--grey)';
+        return;
+      }
+
+      select.value = suggestion.zone.id;
+      message.textContent = `Suggested: ${suggestion.zone.name} from ${suggestion.area} (${source})`;
+      message.style.color = 'var(--teal-dark)';
+    }
+
+    let googleMapsPromise = null;
+    function loadGoogleMapsApi() {
+      const key = String(appSettings.google_maps_api_key || '').trim();
+      if (!key) return Promise.resolve(false);
+      if (window.google?.maps?.Geocoder) return Promise.resolve(true);
+      if (googleMapsPromise) return googleMapsPromise;
+
+      googleMapsPromise = new Promise(resolve => {
+        const callback = 'vdGoogleMapsReady_' + Date.now();
+        window[callback] = () => {
+          delete window[callback];
+          resolve(Boolean(window.google?.maps?.Geocoder));
+        };
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&callback=${callback}`;
+        script.async = true;
+        script.onerror = () => resolve(false);
+        document.head.appendChild(script);
+      });
+      return googleMapsPromise;
+    }
+
+    async function reverseGeocodeOrder(order) {
+      if (!order.latitude || !order.longitude) return null;
+      const ready = await loadGoogleMapsApi();
+      if (!ready) return null;
+
+      const geocoder = new google.maps.Geocoder();
+      const location = { lat: Number(order.latitude), lng: Number(order.longitude) };
+      return new Promise(resolve => {
+        geocoder.geocode({ location }, (results, status) => {
+          if (status !== 'OK' || !results?.length) {
+            resolve(null);
+            return;
+          }
+          const parts = results.flatMap(result => [
+            result.formatted_address,
+            ...(result.address_components || []).flatMap(component => [component.long_name, component.short_name])
+          ]);
+          resolve(matchZoneFromText(parts.join(' ')));
+        });
+      });
+    }
+
+    async function applyZoneSuggestions() {
+      const cards = [...document.querySelectorAll('#panel-zone-confirm .zone-card[data-order-id]')];
+      for (const card of cards) {
+        const order = orders.find(item => item.id === card.dataset.orderId);
+        if (!order) continue;
+        const textSuggestion = matchZoneFromText([order.area_name, order.delivery_address, order.street_name].filter(Boolean).join(' '));
+        if (textSuggestion) {
+          setSuggestedZone(card, textSuggestion, 'address text');
+          continue;
+        }
+        const geoSuggestion = await reverseGeocodeOrder(order);
+        setSuggestedZone(card, geoSuggestion, geoSuggestion ? 'Google Maps' : 'manual review');
+      }
+    }
+
+    function renderZoneConfirm() {
+      const panel = document.getElementById('panel-zone-confirm');
+      panel.querySelectorAll('.zone-card').forEach(card => card.remove());
+      const pending = orders.filter(o => o.zone_status === 'pending' || o.order_status === 'zone_pending');
+
+      if (!pending.length) {
+        panel.insertAdjacentHTML('beforeend', '<div class="card" data-live-empty="true"><p>No orders are waiting for zone confirmation.</p></div>');
+        return;
+      }
+
+      pending.forEach(order => {
+        const gpsMapsLink = order.latitude && order.longitude
+          ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.latitude + ',' + order.longitude)}`
+          : '';
+        const mapsHref = order.maps_link || gpsMapsLink;
+        const maps = mapsHref
+          ? `<a href="${mapsHref}" target="_blank" rel="noopener" class="maps-link">Open in Maps ↗</a>`
+          : '';
+        const coords = order.latitude && order.longitude
+          ? `GPS: ${order.latitude}, ${order.longitude}`
+          : 'No GPS data - verify manually';
+        const address = order.delivery_address || order.area_name || 'Location pending';
+
+        panel.insertAdjacentHTML('beforeend', `
+          <div class="zone-card" data-order-id="${order.id}">
+            <div>
+              <div style="display:flex; gap:0.8rem; align-items:center; margin-bottom:0.4rem;">
+                <div class="zone-card-order">${order.order_number}</div>
+                <span class="badge badge-pending">Pending</span>
+              </div>
+              <div class="zone-card-client">${clientName(order)} &middot; Customer: ${order.customer_name || '—'} &middot; ${order.customer_phone || ''}</div>
+              <div class="zone-card-address">📍 ${address}</div>
+              <div class="zone-card-coords">${coords}</div>
+              <div class="zone-card-suggest">
+                <span style="font-size:0.78rem; color:var(--grey);">Admin confirms:</span>
+                ${maps}
+              </div>
+              <div class="zone-card-suggest zone-suggestion" style="margin-top:0.35rem; font-weight:700; color:var(--grey);">
+                Checking zone suggestion...
+              </div>
+            </div>
+            <div class="zone-card-actions">
+              <select class="zone-select">${zoneOptions()}</select>
+              <input class="zone-select fee-input" type="number" min="0" step="1" value="${Number(appSettings.default_delivery_fee || 40)}" title="Delivery fee" />
+              <button class="btn btn-primary btn-sm" onclick="confirmZone('${order.id}')">✅ Confirm Zone</button>
+            </div>
+          </div>
+        `);
+      });
+      applyZoneSuggestions();
+    }
+
+    function renderDriverAssign() {
+      const tbody = document.querySelector('#panel-driver-assign tbody');
+      const assignable = orders.filter(o => o.zone_status === 'confirmed' && !o.assigned_driver_id);
+      tbody.innerHTML = assignable.map(order => `
+        <tr>
+          <td class="td-id">${order.order_number}</td>
+          <td>${clientName(order)}</td>
+          <td><div class="td-name">${order.customer_name || '—'}</div><div class="td-sub">${order.customer_phone || ''}</div></td>
+          <td><span class="badge badge-confirmed">Confirmed</span></td>
+          <td>${money(order.cod_amount)}</td>
+          <td><select class="filter-select driver-select" style="width:160px;">${driverOptions()}</select></td>
+          <td><input type="date" class="filter-input route-date" style="width:140px;" value="${new Date().toISOString().slice(0, 10)}" /></td>
+          <td><button class="btn btn-primary btn-sm" onclick="assignDriver('${order.id}')">✅ Assign</button></td>
+        </tr>
+      `).join('') || '<tr><td colspan="8">No zone-confirmed orders are waiting for driver assignment.</td></tr>';
+    }
+
+    function showZoneMessage(message, showLoginButton = false) {
+      const zonePanel = document.getElementById('panel-zone-confirm');
+      zonePanel.querySelectorAll('.zone-card, .card[data-live-empty]').forEach(card => card.remove());
+      const loginButton = showLoginButton
+        ? '<div style="margin-top:1rem;"><button class="btn btn-primary btn-sm" onclick="goToAdminLogin()">Login as Admin</button></div>'
+        : '';
+      zonePanel.insertAdjacentHTML('beforeend', `<div class="card" data-live-empty="true"><p>${message}</p>${loginButton}</div>`);
+    }
+
+    window.goToAdminLogin = function() {
+      const returnTo = encodeURIComponent('admin-dashboard.html');
+      window.location.href = `auth.html?returnTo=${returnTo}`;
+    };
+
+    function clearStaticAdminData() {
+      document.querySelector('#panel-all-orders tbody').innerHTML = '<tr><td colspan="8">Loading orders...</td></tr>';
+      document.querySelector('#panel-driver-assign tbody').innerHTML = '<tr><td colspan="8">Loading driver assignments...</td></tr>';
+      document.getElementById('accountingRecordsBody').innerHTML = '<tr><td colspan="9">Loading accounting records...</td></tr>';
+      document.getElementById('clientPayoutBody').innerHTML = '<tr><td colspan="7">Loading client payouts...</td></tr>';
+      showZoneMessage('Loading pending zone orders...');
+    }
+
+    async function loadData() {
+      clearStaticAdminData();
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        showLoggedOutGate();
+        return;
+      }
+
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData?.user?.id;
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role, first_name, last_name, status')
+        .eq('id', userId)
+        .single();
+
+      if (profileError || profile?.role !== 'admin' || profile?.status !== 'active') {
+        showZoneMessage('Admin access is required for this dashboard. Log in with an active admin profile.', true);
+        showToast('Admin access is required for this dashboard.');
+        return;
+      }
+
+      currentProfile = { ...profile, id: userId };
+      const adminName = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || 'Admin';
+      document.querySelector('.admin-name').textContent = adminName;
+
+      const [clientsRes, zonesRes, ordersRes, driversRes, driverProfilesRes, profilesRes, settingsRes, remittanceRes, driverCashRes] = await Promise.all([
+        supabase.from('business_clients').select('id, business_name, slug, status, profile_id'),
+        supabase.from('zones').select('id, code, name, region, active, zone_areas(area_name)').eq('active', true).order('code'),
+        supabase
+          .from('orders')
+          .select('id, order_number, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, cod_amount, delivery_fee, zone_status, order_status, assigned_driver_id, tracking_token, customer_notes, driver_notes, source, created_at, updated_at')
+          .order('created_at', { ascending: false }),
+        supabase.from('drivers').select('id, profile_id, status'),
+        supabase.from('profiles').select('id, role, first_name, last_name, status').eq('role', 'driver'),
+        supabase.from('profiles').select('id, role, first_name, last_name, status'),
+        supabase.from('app_settings').select('key, value'),
+        supabase.from('remittance_records').select('id, business_client_id, amount, order_ids, method, reference, notes, status, paid_by, paid_at, created_at').order('paid_at', { ascending: false }),
+        supabase.from('driver_cash_records').select('id, driver_id, order_id, amount, method, received_by, received_at, notes, created_at').order('received_at', { ascending: false })
+      ]);
+
+      if (clientsRes.error) throw clientsRes.error;
+      if (zonesRes.error) throw zonesRes.error;
+      if (ordersRes.error) throw ordersRes.error;
+      if (driversRes.error) throw driversRes.error;
+      if (driverProfilesRes.error) throw driverProfilesRes.error;
+      if (profilesRes.error) throw profilesRes.error;
+      if (settingsRes.error) {
+        console.warn('App settings could not load:', settingsRes.error);
+      } else {
+        appSettings = { ...appSettings, ...Object.fromEntries((settingsRes.data || []).map(row => [row.key, row.value])) };
+      }
+      if (remittanceRes.error) {
+        console.warn('Remittance records could not load:', remittanceRes.error);
+        remittanceRecords = [];
+      } else {
+        remittanceRecords = remittanceRes.data || [];
+      }
+      if (driverCashRes.error) {
+        console.warn('Driver cash records could not load:', driverCashRes.error);
+        driverCashRecords = [];
+      } else {
+        driverCashRecords = driverCashRes.data || [];
+      }
+
+      clientsById = new Map((clientsRes.data || []).map(client => [client.id, client]));
+      zones = zonesRes.data || [];
+      orders = ordersRes.data || [];
+      allProfiles = profilesRes.data || [];
+      driverProfilesById = new Map((driverProfilesRes.data || []).map(profile => [profile.id, profile]));
+      drivers = (driversRes.data || []).filter(driver => {
+        const profile = driverProfilesById.get(driver.profile_id);
+        return driver.status === 'active' && profile?.status === 'active';
+      });
+
+      syncAccountingControls();
+      renderAllOrders();
+      renderZoneConfirm();
+      renderDriverAssign();
+      renderAccounting();
+      renderAccounts();
+      applySettingsToControls();
+      updateBadgesAndStats();
+    }
+
+    async function saveZoneConfirmation(orderId, zoneId, fee) {
+      const rpcResult = await supabase.rpc('admin_confirm_order_zone', {
+        p_order_id: orderId,
+        p_zone_id: zoneId,
+        p_delivery_fee: fee
+      });
+
+      if (!rpcResult.error) return;
+
+      console.warn('RPC zone confirmation failed, trying direct admin update:', rpcResult.error);
+
+      const updateResult = await supabase
+        .from('orders')
+        .update({
+          zone_status: 'confirmed',
+          order_status: 'confirmed',
+          delivery_fee: fee
+        })
+        .eq('id', orderId);
+
+      if (updateResult.error) {
+        throw rpcResult.error;
+      }
+    }
+
+    window.confirmZone = function(orderId) {
+      if (typeof orderId !== 'string') {
+        showToast('Dashboard is still loading live orders. Refresh with Ctrl + F5, then try again.');
+        return;
+      }
+
+      const card = document.querySelector(`.zone-card[data-order-id="${orderId}"]`);
+      const order = orders.find(o => o.id === orderId);
+      if (!card || !order) {
+        showToast('Could not find this live order. Refresh with Ctrl + F5, then try again.');
+        return;
+      }
+      const zoneSelect = card.querySelector('.zone-select');
+      const fee = Number(card.querySelector('.fee-input').value || 0);
+      const zoneId = zoneSelect.value;
+      const zone = zones.find(z => z.id === zoneId);
+
+      if (!zone) {
+        showToast('Please select a zone first.');
+        return;
+      }
+
+      showModal('Confirm Zone', `Set ${order.order_number} to ${zone.name} with delivery fee TTD ${fee}?`, async () => {
+        try {
+          await saveZoneConfirmation(orderId, zoneId, fee);
+          showToast(`✅ ${order.order_number} zone confirmed.`);
+          await loadData();
+        } catch (error) {
+          console.error('Zone confirmation error:', error);
+          window.vdNotify('Zone Confirmation Failed', error.message || 'Zone confirmation failed. Check the console for details.', 'error');
+        }
+      });
+    };
+
+    async function saveDriverAssignment(orderId, driverId, routeDate) {
+      const rpcResult = await supabase.rpc('admin_assign_order_driver', {
+        p_order_id: orderId,
+        p_driver_id: driverId,
+        p_route_date: routeDate || null
+      });
+
+      if (!rpcResult.error) return;
+
+      console.warn('RPC driver assignment failed, trying direct admin update:', rpcResult.error);
+
+      const updateResult = await supabase
+        .from('orders')
+        .update({
+          assigned_driver_id: driverId,
+          order_status: 'assigned'
+        })
+        .eq('id', orderId);
+
+      if (updateResult.error) {
+        throw rpcResult.error;
+      }
+    }
+
+    window.assignDriver = function(orderId) {
+      const order = orders.find(o => o.id === orderId);
+      const row = [...document.querySelectorAll('#panel-driver-assign tbody tr')]
+        .find(tr => tr.querySelector('.td-id')?.textContent === order?.order_number);
+
+      if (!order || !row) {
+        showToast('Could not find this order. Refresh with Ctrl + F5, then try again.');
+        return;
+      }
+
+      const driverId = row.querySelector('.driver-select').value;
+      const routeDate = row.querySelector('.route-date').value;
+      const driverLabel = row.querySelector('.driver-select').selectedOptions[0]?.textContent || 'driver';
+
+      if (!driverId) {
+        showToast('Please select a driver first.');
+        return;
+      }
+
+      showModal('Assign Driver', `Assign ${driverLabel} to order ${order.order_number}?`, async () => {
+        try {
+          await saveDriverAssignment(orderId, driverId, routeDate);
+          showToast(`✅ ${order.order_number} assigned to ${driverLabel}.`);
+          await loadData();
+        } catch (error) {
+          console.error('Driver assignment error:', error);
+          window.vdNotify('Driver Assignment Failed', error.message || 'Driver assignment failed. Check the console for details.', 'error');
+        }
+      });
+    };
+
+    function parseCsvLine(line) {
+      const values = [];
+      let current = '';
+      let quoted = false;
+      for (let i = 0; i < line.length; i += 1) {
+        const char = line[i];
+        const next = line[i + 1];
+        if (char === '"' && quoted && next === '"') {
+          current += '"';
+          i += 1;
+        } else if (char === '"') {
+          quoted = !quoted;
+        } else if (char === ',' && !quoted) {
+          values.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      values.push(current.trim());
+      return values;
+    }
+
+    function parseCsv(text) {
+      const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter(line => line.trim());
+      if (lines.length < 2) return [];
+      const headers = parseCsvLine(lines[0]).map(h => h.toLowerCase().trim());
+      return lines.slice(1).map(line => {
+        const values = parseCsvLine(line);
+        return Object.fromEntries(headers.map((header, i) => [header, values[i] || '']));
+      });
+    }
+
+    function clientIdFromName(name) {
+      const normalized = String(name || '').trim().toLowerCase();
+      for (const [id, client] of clientsById.entries()) {
+        if ([client.business_name, client.slug].filter(Boolean).some(value => String(value).trim().toLowerCase() === normalized)) {
+          return id;
+        }
+      }
+      return '';
+    }
+
+    function buildHistoricalOrder(row, source = 'admin_manual') {
+      const clientId = row.business_client_id || clientIdFromName(row.client);
+      const paymentType = String(row.payment_type || 'cod').trim().toLowerCase();
+      const deliveryDate = row.delivery_date || new Date().toISOString().slice(0, 10);
+      return {
+        order_number: row.order_number || makeOrderNumber(source === 'csv_import' ? 'VDCSV' : 'VDHIST'),
+        business_client_id: clientId,
+        customer_name: String(row.customer_name || '').trim(),
+        customer_phone: String(row.customer_phone || '').trim(),
+        delivery_address: String(row.address || row.delivery_address || 'Historical delivery').trim(),
+        area_name: String(row.area || row.area_name || '').trim() || null,
+        payment_type: ['cod', 'delivery_only', 'prepaid'].includes(paymentType) ? paymentType : 'cod',
+        cod_amount: Number(row.collected_amount || row.cod_amount || 0),
+        delivery_fee: Number(row.delivery_fee || 0),
+        zone_status: 'confirmed',
+        order_status: 'delivered',
+        source,
+        historical_delivery_date: deliveryDate,
+        imported_by: currentProfile?.id || null,
+        imported_at: new Date().toISOString(),
+        customer_notes: row.notes || null
+      };
+    }
+
+    function validateHistoricalOrder(order) {
+      const issues = [];
+      if (!order.business_client_id) issues.push('client not found');
+      if (!order.customer_name) issues.push('missing customer');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(order.historical_delivery_date || '')) issues.push('invalid date');
+      if (!['cod', 'delivery_only', 'prepaid'].includes(order.payment_type)) issues.push('invalid payment');
+      if (Number.isNaN(order.cod_amount) || order.cod_amount < 0) issues.push('invalid collected amount');
+      if (Number.isNaN(order.delivery_fee) || order.delivery_fee < 0) issues.push('invalid delivery fee');
+      return issues;
+    }
+
+    window.saveManualHistoricalDelivery = async function() {
+      const order = buildHistoricalOrder({
+        business_client_id: document.getElementById('histClient').value,
+        delivery_date: document.getElementById('histDate').value,
+        customer_name: document.getElementById('histCustomer').value,
+        customer_phone: document.getElementById('histPhone').value,
+        payment_type: document.getElementById('histPayment').value,
+        collected_amount: document.getElementById('histCod').value,
+        delivery_fee: document.getElementById('histFee').value,
+        address: document.getElementById('histAddress').value
+      });
+      const issues = validateHistoricalOrder(order);
+      if (issues.length) {
+        window.vdNotify('Historical Delivery Not Saved', issues.join(', '), 'error');
+        return;
+      }
+      const { error } = await supabase.from('orders').insert(order);
+      if (error) {
+        window.vdNotify('Historical Delivery Not Saved', error.message, 'error');
+        return;
+      }
+      showToast('Historical delivery saved.');
+      await loadData();
+    };
+
+    window.downloadCsvTemplate = function() {
+      const csv = 'client,delivery_date,customer_name,customer_phone,payment_type,collected_amount,delivery_fee,address,notes\nClient Name,2026-05-18,Customer Name,868-000-0000,cod,350,40,Delivery Area,Optional note\n';
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'virtudrop-historical-import-template.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    async function readImportFile(file) {
+      const isWorkbook = /\.xlsx$/i.test(file.name);
+      if (isWorkbook) {
+        if (!window.XLSX) throw new Error('Spreadsheet reader is still loading. Try again in a few seconds.');
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        return XLSX.utils.sheet_to_json(sheet, { defval: '' });
+      }
+      return parseCsv(await file.text());
+    }
+
+    window.previewCsvImport = async function() {
+      const body = document.getElementById('csvPreviewBody');
+      const confirmBtn = document.getElementById('confirmCsvImportBtn');
+      try {
+        const file = document.getElementById('csvImportFile').files[0];
+        if (!file) {
+          showToast('Choose a CSV or XLSX file first.');
+          return;
+        }
+        body.innerHTML = '<tr><td colspan="9">Reading import file...</td></tr>';
+        const rows = await readImportFile(file);
+        csvImportRows = rows.map(row => {
+          const order = buildHistoricalOrder(row, 'csv_import');
+          const issues = validateHistoricalOrder(order);
+          return { order, issues };
+        });
+        body.innerHTML = csvImportRows.map(item => `
+          <tr>
+            <td><span class="preview-status ${item.issues.length ? 'bad' : 'ok'}">${item.issues.length ? 'Issue' : 'Ready'}</span></td>
+            <td>${escapeHtml(clientName(item.order))}</td>
+            <td>${escapeHtml(item.order.historical_delivery_date)}</td>
+            <td>${escapeHtml(item.order.customer_name)}</td>
+            <td>${escapeHtml(item.order.customer_phone)}</td>
+            <td>${escapeHtml(paymentLabel(item.order.payment_type))}</td>
+            <td>${moneyFull(item.order.cod_amount)}</td>
+            <td>${moneyFull(item.order.delivery_fee)}</td>
+            <td>${escapeHtml(item.issues.join(', ') || '—')}</td>
+          </tr>
+        `).join('') || '<tr><td colspan="9">No rows found in this import file.</td></tr>';
+        confirmBtn.disabled = !csvImportRows.some(item => !item.issues.length);
+      } catch (error) {
+        console.error('CSV preview error:', error);
+        csvImportRows = [];
+        confirmBtn.disabled = true;
+        body.innerHTML = `<tr><td colspan="9">Preview failed: ${escapeHtml(error.message || 'Could not read import file.')}</td></tr>`;
+        window.vdNotify('Preview Failed', error.message || 'Could not read import file.', 'error');
+      }
+    };
+
+    window.confirmCsvImport = async function() {
+      const validOrders = csvImportRows.filter(item => !item.issues.length).map(item => item.order);
+      if (!validOrders.length) {
+        showToast('No valid rows to import.');
+        return;
+      }
+      const { error } = await supabase.from('orders').insert(validOrders);
+      if (error) {
+        window.vdNotify('CSV Import Failed', error.message, 'error');
+        return;
+      }
+      showToast(`${validOrders.length} historical deliveries imported.`);
+      csvImportRows = [];
+      document.getElementById('confirmCsvImportBtn').disabled = true;
+      await loadData();
+    };
+
+
+    document.getElementById('adminLogoutBtn')?.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = 'auth.html?returnTo=admin-dashboard.html';
+    });
+
+    loadData().catch(error => {
+      console.error('Admin dashboard load error:', error);
+      showZoneMessage(error.message || 'Could not load admin dashboard data. Check the browser console for details.');
+      document.querySelector('#panel-all-orders tbody').innerHTML = `<tr><td colspan="8">${error.message || 'Could not load orders.'}</td></tr>`;
+      document.querySelector('#panel-driver-assign tbody').innerHTML = '<tr><td colspan="8">Driver assignment could not load because orders did not load.</td></tr>';
+      showToast(error.message || 'Could not load admin dashboard data.');
+    });
+  </script>
+
+</body>
+</html>
+
+
+
+

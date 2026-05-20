@@ -1,0 +1,1622 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Government Services | VirtuForms</title>
+  <meta name="description" content="Expert assistance with driver's permits, certified copies, birth, death, and marriage certificates in Trinidad and Tobago.">
+  <link rel="icon" href="assets/virtuforms-logo.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      line-height: 1.7;
+      color: #f8f9fa;
+      background: #0b1616;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    /* Navigation */
+    .nav {
+      background: #0f2020;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      border-bottom: 2px solid #1a5656;
+    }
+
+    .nav-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem 0;
+      gap: 2rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      text-decoration: none;
+      transition: transform 0.3s ease;
+    }
+
+    .brand:hover {
+      transform: scale(1.02);
+    }
+
+    .brand-logo {
+      height: 50px;
+      width: auto;
+      display: block;
+    }
+
+    .brand-text {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: #7dd3c0;
+      letter-spacing: -0.5px;
+    }
+
+    .links {
+      display: flex;
+      gap: 2rem;
+      align-items: center;
+      position: relative;
+    }
+
+    .links a,
+    .links .dropdown-toggle {
+      text-decoration: none;
+      color: #b8e6dc;
+      font-weight: 500;
+      font-size: 0.95rem;
+      position: relative;
+      transition: color 0.3s ease;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0.5rem 0;
+    }
+
+    .links a::after,
+    .links .dropdown-toggle::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: #7dd3c0;
+      transition: width 0.3s ease;
+    }
+
+    .links a:hover,
+    .links .dropdown-toggle:hover {
+      color: #7dd3c0;
+    }
+
+    .links a:hover::after,
+    .links .dropdown-toggle:hover::after {
+      width: 100%;
+    }
+
+    /* Nav CTA Button */
+    .nav-cta {
+      background: linear-gradient(135deg, #2a9d8f 0%, #1a5656 100%) !important;
+      color: #ffffff !important;
+      padding: 0.65rem 1.5rem !important;
+      border-radius: 50px !important;
+      font-weight: 600 !important;
+      box-shadow: 0 2px 10px rgba(42, 157, 143, 0.3) !important;
+      transition: all 0.3s ease !important;
+      text-decoration: none !important;
+      border: none !important;
+    }
+
+    .nav-cta::after {
+      display: none !important;
+      content: none !important;
+    }
+
+    .nav-cta:hover {
+      transform: translateY(-2px) !important;
+      box-shadow: 0 4px 15px rgba(42, 157, 143, 0.4) !important;
+      color: #ffffff !important;
+      background: linear-gradient(135deg, #2a9d8f 0%, #1a5656 100%) !important;
+    }
+
+    .dropdown {
+      position: relative;
+    }
+
+    .dropdown-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .dropdown-menu {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background: #0f2020;
+      border: 2px solid #2a9d8f;
+      border-radius: 8px;
+      padding: 1rem 0;
+      min-width: 220px;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-10px);
+      transition: all 0.3s ease;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+      margin-top: 0.5rem;
+    }
+
+    .dropdown:hover .dropdown-menu {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .dropdown-menu a {
+      display: block;
+      padding: 0.8rem 1.5rem;
+      color: #b8e6dc;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      font-size: 0.95rem;
+    }
+
+    .dropdown-menu a::after {
+      display: none;
+    }
+
+    .dropdown-menu a:hover {
+      background: #1a5656;
+      color: #7dd3c0;
+      padding-left: 2rem;
+    }
+
+    .mobile-toggle {
+      display: none;
+      background: none;
+      border: 2px solid #7dd3c0;
+      color: #7dd3c0;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* Hero Section */
+    .hero {
+      padding: 6rem 0 4rem;
+      background: linear-gradient(135deg, #0b1616 0%, #1a5656 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: -20%;
+      width: 60%;
+      height: 100%;
+      background: radial-gradient(circle, rgba(125, 211, 192, 0.1) 0%, transparent 70%);
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+    }
+
+    .hero-content h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 4rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #7dd3c0 0%, #b8e6dc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 1.5rem;
+    }
+
+    .hero-content p {
+      font-size: 1.4rem;
+      color: #b8e6dc;
+      margin-bottom: 2rem;
+    }
+
+    .breadcrumb {
+      font-size: 0.95rem;
+      color: #7dd3c0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-top: 1.5rem;
+    }
+
+    .breadcrumb a {
+      color: #b8e6dc;
+      text-decoration: none;
+      transition: color 0.3s ease;
+    }
+
+    .breadcrumb a:hover {
+      color: #7dd3c0;
+    }
+
+    /* Services Section */
+    .services-section {
+      padding: 5rem 0;
+      background: #0f2020;
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 4rem;
+    }
+
+    .section-header h2 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #7dd3c0;
+      margin-bottom: 1rem;
+    }
+
+    .section-header p {
+      font-size: 1.2rem;
+      color: #b8e6dc;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    /* Service Cards Grid */
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+      gap: 2.5rem;
+      margin-bottom: 5rem;
+    }
+
+    .service-card {
+      background: linear-gradient(135deg, #1a5656 0%, #0f2020 100%);
+      border: 2px solid #2a9d8f;
+      border-radius: 16px;
+      overflow: hidden;
+      transition: all 0.4s ease;
+    }
+
+    .service-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 20px 50px rgba(42, 157, 143, 0.3);
+      border-color: #7dd3c0;
+    }
+
+    .service-card-header {
+      padding: 2.5rem;
+      position: relative;
+    }
+
+    .service-card-header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: linear-gradient(180deg, #7dd3c0 0%, #2a9d8f 100%);
+    }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1.5rem;
+    }
+
+    .service-icon {
+      font-size: 3rem;
+      line-height: 1;
+    }
+
+    .service-price {
+      text-align: right;
+    }
+
+    .price-amount {
+      font-family: 'Poppins', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: #7dd3c0;
+      display: block;
+    }
+
+    .price-note {
+      font-size: 0.85rem;
+      color: #b8e6dc;
+      opacity: 0.8;
+      margin-top: 0.3rem;
+    }
+
+    .service-title {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #7dd3c0;
+      margin-bottom: 1rem;
+    }
+
+    .service-summary {
+      font-size: 1.05rem;
+      color: #b8e6dc;
+      line-height: 1.7;
+      margin-bottom: 1.5rem;
+    }
+
+    .expand-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: #2a9d8f;
+      font-weight: 600;
+      font-size: 1rem;
+    }
+
+    .expand-toggle::after {
+      content: '▼';
+      font-size: 0.8rem;
+      transition: transform 0.3s ease;
+    }
+
+    .service-card.expanded .expand-toggle::after {
+      transform: rotate(180deg);
+    }
+
+    .view-details-btn {
+      display: inline-block;
+      padding: 1rem 2rem;
+      margin-top: 1rem;
+      width: auto;
+      font-size: 1rem;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: #7dd3c0;
+      border: 2px solid #7dd3c0;
+    }
+
+    .btn-secondary:hover {
+      background: #7dd3c0;
+      color: #0b1616;
+      transform: translateY(-3px);
+    }
+
+    /* Modal Styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.85);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 2rem;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    .modal {
+      background: linear-gradient(135deg, #0f2020 0%, #1a5656 100%);
+      border: 2px solid #2a9d8f;
+      border-radius: 20px;
+      max-width: 800px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+      animation: slideUp 0.3s ease;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .modal-header {
+      padding: 2.5rem 3rem 2rem 3rem;
+      border-bottom: 2px solid rgba(125, 211, 192, 0.2);
+      position: sticky;
+      top: 0;
+      background: linear-gradient(135deg, #0f2020 0%, #1a5656 100%);
+      z-index: 10;
+    }
+
+    .modal-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 2rem;
+    }
+
+    .modal-title {
+      font-family: 'Poppins', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: #7dd3c0;
+      margin: 0;
+    }
+
+    .modal-price {
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .modal-price-amount {
+      font-family: 'Poppins', sans-serif;
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: #7dd3c0;
+      display: block;
+      line-height: 1;
+    }
+
+    .modal-price-note {
+      font-size: 0.9rem;
+      color: #b8e6dc;
+      opacity: 0.8;
+      margin-top: 0.5rem;
+    }
+
+    .close-modal {
+      position: absolute;
+      top: 1.5rem;
+      right: 1.5rem;
+      background: rgba(42, 157, 143, 0.2);
+      border: 2px solid #2a9d8f;
+      color: #7dd3c0;
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: bold;
+    }
+
+    .close-modal:hover {
+      background: #2a9d8f;
+      color: #ffffff;
+      transform: rotate(90deg);
+    }
+
+    .modal-body {
+      padding: 2.5rem 3rem 3rem 3rem;
+    }
+
+    .modal-section {
+      margin-bottom: 2.5rem;
+    }
+
+    .modal-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .modal-section h4 {
+      font-size: 1.3rem;
+      color: #7dd3c0;
+      margin-bottom: 1.2rem;
+      font-weight: 700;
+    }
+
+    .modal-list {
+      list-style: none;
+      margin: 0;
+    }
+
+    .modal-list li {
+      padding: 0.7rem 0;
+      color: #b8e6dc;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      font-size: 1.05rem;
+      line-height: 1.6;
+    }
+
+    .modal-list li::before {
+      content: '✓';
+      color: #2a9d8f;
+      font-weight: bold;
+      font-size: 1.3rem;
+      flex-shrink: 0;
+    }
+
+    .modal-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 1rem 1.8rem;
+      background: rgba(42, 157, 143, 0.15);
+      border-left: 4px solid #2a9d8f;
+      border-radius: 8px;
+      color: #b8e6dc;
+      font-size: 1.05rem;
+      margin-top: 1.5rem;
+    }
+
+    .modal-badge::before {
+      content: '⏱';
+      font-size: 1.4rem;
+    }
+
+    .modal-cta {
+      margin-top: 2.5rem;
+      padding-top: 2.5rem;
+      border-top: 2px solid rgba(125, 211, 192, 0.2);
+    }
+
+    .service-card-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.4s ease;
+    }
+
+    .service-card.expanded .service-card-content {
+      max-height: 1500px;
+    }
+
+    .card-content-inner {
+      padding: 0 2.5rem 2.5rem 2.5rem;
+      border-top: 1px solid rgba(125, 211, 192, 0.2);
+    }
+
+    .content-section {
+      margin-top: 2rem;
+    }
+
+    .content-section h4 {
+      font-size: 1.2rem;
+      color: #7dd3c0;
+      margin-bottom: 1rem;
+      font-weight: 700;
+    }
+
+    .requirements-list {
+      list-style: none;
+      margin-bottom: 1.5rem;
+    }
+
+    .requirements-list li {
+      padding: 0.6rem 0;
+      color: #b8e6dc;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.8rem;
+      font-size: 1rem;
+    }
+
+    .requirements-list li::before {
+      content: '✓';
+      color: #2a9d8f;
+      font-weight: bold;
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+
+    .turnaround-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.8rem 1.5rem;
+      background: rgba(42, 157, 143, 0.15);
+      border-left: 3px solid #2a9d8f;
+      border-radius: 6px;
+      color: #b8e6dc;
+      font-size: 0.95rem;
+      margin-top: 1rem;
+    }
+
+    .turnaround-badge::before {
+      content: '⏱';
+      font-size: 1.2rem;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 1.2rem 2.5rem;
+      border-radius: 10px;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 1.1rem;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      border: none;
+      width: 100%;
+      text-align: center;
+      margin-top: 2rem;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #2a9d8f 0%, #3fb8a8 100%);
+      color: #ffffff;
+      box-shadow: 0 6px 20px rgba(42, 157, 143, 0.4);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 30px rgba(42, 157, 143, 0.6);
+    }
+
+    /* FAQ Section */
+    .faq-section {
+      padding: 5rem 0;
+      background: #0b1616;
+    }
+
+    .faq-header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .faq-header h2 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #7dd3c0;
+    }
+
+    .faq-list {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .faq-item {
+      background: #0f2020;
+      border: 2px solid #1a5656;
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .faq-item:hover {
+      border-color: #2a9d8f;
+    }
+
+    .faq-question {
+      width: 100%;
+      padding: 1.5rem 2rem;
+      background: none;
+      border: none;
+      color: #b8e6dc;
+      font-size: 1.2rem;
+      font-weight: 600;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.3s ease;
+    }
+
+    .faq-question:hover {
+      color: #7dd3c0;
+    }
+
+    .faq-question::after {
+      content: '▼';
+      font-size: 0.9rem;
+      transition: transform 0.3s ease;
+      color: #2a9d8f;
+    }
+
+    .faq-item.active .faq-question::after {
+      transform: rotate(180deg);
+    }
+
+    .faq-answer {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+
+    .faq-item.active .faq-answer {
+      max-height: 500px;
+    }
+
+    .faq-answer-content {
+      padding: 0 2rem 1.5rem 2rem;
+      color: #b8e6dc;
+      line-height: 1.8;
+      font-size: 1rem;
+    }
+
+    /* CTA Section */
+    .cta-section {
+      margin: 6rem auto;
+      padding: 4rem;
+      background: linear-gradient(135deg, #2a9d8f 0%, #3fb8a8 100%);
+      border-radius: 20px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(42, 157, 143, 0.4);
+    }
+
+    .cta-section h2 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 1rem;
+    }
+
+    .cta-section p {
+      font-size: 1.3rem;
+      color: #ffffff;
+      margin-bottom: 2.5rem;
+      opacity: 0.95;
+    }
+
+    .cta-buttons {
+      display: flex;
+      gap: 1.5rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .cta-section .btn {
+      background: #ffffff;
+      color: #2a9d8f;
+      width: auto;
+      padding: 1.3rem 3rem;
+    }
+
+    .cta-section .btn:hover {
+      background: #f8f9fa;
+      transform: translateY(-3px);
+    }
+
+    /* Footer */
+    .footer {
+      background: #000000;
+      color: #b8e6dc;
+      padding: 4rem 0 2rem;
+      border-top: 2px solid #1a5656;
+    }
+
+    .footer-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 3rem;
+      margin-bottom: 3rem;
+    }
+
+    .footer-section h3 {
+      color: #7dd3c0;
+      font-size: 1.3rem;
+      margin-bottom: 1.5rem;
+      font-weight: 700;
+    }
+
+    .footer-section p,
+    .footer-section a {
+      color: #b8e6dc;
+      text-decoration: none;
+      display: block;
+      margin-bottom: 0.8rem;
+      transition: color 0.3s ease;
+    }
+
+    .footer-section a:hover {
+      color: #7dd3c0;
+    }
+
+    .footer-bottom {
+      text-align: center;
+      padding-top: 2rem;
+      border-top: 1px solid #1a5656;
+      color: #7dd3c0;
+      opacity: 0.8;
+    }
+
+    /* Responsive */
+    @media (max-width: 968px) {
+      .nav-inner {
+        padding: 1rem 0;
+        gap: 1rem;
+      }
+
+      .brand-logo {
+        height: 40px;
+      }
+
+      .brand-text {
+        font-size: 1.3rem;
+      }
+
+      .container {
+        padding: 0 1rem;
+      }
+
+      .links {
+        display: none;
+        position: fixed;
+        top: 76px;
+        left: 0;
+        right: 0;
+        background: #0f2020;
+        flex-direction: column;
+        padding: 2rem;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        border-top: 2px solid #1a5656;
+        gap: 0;
+        z-index: 999;
+        max-height: calc(100vh - 76px);
+        overflow-y: auto;
+      }
+
+      .links.mobile-open {
+        display: flex;
+      }
+
+      .links a,
+      .links .dropdown-toggle {
+        padding: 1rem;
+        border-bottom: 1px solid #1a5656;
+      }
+
+      .links a:last-child {
+        border-bottom: none;
+      }
+
+      .dropdown-menu {
+        position: static;
+        opacity: 1;
+        visibility: visible;
+        transform: none;
+        margin-top: 0;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        background: #0b1616;
+        display: none;
+      }
+
+      .dropdown-menu.mobile-open {
+        display: block;
+      }
+
+      .dropdown-menu a {
+        padding: 1rem 1rem 1rem 2rem;
+      }
+
+      .dropdown-menu a:hover {
+        padding-left: 2.5rem;
+      }
+
+      .mobile-toggle {
+        display: block;
+      }
+
+      .hero-content h1 {
+        font-size: 2.5rem;
+      }
+
+      .services-grid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+      }
+
+      .service-card {
+        padding: 2rem;
+      }
+
+      /* Modal optimizations for mobile */
+      .modal-content {
+        width: 95%;
+        max-width: 95%;
+        margin: 1rem auto;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+
+      .modal-header {
+        padding: 1.5rem;
+      }
+
+      .modal-body {
+        padding: 1.5rem;
+      }
+
+      .cta-section {
+        padding: 3rem 2rem;
+      }
+
+      .cta-buttons {
+        flex-direction: column;
+      }
+
+      .cta-section .btn {
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .container {
+        padding: 0 1rem;
+      }
+
+      .nav-inner {
+        padding: 0.75rem 0;
+      }
+
+      .brand-logo {
+        height: 35px;
+      }
+
+      .brand-text {
+        font-size: 1.1rem;
+      }
+
+      .mobile-toggle {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.9rem;
+      }
+
+      .hero-content h1 {
+        font-size: 2rem;
+        line-height: 1.2;
+      }
+
+      .hero-content p {
+        font-size: 1rem;
+      }
+
+      .service-card {
+        padding: 1.5rem;
+      }
+
+      .service-card-header {
+        padding: 1.5rem;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+      }
+
+      .card-content-inner {
+        padding: 0 1.5rem 1.5rem 1.5rem;
+      }
+
+      .service-title {
+        font-size: 1.4rem;
+      }
+
+      .price-display {
+        text-align: left;
+      }
+
+      .price-amount {
+        font-size: 1.6rem;
+      }
+
+      .btn {
+        padding: 1rem 1.5rem;
+        font-size: 1rem;
+      }
+
+      /* Modal optimizations for small screens */
+      .modal-content {
+        width: 98%;
+        margin: 0.5rem auto;
+        border-radius: 12px;
+      }
+
+      .modal-header {
+        padding: 1.25rem;
+      }
+
+      .modal-title {
+        font-size: 1.5rem;
+      }
+
+      .modal-close {
+        width: 35px;
+        height: 35px;
+        font-size: 1.5rem;
+      }
+
+      .modal-body {
+        padding: 1.25rem;
+      }
+
+      .modal-body h3 {
+        font-size: 1.2rem;
+      }
+
+      .modal-body p,
+      .modal-body li {
+        font-size: 0.95rem;
+      }
+
+      .faq-question {
+        font-size: 1rem;
+        padding: 1rem;
+      }
+
+      .faq-answer-content {
+        padding: 1rem;
+        font-size: 0.95rem;
+      }
+
+      .cta-section {
+        padding: 2.5rem 1.5rem;
+        margin: 3rem 0.5rem;
+      }
+
+      .cta-section h2 {
+        font-size: 1.8rem;
+      }
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="container">
+      <div class="nav-inner">
+        <a class="brand" href="index.html" aria-label="VirtuForms Home">
+          <img src="assets/virtuforms-logo.png" alt="VirtuForms logo" class="brand-logo" />
+          <span class="brand-text">VirtuForms</span>
+        </a>
+        <button class="mobile-toggle" type="button" data-mobile-toggle aria-label="Toggle navigation" onclick="var nav = document.querySelector('[data-nav-links]'); if(nav.style.display === 'flex' && nav.style.position === 'fixed') { nav.style.display = 'none'; nav.style.position = ''; } else { nav.style.display = 'flex'; nav.style.position = 'fixed'; nav.style.flexDirection = 'column'; nav.style.top = '76px'; nav.style.left = '0'; nav.style.right = '0'; nav.style.background = '#0f2020'; nav.style.padding = '2rem'; nav.style.zIndex = '999'; nav.style.borderTop = '2px solid #1a5656'; }">Menu</button>
+        <nav class="links" data-nav-links>
+          <a href="index.html">Home</a>
+          <div class="dropdown">
+            <button class="dropdown-toggle" onclick="var menu = this.nextElementSibling; if(menu.style.display === 'block') { menu.style.display = 'none'; } else { menu.style.display = 'block'; menu.style.position = 'static'; menu.style.background = '#0b1616'; menu.style.border = 'none'; menu.style.borderRadius = '0'; menu.style.boxShadow = 'none'; menu.style.marginTop = '0'; menu.style.padding = '0'; } event.stopPropagation();">
+              Services
+              <span style="font-size: 0.7rem;">▼</span>
+            </button>
+            <div class="dropdown-menu">
+              <a href="business-services.html">Business Services</a>
+              <a href="government-services.html">Government Services</a>
+              <a href="travel-services.html">Travel Services</a>
+              <a href="personal-services.html">Personal Services</a>
+              <a href="virtudrop/index.html">VirtuDrop</a>
+            </div>
+          </div>
+          <a href="about.html">About</a>
+          <a href="contact.html">Contact</a>
+          <a href="order-form.html" class="nav-cta">Get Started</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="container">
+        <div class="hero-content">
+          <h1>Government Services</h1>
+          <p>Expert assistance with essential documentation</p>
+          <div class="breadcrumb">
+            <a href="index.html">Home</a>
+            <span>›</span>
+            <span>Government Services</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Services Section -->
+    <section class="services-section">
+      <div class="container">
+        <div class="services-grid">
+          <!-- Driver's Permit Renewal -->
+          <div class="service-card">
+            <div class="service-card-header">
+              <div class="card-top">
+                <div class="service-icon">🚗</div>
+                <div class="service-price">
+                  <span class="price-amount">$835 / $1,335</span>
+                  <div class="price-note">(inc. gov fees)</div>
+                </div>
+              </div>
+              <h3 class="service-title">Driver's Permit Renewal</h3>
+              <p class="service-summary">
+                Hassle-free renewal of your driver's permit with complete document preparation and submission.
+              </p>
+              <button class="btn btn-secondary view-details-btn">View Details</button>
+            </div>
+
+            <div class="service-card-content">
+              <div class="card-content-inner">
+                <div class="content-section">
+                  <h4>Pricing Options:</h4>
+                  <ul class="requirements-list">
+                    <li><strong>5-Year Renewal:</strong> $835 (includes all government and delivery fees)</li>
+                    <li><strong>10-Year Renewal:</strong> $1,335 (includes all government and delivery fees)</li>
+                  </ul>
+                </div>
+
+                <div class="content-section">
+                  <h4>Required Documents:</h4>
+                  <ul class="requirements-list">
+                    <li>Physical Driver's Permit (required at our office)</li>
+                    <li>Proof of Address (utility bill: Cable, Electricity, Water, or Internet)</li>
+                    <li>Authorization letter if utility bill not in your name</li>
+                    <li>Photo of applicant (within last 3 months, white background, no glasses)</li>
+                    <li>Photo of signature (on blank white paper)</li>
+                    <li>Authorization form for VirtuForms to represent you</li>
+                  </ul>
+                </div>
+
+                <div class="content-section">
+                  <h4>Important Notes:</h4>
+                  <ul class="requirements-list">
+                    <li>If permit expired over 6 months, cannot be done online</li>
+                    <li>Name and address changes must be done in office</li>
+                    <li>Only Class 1 and 3 can be renewed online</li>
+                  </ul>
+                </div>
+
+                <div class="turnaround-badge">
+                  Turnaround: 1-3 business days (review) + 1-5 days (delivery)
+                </div>
+
+                <a href="order-form.html" class="btn btn-primary">Get Started</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Certified Copy -->
+          <div class="service-card">
+            <div class="service-card-header">
+              <div class="card-top">
+                <div class="service-icon">📋</div>
+                <div class="service-price">
+                  <span class="price-amount">$335</span>
+                  <div class="price-note">(inc. gov fees)</div>
+                </div>
+              </div>
+              <h3 class="service-title">Certified Copy</h3>
+              <p class="service-summary">
+                Professional assistance with obtaining your vehicle's certified copy with delivery options.
+              </p>
+              <button class="btn btn-secondary view-details-btn">View Details</button>
+            </div>
+
+            <div class="service-card-content">
+              <div class="card-content-inner">
+                <div class="content-section">
+                  <h4>What's Included:</h4>
+                  <ul class="requirements-list">
+                    <li>Application preparation and submission</li>
+                    <li>Government fees and convenience charges</li>
+                    <li>Delivery to TTConnect office</li>
+                    <li>Home delivery service</li>
+                  </ul>
+                </div>
+
+                <div class="content-section">
+                  <h4>Required Information:</h4>
+                  <ul class="requirements-list">
+                    <li>Full name and email address</li>
+                    <li>Driver's Permit and National ID</li>
+                    <li>Vehicle number and owner's name</li>
+                    <li>Copy of old Certified Copy (if available)</li>
+                    <li>Current address and phone number</li>
+                    <li>Authorization form for VirtuForms to represent you</li>
+                  </ul>
+                </div>
+
+                <div class="turnaround-badge">
+                  Turnaround: 1-5 business days (review) + 1-5 days (delivery)
+                </div>
+
+                <a href="order-form.html" class="btn btn-primary">Get Started</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Birth Certificate -->
+          <div class="service-card">
+            <div class="service-card-header">
+              <div class="card-top">
+                <div class="service-icon">👶</div>
+                <div class="service-price">
+                  <span class="price-amount">$200</span>
+                  <div class="price-note">(inc. gov fees)</div>
+                </div>
+              </div>
+              <h3 class="service-title">Birth Certificate</h3>
+              <p class="service-summary">
+                Fast and professional assistance with obtaining birth certificates for all purposes.
+              </p>
+              <button class="btn btn-secondary view-details-btn">View Details</button>
+            </div>
+
+            <div class="service-card-content">
+              <div class="card-content-inner">
+                <div class="content-section">
+                  <h4>Required Documents:</h4>
+                  <ul class="requirements-list">
+                    <li>Old copy of Birth Certificate (if available)</li>
+                    <li>Two forms of ID (National ID, Passport, or Driver's Permit)</li>
+                    <li>Proof of address (utility bill or bank statement)</li>
+                    <li>Authorization letter if utility bill not in your name</li>
+                    <li>Email address for correspondence</li>
+                    <li>Authorization form for VirtuForms to represent you</li>
+                  </ul>
+                </div>
+
+                <div class="content-section">
+                  <h4>Required Information:</h4>
+                  <ul class="requirements-list">
+                    <li>Maiden surname of mother</li>
+                    <li>Current surname of mother</li>
+                    <li>Given name of mother</li>
+                    <li>Date of birth of child</li>
+                  </ul>
+                </div>
+
+                <a href="order-form.html" class="btn btn-primary">Get Started</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Death Certificate -->
+          <div class="service-card">
+            <div class="service-card-header">
+              <div class="card-top">
+                <div class="service-icon">🕊️</div>
+                <div class="service-price">
+                  <span class="price-amount">$200</span>
+                  <div class="price-note">(inc. gov fees)</div>
+                </div>
+              </div>
+              <h3 class="service-title">Death Certificate</h3>
+              <p class="service-summary">
+                Compassionate and professional assistance with obtaining death certificates.
+              </p>
+              <button class="btn btn-secondary view-details-btn">View Details</button>
+            </div>
+
+            <div class="service-card-content">
+              <div class="card-content-inner">
+                <div class="content-section">
+                  <h4>Required Information:</h4>
+                  <ul class="requirements-list">
+                    <li>Date of death</li>
+                    <li>Place of death</li>
+                    <li>Full name of deceased</li>
+                  </ul>
+                </div>
+
+                <div class="content-section">
+                  <h4>Required Documents:</h4>
+                  <ul class="requirements-list">
+                    <li>Two forms of ID (National ID, Passport, or Driver's Permit)</li>
+                    <li>Authorization form for VirtuForms to represent you</li>
+                  </ul>
+                </div>
+
+                <a href="order-form.html" class="btn btn-primary">Get Started</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Marriage Certificate -->
+          <div class="service-card">
+            <div class="service-card-header">
+              <div class="card-top">
+                <div class="service-icon">💍</div>
+                <div class="service-price">
+                  <span class="price-amount">$200</span>
+                  <div class="price-note">(inc. gov fees)</div>
+                </div>
+              </div>
+              <h3 class="service-title">Marriage Certificate</h3>
+              <p class="service-summary">
+                Quick and efficient assistance with obtaining marriage certificates.
+              </p>
+              <button class="btn btn-secondary view-details-btn">View Details</button>
+            </div>
+
+            <div class="service-card-content">
+              <div class="card-content-inner">
+                <div class="content-section">
+                  <h4>Required Information:</h4>
+                  <ul class="requirements-list">
+                    <li>Full name of bride</li>
+                    <li>Full name of groom</li>
+                    <li>Place of marriage</li>
+                    <li>Date of marriage</li>
+                  </ul>
+                </div>
+
+                <div class="content-section">
+                  <h4>Required Documents:</h4>
+                  <ul class="requirements-list">
+                    <li>Authorization form for VirtuForms to represent you</li>
+                  </ul>
+                </div>
+
+                <a href="order-form.html" class="btn btn-primary">Get Started</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="faq-section">
+      <div class="container">
+        <div class="faq-header">
+          <h2>Frequently Asked Questions</h2>
+        </div>
+
+        <div class="faq-list">
+          <div class="faq-item">
+            <button class="faq-question">
+              Can I renew my driver's permit if it's already expired?
+            </button>
+            <div class="faq-answer">
+              <div class="faq-answer-content">
+                Yes, you can renew an expired permit. However, if your permit has been expired for more than 6 months, it cannot be renewed online and must be done in person at the licensing office. We can still assist with document preparation for in-office renewals.
+              </div>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button class="faq-question">
+              How long does it take to receive my documents?
+            </button>
+            <div class="faq-answer">
+              <div class="faq-answer-content">
+                For Driver's Permit renewals and Certified Copies, processing typically takes 1-5 business days, with delivery taking an additional 1-5 days through TTPost. Birth, death, and marriage certificates have varying processing times depending on the Registrar General's Office workload, but we follow up regularly to ensure timely completion.
+              </div>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button class="faq-question">
+              What if I don't have all the required documents?
+            </button>
+            <div class="faq-answer">
+              <div class="faq-answer-content">
+                We'll work with you to identify which documents you have and what's missing. In most cases, we can guide you on how to obtain missing documents or suggest acceptable alternatives. Contact us for a free consultation to discuss your specific situation.
+              </div>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button class="faq-question">
+              Do I need to visit any government offices myself?
+            </button>
+            <div class="faq-answer">
+              <div class="faq-answer-content">
+                No! That's the beauty of using VirtuForms. We handle all government office visits, submissions, and follow-ups on your behalf. You simply provide us with the required documents and information, and we take care of the rest. Your completed documents are delivered directly to you.
+              </div>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button class="faq-question">
+              Are your prices all-inclusive?
+            </button>
+            <div class="faq-answer">
+              <div class="faq-answer-content">
+                Yes! All prices shown include government fees, convenience charges, delivery costs, and our professional service fees. There are no hidden charges. The price you see is the total price you pay.
+              </div>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button class="faq-question">
+              Can someone else apply on my behalf?
+            </button>
+            <div class="faq-answer">
+              <div class="faq-answer-content">
+                Yes, that's exactly what we do! You'll need to sign an authorization form appointing VirtuForms as your representative. This legal authorization allows us to handle your application with government offices on your behalf, saving you time and hassle.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA Section -->
+    <div class="container">
+      <section class="cta-section">
+        <h2>Ready to Get Your Documents?</h2>
+        <p>Let us handle the paperwork while you focus on what matters most</p>
+        <div class="cta-buttons">
+          <a href="order-form.html" class="btn">Get Started Today</a>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-grid">
+        <div class="footer-section">
+          <h3>VirtuForms</h3>
+          <p>Professional administrative solutions for Trinidad. From business services to travel documents, we handle the paperwork so you don't have to.</p>
+        </div>
+
+        <div class="footer-section">
+          <h3>Services</h3>
+          <a href="business-services.html">Business Services</a>
+          <a href="government-services.html">Government Services</a>
+          <a href="travel-services.html">Travel Services</a>
+          <a href="personal-services.html">Personal Services</a>
+          <a href="virtudrop/index.html">VirtuDrop</a>
+        </div>
+
+        <div class="footer-section">
+          <h3>Company</h3>
+          <a href="about.html">About Us</a>
+          <a href="contact.html">Contact</a>
+          <a href="order-form.html">Get Started</a>
+          <a href="privacy-policy.html">Privacy Policy</a>
+          <a href="terms-of-service.html">Terms of Service</a>
+        </div>
+
+        <div class="footer-section">
+          <h3>Contact</h3>
+          <p>Email: info@virtuforms.net</p>
+          <p>Phone: 868-797-3543</p>
+          <p>Phone: 868-470-3704</p>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <small>© 2026 VirtuForms. Professional administrative solutions for Trinidad. All rights reserved.</small>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Mobile menu toggle
+    const toggle = document.querySelector('[data-mobile-toggle]');
+    const navLinks = document.querySelector('[data-nav-links]');
+    const dropdownToggle = document.querySelector('.dropdown-toggle');
+    const dropdownMenu = document.querySelector('.dropdown-menu');
+    
+    if (toggle && navLinks) {
+      toggle.addEventListener('click', () => {
+        navLinks.classList.toggle('mobile-open');
+        
+        // Close dropdown when closing main menu
+        if (!navLinks.classList.contains('mobile-open') && dropdownMenu) {
+          dropdownMenu.classList.remove('mobile-open');
+        }
+      });
+    }
+
+    // Mobile dropdown toggle
+    if (dropdownToggle && dropdownMenu) {
+      dropdownToggle.addEventListener('click', (e) => {
+        // Only toggle on mobile
+        if (window.innerWidth <= 968) {
+          e.preventDefault();
+          dropdownMenu.classList.toggle('mobile-open');
+        }
+      });
+    }
+
+    // Close mobile menu when clicking outside
+    document.addEventListener('click', (e) => {
+      if (window.innerWidth <= 968) {
+        if (!e.target.closest('.nav-inner') && navLinks?.classList.contains('mobile-open')) {
+          navLinks.classList.remove('mobile-open');
+          dropdownMenu?.classList.remove('mobile-open');
+        }
+      }
+    });
+
+    // Close mobile menu when clicking a link
+    const navLinksElements = document.querySelectorAll('[data-nav-links] a');
+    navLinksElements.forEach(link => {
+      link.addEventListener('click', () => {
+        if (window.innerWidth <= 968) {
+          navLinks?.classList.remove('mobile-open');
+          dropdownMenu?.classList.remove('mobile-open');
+        }
+      });
+    });
+
+    // Service card expand/collapse
+    const serviceCards = document.querySelectorAll('.service-card');
+    
+    serviceCards.forEach(card => {
+      const header = card.querySelector('.service-card-header');
+      
+      header.addEventListener('click', () => {
+        const isExpanded = card.classList.contains('expanded');
+        
+        // Close all cards
+        serviceCards.forEach(c => c.classList.remove('expanded'));
+        
+        // Open clicked card if it wasn't already open
+        if (!isExpanded) {
+          card.classList.add('expanded');
+        }
+      });
+    });
+
+    // FAQ accordion
+    const faqQuestions = document.querySelectorAll('.faq-question');
+
+    faqQuestions.forEach(question => {
+      question.addEventListener('click', () => {
+        const faqItem = question.parentElement;
+        const isActive = faqItem.classList.contains('active');
+
+        // Close all FAQ items
+        document.querySelectorAll('.faq-item').forEach(item => {
+          item.classList.remove('active');
+        });
+
+        // Open clicked item if it wasn't active
+        if (!isActive) {
+          faqItem.classList.add('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

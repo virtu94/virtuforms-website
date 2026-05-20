@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terms of Service - VirtuForms</title>
+  <link rel="icon" type="image/png" href="assets/virtuforms-logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #0b1616;
+      color: #b8e6dc;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    /* Navigation */
+    .nav {
+      background: #0f2020;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      border-bottom: 2px solid #1a5656;
+    }
+
+    .nav-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem 0;
+      gap: 2rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      text-decoration: none;
+      transition: transform 0.3s ease;
+    }
+
+    .brand:hover {
+      transform: scale(1.02);
+    }
+
+    .brand-logo {
+      height: 50px;
+      width: auto;
+      display: block;
+    }
+
+    .brand-text {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: #7dd3c0;
+      letter-spacing: -0.5px;
+    }
+
+    /* Content Section */
+    .content-section {
+      padding: 5rem 0;
+    }
+
+    .content-container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #0f2020;
+      border-radius: 20px;
+      padding: 3rem;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      border: 2px solid #1a5656;
+    }
+
+    .content-header {
+      text-align: center;
+      margin-bottom: 3rem;
+      padding-bottom: 2rem;
+      border-bottom: 2px solid #1a5656;
+    }
+
+    .content-header h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 2.5rem;
+      color: #7dd3c0;
+      margin-bottom: 1rem;
+    }
+
+    .content-header .last-updated {
+      color: #7dd3c0;
+      font-size: 0.95rem;
+      font-style: italic;
+    }
+
+    .section {
+      margin-bottom: 2.5rem;
+    }
+
+    .section h2 {
+      font-family: 'Poppins', sans-serif;
+      color: #7dd3c0;
+      font-size: 1.6rem;
+      margin-bottom: 1rem;
+      padding-top: 0.5rem;
+    }
+
+    .section h3 {
+      color: #7dd3c0;
+      font-size: 1.2rem;
+      margin: 1.5rem 0 0.75rem 0;
+      font-weight: 600;
+    }
+
+    .section p {
+      color: #b8e6dc;
+      margin-bottom: 1rem;
+      line-height: 1.8;
+    }
+
+    .section ul, .section ol {
+      margin: 1rem 0 1rem 2rem;
+      color: #b8e6dc;
+    }
+
+    .section li {
+      margin: 0.5rem 0;
+      line-height: 1.7;
+    }
+
+    .highlight-box {
+      background: rgba(42, 157, 143, 0.1);
+      border-left: 4px solid #2a9d8f;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+      border-radius: 8px;
+    }
+
+    .highlight-box p {
+      margin-bottom: 0.5rem;
+    }
+
+    .warning-box {
+      background: rgba(255, 107, 107, 0.1);
+      border-left: 4px solid #ff6b6b;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+      border-radius: 8px;
+    }
+
+    .warning-box h3 {
+      color: #ff6b6b;
+      margin-bottom: 0.75rem;
+    }
+
+    .contact-box {
+      background: rgba(42, 157, 143, 0.05);
+      border: 2px solid #2a9d8f;
+      border-radius: 12px;
+      padding: 2rem;
+      margin-top: 3rem;
+      text-align: center;
+    }
+
+    .contact-box h3 {
+      color: #7dd3c0;
+      font-size: 1.3rem;
+      margin-bottom: 1rem;
+    }
+
+    .contact-box p {
+      margin: 0.5rem 0;
+    }
+
+    .contact-box a {
+      color: #2a9d8f;
+      text-decoration: none;
+      transition: color 0.3s ease;
+    }
+
+    .contact-box a:hover {
+      color: #7dd3c0;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 968px) {
+      /* Hide navigation links on mobile */
+      .links {
+        display: none;
+      }
+
+      .links.mobile-open {
+        display: flex !important;
+      }
+
+      /* Show mobile toggle button */
+      .mobile-toggle {
+        display: block;
+      }
+
+      .nav-inner {
+        padding: 1rem 0;
+      }
+
+      .brand-logo {
+        height: 40px;
+      }
+
+      .brand-text {
+        font-size: 1.3rem;
+      }
+
+      .container {
+        padding: 0 1rem;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .container {
+        padding: 0 1rem;
+      }
+
+      .nav-inner {
+        padding: 0.75rem 0;
+      }
+
+      .brand-logo {
+        height: 35px;
+      }
+
+      .brand-text {
+        font-size: 1.1rem;
+      }
+
+      .content-section {
+        padding: 3rem 0;
+      }
+
+      .content-container {
+        padding: 2rem 1.5rem;
+      }
+
+      .content-header h1 {
+        font-size: 2rem;
+      }
+
+      .section h2 {
+        font-size: 1.4rem;
+      }
+
+      .section ul, .section ol {
+        margin-left: 1.5rem;
+      }
+    }
+
+    /* Navigation Links */
+    .links {
+      display: flex;
+      gap: 2.5rem;
+      align-items: center;
+    }
+
+    .links a {
+      text-decoration: none;
+      color: #b8e6dc;
+      font-weight: 500;
+      font-size: 0.95rem;
+      position: relative;
+      transition: color 0.3s ease;
+    }
+
+    .links a::after {
+      content: '';
+      position: absolute;
+      bottom: -5px;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: #7dd3c0;
+      transition: width 0.3s ease;
+    }
+
+    .links a:hover {
+      color: #7dd3c0;
+    }
+
+    .links a:hover::after {
+      width: 100%;
+    }
+
+    .links a[aria-current="page"] {
+      color: #7dd3c0;
+    }
+
+    .links a[aria-current="page"]::after {
+      width: 100%;
+    }
+
+    .mobile-toggle {
+      display: none;
+      background: none;
+      border: 2px solid #7dd3c0;
+      color: #7dd3c0;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      position: relative;
+      z-index: 1001;
+      font-size: 1rem;
+    }
+
+    /* Mobile menu open state */
+    .links.mobile-open {
+      display: flex !important;
+      position: fixed;
+      top: 76px;
+      left: 0;
+      right: 0;
+      background: #0f2020;
+      flex-direction: column;
+      padding: 2rem;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+      border-top: 2px solid #1a5656;
+      gap: 0;
+      z-index: 999;
+      max-height: calc(100vh - 76px);
+      overflow-y: auto;
+    }
+
+    .links.mobile-open a,
+    .links.mobile-open .dropdown-toggle {
+      padding: 1rem;
+      border-bottom: 1px solid #1a5656;
+    }
+
+    .links.mobile-open a:last-child {
+      border-bottom: none;
+    }
+
+    .dropdown-menu.mobile-open {
+      display: block !important;
+      position: static;
+      opacity: 1;
+      visibility: visible;
+      transform: none;
+      margin-top: 0;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+      background: #0b1616;
+    }
+
+    .dropdown-menu.mobile-open a {
+      padding: 1rem 1rem 1rem 2rem;
+    }
+
+    /* Dropdown styles */
+    .dropdown {
+      position: relative;
+    }
+
+    .dropdown-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      background: none;
+      border: none;
+      color: #b8e6dc;
+      font-weight: 500;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: color 0.3s ease;
+    }
+
+    .dropdown-toggle:hover {
+      color: #7dd3c0;
+    }
+
+    .dropdown-menu {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background: #0f2020;
+      border: 1px solid #1a5656;
+      border-radius: 8px;
+      margin-top: 0.5rem;
+      min-width: 200px;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-10px);
+      transition: all 0.3s ease;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      z-index: 1000;
+      display: none;
+    }
+
+    .dropdown:hover .dropdown-menu {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+      display: block;
+    }
+
+    .dropdown-menu a {
+      display: block;
+      padding: 0.8rem 1.2rem;
+      color: #b8e6dc;
+      text-decoration: none;
+      transition: all 0.3s ease;
+    }
+
+    .dropdown-menu a:hover {
+      background: rgba(42, 157, 143, 0.1);
+      color: #7dd3c0;
+      padding-left: 1.5rem;
+    }
+
+    /* Nav CTA Button */
+    .nav-cta {
+      background: linear-gradient(135deg, #2a9d8f 0%, #1a5656 100%) !important;
+      color: #ffffff !important;
+      padding: 0.65rem 1.5rem !important;
+      border-radius: 50px !important;
+      font-weight: 600 !important;
+      box-shadow: 0 2px 10px rgba(42, 157, 143, 0.3) !important;
+      transition: all 0.3s ease !important;
+      text-decoration: none !important;
+      border: none !important;
+    }
+
+    .nav-cta::after {
+      display: none !important;
+      content: none !important;
+    }
+
+    .nav-cta:hover {
+      transform: translateY(-2px) !important;
+      box-shadow: 0 4px 15px rgba(42, 157, 143, 0.4) !important;
+      color: #ffffff !important;
+      background: linear-gradient(135deg, #2a9d8f 0%, #1a5656 100%) !important;
+    }
+
+    /* Footer */
+    .footer {
+      background: #000000;
+      color: #b8e6dc;
+      padding: 4rem 0 2rem;
+      border-top: 2px solid #1a5656;
+      margin-top: 4rem;
+    }
+
+    .footer-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 3rem;
+      margin-bottom: 3rem;
+    }
+
+    .footer-section h3 {
+      color: #7dd3c0;
+      font-size: 1.3rem;
+      margin-bottom: 1.5rem;
+      font-weight: 700;
+    }
+
+    .footer-section p,
+    .footer-section a {
+      color: #b8e6dc;
+      text-decoration: none;
+      display: block;
+      margin-bottom: 0.8rem;
+      transition: color 0.3s ease;
+    }
+
+    .footer-section a:hover {
+      color: #7dd3c0;
+    }
+
+    .footer-bottom {
+      text-align: center;
+      padding-top: 2rem;
+      border-top: 1px solid #1a5656;
+      color: #7dd3c0;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="container">
+      <div class="nav-inner">
+        <a class="brand" href="index.html" aria-label="VirtuForms Home">
+          <img src="assets/virtuforms-logo.png" alt="VirtuForms logo" class="brand-logo" />
+          <span class="brand-text">VirtuForms</span>
+        </a>
+        <button class="mobile-toggle" type="button" data-mobile-toggle aria-label="Toggle navigation" onclick="var nav = document.querySelector('[data-nav-links]'); if(nav.style.display === 'flex' && nav.style.position === 'fixed') { nav.style.display = 'none'; nav.style.position = ''; } else { nav.style.display = 'flex'; nav.style.position = 'fixed'; nav.style.flexDirection = 'column'; nav.style.top = '76px'; nav.style.left = '0'; nav.style.right = '0'; nav.style.background = '#0f2020'; nav.style.padding = '2rem'; nav.style.zIndex = '999'; nav.style.borderTop = '2px solid #1a5656'; }">Menu</button>
+        <nav class="links" data-nav-links>
+          <a href="index.html">Home</a>
+          <div class="dropdown">
+            <button class="dropdown-toggle" onclick="var menu = this.nextElementSibling; if(menu.style.display === 'block') { menu.style.display = 'none'; } else { menu.style.display = 'block'; menu.style.position = 'static'; menu.style.background = '#0b1616'; menu.style.border = 'none'; menu.style.borderRadius = '0'; menu.style.boxShadow = 'none'; menu.style.marginTop = '0'; menu.style.padding = '0'; } event.stopPropagation();">
+              Services
+              <span style="font-size: 0.7rem;">▼</span>
+            </button>
+            <div class="dropdown-menu">
+              <a href="business-services.html">Business Services</a>
+              <a href="government-services.html">Government Services</a>
+              <a href="travel-services.html">Travel Services</a>
+              <a href="personal-services.html">Personal Services</a>
+              <a href="virtudrop/index.html">VirtuDrop</a>
+            </div>
+          </div>
+          <a href="about.html">About</a>
+          <a href="contact.html">Contact</a>
+          <a href="order-form.html" class="nav-cta">Get Started</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <section class="content-section">
+    <div class="container">
+      <div class="content-container">
+        <div class="content-header">
+          <h1>Terms of Service</h1>
+          <p class="last-updated">Last Updated: May 2026</p>
+        </div>
+
+        <div class="section">
+          <p>These Terms of Service ("Terms") constitute a legally binding agreement between you ("Client," "you," or "your") and VirtuForms Ltd ("VirtuForms," "we," "our," or "us"), a company registered in the Republic of Trinidad and Tobago. By engaging our services, you agree to be bound by these Terms.</p>
+          <p><strong>Please read these Terms carefully before using our services.</strong></p>
+        </div>
+
+        <div class="section">
+          <h2>1. Services Provided</h2>
+          <p>VirtuForms Ltd provides administrative and business support services including, but not limited to:</p>
+          <ul>
+            <li>Business registration services (Limited Liability Companies, Sole Traders, Partnerships)</li>
+            <li>Government document processing (certificates, permits, licenses)</li>
+            <li>Travel document services (passport applications and renewals)</li>
+            <li>Personal tax and BIR services</li>
+            <li>Bank account assistance and related administrative support</li>
+            <li>Document delivery through our VirtuDrop subsidiary</li>
+          </ul>
+          <p>The specific scope of services will be confirmed when you submit a service request.</p>
+        </div>
+
+        <div class="section">
+          <h2>2. Service Engagement and Acceptance</h2>
+          <p>By submitting a service request through our website, email, phone, or in person, you are making an offer to engage our services. VirtuForms reserves the right to accept or decline any service request at our sole discretion.</p>
+          <p>A service engagement is formed when:</p>
+          <ol>
+            <li>We confirm acceptance of your service request in writing (email or written confirmation)</li>
+            <li>You make the required deposit payment (where applicable)</li>
+            <li>We commence work on your behalf</li>
+          </ol>
+        </div>
+
+        <div class="section">
+          <h2>3. Payment Terms</h2>
+          
+          <h3>Business Registration Packages (LLC, Sole Trader, Partnership):</h3>
+          <ul>
+            <li><strong>50% Deposit:</strong> A non-refundable deposit of fifty percent (50%) of the total service fee is required before we commence work</li>
+            <li><strong>50% Balance:</strong> The remaining fifty percent (50%) is due upon completion of the service</li>
+            <li>Payment methods accepted will be communicated upon service confirmation</li>
+          </ul>
+
+          <h3>Other Services:</h3>
+          <ul>
+            <li>Payment terms for government services, travel services, and personal services will be communicated at the time of service confirmation</li>
+            <li>Some services may require full payment upfront or alternative payment structures</li>
+          </ul>
+
+          <h3>Late Payment:</h3>
+          <p>If final payment is not received within fourteen (14) days of service completion, VirtuForms reserves the right to:</p>
+          <ul>
+            <li>Withhold delivery of completed documents</li>
+            <li>Charge interest at a rate of 2% per month on overdue amounts</li>
+            <li>Pursue legal action for recovery of outstanding fees</li>
+          </ul>
+        </div>
+
+        <div class="highlight-box">
+          <h3>Payment Terms Summary</h3>
+          <p><strong>For Business Registration Services:</strong></p>
+          <ul>
+            <li>✓ 50% deposit required to begin (non-refundable)</li>
+            <li>✓ 50% balance due on completion</li>
+            <li>✓ Work begins only after deposit is received</li>
+          </ul>
+        </div>
+
+        <div class="section">
+          <h2>4. Refund and Cancellation Policy</h2>
+          
+          <h3>Deposit Refunds:</h3>
+          <ul>
+            <li>The 50% deposit is <strong>non-refundable</strong> once work has commenced on your service request</li>
+            <li>In exceptional circumstances, refunds may be considered at the sole discretion of VirtuForms management</li>
+            <li>If you cancel before any work has commenced, a full deposit refund will be provided</li>
+          </ul>
+
+          <h3>Service Non-Completion by VirtuForms:</h3>
+          <p>If VirtuForms is unable to complete the requested service due to our own limitations or errors (not due to client-provided information or government rejection), you will receive a refund calculated as follows:</p>
+          <ul>
+            <li>Total fees paid minus the value of work already completed</li>
+            <li>A breakdown of completed work will be provided</li>
+            <li>Refunds will be processed within thirty (30) business days</li>
+          </ul>
+
+          <h3>Government Delays or Rejections:</h3>
+          <ul>
+            <li>VirtuForms is not responsible for delays or rejections by government agencies</li>
+            <li>No refunds will be issued for government processing delays or application rejections beyond our control</li>
+            <li>We will work with you to appeal rejections or correct errors as part of our service commitment</li>
+          </ul>
+        </div>
+
+        <div class="warning-box">
+          <h3>⚠️ Important: No Refund for False Documents</h3>
+          <p>If you provide false, fraudulent, or inaccurate documents or information:</p>
+          <ul>
+            <li>No refund will be issued under any circumstances</li>
+            <li>We will immediately cease processing your request</li>
+            <li>We reserve the right to report the matter to relevant authorities</li>
+            <li>You may be liable for any legal consequences arising from fraudulent submissions</li>
+          </ul>
+        </div>
+
+        <div class="section">
+          <h2>5. Service Timelines</h2>
+          <p>VirtuForms provides <strong>estimated timelines</strong> for service completion based on:</p>
+          <ul>
+            <li>Average processing times for similar services</li>
+            <li>Typical government agency processing speeds</li>
+            <li>Our experience with similar applications</li>
+          </ul>
+          
+          <p><strong>Important:</strong> Timelines are estimates only and are not guaranteed. Actual completion times may vary due to:</p>
+          <ul>
+            <li>Government processing delays</li>
+            <li>Public holidays and agency closures</li>
+            <li>Missing or incomplete client documentation</li>
+            <li>Unforeseen complications or requirements</li>
+            <li>High volume periods at government agencies</li>
+          </ul>
+          
+          <p>VirtuForms is not liable for delays beyond our reasonable control. We will keep you informed of progress and any anticipated delays.</p>
+        </div>
+
+        <div class="section">
+          <h2>6. Client Responsibilities</h2>
+          <p>By engaging VirtuForms, you agree to:</p>
+          
+          <h3>Provide Accurate Information:</h3>
+          <ul>
+            <li>Provide complete, accurate, and truthful information for all service requests</li>
+            <li>Submit genuine, unaltered documents</li>
+            <li>Inform us immediately of any errors or changes to submitted information</li>
+          </ul>
+
+          <h3>Timely Responses:</h3>
+          <ul>
+            <li>Respond promptly to requests for additional information or documentation</li>
+            <li>Review documents we prepare and provide feedback within reasonable timeframes</li>
+            <li>Delays in your responses may extend service completion timelines</li>
+          </ul>
+
+          <h3>Compliance with Laws:</h3>
+          <ul>
+            <li>Ensure all information provided complies with Trinidad and Tobago laws</li>
+            <li>Cooperate with identity verification and AML requirements</li>
+            <li>Use our services for lawful purposes only</li>
+          </ul>
+
+          <h3>Payment Obligations:</h3>
+          <ul>
+            <li>Make timely payments as per agreed terms</li>
+            <li>Notify us of any payment difficulties before they arise</li>
+          </ul>
+        </div>
+
+        <div class="section">
+          <h2>7. VirtuForms Responsibilities and Service Commitment</h2>
+          <p>VirtuForms commits to:</p>
+          <ul>
+            <li><strong>Professional Service:</strong> Provide services with reasonable skill and care</li>
+            <li><strong>Error Correction:</strong> Correct any errors caused by VirtuForms at no additional cost</li>
+            <li><strong>Appeal Support:</strong> Work with you to appeal government rejections to the best of our ability</li>
+            <li><strong>Communication:</strong> Keep you informed of progress and any issues that arise</li>
+            <li><strong>Confidentiality:</strong> Protect your personal information in accordance with our Privacy Policy</li>
+            <li><strong>Compliance:</strong> Operate in accordance with Trinidad and Tobago laws and regulations</li>
+          </ul>
+        </div>
+
+        <div class="section">
+          <h2>8. Limitation of Liability</h2>
+          
+          <h3>Government Actions:</h3>
+          <p>VirtuForms is not liable for:</p>
+          <ul>
+            <li>Government agency delays, rejections, or processing errors</li>
+            <li>Changes in government fees, requirements, or procedures</li>
+            <li>Government office closures or system outages</li>
+            <li>Decisions made by government authorities regarding your applications</li>
+          </ul>
+
+          <h3>Client-Provided Information:</h3>
+          <p>VirtuForms is not liable for:</p>
+          <ul>
+            <li>Errors, omissions, or false information provided by you</li>
+            <li>Consequences arising from inaccurate client documentation</li>
+            <li>Delays caused by incomplete client information</li>
+          </ul>
+
+          <h3>Maximum Liability:</h3>
+          <p>To the fullest extent permitted by Trinidad and Tobago law, VirtuForms' total liability for any claim arising from our services shall not exceed the total fees paid by you for the specific service in question.</p>
+
+          <h3>Errors by VirtuForms:</h3>
+          <p>If an error is caused solely by VirtuForms:</p>
+          <ul>
+            <li>We will re-file or correct the error at no additional cost to you</li>
+            <li>We will cover any additional government fees required due to our error</li>
+            <li>Our liability is limited to correction of the error</li>
+          </ul>
+        </div>
+
+        <div class="section">
+          <h2>9. Anti-Money Laundering (AML) and Know Your Customer (KYC)</h2>
+          <p>VirtuForms Ltd operates in full compliance with the <strong>Proceeds of Crime Act</strong> and the <strong>Financial Obligations Regulations, 2010</strong> of Trinidad and Tobago.</p>
+          
+          <h3>Identity Verification:</h3>
+          <ul>
+            <li>We are required by law to verify the identity of all clients</li>
+            <li>You must provide government-issued identification (National ID, Passport, Driver's Permit)</li>
+            <li>For business services, we may require additional documentation (proof of address, business justification)</li>
+          </ul>
+
+          <h3>Right to Refuse Service:</h3>
+          <ul>
+            <li>We reserve the right to refuse service if adequate identity verification cannot be obtained</li>
+            <li>We may request additional documentation if we have concerns about the legitimacy of a transaction</li>
+            <li>Refusal of service does not require explanation if based on AML/KYC concerns</li>
+          </ul>
+
+          <h3>Reporting Obligations:</h3>
+          <ul>
+            <li>We are required to report suspicious transactions to the Financial Intelligence Unit (FIU)</li>
+            <li>We cannot inform you if a report has been made</li>
+            <li>Client data may be disclosed to law enforcement or regulatory authorities where legally required</li>
+          </ul>
+
+          <p><em>If this AML/KYC notice does not apply to your interaction with us, kindly disregard.</em></p>
+        </div>
+
+        <div class="section">
+          <h2>10. Intellectual Property</h2>
+          <p>All content on the VirtuForms website, including text, graphics, logos, and software, is the property of VirtuForms Ltd and is protected by Trinidad and Tobago intellectual property laws.</p>
+          <p>Documents we prepare on your behalf become your property upon full payment. However, our templates, processes, and methodologies remain our intellectual property.</p>
+        </div>
+
+        <div class="section">
+          <h2>11. Confidentiality and Data Protection</h2>
+          <p>VirtuForms is committed to protecting your privacy and personal information. Please refer to our <a href="privacy-policy.html" style="color: #2a9d8f; text-decoration: none;">Privacy Policy</a> for detailed information on how we collect, use, store, and protect your data.</p>
+          <p>Key points:</p>
+          <ul>
+            <li>We maintain client records for seven (7) years as required by law</li>
+            <li>Your information is stored securely using encrypted cloud storage</li>
+            <li>We do not sell or share your information except as required by law</li>
+            <li>You have rights under the Data Protection Act, 2011</li>
+          </ul>
+        </div>
+
+        <div class="section">
+          <h2>12. Termination of Services</h2>
+          
+          <h3>By Client:</h3>
+          <p>You may terminate our services at any time by providing written notice. However:</p>
+          <ul>
+            <li>The 50% deposit is non-refundable if work has commenced</li>
+            <li>You are responsible for payment for all work completed up to termination</li>
+            <li>We will provide a summary of work completed</li>
+          </ul>
+
+          <h3>By VirtuForms:</h3>
+          <p>We may terminate services immediately if:</p>
+          <ul>
+            <li>You provide false or fraudulent information</li>
+            <li>You fail to make required payments</li>
+            <li>You fail to cooperate or respond to reasonable requests</li>
+            <li>We have AML/KYC concerns that cannot be resolved</li>
+            <li>Continuing the relationship would violate laws or regulations</li>
+          </ul>
+        </div>
+
+        <div class="section">
+          <h2>13. Dispute Resolution</h2>
+          <p>We are committed to resolving any disputes amicably:</p>
+          
+          <h3>Informal Resolution:</h3>
+          <ol>
+            <li>Contact us in writing with details of your concern</li>
+            <li>We will acknowledge receipt within 5 business days</li>
+            <li>We will investigate and respond within 14 business days</li>
+            <li>We will work with you to reach a fair resolution</li>
+          </ol>
+
+          <h3>Formal Dispute:</h3>
+          <p>If informal resolution fails, disputes shall be resolved through:</p>
+          <ul>
+            <li>Mediation in Trinidad and Tobago (preferred method)</li>
+            <li>Arbitration under Trinidad and Tobago law</li>
+            <li>Legal proceedings in the courts of Trinidad and Tobago</li>
+          </ul>
+        </div>
+
+        <div class="section">
+          <h2>14. Governing Law and Jurisdiction</h2>
+          <p>These Terms of Service are governed by and construed in accordance with the laws of the <strong>Republic of Trinidad and Tobago</strong>.</p>
+          <p>Any legal proceedings arising from these Terms or our services shall be subject to the exclusive jurisdiction of the courts of Trinidad and Tobago.</p>
+        </div>
+
+        <div class="section">
+          <h2>15. Changes to Terms of Service</h2>
+          <p>VirtuForms reserves the right to modify these Terms at any time. Changes will be:</p>
+          <ul>
+            <li>Posted on this page with an updated "Last Updated" date</li>
+            <li>Communicated to active clients via email where possible</li>
+            <li>Effective immediately upon posting unless otherwise stated</li>
+          </ul>
+          <p>Your continued use of our services after changes are posted constitutes acceptance of the modified Terms.</p>
+        </div>
+
+        <div class="section">
+          <h2>16. Severability</h2>
+          <p>If any provision of these Terms is found to be invalid or unenforceable under Trinidad and Tobago law, the remaining provisions shall continue in full force and effect.</p>
+        </div>
+
+        <div class="section">
+          <h2>17. Entire Agreement</h2>
+          <p>These Terms, together with our Privacy Policy and any service-specific agreements, constitute the entire agreement between you and VirtuForms Ltd regarding our services.</p>
+        </div>
+
+        <div class="section">
+          <h2>18. Contact and Questions</h2>
+          <p>If you have questions about these Terms of Service, please contact us before engaging our services. By submitting a service request, you confirm that you have read, understood, and agree to be bound by these Terms.</p>
+        </div>
+
+        <div class="contact-box">
+          <h3>Contact VirtuForms</h3>
+          <p><strong>VirtuForms Ltd</strong></p>
+          <p>📧 Email: <a href="mailto:info@virtuforms.net">info@virtuforms.net</a></p>
+          <p>📱 Phone: <a href="tel:868-797-3543">868-797-3543</a> / <a href="tel:868-470-3704">868-470-3704</a></p>
+          <p style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #1a5656;">
+            <strong>By engaging our services, you acknowledge that you have read, understood, and agree to these Terms of Service.</strong>
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-grid">
+        <div class="footer-section">
+          <h3>VirtuForms</h3>
+          <p>Professional administrative solutions for Trinidad. From business services to travel documents, we handle the paperwork so you don't have to.</p>
+        </div>
+
+        <div class="footer-section">
+          <h3>Services</h3>
+          <a href="business-services.html">Business Services</a>
+          <a href="government-services.html">Government Services</a>
+          <a href="travel-services.html">Travel Services</a>
+          <a href="personal-services.html">Personal Services</a>
+          <a href="virtudrop/index.html">VirtuDrop</a>
+        </div>
+
+        <div class="footer-section">
+          <h3>Company</h3>
+          <a href="about.html">About Us</a>
+          <a href="contact.html">Contact</a>
+          <a href="order-form.html">Get Started</a>
+          <a href="privacy-policy.html">Privacy Policy</a>
+          <a href="terms-of-service.html">Terms of Service</a>
+        </div>
+
+        <div class="footer-section">
+          <h3>Contact</h3>
+          <p>Email: info@virtuforms.net</p>
+          <p>Phone: 868-797-3543</p>
+          <p>Phone: 868-470-3704</p>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <small>© 2026 VirtuForms. Professional administrative solutions for Trinidad. All rights reserved.</small>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

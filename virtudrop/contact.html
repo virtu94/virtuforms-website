@@ -1,0 +1,1178 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Contact | VirtuDrop</title>
+  <meta name="description" content="Contact VirtuDrop by email, phone, or message form.">
+  <link rel="icon" href="assets/logo.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      line-height: 1.7;
+      color: #1a1a1a;
+      background: #f8f9fa;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    /* Nav Bar */
+    .nav {
+      background: #ffffff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    /* Navbar container */
+    .nav .container {
+      max-width: none;
+      width: 100%;
+      margin: 0;
+      padding: 0 2.5rem;
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      gap: 2rem;
+      padding: 1rem 0;
+    }
+
+    /* Logo + slogan */
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      text-decoration: none;
+      flex-shrink: 0;
+      margin-right: auto;
+    }
+
+    .brand img {
+      height: 52px;
+      width: auto;
+    }
+
+    .badge {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #2a9d8f;
+      letter-spacing: 0.4px;
+      white-space: nowrap;
+    }
+
+    /* Nav links */
+    .links {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 1.8rem;
+      margin-left: auto;
+      flex-wrap: nowrap;
+      white-space: nowrap;
+    }
+
+    .links a {
+      text-decoration: none;
+      color: #1a1a1a;
+      font-weight: 500;
+      font-size: 0.92rem;
+      white-space: nowrap;
+    }
+
+    /* Login button */
+    .links a.nav-login {
+      background: #2a9d8f;
+      color: #ffffff !important;
+      padding: 0.5rem 1.2rem;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+
+    .links a.nav-login:hover {
+      background: #238277;
+    }
+
+    /* Mobile */
+    .mobile-toggle {
+      display: none;
+      align-items: center;
+      justify-content: center;
+
+      background: linear-gradient(135deg, #2a9d8f 0%, #238277 100%);
+      color: #ffffff;
+
+      border: none;
+      border-radius: 10px;
+
+      padding: 0.7rem 1rem;
+
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+
+      cursor: pointer;
+
+      box-shadow: 0 4px 12px rgba(42,157,143,0.25);
+
+      transition: all 0.25s ease;
+    }
+
+    .mobile-toggle:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(42,157,143,0.35);
+      background: linear-gradient(135deg, #31b3a3 0%, #2a9d8f 100%);
+    }
+
+    .mobile-toggle:active {
+      transform: scale(0.97);
+    }
+
+    .mobile-toggle::before {
+      content: "☰";
+      margin-right: 0.5rem;
+      font-size: 1rem;
+    }
+
+    /* Page Section */
+    .page {
+      padding: 5rem 0;
+      animation: fadeIn 0.8s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    .page-header {
+      text-align: center;
+      margin-bottom: 5rem;
+      animation: fadeInUp 0.8s ease-out;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .page-header h1 {
+      font-size: 3.5rem;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-bottom: 1.5rem;
+    }
+
+    .page-header p {
+      font-size: 1.3rem;
+      color: #4a4a4a;
+      line-height: 1.7;
+    }
+
+    /* Grid Layout */
+    .contact-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.3fr;
+      gap: 2.5rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    /* Card */
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 3rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      animation: fadeInUp 0.8s ease-out 0.2s both;
+    }
+
+    .card h2 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-bottom: 2rem;
+    }
+
+    /* Contact Info */
+    .contact-item {
+      margin-bottom: 2.5rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .contact-item:last-of-type {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .contact-item h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-bottom: 1rem;
+      letter-spacing: 0.3px;
+    }
+
+    .contact-item p {
+      font-size: 1.2rem;
+      color: #1a1a1a;
+      line-height: 1.8;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+    }
+
+    .contact-item p:last-child {
+      margin-bottom: 0;
+    }
+
+    .contact-item a {
+      color: #2a9d8f;
+      text-decoration: none;
+      transition: all 0.3s ease;
+    }
+
+    .contact-item a:hover {
+      text-decoration: underline;
+    }
+
+    .help-note {
+      padding: 1.5rem;
+      background: #f0f9f8;
+      border-left: 4px solid #2a9d8f;
+      border-radius: 8px;
+      font-size: 1rem;
+      color: #4a4a4a;
+      line-height: 1.6;
+      margin-top: 2rem;
+    }
+
+    /* Form */
+    .field {
+      margin-bottom: 1.8rem;
+    }
+
+    .field label {
+      display: block;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin-bottom: 0.7rem;
+      font-size: 0.95rem;
+    }
+
+    .field-note {
+      font-size: 0.9rem;
+      color: #4a4a4a;
+      margin-top: 0.5rem;
+      font-style: italic;
+    }
+
+    .input {
+      width: 100%;
+      padding: 1rem;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-family: 'Inter', sans-serif;
+      transition: all 0.3s ease;
+      background: #ffffff;
+    }
+
+    .input:focus {
+      outline: none;
+      border-color: #2a9d8f;
+      box-shadow: 0 0 0 3px rgba(42, 157, 143, 0.1);
+    }
+
+    .input.error {
+      border-color: #dc3545;
+      animation: shake 0.4s ease;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+
+    .input.success {
+      border-color: #28a745;
+    }
+
+    textarea.input {
+      resize: vertical;
+      min-height: 150px;
+    }
+
+    .phone-wrapper {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .phone-prefix {
+      padding: 1rem;
+      background: #f0f9f8;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-weight: 600;
+      color: #2a9d8f;
+      font-size: 1rem;
+    }
+
+    .phone-wrapper .input {
+      flex: 1;
+    }
+
+    .error-message {
+      color: #dc3545;
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .success-message {
+      color: #28a745;
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .char-count {
+      font-size: 0.9rem;
+      color: #4a4a4a;
+      text-align: right;
+      margin-top: 0.5rem;
+    }
+
+    .char-count.warning {
+      color: #ff9800;
+      font-weight: 600;
+    }
+
+    .char-count.error {
+      color: #dc3545;
+      font-weight: 600;
+    }
+
+    .cta-row {
+      display: flex;
+      gap: 1.2rem;
+      flex-wrap: wrap;
+      margin-top: 2rem;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 1.2rem 2.5rem;
+      border-radius: 10px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1.1rem;
+      transition: all 0.3s ease;
+      border: 2px solid #e0e0e0;
+      color: #1a1a1a;
+      background: #ffffff;
+      cursor: pointer;
+      letter-spacing: 0.3px;
+    }
+
+    .btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+      border-color: #2a9d8f;
+      color: #2a9d8f;
+    }
+
+    .btn-primary {
+      background: #2a9d8f;
+      color: #ffffff;
+      border-color: #2a9d8f;
+    }
+
+    .btn-primary:hover {
+      background: #238277;
+      border-color: #238277;
+      color: #ffffff;
+    }
+
+    .btn-primary:disabled {
+      background: #ccc;
+      border-color: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .modal {
+      background: white;
+      border-radius: 16px;
+      padding: 2.5rem;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .modal h2 {
+      font-size: 1.8rem;
+      color: #1a1a1a;
+      margin-bottom: 1rem;
+    }
+
+    .modal p {
+      font-size: 1.1rem;
+      color: #4a4a4a;
+      line-height: 1.7;
+      margin-bottom: 2rem;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: flex-end;
+    }
+
+/* ── Footer ── */
+  .footer {
+    background: #111;
+    color: #ffffff;
+    padding: 4rem 0 2rem;
+    margin-top: 6rem;
+  }
+
+  .footer-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 3rem;
+    margin-bottom: 3rem;
+  }
+
+  .footer-brand img {
+    height: 44px;
+    margin-bottom: 1rem;
+  }
+
+  .footer-brand p {
+    font-size: 0.88rem;
+    color: rgba(255,255,255,0.45);
+    line-height: 1.7;
+  }
+
+  .footer-col h4 {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #14d4ae;
+    margin-bottom: 1rem;
+  }
+
+  .footer-col a {
+    display: block;
+    font-size: 0.88rem;
+    color: rgba(255,255,255,0.45);
+    text-decoration: none;
+    margin-bottom: 0.5rem;
+    transition: color 0.2s;
+  }
+
+  .footer-col a:hover {
+    color: #ffffff;
+  }
+
+  .footer-bottom {
+    border-top: 1px solid rgba(255,255,255,0.07);
+    padding-top: 2rem;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .footer-bottom p {
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.3);
+  }
+
+  @media (max-width: 768px) {
+    .footer-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .footer-bottom {
+      flex-direction: column;
+      text-align: center;
+    }
+  }
+
+    /* Responsive */
+    @media (max-width: 968px) {
+      .hero-grid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+      }
+
+      .hero-card h1 {
+        font-size: 2.5rem;
+      }
+
+      .grid-3 {
+        grid-template-columns: 1fr;
+      }
+
+      .links {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: #ffffff;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        z-index: 99;
+      }
+
+      .links.open {
+        display: flex;
+      }
+
+      .links a {
+        padding: 1rem 2rem;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: 1rem;
+      }
+
+      .links a:last-child {
+        border-bottom: none;
+      }
+
+      .links a::after {
+        display: none;
+      }
+
+      .nav-inner {
+        position: relative;
+      }
+
+      .mobile-toggle {
+        display: block;
+      }
+
+      .page-header h2 {
+        font-size: 2.2rem;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .container {
+        padding: 0 1.5rem;
+      }
+
+      .brand {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.3rem;
+      }
+
+      .page {
+        padding: 3rem 0;
+      }
+
+      .page-header {
+        margin-bottom: 3rem;
+      }
+
+      .page-header h1 {
+        font-size: 2rem;
+      }
+
+      .page-header p {
+        font-size: 1.1rem;
+      }
+
+      .card {
+        padding: 2rem;
+      }
+
+      .cta-row {
+        flex-direction: column;
+      }
+
+      .btn {
+        width: 100%;
+        text-align: center;
+      }
+
+      .modal-buttons {
+        flex-direction: column;
+      }
+    }
+  
+
+    /* Mobile header fit fix */
+    @media (max-width: 768px) {
+      .nav .container {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+      }
+
+      .nav-inner {
+        gap: 0.75rem !important;
+        min-width: 0;
+      }
+
+      .brand {
+        flex: 1 1 auto !important;
+        min-width: 0;
+        gap: 0.55rem !important;
+        margin-right: 0 !important;
+      }
+
+      .brand img {
+        height: 42px !important;
+        flex: 0 0 auto;
+      }
+
+      .badge {
+        white-space: normal !important;
+        line-height: 1.25;
+        font-size: 0.7rem !important;
+        max-width: 150px;
+      }
+
+      .mobile-toggle {
+        display: flex !important;
+        flex: 0 0 auto;
+        padding: 0.65rem 0.8rem !important;
+        min-width: 72px;
+        max-width: 92px;
+        white-space: nowrap;
+      }
+
+      .mobile-toggle::before {
+        content: "☰" !important;
+        margin-right: 0.4rem !important;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .badge {
+        max-width: 126px;
+        font-size: 0.66rem !important;
+      }
+
+      .mobile-toggle {
+        min-width: 64px;
+        max-width: 78px;
+        padding: 0.6rem 0.65rem !important;
+      }
+    }
+
+  
+
+    /* Mobile contact overflow fix */
+    @media (max-width: 760px) {
+      html, body { max-width: 100%; overflow-x: hidden; }
+      .container { width: 100%; max-width: 100%; padding-left: 1rem !important; padding-right: 1rem !important; }
+      .contact-grid, .form-grid, .grid-3, .hero-grid {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        width: 100%;
+        max-width: 100%;
+        gap: 1.25rem;
+      }
+      .card, .contact-info, .contact-form, form {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+      }
+      .card { padding-left: 1.25rem !important; padding-right: 1.25rem !important; }
+      .input, textarea, button {
+        max-width: 100%;
+      }
+      .contact-grid * {
+        min-width: 0;
+      }
+      .contact-grid a, .contact-grid p, .contact-grid h2, .contact-grid h3 {
+        overflow-wrap: anywhere;
+      }
+    }
+
+  
+
+    /* Exact contact mobile class fix */
+    @media (max-width: 760px) {
+      .contact-grid {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: 1.25rem !important;
+      }
+      .contact-grid > * {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+      }
+    }
+
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="container">
+      <div class="nav-inner">
+        <a class="brand" href="index.html" aria-label="VirtuDrop Home">
+          <img src="assets/logo.png" alt="VirtuDrop logo" />
+          <span class="badge">Professional • Reliable • Structured</span>
+        </a>
+        <button class="mobile-toggle" type="button" data-mobile-toggle aria-label="Toggle navigation">Menu</button>
+        <nav class="links" data-nav-links>
+          <a href="index.html">Home</a>
+          <a href="how-it-works.html">How It Works</a>
+          <a href="pricing.html">Pricing</a>
+          <a href="zones.html">Delivery Zones</a>
+          <a href="business-clients.html">Business Clients</a>
+          <a href="calculator.html">Calculator</a>
+          <a href="track.html">Track Delivery</a>
+          <a href="contact.html" aria-current="page">Contact</a>
+          <a href="auth.html" class="nav-login">Login/Register</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="page">
+      <div class="container">
+        <div class="page-header">
+          <h1>Contact Us</h1>
+          <p>Reach us via WhatsApp, phone or email. We typically respond fastest on WhatsApp.</p>
+        </div>
+
+        <div class="contact-grid">
+          <!-- Contact Info Card -->
+          <div class="card">
+            <h2>Get In Touch</h2>
+            
+            <div class="contact-item">
+              <h3>📧 Email</h3>
+              <p><a href="mailto:info@virtuforms.net">info@virtuforms.net</a></p>
+            </div>
+            
+            <div class="contact-item">
+              <h3>📞 Phone Numbers</h3>
+              <p>
+                <a href="tel:+18687973543">+1 (868) 797-3543</a>
+              </p>
+              <p>
+                <a href="tel:+18684703704">+1 (868) 470-3704</a>
+              </p>
+            </div>
+
+            <div class="contact-item">
+              <h3>⏰ Response Time</h3>
+              <p style="font-size: 1.1rem;">We typically respond within 24 hours</p>
+            </div>
+
+            <div class="help-note">
+              💬 <strong>Fastest response:</strong> WhatsApp us directly on <strong>797-3542</strong> or <strong>470-3704</strong> for the quickest reply.
+            </div>
+          </div>
+
+          <!-- Message Form Card -->
+          <div class="card">
+            <h2>Send a Message</h2>
+            <form id="contactForm" novalidate>
+              <div class="field">
+                <label for="fullName">Full Name *</label>
+                <input class="input" id="fullName" type="text" placeholder="John Doe" required />
+                <div id="fullNameError" class="error-message" style="display: none;"></div>
+              </div>
+
+              <div class="field">
+                <label for="email">Email Address</label>
+                <input class="input" id="email" type="email" placeholder="your@email.com" />
+                <div id="emailError" class="error-message" style="display: none;"></div>
+              </div>
+
+              <div class="field">
+                <label for="phone">Phone Number</label>
+                <div class="phone-wrapper">
+                  <span class="phone-prefix">868-</span>
+                  <input class="input" id="phone" type="tel" placeholder="XXX-XXXX" maxlength="8" />
+                </div>
+                <div id="phoneError" class="error-message" style="display: none;"></div>
+                <p class="field-note">Please provide at least one contact method (email or phone)</p>
+              </div>
+
+              <div class="field">
+                <label for="message">Message *</label>
+                <textarea class="input" id="message" rows="6" placeholder="Tell us how we can help. We'll get back to you as soon as possible." required></textarea>
+                <div class="char-count">
+                  <span id="wordCount">0</span> / 200 words
+                </div>
+                <div id="messageError" class="error-message" style="display: none;"></div>
+              </div>
+
+              <div class="cta-row">
+                <button class="btn btn-primary" type="submit">Send Message</button>
+                <a class="btn" href="faq.html">Read FAQ</a>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+
+        <div class="footer-brand">
+          <img src="assets/logo.png" alt="VirtuDrop logo">
+          <p>Zone-based, scheduled delivery for businesses across Trinidad. Structured logistics you can count on.</p>
+        </div>
+
+        <div class="footer-col">
+          <h4>Services</h4>
+          <a href="pricing.html">Pricing</a>
+          <a href="zones.html">Delivery Zones</a>
+          <a href="calculator.html">Calculator</a>
+          <a href="business-clients.html">Business Clients</a>
+        </div>
+
+        <div class="footer-col">
+          <h4>Company</h4>
+          <a href="how-it-works.html">How It Works</a>
+          <a href="about.html">About</a>
+          <a href="contact.html">Contact</a>
+          <a href="faq.html">FAQ</a>
+        </div>
+
+        <div class="footer-col">
+          <h4>Account</h4>
+          <a href="auth.html">Login/Register</a>
+          <a href="track.html">Track Delivery</a>
+        </div>
+
+      </div>
+
+      <div class="footer-bottom">
+        <p>© 2026 VirtuDrop · A VirtuForms Ltd Service · Trinidad and Tobago</p>
+        <p>797-3542 &nbsp;|&nbsp; 470-3704</p>
+      </div>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+    const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnbXp6YXZ4aHVhcmxhY252bm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Mjk4NTksImV4cCI6MjA5NDIwNTg1OX0.7-YKlwLrhUYUYbiii93ZvgX01TxVephApDNCP50Rl54';
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Mobile menu toggle
+    const toggle = document.querySelector('[data-mobile-toggle]');
+    const navLinks = document.querySelector('[data-nav-links]');
+    
+    if (toggle && navLinks) {
+      toggle.addEventListener('click', () => {
+        navLinks.classList.toggle('open');
+        toggle.textContent = navLinks.classList.contains('open') ? 'Close' : 'Menu';
+      });
+    }
+
+    // Phone number formatting
+    const phoneInput = document.getElementById('phone');
+    phoneInput.addEventListener('input', (e) => {
+      let value = e.target.value.replace(/\D/g, '');
+      if (value.length > 3) {
+        value = value.slice(0, 3) + '-' + value.slice(3, 7);
+      }
+      e.target.value = value;
+    });
+
+    // Word counter
+    const messageInput = document.getElementById('message');
+    const wordCountSpan = document.getElementById('wordCount');
+    const charCountDiv = wordCountSpan.parentElement;
+
+    messageInput.addEventListener('input', () => {
+      const text = messageInput.value.trim();
+      const words = text === '' ? 0 : text.split(/\s+/).length;
+      
+      wordCountSpan.textContent = words;
+      
+      if (words > 200) {
+        charCountDiv.classList.add('error');
+        charCountDiv.classList.remove('warning');
+      } else if (words > 180) {
+        charCountDiv.classList.add('warning');
+        charCountDiv.classList.remove('error');
+      } else {
+        charCountDiv.classList.remove('warning', 'error');
+      }
+    });
+
+    // Show error message
+    function showError(inputId, message) {
+      const input = document.getElementById(inputId);
+      const errorDiv = document.getElementById(inputId + 'Error');
+      if (!input || !errorDiv) return;
+
+      input.classList.add('error');
+      input.classList.remove('success');
+      errorDiv.textContent = '⚠ ' + message;
+      errorDiv.style.display = 'flex';
+    }
+
+    // Show success
+    function showSuccess(inputId) {
+      const input = document.getElementById(inputId);
+      const errorDiv = document.getElementById(inputId + 'Error');
+      if (!input || !errorDiv) return;
+
+      input.classList.remove('error');
+      input.classList.add('success');
+      errorDiv.style.display = 'none';
+    }
+
+    // Clear error
+    function clearError(inputId) {
+      const input = document.getElementById(inputId);
+      const errorDiv = document.getElementById(inputId + 'Error');
+      if (!input || !errorDiv) return;
+
+      input.classList.remove('error', 'success');
+      errorDiv.style.display = 'none';
+    }
+
+    function normalizeName(value) {
+      return value.replace(/\s+/g, ' ').trim();
+    }
+
+    function hasUsableName(value) {
+      return /^[A-Za-z][A-Za-z' -]{1,79}$/.test(value);
+    }
+
+    // Email validation
+    function validateEmail(email) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    // Show modal
+    function showModal(title, message, onConfirm) {
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      
+      overlay.innerHTML = `
+        <div class="modal">
+          <h2>${title}</h2>
+          <p>${message}</p>
+          <div class="modal-buttons">
+            <button class="btn btn-primary" id="confirmBtn">OK</button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(overlay);
+      
+      document.getElementById('confirmBtn').addEventListener('click', () => {
+        overlay.remove();
+        if (onConfirm) onConfirm();
+      });
+    }
+
+    // Form validation
+    document.getElementById('contactForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const fullName = normalizeName(document.getElementById('fullName').value);
+      const email = document.getElementById('email').value.trim().toLowerCase();
+      const phone = document.getElementById('phone').value.trim();
+      const phoneDigits = phone.replace(/\D/g, '');
+      const message = messageInput.value.trim();
+      
+      let isValid = true;
+
+      // Full name validation
+      if (!hasUsableName(fullName)) {
+        showError('fullName', 'Please enter your full name');
+        isValid = false;
+      } else {
+        showSuccess('fullName');
+      }
+
+      // Email/Phone validation - at least one required
+      const hasEmail = email && validateEmail(email);
+      const hasPhone = phoneDigits.length === 7;
+
+      if (!hasEmail && !hasPhone) {
+        showError('email', 'Please provide either email or phone number');
+        showError('phone', 'Please provide either email or phone number');
+        isValid = false;
+      } else {
+        if (email) {
+          if (validateEmail(email)) {
+            showSuccess('email');
+          } else {
+            showError('email', 'Please enter a valid email address');
+            isValid = false;
+          }
+        } else {
+          clearError('email');
+        }
+
+        if (phone) {
+          if (phoneDigits.length === 7) {
+            showSuccess('phone');
+          } else {
+            showError('phone', 'Please enter a valid 7-digit phone number');
+            isValid = false;
+          }
+        } else {
+          clearError('phone');
+        }
+      }
+
+      // Message validation
+      if (!message) {
+        showError('message', 'Please enter a message');
+        isValid = false;
+      } else {
+        const words = message.split(/\s+/).length;
+        if (words > 200) {
+          showError('message', 'Message exceeds 200 word limit');
+          isValid = false;
+        } else {
+          showSuccess('message');
+        }
+      }
+
+      if (!isValid) {
+        showModal('Check This Form', 'Please fix the highlighted fields, then send your message again.');
+        document.querySelector('#contactForm .input.error')?.closest('.field')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
+      if (isValid) {
+        const form = document.getElementById('contactForm');
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalText = submitBtn.textContent;
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Sending...';
+
+        try {
+          const { error } = await supabase
+            .from('contact_messages')
+            .insert({
+              full_name: fullName,
+              email: email || null,
+              phone: phoneDigits ? '868-' + phoneDigits : null,
+              message
+            });
+
+          if (error) {
+            console.error('Contact form error:', error);
+            showModal(
+              'Message Not Sent',
+              'Sorry, your message could not be sent. Please try again or contact us directly on WhatsApp.'
+            );
+            return;
+          }
+
+          showModal(
+            'Message Sent!',
+            'Thank you for contacting VirtuDrop. We received your message and will get back to you as soon as possible.',
+            () => {
+              form.reset();
+              wordCountSpan.textContent = '0';
+              charCountDiv.classList.remove('warning', 'error');
+              document.querySelectorAll('.input').forEach(input => {
+                input.classList.remove('error', 'success');
+              });
+            }
+          );
+        } catch (err) {
+          console.error('Unexpected contact form error:', err);
+          showModal(
+            'Message Not Sent',
+            'Something went wrong. Please try again or contact us directly on WhatsApp.'
+          );
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
+        }
+      }
+    });
+    
+    // Clear errors on input
+    document.querySelectorAll('.input').forEach(input => {
+      input.addEventListener('focus', () => {
+        clearError(input.id);
+      });
+    });
+  </script>
+</body>
+</html>

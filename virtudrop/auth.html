@@ -1,0 +1,1289 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Login / Register | VirtuDrop</title>
+  <meta name="description" content="Login or register for VirtuDrop.">
+  <link rel="icon" href="assets/logo.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      line-height: 1.7;
+      color: #1a1a1a;
+      background: #f8f9fa;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    /* Nav Bar */
+    .nav {
+      background: #ffffff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    /* Navbar container */
+    .nav .container {
+      max-width: none;
+      width: 100%;
+      margin: 0;
+      padding: 0 2.5rem;
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      gap: 2rem;
+      padding: 1rem 0;
+    }
+
+    /* Logo + slogan */
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      text-decoration: none;
+      flex-shrink: 0;
+      margin-right: auto;
+    }
+
+    .brand img {
+      height: 52px;
+      width: auto;
+    }
+
+    .badge {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #2a9d8f;
+      letter-spacing: 0.4px;
+      white-space: nowrap;
+    }
+
+    /* Nav links */
+    .links {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 1.8rem;
+      margin-left: auto;
+      flex-wrap: nowrap;
+      white-space: nowrap;
+    }
+
+    .links a {
+      text-decoration: none;
+      color: #1a1a1a;
+      font-weight: 500;
+      font-size: 0.92rem;
+      white-space: nowrap;
+    }
+
+    /* Login button */
+    .links a.nav-login {
+      background: #2a9d8f;
+      color: #ffffff !important;
+      padding: 0.5rem 1.2rem;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+
+    .links a.nav-login:hover {
+      background: #238277;
+    }
+
+    /* Mobile */
+    .mobile-toggle {
+      display: none;
+      align-items: center;
+      justify-content: center;
+
+      background: linear-gradient(135deg, #2a9d8f 0%, #238277 100%);
+      color: #ffffff;
+
+      border: none;
+      border-radius: 10px;
+
+      padding: 0.7rem 1rem;
+
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+
+      cursor: pointer;
+
+      box-shadow: 0 4px 12px rgba(42,157,143,0.25);
+
+      transition: all 0.25s ease;
+    }
+
+    .mobile-toggle:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(42,157,143,0.35);
+      background: linear-gradient(135deg, #31b3a3 0%, #2a9d8f 100%);
+    }
+
+    .mobile-toggle:active {
+      transform: scale(0.97);
+    }
+
+    .mobile-toggle::before {
+      content: "☰";
+      margin-right: 0.5rem;
+      font-size: 1rem;
+    }
+
+    /* Page Section */
+    .page {
+      padding: 5rem 0;
+      animation: fadeIn 0.8s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    .page-header {
+      text-align: center;
+      margin-bottom: 4rem;
+      animation: fadeInUp 0.8s ease-out;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .page-header h1 {
+      font-size: 3rem;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-bottom: 1.5rem;
+    }
+
+    .page-header p {
+      font-size: 1.2rem;
+      color: #4a4a4a;
+      line-height: 1.7;
+    }
+
+    /* Card */
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 3rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      max-width: 600px;
+      margin: 0 auto;
+      animation: fadeInUp 0.8s ease-out 0.2s both;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 3rem;
+      border-bottom: 2px solid #e0e0e0;
+    }
+
+    .tab {
+      flex: 1;
+    }
+
+    .tab button {
+      width: 100%;
+      padding: 1rem;
+      background: none;
+      border: none;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #4a4a4a;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.3s ease;
+      border-bottom: 3px solid transparent;
+    }
+
+    .tab button:hover {
+      color: #2a9d8f;
+    }
+
+    .tab button[aria-selected="true"] {
+      color: #2a9d8f;
+      border-bottom-color: #2a9d8f;
+    }
+
+    /* Form */
+    .field {
+      margin-bottom: 1.8rem;
+    }
+
+    .field label {
+      display: block;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin-bottom: 0.7rem;
+      font-size: 0.95rem;
+    }
+
+    .input {
+      width: 100%;
+      padding: 1rem;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-family: 'Inter', sans-serif;
+      transition: all 0.3s ease;
+      background: #ffffff;
+    }
+
+    .input:focus {
+      outline: none;
+      border-color: #2a9d8f;
+      box-shadow: 0 0 0 3px rgba(42, 157, 143, 0.1);
+    }
+
+    .input.error {
+      border-color: #dc3545;
+      animation: shake 0.4s ease;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+
+    .input.success {
+      border-color: #28a745;
+    }
+
+    .phone-wrapper {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .phone-prefix {
+      padding: 1rem;
+      background: #f0f9f8;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-weight: 600;
+      color: #2a9d8f;
+      font-size: 1rem;
+    }
+
+    .phone-wrapper .input {
+      flex: 1;
+    }
+
+    .grid-3 {
+      display: grid;
+      gap: 1.2rem;
+    }
+
+    .cta-row {
+      display: flex;
+      gap: 1.2rem;
+      flex-wrap: wrap;
+      margin-top: 2rem;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 1rem 2rem;
+      border-radius: 10px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+      border: 2px solid #e0e0e0;
+      color: #1a1a1a;
+      background: #ffffff;
+      cursor: pointer;
+      letter-spacing: 0.3px;
+    }
+
+    .btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+      border-color: #2a9d8f;
+      color: #2a9d8f;
+    }
+
+    .btn-primary {
+      background: #2a9d8f;
+      color: #ffffff;
+      border-color: #2a9d8f;
+    }
+
+    .btn-primary:hover {
+      background: #238277;
+      border-color: #238277;
+      color: #ffffff;
+    }
+
+    .btn-primary:disabled {
+      background: #ccc;
+      border-color: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Messages */
+    .error-message {
+      color: #dc3545;
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .success-message {
+      color: #28a745;
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .help {
+      padding: 1rem;
+      background: #f0f9f8;
+      border-left: 4px solid #2a9d8f;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      color: #4a4a4a;
+      margin-top: 1.5rem;
+      line-height: 1.6;
+    }
+
+    .password-requirements {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 1.2rem;
+      margin-top: 0.7rem;
+      font-size: 0.9rem;
+    }
+
+    .password-requirements h4 {
+      font-size: 0.95rem;
+      color: #1a1a1a;
+      margin-bottom: 0.7rem;
+    }
+
+    .requirement {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      margin-bottom: 0.5rem;
+      color: #4a4a4a;
+    }
+
+    .requirement.met {
+      color: #28a745;
+    }
+
+    .requirement-icon {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid #ccc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      flex-shrink: 0;
+    }
+
+    .requirement.met .requirement-icon {
+      background: #28a745;
+      border-color: #28a745;
+      color: white;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .modal {
+      background: white;
+      border-radius: 16px;
+      padding: 2.5rem;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .modal h2 {
+      font-size: 1.8rem;
+      color: #1a1a1a;
+      margin-bottom: 1rem;
+    }
+
+    .modal p {
+      font-size: 1.1rem;
+      color: #4a4a4a;
+      line-height: 1.7;
+      margin-bottom: 2rem;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: flex-end;
+    }
+
+/* ── Footer ── */
+    .footer {
+      background: #111;
+      color: #ffffff;
+      padding: 4rem 0 2rem;
+      margin-top: 6rem;
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 3rem;
+      margin-bottom: 3rem;
+    }
+
+    .footer-brand img {
+      height: 44px;
+      margin-bottom: 1rem;
+    }
+
+    .footer-brand p {
+      font-size: 0.88rem;
+      color: rgba(255,255,255,0.45);
+      line-height: 1.7;
+    }
+
+    .footer-col h4 {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #14d4ae;
+      margin-bottom: 1rem;
+    }
+
+    .footer-col a {
+      display: block;
+      font-size: 0.88rem;
+      color: rgba(255,255,255,0.45);
+      text-decoration: none;
+      margin-bottom: 0.5rem;
+      transition: color 0.2s;
+    }
+
+    .footer-col a:hover {
+      color: #ffffff;
+    }
+
+    .footer-bottom {
+      border-top: 1px solid rgba(255,255,255,0.07);
+      padding-top: 2rem;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .footer-bottom p {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.3);
+    }
+
+    @media (max-width: 768px) {
+      .footer-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .footer-bottom {
+        flex-direction: column;
+        text-align: center;
+      }
+    }
+
+    /* Responsive */
+    @media (max-width: 968px) {
+      .links {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: #ffffff;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        z-index: 99;
+      }
+
+      .links.open {
+        display: flex;
+      }
+
+      .links a {
+        padding: 1rem 2rem;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: 1rem;
+      }
+
+      .links a:last-child {
+        border-bottom: none;
+      }
+
+      .links a::after {
+        display: none;
+      }
+
+      .nav-inner {
+        position: relative;
+      }
+
+      .mobile-toggle {
+        display: block;
+      }
+
+      .page-header h1 {
+        font-size: 2.2rem;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .container {
+        padding: 0 1.5rem;
+      }
+
+    .brand {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.3rem;
+    }
+
+      .page {
+        padding: 3rem 0;
+      }
+
+      .card {
+        padding: 2rem;
+      }
+
+      .page-header h1 {
+        font-size: 2rem;
+      }
+
+      .grid-3 {
+        grid-template-columns: 1fr !important;
+      }
+
+      .cta-row {
+        flex-direction: column;
+      }
+
+      .btn {
+        width: 100%;
+        text-align: center;
+      }
+
+      .modal-buttons {
+        flex-direction: column;
+      }
+    }
+  
+
+    /* Mobile header fit fix */
+    @media (max-width: 768px) {
+      .nav .container {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+      }
+
+      .nav-inner {
+        gap: 0.75rem !important;
+        min-width: 0;
+      }
+
+      .brand {
+        flex: 1 1 auto !important;
+        min-width: 0;
+        gap: 0.55rem !important;
+        margin-right: 0 !important;
+      }
+
+      .brand img {
+        height: 42px !important;
+        flex: 0 0 auto;
+      }
+
+      .badge {
+        white-space: normal !important;
+        line-height: 1.25;
+        font-size: 0.7rem !important;
+        max-width: 150px;
+      }
+
+      .mobile-toggle {
+        display: flex !important;
+        flex: 0 0 auto;
+        padding: 0.65rem 0.8rem !important;
+        min-width: 72px;
+        max-width: 92px;
+        white-space: nowrap;
+      }
+
+      .mobile-toggle::before {
+        content: "☰" !important;
+        margin-right: 0.4rem !important;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .badge {
+        max-width: 126px;
+        font-size: 0.66rem !important;
+      }
+
+      .mobile-toggle {
+        min-width: 64px;
+        max-width: 78px;
+        padding: 0.6rem 0.65rem !important;
+      }
+    }
+
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="container">
+      <div class="nav-inner">
+        <a class="brand" href="index.html" aria-label="VirtuDrop Home">
+          <img src="assets/logo.png" alt="VirtuDrop logo" />
+          <span class="badge">Professional • Reliable • Structured</span>
+        </a>
+        <button class="mobile-toggle" type="button" data-mobile-toggle aria-label="Toggle navigation">Menu</button>
+        <nav class="links" data-nav-links>
+          <a href="index.html">Home</a>
+          <a href="how-it-works.html">How It Works</a>
+          <a href="pricing.html">Pricing</a>
+          <a href="zones.html">Delivery Zones</a>
+          <a href="business-clients.html">Business Clients</a>
+          <a href="calculator.html">Calculator</a>
+          <a href="track.html">Track Delivery</a>
+          <a href="contact.html">Contact</a>
+          <a href="auth.html" aria-current="page" class="nav-login">Login/Register</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="page">
+      <div class="container">
+        <div class="page-header">
+          <h1>Create your business account</h1>
+          <p>Register your business with VirtuDrop or login to manage your deliveries.</p>
+        </div>
+
+        <div class="card form">
+          <div class="tabs" role="tablist" aria-label="Authentication tabs">
+            <div class="tab">
+              <button type="button" data-tab="login" aria-selected="true">Login</button>
+            </div>
+            <div class="tab">
+              <button type="button" data-tab="register" aria-selected="false">Register</button>
+            </div>
+          </div>
+
+          <!-- Login Form -->
+          <section data-panel="login" aria-label="Login form">
+            <div id="lockoutNotice" style="display:none; padding:1rem 1.2rem; background:#fff3f3; border-left:4px solid #e05555; border-radius:8px; margin-bottom:1.5rem; font-size:0.92rem; color:#8b2020; line-height:1.6;">
+              🔒 <strong>Account locked.</strong> Your account has been locked after too many failed login attempts. Please <a href="contact.html" style="color:#2a9d8f; font-weight:600;">contact VirtuDrop</a> to unlock your account.
+            </div>
+            <form id="loginForm" novalidate>
+              <div class="field">
+                <label for="loginEmail">Email address</label>
+                <input class="input" id="loginEmail" type="email" placeholder="name@example.com" required />
+                <div id="loginEmailError" class="error-message" style="display: none;"></div>
+              </div>
+              <div class="field">
+                <label for="loginPass">Password</label>
+                <input class="input" id="loginPass" type="password" placeholder="••••••••••••" required />
+                <div id="loginPassError" class="error-message" style="display: none;"></div>
+              </div>
+              <div class="cta-row">
+                <button class="btn btn-primary" type="submit">Login</button>
+                <a class="btn" href="contact.html">Need help?</a>
+              </div>
+            </form>
+          </section>
+
+          <!-- Register Form -->
+          <section data-panel="register" hidden aria-label="Register form">
+            <form id="registerForm" novalidate>
+              <div class="grid-3" style="grid-template-columns:1fr 1fr;">
+                <div class="field">
+                  <label for="firstName">First Name</label>
+                  <input class="input" id="firstName" type="text" required />
+                  <div id="firstNameError" class="error-message" style="display: none;"></div>
+                </div>
+                <div class="field">
+                  <label for="lastName">Last Name</label>
+                  <input class="input" id="lastName" type="text" required />
+                  <div id="lastNameError" class="error-message" style="display: none;"></div>
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="regEmail">Email address</label>
+                <input class="input" id="regEmail" type="email" placeholder="name@example.com" required />
+                <div id="regEmailError" class="error-message" style="display: none;"></div>
+              </div>
+
+              <div class="field">
+                <label for="phone">Phone number</label>
+                <div class="phone-wrapper">
+                  <span class="phone-prefix">868-</span>
+                  <input class="input" id="phone" type="tel" placeholder="XXX-XXXX" maxlength="8" required />
+                </div>
+                <div id="phoneError" class="error-message" style="display: none;"></div>
+              </div>
+
+              <div class="field">
+                <label for="businessName">Business Name</label>
+                <input class="input" id="businessName" type="text" placeholder="Your business name" required />
+                <div id="businessNameError" class="error-message" style="display: none;"></div>
+              </div>
+
+              <div class="grid-3" style="grid-template-columns:1fr 1fr;">
+                <div class="field">
+                  <label for="regPass">Password</label>
+                  <input class="input" id="regPass" type="password" required />
+                  <div id="regPassError" class="error-message" style="display: none;"></div>
+                </div>
+                <div class="field">
+                  <label for="regPass2">Verify password</label>
+                  <input class="input" id="regPass2" type="password" required />
+                  <div id="regPass2Error" class="error-message" style="display: none;"></div>
+                </div>
+              </div>
+
+              <div class="password-requirements">
+                <h4>Password Requirements:</h4>
+                <div class="requirement" id="req-length">
+                  <span class="requirement-icon"></span>
+                  <span>At least 12 characters</span>
+                </div>
+                <div class="requirement" id="req-upper">
+                  <span class="requirement-icon"></span>
+                  <span>At least one uppercase letter</span>
+                </div>
+                <div class="requirement" id="req-lower">
+                  <span class="requirement-icon"></span>
+                  <span>At least one lowercase letter</span>
+                </div>
+                <div class="requirement" id="req-number">
+                  <span class="requirement-icon"></span>
+                  <span>At least one number</span>
+                </div>
+                <div class="requirement" id="req-special">
+                  <span class="requirement-icon"></span>
+                  <span>At least one special character (!@#$%^&*)</span>
+                </div>
+              </div>
+
+              <div class="cta-row">
+                <button class="btn btn-primary" type="submit">Create account</button>
+                <a class="btn" href="pricing.html">View pricing</a>
+              </div>
+            </form>
+          </section>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+
+        <div class="footer-brand">
+          <img src="assets/logo.png" alt="VirtuDrop logo">
+          <p>Zone-based, scheduled delivery for businesses across Trinidad. Structured logistics you can count on.</p>
+        </div>
+
+        <div class="footer-col">
+          <h4>Services</h4>
+          <a href="pricing.html">Pricing</a>
+          <a href="zones.html">Delivery Zones</a>
+          <a href="calculator.html">Calculator</a>
+          <a href="business-clients.html">Business Clients</a>
+        </div>
+
+        <div class="footer-col">
+          <h4>Company</h4>
+          <a href="how-it-works.html">How It Works</a>
+          <a href="about.html">About</a>
+          <a href="contact.html">Contact</a>
+          <a href="faq.html">FAQ</a>
+        </div>
+
+        <div class="footer-col">
+          <h4>Account</h4>
+          <a href="auth.html">Login/Register</a>
+          <a href="track.html">Track Delivery</a>
+        </div>
+
+      </div>
+
+      <div class="footer-bottom">
+        <p>© 2026 VirtuDrop · A VirtuForms Ltd Service · Trinidad and Tobago</p>
+        <p>797-3542 &nbsp;|&nbsp; 470-3704</p>
+      </div>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+    const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnbXp6YXZ4aHVhcmxhY252bm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Mjk4NTksImV4cCI6MjA5NDIwNTg1OX0.7-YKlwLrhUYUYbiii93ZvgX01TxVephApDNCP50Rl54';
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    let registrationEnabled = true;
+
+    async function loadRegistrationSetting() {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'registration_enabled')
+        .maybeSingle();
+
+      if (!error && data) {
+        registrationEnabled = data.value !== false;
+      }
+
+      const registerBtn = document.querySelector('#registerForm button[type="submit"]');
+      if (registerBtn) {
+        registerBtn.disabled = !registrationEnabled;
+        registerBtn.textContent = registrationEnabled ? 'Create account' : 'Registration closed';
+      }
+    }
+
+    loadRegistrationSetting();
+
+    const tabs = document.querySelectorAll('[data-tab]');
+    const panels = document.querySelectorAll('[data-panel]');
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const targetPanel = tab.dataset.tab;
+
+        tabs.forEach(t => t.setAttribute('aria-selected', 'false'));
+        tab.setAttribute('aria-selected', 'true');
+
+        panels.forEach(panel => {
+          panel.hidden = panel.dataset.panel !== targetPanel;
+        });
+      });
+    });
+
+    const phoneInput = document.getElementById('phone');
+    phoneInput.addEventListener('input', (e) => {
+      let value = e.target.value.replace(/\D/g, '');
+      if (value.length > 3) {
+        value = value.slice(0, 3) + '-' + value.slice(3, 7);
+      }
+      e.target.value = value;
+    });
+
+    const regPass = document.getElementById('regPass');
+    const requirements = {
+      length: document.getElementById('req-length'),
+      upper: document.getElementById('req-upper'),
+      lower: document.getElementById('req-lower'),
+      number: document.getElementById('req-number'),
+      special: document.getElementById('req-special')
+    };
+
+    function validatePassword(password) {
+      const checks = {
+        length: password.length >= 12,
+        upper: /[A-Z]/.test(password),
+        lower: /[a-z]/.test(password),
+        number: /[0-9]/.test(password),
+        special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+      };
+
+      Object.keys(checks).forEach(key => {
+        requirements[key].classList.toggle('met', checks[key]);
+      });
+
+      return Object.values(checks).every(Boolean);
+    }
+
+    regPass.addEventListener('input', (e) => {
+      validatePassword(e.target.value);
+    });
+
+    function showError(inputId, message) {
+      const input = document.getElementById(inputId);
+      const errorDiv = document.getElementById(inputId + 'Error');
+      if (!input || !errorDiv) return;
+      input.classList.add('error');
+      input.classList.remove('success');
+      errorDiv.textContent = message;
+      errorDiv.style.display = 'flex';
+    }
+
+    function showSuccess(inputId) {
+      const input = document.getElementById(inputId);
+      const errorDiv = document.getElementById(inputId + 'Error');
+      if (!input || !errorDiv) return;
+      input.classList.remove('error');
+      input.classList.add('success');
+      errorDiv.style.display = 'none';
+    }
+
+    function clearError(inputId) {
+      const input = document.getElementById(inputId);
+      const errorDiv = document.getElementById(inputId + 'Error');
+      if (!input || !errorDiv) return;
+      input.classList.remove('error', 'success');
+      errorDiv.style.display = 'none';
+    }
+
+    function showValidationNotice(message = 'Please fix the highlighted fields, then try again.') {
+      showModal('Check This Form', message);
+    }
+
+    function validateEmail(email) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    function normalizeName(value) {
+      return value.replace(/\s+/g, ' ').trim();
+    }
+
+    function hasUsableName(value) {
+      return /^[A-Za-z][A-Za-z' -]{1,49}$/.test(value);
+    }
+
+    function slugify(value) {
+      return value
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+    }
+
+    function showModal(title, message, onConfirm) {
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.innerHTML = `
+        <div class="modal">
+          <h2>${title}</h2>
+          <p>${message}</p>
+          <div class="modal-buttons">
+            <button class="btn btn-primary" id="confirmBtn">OK</button>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(overlay);
+      document.getElementById('confirmBtn').addEventListener('click', () => {
+        overlay.remove();
+        if (onConfirm) onConfirm();
+      });
+    }
+
+    function redirectForRole(role) {
+      const params = new URLSearchParams(window.location.search);
+      const returnTo = params.get('returnTo');
+      if (returnTo && role === 'admin') return returnTo;
+      if (role === 'admin') return 'admin-dashboard.html';
+      if (role === 'driver') return 'driver-dashboard.html';
+      return 'dashboard.html';
+    }
+
+    async function getCurrentProfile() {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      const userId = userData?.user?.id;
+
+      if (userError || !userId) return null;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('role, status')
+        .eq('id', userId)
+        .single();
+
+      if (error) return null;
+      return data;
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPass').value;
+      const submitBtn = e.currentTarget.querySelector('button[type="submit"]');
+      const originalText = submitBtn.textContent;
+      await loadRegistrationSetting();
+      if (!registrationEnabled) {
+        showModal('Registration Closed', 'New business registrations are currently paused. Please contact VirtuDrop for help.');
+        return;
+      }
+      let isValid = true;
+
+      if (!email) {
+        showError('loginEmail', 'Email is required');
+        isValid = false;
+      } else if (!validateEmail(email)) {
+        showError('loginEmail', 'Please enter a valid email address');
+        isValid = false;
+      } else {
+        showSuccess('loginEmail');
+      }
+
+      if (!password) {
+        showError('loginPass', 'Password is required');
+        isValid = false;
+      } else {
+        showSuccess('loginPass');
+      }
+
+      if (!isValid) {
+        showValidationNotice('Please enter your email and password to log in.');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Logging in...';
+
+      try {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+        if (error) {
+          showModal('Login Failed', error.message || 'Please check your email and password, then try again.');
+          return;
+        }
+
+        const profile = await getCurrentProfile();
+        if (!profile || profile.status !== 'active') {
+          await supabase.auth.signOut();
+          showModal('Account Pending', 'Your account is not active yet. Please contact VirtuDrop if you need help.');
+          return;
+        }
+
+        window.location.href = redirectForRole(profile.role);
+      } catch (err) {
+        console.error('Unexpected login error:', err);
+        showModal('Login Failed', 'Something went wrong while logging in. Please try again.');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+      }
+    });
+
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const form = e.currentTarget;
+      const firstName = normalizeName(document.getElementById('firstName').value);
+      const lastName = normalizeName(document.getElementById('lastName').value);
+      const email = document.getElementById('regEmail').value.trim().toLowerCase();
+      const phone = document.getElementById('phone').value.trim();
+      const phoneDigits = phone.replace(/\D/g, '');
+      const businessName = normalizeName(document.getElementById('businessName').value);
+      const businessSlug = slugify(businessName);
+      const password = document.getElementById('regPass').value;
+      const password2 = document.getElementById('regPass2').value;
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const originalText = submitBtn.textContent;
+      let isValid = true;
+
+      if (!hasUsableName(firstName)) {
+        showError('firstName', 'Enter a valid first name');
+        isValid = false;
+      } else {
+        showSuccess('firstName');
+      }
+
+      if (!hasUsableName(lastName)) {
+        showError('lastName', 'Enter a valid last name');
+        isValid = false;
+      } else {
+        showSuccess('lastName');
+      }
+
+      if (!email) {
+        showError('regEmail', 'Email is required');
+        isValid = false;
+      } else if (!validateEmail(email)) {
+        showError('regEmail', 'Please enter a valid email address');
+        isValid = false;
+      } else {
+        showSuccess('regEmail');
+      }
+
+      if (phoneDigits.length !== 7) {
+        showError('phone', 'Please enter a valid 7-digit phone number');
+        isValid = false;
+      } else {
+        showSuccess('phone');
+      }
+
+      if (businessName.length < 2 || businessName.length > 80) {
+        showError('businessName', 'Business name must be between 2 and 80 characters');
+        isValid = false;
+      } else if (!businessSlug || businessSlug.length < 2) {
+        showError('businessName', 'Business name must include letters or numbers');
+        isValid = false;
+      } else {
+        showSuccess('businessName');
+      }
+
+      if (!password) {
+        showError('regPass', 'Password is required');
+        isValid = false;
+      } else if (!validatePassword(password)) {
+        showError('regPass', 'Password does not meet all requirements');
+        isValid = false;
+      } else {
+        showSuccess('regPass');
+      }
+
+      if (!password2) {
+        showError('regPass2', 'Please confirm your password');
+        isValid = false;
+      } else if (password !== password2) {
+        showError('regPass2', 'Passwords do not match');
+        isValid = false;
+      } else {
+        showSuccess('regPass2');
+      }
+
+      if (!isValid) {
+        showValidationNotice();
+        document.querySelector('#registerForm .input.error')?.closest('.field')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating account...';
+
+      try {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              role: 'business',
+              first_name: firstName,
+              last_name: lastName,
+              phone: '868-' + phoneDigits,
+              business_name: businessName,
+              business_slug: businessSlug
+            },
+            emailRedirectTo: `${window.location.origin}${window.location.pathname}`
+          }
+        });
+
+        if (error) {
+          showModal('Registration Failed', error.message || 'Your account could not be created. Please try again.');
+          return;
+        }
+
+        showModal(
+          'Check Your Email',
+          `Thanks, ${firstName}. Your VirtuDrop account was created. Please check your email to confirm your account before logging in.`,
+          () => {
+            form.reset();
+            document.querySelector('[data-tab="login"]').click();
+          }
+        );
+      } catch (err) {
+        console.error('Unexpected registration error:', err);
+        showModal('Registration Failed', 'Something went wrong while creating your account. Please try again.');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+      }
+    });
+
+    document.querySelectorAll('.input').forEach(input => {
+      input.addEventListener('focus', () => clearError(input.id));
+    });
+
+    const toggle = document.querySelector('[data-mobile-toggle]');
+    const navLinks = document.querySelector('[data-nav-links]');
+
+    if (toggle && navLinks) {
+      toggle.addEventListener('click', () => {
+        navLinks.classList.toggle('open');
+        toggle.textContent = navLinks.classList.contains('open') ? 'Close' : 'Menu';
+      });
+    }
+  </script>
+</body>
+</html>

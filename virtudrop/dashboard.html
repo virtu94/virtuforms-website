@@ -1,0 +1,1427 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-store" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <title>Dashboard | VirtuDrop</title>
+  <link rel="icon" href="assets/logo.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ── Reset & Base ── */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f0f4f3;
+      color: #1a1a1a;
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 260px;
+      min-width: 260px;
+      background: #0d2b28;
+      color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0; left: 0;
+      height: 100vh;
+      z-index: 200;
+      transition: transform 0.3s ease;
+    }
+
+    .sidebar-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      padding: 1.8rem 1.5rem;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      text-decoration: none;
+    }
+    .sidebar-brand img { height: 38px; width: auto; }
+    .sidebar-brand-text { font-size: 1.1rem; font-weight: 700; color: #ffffff; line-height: 1.2; }
+    .sidebar-brand-text span { display: block; font-size: 0.7rem; font-weight: 400; color: #14d4ae; letter-spacing: 0.5px; }
+
+    .sidebar-user {
+      padding: 1.2rem 1.5rem;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+    }
+    .user-avatar {
+      width: 42px; height: 42px;
+      background: linear-gradient(135deg, #2a9d8f, #14d4ae);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 1rem; color: #ffffff;
+      flex-shrink: 0;
+    }
+    .user-info { overflow: hidden; }
+    .user-name { font-size: 0.95rem; font-weight: 600; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-plan { font-size: 0.75rem; color: #14d4ae; font-weight: 500; }
+
+    .sidebar-nav { flex: 1; padding: 1rem 0; overflow-y: auto; }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+      padding: 0.85rem 1.5rem;
+      color: rgba(255,255,255,0.65);
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      border-left: 3px solid transparent;
+      background: none;
+      border-top: none;
+      border-right: none;
+      border-bottom: none;
+      width: 100%;
+      text-align: left;
+    }
+    .nav-item:hover { color: #ffffff; background: rgba(255,255,255,0.06); }
+    .nav-item.active { color: #14d4ae; border-left-color: #14d4ae; background: rgba(20,212,174,0.08); }
+    .nav-icon { font-size: 1.1rem; width: 22px; text-align: center; flex-shrink: 0; }
+    .nav-badge { margin-left: auto; background: #14d4ae; color: #0d2b28; font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 10px; }
+
+    .sidebar-footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .logout-btn {
+      display: flex; align-items: center; gap: 0.8rem;
+      color: rgba(255,255,255,0.5); font-size: 0.9rem; font-weight: 500;
+      text-decoration: none; cursor: pointer;
+      transition: color 0.2s ease;
+      background: none; border: none; width: 100%; padding: 0.5rem 0;
+    }
+    .logout-btn:hover { color: #ff6b6b; }
+
+    /* ── Main Content ── */
+    .main {
+      margin-left: 260px;
+      flex: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Top Bar ── */
+    .topbar {
+      background: #ffffff;
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 1rem; }
+    .mobile-menu-btn {
+      display: none;
+      background: none; border: none; cursor: pointer;
+      font-size: 1.4rem; color: #1a1a1a;
+      padding: 0.3rem;
+    }
+    .page-title { font-size: 1.3rem; font-weight: 700; color: #1a1a1a; }
+    .topbar-right { display: flex; align-items: center; gap: 1rem; }
+    .topbar-date { font-size: 0.85rem; color: #6a6a6a; }
+
+    .notif-btn {
+      position: relative; background: none; border: none; cursor: pointer;
+      font-size: 1.3rem; padding: 0.4rem;
+    }
+    .notif-dot {
+      position: absolute; top: 4px; right: 4px;
+      width: 8px; height: 8px;
+      background: #e07a3a; border-radius: 50%;
+      border: 2px solid #ffffff;
+    }
+
+    /* ── Content Area ── */
+    .content { padding: 2rem; flex: 1; }
+
+    /* Panels — only active one shown */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* ── Section heading ── */
+    .section-heading {
+      font-size: 1.5rem; font-weight: 700; color: #1a1a1a;
+      margin-bottom: 1.5rem;
+    }
+    .section-sub {
+      font-size: 0.95rem; color: #6a6a6a; margin-top: 0.2rem; font-weight: 400;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: #ffffff;
+      border-radius: 14px;
+      padding: 1.8rem;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+    }
+
+    /* ── Overview Stats ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.2rem;
+      margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: #ffffff;
+      border-radius: 14px;
+      padding: 1.5rem;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+      border-left: 4px solid #2a9d8f;
+      transition: transform 0.2s ease;
+    }
+    .stat-card:hover { transform: translateY(-3px); }
+    .stat-card.orange { border-left-color: #e07a3a; }
+    .stat-card.green  { border-left-color: #28a745; }
+    .stat-card.purple { border-left-color: #6f42c1; }
+
+    .stat-label { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: #6a6a6a; margin-bottom: 0.6rem; }
+    .stat-value { font-size: 2.4rem; font-weight: 800; color: #1a1a1a; line-height: 1; margin-bottom: 0.3rem; }
+    .stat-note  { font-size: 0.8rem; color: #6a6a6a; }
+
+    /* ── Plan progress ── */
+    .plan-progress-bar {
+      height: 8px;
+      background: #e0e0e0;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 0.6rem 0 0.4rem;
+    }
+    .plan-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #2a9d8f, #14d4ae);
+      border-radius: 4px;
+      transition: width 0.6s ease;
+    }
+
+    /* ── Overview two-col ── */
+    .overview-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .card-title {
+      font-size: 1rem; font-weight: 700; color: #1a1a1a;
+      margin-bottom: 1.2rem;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+
+    /* ── Delivery items ── */
+    .delivery-item {
+      display: flex; align-items: center; gap: 1rem;
+      padding: 0.9rem 0;
+      border-bottom: 1px solid #f5f5f5;
+    }
+    .delivery-item:last-child { border-bottom: none; }
+
+    .delivery-icon {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      background: #f0f9f8;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; flex-shrink: 0;
+    }
+    .delivery-info { flex: 1; min-width: 0; }
+    .delivery-route { font-size: 0.9rem; font-weight: 600; color: #1a1a1a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .delivery-meta  { font-size: 0.78rem; color: #6a6a6a; margin-top: 0.1rem; }
+    .delivery-status { flex-shrink: 0; }
+
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      padding: 0.3rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.75rem; font-weight: 700;
+    }
+    .status-badge.pending      { background: #fff3cd; color: #856404; }
+    .status-badge.picked-up   { background: #cce5ff; color: #004085; }
+    .status-badge.out          { background: #d4edda; color: #155724; }
+    .status-badge.delivered    { background: #d1ecf1; color: #0c5460; }
+    .status-badge.cancelled    { background: #f8d7da; color: #721c24; }
+
+    /* ── Notification items ── */
+    .notif-item {
+      display: flex; gap: 1rem; align-items: flex-start;
+      padding: 0.9rem 0;
+      border-bottom: 1px solid #f5f5f5;
+    }
+    .notif-item:last-child { border-bottom: none; }
+    .notif-dot-icon { width: 8px; height: 8px; border-radius: 50%; background: #2a9d8f; flex-shrink: 0; margin-top: 6px; }
+    .notif-dot-icon.read { background: #d0d0d0; }
+    .notif-text { font-size: 0.88rem; color: #1a1a1a; line-height: 1.5; }
+    .notif-time { font-size: 0.75rem; color: #aaa; margin-top: 0.2rem; }
+
+    /* ── Table ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    thead th { text-align: left; padding: 0.7rem 1rem; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #6a6a6a; border-bottom: 2px solid #f0f0f0; white-space: nowrap; }
+    tbody td { padding: 0.9rem 1rem; border-bottom: 1px solid #f8f8f8; color: #1a1a1a; vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: #f8f9fa; }
+
+    /* ── New Order Form ── */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
+    .form-group.full { grid-column: 1 / -1; }
+
+    label { font-size: 0.88rem; font-weight: 600; color: #1a1a1a; }
+    label span { font-weight: 400; color: #6a6a6a; font-size: 0.82rem; }
+
+    .input {
+      width: 100%; padding: 0.85rem 1rem;
+      border: 2px solid #e0e0e0; border-radius: 8px;
+      font-size: 0.95rem; font-family: 'Inter', sans-serif;
+      color: #1a1a1a; background: #ffffff;
+      transition: all 0.25s ease;
+      appearance: none; -webkit-appearance: none;
+    }
+    .input:focus { outline: none; border-color: #2a9d8f; box-shadow: 0 0 0 3px rgba(42,157,143,0.1); }
+    .input.has-error { border-color: #e05555; box-shadow: 0 0 0 3px rgba(224,85,85,0.08); }
+    .input:disabled { background: #f8f9fa; color: #aaa; cursor: not-allowed; }
+
+    select.input {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%232a9d8f' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 1rem center;
+      padding-right: 2.5rem;
+      cursor: pointer;
+    }
+
+    textarea.input { resize: vertical; min-height: 100px; }
+
+    /* Live price preview */
+    .price-preview {
+      background: #0d2b28;
+      border-radius: 12px;
+      padding: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+    .price-preview-label { font-size: 0.85rem; color: rgba(255,255,255,0.6); margin-bottom: 0.2rem; }
+    .price-preview-amount { font-size: 2.5rem; font-weight: 800; color: #14d4ae; line-height: 1; }
+    .price-preview-amount .currency { font-size: 1.2rem; vertical-align: super; color: rgba(20,212,174,0.7); }
+    .price-preview-note { font-size: 0.82rem; color: rgba(255,255,255,0.5); margin-top: 0.3rem; }
+
+    /* Remote sub-region rows */
+    .remote-row { display: none; grid-column: 1 / -1; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .remote-row.visible { display: grid; }
+    .remote-note-inline {
+      grid-column: 1 / -1;
+      display: none;
+      padding: 0.8rem 1rem;
+      background: #fff8f0;
+      border-left: 3px solid #e07a3a;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      color: #7a4a1a;
+    }
+    .remote-note-inline.visible { display: block; }
+
+    /* Form actions */
+    .form-actions { display: flex; gap: 1rem; margin-top: 2rem; flex-wrap: wrap; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.9rem 2rem;
+      border-radius: 10px;
+      font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; border: 2px solid #e0e0e0;
+      color: #1a1a1a; background: #ffffff;
+      transition: all 0.25s ease;
+      text-decoration: none;
+    }
+    .btn:hover { border-color: #2a9d8f; color: #2a9d8f; transform: translateY(-2px); }
+    .btn-primary { background: #2a9d8f; color: #ffffff; border-color: #2a9d8f; }
+    .btn-primary:hover { background: #238277; border-color: #238277; color: #ffffff; }
+    .btn-ghost { background: none; border-color: transparent; color: #6a6a6a; }
+    .btn-ghost:hover { background: #f0f0f0; border-color: #f0f0f0; color: #1a1a1a; }
+
+    /* ── Plan Card ── */
+    .plan-display {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;
+    }
+    .plan-highlight {
+      background: linear-gradient(135deg, #0d2b28, #1a4a44);
+      border-radius: 14px; padding: 2rem; color: #ffffff;
+    }
+    .plan-highlight-tier { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #14d4ae; margin-bottom: 0.3rem; }
+    .plan-highlight-name { font-size: 2rem; font-weight: 800; color: #ffffff; margin-bottom: 0.5rem; }
+    .plan-highlight-price { font-size: 1rem; color: rgba(255,255,255,0.6); }
+    .plan-highlight-price strong { color: #14d4ae; font-size: 1.5rem; }
+
+    .plan-usage { background: #f8f9fa; border-radius: 14px; padding: 2rem; }
+    .plan-usage-label { font-size: 0.85rem; color: #6a6a6a; margin-bottom: 0.4rem; }
+    .plan-usage-count { font-size: 1.8rem; font-weight: 800; color: #1a1a1a; }
+    .plan-usage-count span { font-size: 1rem; font-weight: 500; color: #6a6a6a; }
+
+    /* ── Settings form ── */
+    .settings-section { margin-bottom: 2rem; }
+    .settings-section-title { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: #2a9d8f; margin-bottom: 1.2rem; padding-bottom: 0.5rem; border-bottom: 2px solid #f0f0f0; }
+
+    /* ── Empty state ── */
+    .empty-state { text-align: center; padding: 3rem 1rem; color: #aaa; }
+    .empty-state .empty-icon { font-size: 2.5rem; margin-bottom: 0.8rem; }
+    .empty-state p { font-size: 0.95rem; }
+
+    /* ── Success modal ── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 500; opacity: 0; pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    .modal-overlay.active { opacity: 1; pointer-events: all; }
+    .modal {
+      background: #ffffff; border-radius: 16px;
+      padding: 2.5rem; max-width: 440px; width: 90%;
+      text-align: center;
+      transform: scale(0.9);
+      transition: transform 0.3s ease;
+    }
+    .modal-overlay.active .modal { transform: scale(1); }
+    .modal-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .modal h3 { font-size: 1.4rem; font-weight: 700; color: #1a1a1a; margin-bottom: 0.8rem; }
+    .modal p { font-size: 0.95rem; color: #4a4a4a; line-height: 1.7; margin-bottom: 1.5rem; }
+
+    /* ── Mobile bottom nav ── */
+    .bottom-nav {
+      display: none;
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: #0d2b28;
+      padding: 0.6rem 0 0.8rem;
+      z-index: 300;
+      justify-content: space-around;
+    }
+    .bottom-nav-item {
+      display: flex; flex-direction: column; align-items: center; gap: 0.2rem;
+      color: rgba(255,255,255,0.5); font-size: 0.65rem; font-weight: 600;
+      cursor: pointer; background: none; border: none;
+      padding: 0.3rem 0.6rem;
+      transition: color 0.2s;
+    }
+    .bottom-nav-item.active { color: #14d4ae; }
+    .bottom-nav-item span:first-child { font-size: 1.3rem; }
+
+    /* Sidebar overlay for mobile */
+    .sidebar-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 150;
+    }
+    .sidebar-overlay.active { display: block; }
+
+    /* ── Desktop / Mobile visibility helpers ── */
+    .desktop-only { display: block; }
+    .mobile-only  { display: none;  }
+
+    /* ── Mobile Order Cards ── */
+    .order-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+
+    .order-card {
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 1.2rem 1.4rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      border-left: 4px solid #2a9d8f;
+    }
+
+    .order-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .order-card-id {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #1a1a1a;
+    }
+
+    .order-card-route {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin-bottom: 0.5rem;
+    }
+
+    .order-card-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      color: #6a6a6a;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+    }
+
+    .order-card-cost {
+      margin-top: 0.6rem;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #2a9d8f;
+    }
+
+    /* Dark mode for order cards */
+    body.dark-mode .order-card {
+      background: #0f2420;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    body.dark-mode .order-card-id    { color: #e0e0e0; }
+    body.dark-mode .order-card-route { color: #e0e0e0; }
+    body.dark-mode .order-card-meta  { color: #888; }
+
+    /* ── Dark Mode ── */
+    body.dark-mode {
+      background: #0a1a18;
+      color: #e0e0e0;
+    }
+    body.dark-mode .main { background: #0a1a18; }
+    body.dark-mode .topbar { background: #0f2420; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+    body.dark-mode .page-title { color: #e0e0e0; }
+    body.dark-mode .card { background: #0f2420; box-shadow: 0 2px 12px rgba(0,0,0,0.2); }
+    body.dark-mode .card-title { color: #e0e0e0; }
+    body.dark-mode .stat-card { background: #0f2420; box-shadow: 0 2px 12px rgba(0,0,0,0.2); }
+    body.dark-mode .stat-value { color: #e0e0e0; }
+    body.dark-mode .section-heading { color: #e0e0e0; }
+    body.dark-mode .delivery-route { color: #e0e0e0; }
+    body.dark-mode .delivery-item { border-bottom-color: #1a3330; }
+    body.dark-mode .delivery-item:last-child { border-bottom: none; }
+    body.dark-mode .notif-item { border-bottom-color: #1a3330; }
+    body.dark-mode .notif-text { color: #e0e0e0; }
+    body.dark-mode .plan-progress-bar { background: #1a3330; }
+    body.dark-mode .plan-usage { background: #1a3330; }
+    body.dark-mode .plan-usage-count { color: #e0e0e0; }
+    body.dark-mode thead th { color: #aaa; border-bottom-color: #1a3330; }
+    body.dark-mode tbody td { color: #e0e0e0; border-bottom-color: #1a3330; }
+    body.dark-mode tbody tr:hover td { background: #1a3330; }
+    body.dark-mode .input { background: #1a3330; border-color: #2a4a44; color: #e0e0e0; }
+    body.dark-mode .input:focus { border-color: #2a9d8f; }
+    body.dark-mode .input:disabled { background: #0f2420; color: #555; }
+    body.dark-mode label { color: #c0c0c0; }
+    body.dark-mode .settings-section-title { border-bottom-color: #1a3330; }
+    body.dark-mode .btn { background: #1a3330; border-color: #2a4a44; color: #e0e0e0; }
+    body.dark-mode .btn:hover { border-color: #2a9d8f; color: #14d4ae; }
+    body.dark-mode .btn-primary { background: #2a9d8f; border-color: #2a9d8f; color: #ffffff; }
+    body.dark-mode .btn-primary:hover { background: #238277; border-color: #238277; }
+    body.dark-mode .btn-ghost { background: none; border-color: transparent; color: #888; }
+    body.dark-mode .btn-ghost:hover { background: #1a3330; border-color: #1a3330; color: #e0e0e0; }
+    body.dark-mode .modal { background: #0f2420; }
+    body.dark-mode .modal h3 { color: #e0e0e0; }
+    body.dark-mode .modal p { color: #aaa; }
+    body.dark-mode .remote-note-inline { background: #2a1a08; color: #d4a060; border-left-color: #e07a3a; }
+
+    /* Dark mode toggle switch */
+    .dark-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 0;
+      border-bottom: 2px solid #f0f0f0;
+      margin-bottom: 1.5rem;
+    }
+    body.dark-mode .dark-toggle-row { border-bottom-color: #1a3330; }
+    .dark-toggle-label { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: #2a9d8f; }
+
+    .toggle-switch { position: relative; width: 50px; height: 26px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-track {
+      position: absolute; inset: 0;
+      background: #ccc; border-radius: 26px;
+      cursor: pointer; transition: background 0.3s ease;
+    }
+    .toggle-track::before {
+      content: '';
+      position: absolute;
+      width: 20px; height: 20px;
+      left: 3px; top: 3px;
+      background: white; border-radius: 50%;
+      transition: transform 0.3s ease;
+    }
+    .toggle-switch input:checked + .toggle-track { background: #2a9d8f; }
+    .toggle-switch input:checked + .toggle-track::before { transform: translateX(24px); }
+
+    /* Business export controls - Codex */
+    .report-toolbar {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.85rem;
+      align-items: end;
+      margin-bottom: 1rem;
+    }
+    .report-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+    .report-field label {
+      font-size: 0.74rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #2a9d8f;
+    }
+    .report-actions {
+      display: flex;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+      margin-top: 0.3rem;
+    }
+    @media (max-width: 900px) {
+      .report-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 520px) {
+      .report-toolbar { grid-template-columns: 1fr; }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 1024px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 768px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .main { margin-left: 0; }
+      .mobile-menu-btn { display: flex; }
+      .bottom-nav { display: flex; }
+      .content { padding: 1.2rem 1rem 5rem; }
+      .topbar { padding: 0.8rem 1rem; }
+
+      /* Switch table → card layout */
+      .desktop-only { display: none !important; }
+      .mobile-only  { display: block !important; }
+
+      /* Overview stats — tight 2x2 grid */
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.7rem;
+      }
+      .stat-card   { padding: 1rem; }
+      .stat-value  { font-size: 1.7rem; }
+      .stat-label  { font-size: 0.72rem; }
+      .stat-note   { font-size: 0.72rem; }
+
+      .overview-grid   { grid-template-columns: 1fr; }
+      .form-grid       { grid-template-columns: 1fr; }
+      .remote-row      { grid-template-columns: 1fr; }
+      .plan-display    { grid-template-columns: 1fr; }
+      .price-preview   { flex-direction: column; }
+      .form-actions    { flex-direction: column; }
+      .btn             { width: 100%; justify-content: center; }
+      .topbar-date     { display: none; }
+
+      /* Plan terms grid stack */
+      #panel-plan .card div[style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .content    { padding: 1rem 0.75rem 5rem; }
+      .card       { padding: 1.2rem; }
+      .stats-grid { gap: 0.5rem; }
+      .stat-card  { padding: 0.85rem; }
+      .stat-value { font-size: 1.5rem; }
+      .section-heading { font-size: 1.15rem; }
+      .order-card { padding: 1rem 1.1rem; }
+    }
+  
+
+    /* Mobile launch safety layer - Codex */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    .main, .content, .panel, .card, .topbar, .form-grid, .overview-grid, .stats-grid, .plan-display { min-width: 0; max-width: 100%; }
+    .table-wrap, div[style*="overflow-x:auto"] { max-width: 100%; -webkit-overflow-scrolling: touch; }
+    .table-wrap table, div[style*="overflow-x:auto"] table { min-width: 620px; }
+    .card, .stat-card, .order-card, .delivery-item, .notif-item { overflow-wrap: anywhere; }
+    .input, select, textarea, button { max-width: 100%; }
+    .topbar { min-width: 0; }
+    .topbar-left, .topbar-right { min-width: 0; }
+    .page-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    @media (max-width: 768px) {
+      .sidebar { width: min(82vw, 300px); min-width: 0; }
+      .topbar { gap: 0.7rem; }
+      .topbar-right { gap: 0.45rem; flex-shrink: 0; }
+      .section-heading { line-height: 1.2; }
+      .section-sub { font-size: 0.86rem; line-height: 1.5; }
+      .delivery-item { align-items: flex-start; }
+      .delivery-status { width: 100%; margin-left: 52px; }
+      .status-badge { white-space: normal; text-align: center; }
+      #clientLinkDisplay { min-width: 0 !important; width: 100%; }
+      #panel-delivery-link .card > div > div[style*="display:flex"] { flex-direction: column; align-items: stretch !important; }
+      #panel-remittance .card > div[style*="grid-template-columns:repeat(3,1fr)"] { grid-template-columns: 1fr !important; }
+      .modal { width: calc(100vw - 2rem); padding: 1.6rem; }
+    }
+
+    @media (max-width: 480px) {
+      .stats-grid { grid-template-columns: 1fr; }
+      .topbar { position: sticky; top: 0; }
+      .notif-btn { display: none; }
+      .bottom-nav { overflow-x: auto; }
+      .bottom-nav-item { min-width: 64px; }
+      .form-actions .btn { min-height: 44px; }
+      .table-wrap table, div[style*="overflow-x:auto"] table { min-width: 560px; }
+    }
+
+  
+
+    /* Hybrid mobile cards and report tables - Codex */
+    .table-wrap table,
+    div[style*="overflow-x:auto"] table {
+      table-layout: auto;
+      min-width: 720px;
+    }
+    .table-wrap th,
+    .table-wrap td,
+    div[style*="overflow-x:auto"] th,
+    div[style*="overflow-x:auto"] td {
+      white-space: nowrap;
+      word-break: normal;
+      overflow-wrap: normal;
+    }
+    .status-badge {
+      white-space: nowrap !important;
+      word-break: normal;
+      overflow-wrap: normal;
+      line-height: 1.25;
+      flex-shrink: 0;
+    }
+    .order-card,
+    .delivery-item,
+    .notif-item {
+      overflow-wrap: normal;
+      word-break: normal;
+    }
+    .order-card-top {
+      gap: 0.75rem;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+    .order-card-id {
+      white-space: nowrap;
+      word-break: normal;
+      overflow-wrap: normal;
+      font-size: 0.86rem;
+      letter-spacing: 0;
+    }
+    .order-card-route {
+      word-break: normal;
+      overflow-wrap: break-word;
+      line-height: 1.35;
+    }
+    .order-card-meta {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.25rem;
+      line-height: 1.45;
+    }
+    .order-card-cost,
+    .delivery-meta,
+    .delivery-route {
+      word-break: normal;
+      overflow-wrap: break-word;
+    }
+    .delivery-status {
+      min-width: max-content;
+    }
+
+    @media (max-width: 768px) {
+      .delivery-item {
+        display: grid;
+        grid-template-columns: 40px minmax(0, 1fr);
+        gap: 0.8rem;
+      }
+      .delivery-status {
+        grid-column: 2;
+        width: auto;
+        margin-left: 0;
+      }
+      .status-badge {
+        text-align: left;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .table-wrap table,
+      div[style*="overflow-x:auto"] table {
+        min-width: 680px;
+      }
+      .order-card {
+        padding: 1rem;
+      }
+      .order-card-top .status-badge {
+        max-width: 100%;
+      }
+    }
+
+  </style>
+</head>
+<body>
+
+<!-- Sidebar overlay for mobile -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- ── Sidebar ── -->
+<aside class="sidebar" id="sidebar">
+  <a class="sidebar-brand" href="index.html">
+    <img src="assets/logo.png" alt="VirtuDrop" onerror="this.style.display='none'" />
+    <div class="sidebar-brand-text">
+      VirtuDrop
+      <span>Client Dashboard</span>
+    </div>
+  </a>
+
+  <div class="sidebar-user">
+    <div class="user-avatar">VD</div>
+    <div class="user-info">
+      <div class="user-name">Loading account...</div>
+      <div class="user-plan">Business Account</div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <button class="nav-item active" data-panel="overview">
+      <span class="nav-icon">📊</span> Overview
+    </button>
+    <button class="nav-item" data-panel="new-order">
+      <span class="nav-icon">➕</span> New Order
+    </button>
+    <button class="nav-item" data-panel="delivery-link">
+      <span class="nav-icon">🔗</span> My Delivery Link
+    </button>
+    <button class="nav-item" data-panel="active">
+      <span class="nav-icon">🚚</span> Active Deliveries
+      <span class="nav-badge">0</span>
+    </button>
+    <button class="nav-item" data-panel="history">
+      <span class="nav-icon">📋</span> Order History
+    </button>
+    <button class="nav-item" data-panel="cod-records">
+      <span class="nav-icon">💰</span> COD Records
+    </button>
+    <button class="nav-item" data-panel="remittance">
+      <span class="nav-icon">💸</span> Remittance
+    </button>
+    <button class="nav-item" data-panel="failed">
+      <span class="nav-icon">❌</span> Failed &amp; Rescheduled
+    </button>
+    <button class="nav-item" data-panel="plan">
+      <span class="nav-icon">📦</span> My Plan
+    </button>
+    <button class="nav-item" data-panel="notifications">
+      <span class="nav-icon">🔔</span> Notifications
+      <span class="nav-badge">0</span>
+    </button>
+    <button class="nav-item" data-panel="settings">
+      <span class="nav-icon">⚙️</span> Settings
+    </button>
+  </nav>
+
+  <div class="sidebar-footer">
+    <button class="logout-btn" onclick="window.location.href='auth.html'">
+      <span>🚪</span> Log Out
+    </button>
+  </div>
+</aside>
+
+<!-- ── Main ── -->
+<div class="main">
+
+  <!-- Top Bar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="mobile-menu-btn" id="mobileMenuBtn">☰</button>
+      <div class="page-title" id="pageTitle">Overview</div>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-date" id="topbarDate"></span>
+      <button class="notif-btn" onclick="switchPanel('notifications')">
+        🔔<span class="notif-dot"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+
+    <!-- OVERVIEW -->
+    <div class="panel active" id="panel-overview">
+      <div class="section-heading">
+        Good morning! 👋
+        <div class="section-sub">Loading your live business dashboard.</div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">This Month</div>
+          <div class="stat-value">0</div>
+          <div class="stat-note">Total deliveries</div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-label">Active</div>
+          <div class="stat-value">0</div>
+          <div class="stat-note">In progress now</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-label">Completed</div>
+          <div class="stat-value">0</div>
+          <div class="stat-note">This month</div>
+        </div>
+        <div class="stat-card purple">
+          <div class="stat-label">Zone Pending</div>
+          <div class="stat-value">0</div>
+          <div class="stat-note">awaiting zone confirmation</div>
+        </div>
+      </div>
+
+      <div class="overview-grid">
+        <div class="card">
+          <div class="card-title">🚚 Active Deliveries</div>
+          <p style="color:#6a6a6a;">Loading active deliveries...</p>
+        </div>
+        <div class="card">
+          <div class="card-title">🔔 Recent Alerts</div>
+          <p style="color:#6a6a6a;">Loading recent alerts...</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📦 Account Status</div>
+        <div style="display:flex; justify-content:space-between; font-size:0.88rem; color:#6a6a6a; margin-bottom:0.4rem;">
+          <span>Loading account data...</span>
+          <span>Loading status</span>
+        </div>
+        <div class="plan-progress-bar">
+          <div class="plan-progress-fill" style="width:0%;"></div>
+        </div>
+        <div style="font-size:0.8rem; color:#aaa; margin-top:0.3rem;">Live plan usage appears here after login.</div>
+      </div>
+    </div>
+
+    <!-- NEW ORDER -->
+    <div class="panel" id="panel-new-order">
+      <div class="section-heading">
+        Place a New Order
+        <div class="section-sub">Fill in the customer's delivery details below.</div>
+      </div>
+
+      <div class="card">
+        <form id="orderForm">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="recipientName">Customer Name <span>(required)</span></label>
+              <input class="input" type="text" id="recipientName" placeholder="Full name" required />
+            </div>
+            <div class="form-group">
+              <label for="recipientPhone">Customer Phone <span>(868-XXX-XXXX)</span></label>
+              <input class="input" type="tel" id="recipientPhone" placeholder="XXX-XXXX" maxlength="8" required />
+            </div>
+            <div class="form-group full">
+              <label for="packageDesc">Package Description <span>(required)</span></label>
+              <input class="input" type="text" id="packageDesc" placeholder="e.g. Clothing items, 2 bags" required />
+            </div>
+            <div class="form-group">
+              <label for="paymentType">Payment Type</label>
+              <select class="input" id="paymentType">
+                <option value="">— Select —</option>
+                <option value="cod">COD — Customer pays at door</option>
+                <option value="pkg-online">Package paid online, collect delivery fee</option>
+                <option value="all-online">Both paid online — collect nothing</option>
+              </select>
+            </div>
+            <div class="form-group" id="codAmountBlock" style="display:none;">
+              <label for="codAmount">COD Amount (TTD)</label>
+              <input class="input" type="number" id="codAmount" placeholder="e.g. 350.00" min="0" step="0.01" />
+            </div>
+            <div class="form-group full">
+              <label>Customer Delivery Location <span>(required)</span></label>
+              <div style="display:flex; gap:0; background:#f0f9f8; border-radius:10px; padding:4px; margin-bottom:1rem;">
+                <button type="button" class="loc-tab active" onclick="switchLocTab('share', this)" style="flex:1; padding:0.65rem 1rem; border-radius:8px; border:none; font-family:'Inter',sans-serif; font-size:0.88rem; font-weight:600; cursor:pointer; transition:all 0.25s; background:#0d2b28; color:#ffffff;">📍 Share Location</button>
+                <button type="button" class="loc-tab" onclick="switchLocTab('manual', this)" style="flex:1; padding:0.65rem 1rem; border-radius:8px; border:none; font-family:'Inter',sans-serif; font-size:0.88rem; font-weight:600; cursor:pointer; transition:all 0.25s; background:transparent; color:#4a4a4a;">✏️ Enter Address</button>
+              </div>
+              <div id="loc-share" class="loc-panel">
+                <button type="button" onclick="useCurrentLocation()" style="width:100%; padding:0.85rem; background:#f0f9f8; border:2px solid #2a9d8f; border-radius:10px; color:#2a9d8f; font-family:'Inter',sans-serif; font-size:0.92rem; font-weight:600; cursor:pointer; margin-bottom:1rem; transition:all 0.2s;">📍 Use My Current Location</button>
+                <div id="gpsResult" style="display:none; padding:0.8rem 1rem; background:#e8f5f3; border-radius:8px; font-size:0.88rem; color:#0d2b28; margin-bottom:1rem;"></div>
+                <label style="font-size:0.85rem; font-weight:600; color:#1a1a1a; margin-bottom:0.4rem; display:block;">Or paste a Google Maps link:</label>
+                <input class="input" type="url" id="mapsLink" placeholder="https://maps.google.com/..." style="margin-bottom:0.6rem;" />
+                <div style="padding:0.9rem 1rem; background:#f8f9fa; border-radius:8px; font-size:0.82rem; color:#6a6a6a; line-height:1.7;">
+                  <strong style="color:#1a1a1a;">How to get your link:</strong><br>
+                  1. Open Google Maps → 2. Search address or long-press location → 3. Tap Share → 4. Copy link and paste above
+                </div>
+              </div>
+              <div id="loc-manual" class="loc-panel" style="display:none;">
+                <div style="display:grid; grid-template-columns:1fr 2fr; gap:0.8rem; margin-bottom:0.8rem;">
+                  <div>
+                    <label style="font-size:0.85rem; font-weight:600; color:#1a1a1a; margin-bottom:0.3rem; display:block;">House / Apt # <span style="font-weight:400; color:#aaa;">(optional)</span></label>
+                    <input class="input" type="text" id="houseNum" placeholder="e.g. 15A" />
+                  </div>
+                  <div>
+                    <label style="font-size:0.85rem; font-weight:600; color:#1a1a1a; margin-bottom:0.3rem; display:block;">Street Name <span style="color:#e05555;">*</span></label>
+                    <input class="input" type="text" id="streetName" placeholder="e.g. Bamboo Drive" required />
+                  </div>
+                </div>
+                <div>
+                  <label style="font-size:0.85rem; font-weight:600; color:#1a1a1a; margin-bottom:0.3rem; display:block;">Area / Community <span style="color:#e05555;">*</span></label>
+                  <input class="input" type="text" id="areaName" placeholder="e.g. Arima" required />
+                </div>
+              </div>
+              <div style="margin-top:0.8rem; padding:0.8rem 1rem; background:#fff8f0; border-left:3px solid #e07a3a; border-radius:8px; font-size:0.85rem; color:#7a4a1a; line-height:1.5;">
+                📋 <strong>Zone will be confirmed</strong> by our team before your order is accepted. An estimated price will be shown once the zone is assigned.
+              </div>
+            </div>
+            <div class="form-group full">
+              <label for="specialNotes">Special Instructions <span>(optional)</span></label>
+              <textarea class="input" id="specialNotes" placeholder="e.g. Call customer before arrival, leave at gate, fragile items..."></textarea>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-primary" onclick="window.submitBusinessOrder(event)">✅ Submit Order</button>
+            <button type="reset" class="btn btn-ghost" onclick="resetOrderForm()">🔄 Clear Form</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MY DELIVERY LINK -->
+    <div class="panel" id="panel-delivery-link">
+      <div class="section-heading">
+        My Delivery Link
+        <div class="section-sub">Share this link with your customers so they can submit delivery requests directly.</div>
+      </div>
+      <div class="card">
+        <div style="margin-bottom:1.5rem;">
+          <div style="font-size:0.8rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#2a9d8f; margin-bottom:0.6rem;">Your Unique Link</div>
+          <div style="display:flex; gap:0.8rem; align-items:center; flex-wrap:wrap;">
+            <div id="clientLinkDisplay" style="flex:1; padding:0.9rem 1.2rem; background:#f0f9f8; border:2px solid #2a9d8f; border-radius:10px; font-family:'Courier New',monospace; font-size:0.92rem; color:#0d2b28; word-break:break-all; min-width:200px;">Loading delivery link...</div>
+            <button onclick="copyLink()" style="padding:0.8rem 1.4rem; background:#2a9d8f; border:none; border-radius:10px; color:#fff; font-family:'Inter',sans-serif; font-size:0.9rem; font-weight:600; cursor:pointer; white-space:nowrap; transition:background 0.2s;" onmouseover="this.style.background='#238277'" onmouseout="this.style.background='#2a9d8f'">📋 Copy Link</button>
+            <button onclick="shareLink()" style="padding:0.8rem 1.4rem; background:#0d2b28; border:none; border-radius:10px; color:#fff; font-family:'Inter',sans-serif; font-size:0.9rem; font-weight:600; cursor:pointer; white-space:nowrap; transition:background 0.2s;" onmouseover="this.style.background='#1a4a44'" onmouseout="this.style.background='#0d2b28'">📤 Share</button>
+          </div>
+          <div id="copyConfirm" style="display:none; margin-top:0.6rem; font-size:0.85rem; color:#2a9d8f; font-weight:600;">✓ Link copied to clipboard!</div>
+        </div>
+        <div style="padding:1.2rem; background:#f8f9fa; border-radius:12px; font-size:0.9rem; color:#4a4a4a; line-height:1.8;">
+          <strong style="color:#1a1a1a;">How it works:</strong><br>
+          Share this link with your customers via WhatsApp, Instagram, Facebook or email. When they open it, a delivery form is pre-loaded with your business details. They fill in their name, phone number, delivery address and payment info, and the order appears in your dashboard automatically.
+        </div>
+        <div style="margin-top:1rem; padding:0.9rem 1.2rem; background:#fff8f0; border-left:3px solid #e07a3a; border-radius:8px; font-size:0.88rem; color:#7a4a1a;">
+          ⚠️ Keep your link private. Only share it with customers you intend to deliver to. All orders submitted through your link are charged to your account.
+        </div>
+      </div>
+    </div>
+
+    <!-- COD RECORDS -->
+    <div class="panel" id="panel-cod-records">
+      <div class="section-heading">
+        COD Records
+        <div class="section-sub">All orders where cash or LINX was collected on your behalf.</div>
+      </div>
+
+      <div class="card">
+        <div style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+            <thead>
+              <tr>
+                <th style="text-align:left; padding:0.8rem 1rem; font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6a6a6a; border-bottom:2px solid #f0f0f0;">Order ID</th>
+                <th style="text-align:left; padding:0.8rem 1rem; font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6a6a6a; border-bottom:2px solid #f0f0f0;">Customer</th>
+                <th style="text-align:right; padding:0.8rem 1rem; font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6a6a6a; border-bottom:2px solid #f0f0f0;">Pkg Price</th>
+                <th style="text-align:right; padding:0.8rem 1rem; font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6a6a6a; border-bottom:2px solid #f0f0f0;">Del. Fee</th>
+                <th style="text-align:right; padding:0.8rem 1rem; font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6a6a6a; border-bottom:2px solid #f0f0f0;">Collected</th>
+                <th style="text-align:left; padding:0.8rem 1rem; font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6a6a6a; border-bottom:2px solid #f0f0f0;">Date</th>
+                <th style="text-align:center; padding:0.8rem 1rem; font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6a6a6a; border-bottom:2px solid #f0f0f0;">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="7" style="padding:1rem; color:#6a6a6a;">Loading COD records...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:1.5rem; padding:1rem 1.2rem; background:#f0f9f8; border-radius:10px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+          <div style="font-size:0.9rem; color:#4a4a4a;">Total COD / delivery fee this month: <strong style="color:#0d2b28; font-size:1.1rem;">TTD $0.00</strong></div>
+          <div style="font-size:0.9rem; color:#4a4a4a;">Still pending: <strong style="color:#e07a3a;">TTD $0.00</strong></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📊 Export XLSX</div>
+        <div class="report-toolbar">
+          <div class="report-field">
+            <label for="businessReportPeriod">Period</label>
+            <select class="input" id="businessReportPeriod">
+              <option value="all">All time</option>
+              <option value="day">Day</option>
+              <option value="week">Week</option>
+              <option value="month">Month</option>
+              <option value="year">Year</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+          <div class="report-field">
+            <label for="businessReportStart">Start Date</label>
+            <input class="input" type="date" id="businessReportStart" disabled />
+          </div>
+          <div class="report-field">
+            <label for="businessReportEnd">End Date</label>
+            <input class="input" type="date" id="businessReportEnd" disabled />
+          </div>
+          <button class="btn btn-ghost" type="button" onclick="applyBusinessReportFilters()">Apply</button>
+        </div>
+        <div class="report-actions">
+          <button class="btn btn-primary" type="button" onclick="exportBusinessReport('cod')">Export COD XLSX</button>
+        </div>
+        <div class="section-sub" id="businessReportSummary" style="margin-top:0.9rem;">Exports use the selected period and include only your business data.</div>
+      </div>
+    </div>
+
+    <!-- REMITTANCE -->
+    <div class="panel" id="panel-remittance">
+      <div class="section-heading">
+        Remittance
+        <div class="section-sub">Payments transferred to you by VirtuDrop for completed deliveries.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📊 Export XLSX</div>
+        <div class="report-toolbar">
+          <div class="report-field">
+            <label for="remitBusinessReportPeriod">Period</label>
+            <select class="input" id="remitBusinessReportPeriod">
+              <option value="all">All time</option>
+              <option value="day">Day</option>
+              <option value="week">Week</option>
+              <option value="month">Month</option>
+              <option value="year">Year</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+          <div class="report-field">
+            <label for="remitBusinessReportStart">Start Date</label>
+            <input class="input" type="date" id="remitBusinessReportStart" disabled />
+          </div>
+          <div class="report-field">
+            <label for="remitBusinessReportEnd">End Date</label>
+            <input class="input" type="date" id="remitBusinessReportEnd" disabled />
+          </div>
+          <button class="btn btn-ghost" type="button" onclick="applyBusinessReportFilters()">Apply</button>
+        </div>
+        <div class="report-actions">
+          <button class="btn btn-primary" type="button" onclick="exportBusinessReport('orders')">Export Orders XLSX</button>
+          <button class="btn btn-primary" type="button" onclick="exportBusinessReport('cod')">Export COD XLSX</button>
+          <button class="btn btn-primary" type="button" onclick="exportBusinessReport('remittance')">Export Remittance XLSX</button>
+          <button class="btn btn-primary" type="button" onclick="exportBusinessReport('all')">Export All Data XLSX</button>
+        </div>
+        <div class="section-sub" id="remitBusinessReportSummary" style="margin-top:0.9rem;">Exports use the selected period and include only your business data.</div>
+      </div>
+
+      <div class="card">
+        <div class="remit-filters" style="display:flex; gap:0.6rem; margin-bottom:1.5rem; flex-wrap:wrap;">
+          <button class="remit-filter active" onclick="filterRemit('week', this)" style="padding:0.5rem 1.1rem; border-radius:20px; border:2px solid #2a9d8f; background:#e8f5f3; color:#2a9d8f; font-family:'Inter',sans-serif; font-size:0.85rem; font-weight:600; cursor:pointer;">This Week</button>
+          <button class="remit-filter" onclick="filterRemit('month', this)" style="padding:0.5rem 1.1rem; border-radius:20px; border:2px solid #e0e0e0; background:#fff; color:#4a4a4a; font-family:'Inter',sans-serif; font-size:0.85rem; font-weight:600; cursor:pointer;">This Month</button>
+          <button class="remit-filter" onclick="filterRemit('all', this)" style="padding:0.5rem 1.1rem; border-radius:20px; border:2px solid #e0e0e0; background:#fff; color:#4a4a4a; font-family:'Inter',sans-serif; font-size:0.85rem; font-weight:600; cursor:pointer;">All</button>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin-bottom:1.5rem;">
+          <div style="background:#f0f9f8; border-radius:12px; padding:1.2rem; text-align:center;">
+            <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:#2a9d8f; margin-bottom:0.3rem;">Total Remitted</div>
+            <div style="font-size:1.5rem; font-weight:800; color:#0d2b28;" id="remitTotal">TTD $0.00</div>
+          </div>
+          <div style="background:#f0f9f8; border-radius:12px; padding:1.2rem; text-align:center;">
+            <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:#2a9d8f; margin-bottom:0.3rem;">Online Transfers</div>
+            <div style="font-size:1.5rem; font-weight:800; color:#0d2b28;" id="remitOnline">TTD $0.00</div>
+          </div>
+          <div style="background:#fff8f0; border-radius:12px; padding:1.2rem; text-align:center;">
+            <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:#e07a3a; margin-bottom:0.3rem;">Cash Returns</div>
+            <div style="font-size:1.5rem; font-weight:800; color:#e07a3a;" id="remitCash">TTD $0.00</div>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+            <thead>
+              <tr>
+                <th style="text-align:left; padding:0.8rem 1rem; font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6a6a6a; border-bottom:2px solid #f0f0f0;">Date</th>
+                <th style="text-align:left; padding:0.8rem 1rem; font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6a6a6a; border-bottom:2px solid #f0f0f0;">Orders</th>
+                <th style="text-align:right; padding:0.8rem 1rem; font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6a6a6a; border-bottom:2px solid #f0f0f0;">Amount</th>
+                <th style="text-align:left; padding:0.8rem 1rem; font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6a6a6a; border-bottom:2px solid #f0f0f0;">Method</th>
+                <th style="text-align:left; padding:0.8rem 1rem; font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6a6a6a; border-bottom:2px solid #f0f0f0;">Reference</th>
+                <th style="text-align:center; padding:0.8rem 1rem; font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6a6a6a; border-bottom:2px solid #f0f0f0;">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="6" style="padding:1rem; color:#6a6a6a;">Loading remittance records...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- FAILED -->
+    <div class="panel" id="panel-failed">
+      <div class="section-heading">
+        Failed &amp; Rescheduled Deliveries
+        <div class="section-sub">Orders that could not be completed on the first attempt.</div>
+      </div>
+      <div class="card">
+        <div style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+            <thead>
+              <tr>
+                <th style="text-align:left; padding:0.8rem 1rem; font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6a6a6a; border-bottom:2px solid #f0f0f0;">Order ID</th>
+                <th style="text-align:left; padding:0.8rem 1rem; font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6a6a6a; border-bottom:2px solid #f0f0f0;">Customer</th>
+                <th style="text-align:left; padding:0.8rem 1rem; font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6a6a6a; border-bottom:2px solid #f0f0f0;">Zone</th>
+                <th style="text-align:left; padding:0.8rem 1rem; font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6a6a6a; border-bottom:2px solid #f0f0f0;">Attempt Date</th>
+                <th style="text-align:left; padding:0.8rem 1rem; font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6a6a6a; border-bottom:2px solid #f0f0f0;">Reason</th>
+                <th style="text-align:center; padding:0.8rem 1rem; font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6a6a6a; border-bottom:2px solid #f0f0f0;">Status</th>
+                <th style="text-align:center; padding:0.8rem 1rem; font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6a6a6a; border-bottom:2px solid #f0f0f0;">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="7" style="padding:1rem; color:#6a6a6a;">Loading failed or rescheduled deliveries...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:1.2rem; padding:1rem 1.2rem; background:#fff8f0; border-left:3px solid #e07a3a; border-radius:8px; font-size:0.88rem; color:#7a4a1a; line-height:1.6;">
+          ⚠️ <strong>Redelivery requires a new delivery fee.</strong> Contact VirtuDrop to confirm next steps for failed deliveries.
+        </div>
+      </div>
+    </div>
+
+    <!-- ACTIVE DELIVERIES -->
+    <div class="panel" id="panel-active">
+      <div class="section-heading">
+        Active Deliveries
+        <div class="section-sub">Loading active deliveries.</div>
+      </div>
+      <div class="card desktop-only">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Route</th>
+                <th>Service</th>
+                <th>Date</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="5" style="padding:1rem; color:#6a6a6a;">Loading active deliveries...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="mobile-only order-cards">
+        <div class="order-card">
+          <div class="order-card-top">
+            <span class="order-card-id">Loading active deliveries...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ORDER HISTORY -->
+    <div class="panel" id="panel-history">
+      <div class="section-heading">
+        Order History
+        <div class="section-sub">Your completed and past deliveries.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">📊 Export XLSX</div>
+        <div class="report-toolbar">
+          <div class="report-field">
+            <label for="historyBusinessReportPeriod">Period</label>
+            <select class="input" id="historyBusinessReportPeriod">
+              <option value="all">All time</option>
+              <option value="day">Day</option>
+              <option value="week">Week</option>
+              <option value="month">Month</option>
+              <option value="year">Year</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+          <div class="report-field">
+            <label for="historyBusinessReportStart">Start Date</label>
+            <input class="input" type="date" id="historyBusinessReportStart" disabled />
+          </div>
+          <div class="report-field">
+            <label for="historyBusinessReportEnd">End Date</label>
+            <input class="input" type="date" id="historyBusinessReportEnd" disabled />
+          </div>
+          <button class="btn btn-ghost" type="button" onclick="applyBusinessReportFilters()">Apply</button>
+        </div>
+        <div class="report-actions">
+          <button class="btn btn-primary" type="button" onclick="exportBusinessReport('orders')">Export Orders XLSX</button>
+        </div>
+        <div class="section-sub" id="historyBusinessReportSummary" style="margin-top:0.9rem;">Exports use the selected period and include only your business data.</div>
+      </div>
+      <div class="card desktop-only">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Route</th>
+                <th>Service</th>
+                <th>Cost</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Track</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="7" style="padding:1rem; color:#6a6a6a;">Loading order history...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="mobile-only order-cards">
+        <div class="order-card">
+          <div class="order-card-top">
+            <span class="order-card-id">Loading order history...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MY PLAN -->
+    <div class="panel" id="panel-plan">
+      <div class="section-heading">
+        My Plan
+        <div class="section-sub">Your current VirtuDrop logistics plan.</div>
+      </div>
+      <div class="plan-display">
+        <div class="plan-highlight">
+          <div class="plan-highlight-tier">📦 Business Account</div>
+          <div class="plan-highlight-name">Loading...</div>
+          <div class="plan-highlight-price"><strong>Loading status</strong></div>
+        </div>
+        <div class="plan-usage">
+          <div class="plan-usage-label">Orders This Month</div>
+          <div class="plan-usage-count">0</div>
+          <div style="font-size:0.82rem; color:#aaa;">Loading account data...</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📋 Plan Terms</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.6rem 2rem; font-size:0.9rem; color:#4a4a4a;">
+          <div>✓ Plan details load from your live business account.</div>
+          <div>✓ Pricing and delivery rules are confirmed by VirtuDrop.</div>
+        </div>
+        <div style="margin-top:1.5rem; padding-top:1rem; border-top:1px solid #f0f0f0;">
+          <a href="pricing.html" class="btn">📦 View All Plans</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTIFICATIONS -->
+    <div class="panel" id="panel-notifications">
+      <div class="section-heading">
+        Notifications
+        <div class="section-sub">Loading recent alerts.</div>
+      </div>
+      <div class="card">
+        <p style="color:#6a6a6a;">Loading notifications...</p>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="panel" id="panel-settings">
+      <div class="section-heading">
+        Settings
+        <div class="section-sub">Manage your account details.</div>
+      </div>
+      <div class="card">
+        <div class="dark-toggle-row">
+          <span class="dark-toggle-label">🌙 Dark Mode</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="darkModeToggle" />
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+        <div class="settings-section">
+          <div class="settings-section-title">Personal Information</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="settFirstName">First Name</label>
+              <input class="input" type="text" id="settFirstName" value="" />
+            </div>
+            <div class="form-group">
+              <label for="settLastName">Last Name</label>
+              <input class="input" type="text" id="settLastName" value="" />
+            </div>
+            <div class="form-group">
+              <label for="settEmail">Email Address</label>
+              <input class="input" type="email" id="settEmail" value="" />
+            </div>
+            <div class="form-group">
+              <label for="settPhone">Phone Number</label>
+              <input class="input" type="tel" id="settPhone" value="" />
+            </div>
+          </div>
+        </div>
+        <div class="settings-section">
+          <div class="settings-section-title">Change Password</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="settCurrentPass">Current Password</label>
+              <input class="input" type="password" id="settCurrentPass" placeholder="••••••••••••" />
+            </div>
+            <div class="form-group">
+              <label for="settNewPass">New Password</label>
+              <input class="input" type="password" id="settNewPass" placeholder="••••••••••••" />
+            </div>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="button">💾 Save Changes</button>
+          <button class="btn btn-ghost" type="button">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- Order Success Modal -->
+<div class="modal-overlay" id="successModal">
+  <div class="modal">
+    <div class="modal-icon">✅</div>
+    <h3>Order Submitted!</h3>
+    <p>Your delivery request has been received. We'll confirm your pickup details shortly. You can track progress in <strong>Active Deliveries</strong>.</p>
+    <button class="btn btn-primary" style="width:100%; justify-content:center;" onclick="closeModal()">Done</button>
+  </div>
+</div>
+
+<script src="vd-modal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script type="module" src="business-dashboard.js"></script>
+
+</body>
+</html>
+

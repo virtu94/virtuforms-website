@@ -1,0 +1,1057 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Zones | VirtuDrop</title>
+  <meta name="description" content="VirtuDrop delivery zones in Trinidad.">
+  <link rel="icon" href="assets/logo.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      line-height: 1.7;
+      color: #1a1a1a;
+      background: #f8f9fa;
+    }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
+
+    /* Nav Bar */
+    .nav {
+      background: #ffffff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    /* Navbar container */
+    .nav .container {
+      max-width: none;
+      width: 100%;
+      margin: 0;
+      padding: 0 2.5rem;
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      gap: 2rem;
+      padding: 1rem 0;
+    }
+
+    /* Logo + slogan */
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      text-decoration: none;
+      flex-shrink: 0;
+      margin-right: auto;
+    }
+
+    .brand img {
+      height: 52px;
+      width: auto;
+    }
+
+    .badge {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #2a9d8f;
+      letter-spacing: 0.4px;
+      white-space: nowrap;
+    }
+
+    /* Nav links */
+    .links {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 1.8rem;
+      margin-left: auto;
+      flex-wrap: nowrap;
+      white-space: nowrap;
+    }
+
+    .links a {
+      text-decoration: none;
+      color: #1a1a1a;
+      font-weight: 500;
+      font-size: 0.92rem;
+      white-space: nowrap;
+    }
+
+    /* Login button */
+    .links a.nav-login {
+      background: #2a9d8f;
+      color: #ffffff !important;
+      padding: 0.5rem 1.2rem;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+
+    .links a.nav-login:hover {
+      background: #238277;
+    }
+
+    /* Mobile */
+    .mobile-toggle {
+      display: none;
+      align-items: center;
+      justify-content: center;
+
+      background: linear-gradient(135deg, #2a9d8f 0%, #238277 100%);
+      color: #ffffff;
+
+      border: none;
+      border-radius: 10px;
+
+      padding: 0.7rem 1rem;
+
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+
+      cursor: pointer;
+
+      box-shadow: 0 4px 12px rgba(42,157,143,0.25);
+
+      transition: all 0.25s ease;
+    }
+
+    .mobile-toggle:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(42,157,143,0.35);
+      background: linear-gradient(135deg, #31b3a3 0%, #2a9d8f 100%);
+    }
+
+    .mobile-toggle:active {
+      transform: scale(0.97);
+    }
+
+    .mobile-toggle::before {
+      content: "☰";
+      margin-right: 0.5rem;
+      font-size: 1rem;
+    }
+
+    /* Page */
+    .page { padding: 5rem 0; animation: fadeIn 0.8s ease-out; }
+
+    @keyframes fadeIn    { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes fadeInUp  { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+    .page-header { text-align: center; margin-bottom: 5rem; animation: fadeInUp 0.8s ease-out; }
+    .page-header h1 { font-size: 3.5rem; font-weight: 700; color: #1a1a1a; margin-bottom: 1.5rem; }
+    .page-header p  { font-size: 1.3rem; color: #4a4a4a; line-height: 1.7; }
+
+    /* Zone Cards */
+    .zones-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 2.5rem;
+      margin-bottom: 4rem;
+    }
+
+    .zone-card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 3rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      transition: all 0.4s ease;
+      border: 2px solid transparent;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .zone-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 6px;
+      background: linear-gradient(90deg, #2a9d8f 0%, #3fb8a8 100%);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.4s ease;
+    }
+
+    .zone-card:hover::before { transform: scaleX(1); }
+    .zone-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+      border-color: #2a9d8f;
+    }
+
+    .zone-header { display: flex; align-items: center; gap: 1.5rem; margin-bottom: 2rem; }
+
+    .zone-badge {
+      width: 70px; height: 70px;
+      background: linear-gradient(135deg, #2a9d8f 0%, #3fb8a8 100%);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem; font-weight: 800; color: #ffffff;
+      flex-shrink: 0;
+      transition: all 0.3s ease;
+    }
+    .zone-card:hover .zone-badge { transform: scale(1.1) rotate(5deg); }
+
+    .zone-title h2  { font-size: 2rem; font-weight: 700; color: #1a1a1a; margin-bottom: 0.3rem; }
+    .zone-subtitle  { font-size: 1.1rem; color: #2a9d8f; font-weight: 600; }
+
+    .zone-locations { background: #f8f9fa; border-radius: 12px; padding: 1.8rem; margin-bottom: 1.5rem; }
+    .zone-locations h3 { font-size: 1.1rem; font-weight: 700; color: #1a1a1a; margin-bottom: 1rem; }
+
+    .location-list  { display: flex; flex-wrap: wrap; gap: 0.8rem; }
+
+    .location-tag {
+      background: #ffffff;
+      color: #1a1a1a;
+      padding: 0.6rem 1.2rem;
+      border-radius: 20px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      border: 2px solid #e0e0e0;
+      transition: all 0.3s ease;
+    }
+    .location-tag:hover {
+      background: #2a9d8f;
+      color: #ffffff;
+      border-color: #2a9d8f;
+      transform: translateY(-2px);
+    }
+
+    /* See full list button */
+    .see-full-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 1rem;
+      padding: 0.6rem 1.2rem;
+      background: none;
+      border: 2px solid #2a9d8f;
+      border-radius: 20px;
+      color: #2a9d8f;
+      font-size: 0.9rem;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .see-full-btn:hover {
+      background: #2a9d8f;
+      color: #ffffff;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(42,157,143,0.3);
+    }
+    .see-full-btn .btn-arrow {
+      transition: transform 0.3s ease;
+      font-style: normal;
+    }
+
+    .zone-info {
+      display: flex; align-items: center; gap: 1rem;
+      padding: 1.2rem;
+      background: #f0f9f8;
+      border-radius: 10px;
+      border-left: 3px solid #2a9d8f;
+    }
+    .zone-info-icon { font-size: 1.5rem; }
+    .zone-info p    { font-size: 1rem; color: #4a4a4a; line-height: 1.6; margin: 0; }
+
+    /* Drawer overlay */
+    .drawer-overlay {
+      position: fixed;
+      top: 84px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0);
+      z-index: 300;
+      pointer-events: none;
+      transition: background 0.35s ease;
+    }
+    .drawer-overlay.active {
+      background: rgba(0,0,0,0.45);
+      pointer-events: all;
+    }
+
+    /* Drawer panel */
+    .drawer {
+      position: fixed;
+      top: 84px;
+      right: 0;
+      width: 400px;
+      max-width: 100vw;
+      height: calc(100% - 84px);
+      background: #ffffff;
+      z-index: 400;
+      box-shadow: -8px 0 40px rgba(0,0,0,0.15);
+      transform: translateX(100%);
+      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .drawer.open { transform: translateX(0); }
+
+    .drawer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 2rem 2rem 1.5rem;
+      border-bottom: 2px solid #f0f0f0;
+      flex-shrink: 0;
+    }
+
+    .drawer-zone-badge {
+      width: 48px; height: 48px;
+      background: linear-gradient(135deg, #2a9d8f 0%, #3fb8a8 100%);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; font-weight: 800; color: #ffffff;
+      flex-shrink: 0;
+    }
+
+    .drawer-title-block { flex: 1; margin-left: 1rem; }
+    .drawer-title-block h2 { font-size: 1.4rem; font-weight: 700; color: #1a1a1a; margin-bottom: 0.1rem; }
+    .drawer-title-block p  { font-size: 0.9rem; color: #2a9d8f; font-weight: 600; }
+
+    .drawer-close {
+      width: 38px; height: 38px;
+      border: 2px solid #e0e0e0;
+      border-radius: 50%;
+      background: none;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+      color: #4a4a4a;
+      transition: all 0.25s ease;
+      flex-shrink: 0;
+    }
+    .drawer-close:hover { background: #2a9d8f; border-color: #2a9d8f; color: #ffffff; transform: rotate(90deg); }
+
+    .drawer-count {
+      padding: 0.8rem 2rem;
+      background: #f0f9f8;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #2a9d8f;
+      border-bottom: 1px solid #e8f5f3;
+      flex-shrink: 0;
+    }
+
+    .drawer-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem 2rem 2rem;
+      scrollbar-width: thin;
+      scrollbar-color: #2a9d8f #f0f9f8;
+    }
+    .drawer-body::-webkit-scrollbar { width: 6px; }
+    .drawer-body::-webkit-scrollbar-track { background: #f0f9f8; }
+    .drawer-body::-webkit-scrollbar-thumb { background: #2a9d8f; border-radius: 3px; }
+
+    /* Sub-region heading inside drawer for Remote */
+    .drawer-subregion {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #2a9d8f;
+      margin: 1.4rem 0 0.8rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid #e8f5f3;
+    }
+    .drawer-subregion:first-child { margin-top: 0; }
+
+    .drawer-tags { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 0.5rem; }
+    .drawer-tag {
+      background: #f8f9fa;
+      color: #1a1a1a;
+      padding: 0.5rem 1rem;
+      border-radius: 18px;
+      font-size: 0.88rem;
+      font-weight: 500;
+      border: 1.5px solid #e0e0e0;
+      transition: all 0.25s ease;
+      animation: tagPop 0.3s ease both;
+    }
+    .drawer-tag:hover {
+      background: #2a9d8f;
+      color: #ffffff;
+      border-color: #2a9d8f;
+      transform: translateY(-2px);
+    }
+
+    @keyframes tagPop {
+      from { opacity: 0; transform: scale(0.85); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    /* Info Grid */
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 2rem;
+      margin-top: 4rem;
+      margin-bottom: 3rem;
+    }
+
+    .info-card { background: #f8f9fa; border-radius: 12px; padding: 2rem; text-align: center; transition: all 0.3s ease; }
+    .info-card:hover { background: #f0f9f8; transform: translateY(-5px); }
+    .info-icon { font-size: 2.5rem; margin-bottom: 1rem; }
+    .info-card h3 { font-size: 1.3rem; font-weight: 700; color: #1a1a1a; margin-bottom: 0.8rem; }
+    .info-card p  { font-size: 1rem; color: #4a4a4a; line-height: 1.7; }
+
+    /* Help Section */
+    .help-section {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 3rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      text-align: center;
+      margin-top: 4rem;
+      animation: fadeInUp 0.8s ease-out 0.6s both;
+    }
+    .help-section h2 { font-size: 2rem; font-weight: 700; color: #1a1a1a; margin-bottom: 1.5rem; }
+    .help-section p  { font-size: 1.2rem; color: #4a4a4a; margin-bottom: 2.5rem; line-height: 1.7; }
+
+    .cta-row { display: flex; gap: 1.2rem; justify-content: center; flex-wrap: wrap; }
+
+    .btn {
+      display: inline-block;
+      padding: 1.2rem 2.5rem;
+      border-radius: 10px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1.1rem;
+      transition: all 0.3s ease;
+      border: 2px solid #e0e0e0;
+      color: #1a1a1a;
+      background: #ffffff;
+      cursor: pointer;
+      letter-spacing: 0.3px;
+    }
+    .btn:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.12); border-color: #2a9d8f; color: #2a9d8f; }
+    .btn-primary { background: #2a9d8f; color: #ffffff; border-color: #2a9d8f; }
+    .btn-primary:hover { background: #238277; border-color: #238277; color: #ffffff; }
+
+    /* ── Footer ── */
+    .footer { background: #111; color: var(--white); padding: 4rem 0 2rem; }
+    .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 3rem; margin-bottom: 3rem; }
+    .footer-brand img { height: 44px; margin-bottom: 1rem; }
+    .footer-brand p { font-size: 0.88rem; color: rgba(255,255,255,0.45); line-height: 1.7; }
+    .footer-col h4 { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #14d4ae; margin-bottom: 1rem; }
+    .footer-col a { display: block; font-size: 0.88rem; color: rgba(255,255,255,0.45); text-decoration: none; margin-bottom: 0.5rem; transition: color 0.2s; }
+    .footer-col a:hover { color: var(--white); }
+    .footer-bottom { border-top: 1px solid rgba(255,255,255,0.07); padding-top: 2rem; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+    .footer-bottom p { font-size: 0.8rem; color: rgba(255,255,255,0.3); }
+
+    /* Animation delays */
+    .zone-card:nth-child(1) { animation: fadeInUp 0.8s ease-out 0.1s both; }
+    .zone-card:nth-child(2) { animation: fadeInUp 0.8s ease-out 0.2s both; }
+    .zone-card:nth-child(3) { animation: fadeInUp 0.8s ease-out 0.3s both; }
+    .zone-card:nth-child(4) { animation: fadeInUp 0.8s ease-out 0.4s both; }
+
+    /* Responsive */
+    @media (max-width: 968px) {
+      .links {
+        display: none;
+        position: absolute;
+        top: 100%; left: 0; right: 0;
+        background: #ffffff;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        z-index: 99;
+      }
+      .links.open { display: flex; }
+      .links a { padding: 1rem 2rem; border-bottom: 1px solid #f0f0f0; font-size: 1rem; }
+      .links a:last-child { border-bottom: none; }
+      .links a::after { display: none; }
+      .nav-inner { position: relative; }
+      .mobile-toggle { display: block; }
+      .drawer { width: 100vw; }
+    }
+
+    @media (max-width: 640px) {
+      .container { padding: 0 1.5rem; }
+      .brand { flex-direction: column; align-items: flex-start; gap: 0.3rem; }
+      .page { padding: 3rem 0; }
+      .page-header { margin-bottom: 3rem; }
+      .page-header h1 { font-size: 2rem; }
+      .page-header p  { font-size: 1.1rem; }
+      .zone-card { padding: 2rem; }
+      .zone-header { flex-direction: column; align-items: flex-start; }
+      .zone-badge { width: 60px; height: 60px; font-size: 1.5rem; }
+      .zone-title h2 { font-size: 1.6rem; }
+      .help-section { padding: 2rem; }
+      .cta-row { flex-direction: column; }
+      .btn { width: 100%; text-align: center; }
+      .drawer-header { padding: 1.5rem 1.5rem 1rem; }
+      .drawer-body { padding: 1.2rem 1.5rem 2rem; }
+      .drawer-count { padding: 0.8rem 1.5rem; }
+    }
+  
+
+    /* Mobile header fit fix */
+    @media (max-width: 768px) {
+      .nav .container {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+      }
+
+      .nav-inner {
+        gap: 0.75rem !important;
+        min-width: 0;
+      }
+
+      .brand {
+        flex: 1 1 auto !important;
+        min-width: 0;
+        gap: 0.55rem !important;
+        margin-right: 0 !important;
+      }
+
+      .brand img {
+        height: 42px !important;
+        flex: 0 0 auto;
+      }
+
+      .badge {
+        white-space: normal !important;
+        line-height: 1.25;
+        font-size: 0.7rem !important;
+        max-width: 150px;
+      }
+
+      .mobile-toggle {
+        display: flex !important;
+        flex: 0 0 auto;
+        padding: 0.65rem 0.8rem !important;
+        min-width: 72px;
+        max-width: 92px;
+        white-space: nowrap;
+      }
+
+      .mobile-toggle::before {
+        content: "☰" !important;
+        margin-right: 0.4rem !important;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .badge {
+        max-width: 126px;
+        font-size: 0.66rem !important;
+      }
+
+      .mobile-toggle {
+        min-width: 64px;
+        max-width: 78px;
+        padding: 0.6rem 0.65rem !important;
+      }
+    }
+
+  
+
+    /* Mobile zones overflow fix */
+    @media (max-width: 760px) {
+      html, body { max-width: 100%; overflow-x: hidden; }
+      .container { width: 100%; max-width: 100%; padding-left: 1rem !important; padding-right: 1rem !important; }
+      .zone-grid, .zones-grid, .coverage-grid, .areas-grid, .zone-cards, .info-grid {
+        grid-template-columns: 1fr !important;
+        width: 100%;
+        max-width: 100%;
+      }
+      .zone-card, .coverage-card, .area-card, .drawer, .drawer-content, .zone-detail {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+      }
+      .drawer {
+        left: 0 !important;
+        right: 0 !important;
+        transform: translateX(100%) !important;
+        overflow-x: hidden;
+      }
+      .drawer.open { transform: translateX(0) !important; }
+      .area-list, .area-tags, .chips, .areas-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.7rem;
+        max-width: 100%;
+      }
+      .area-chip, .chip, .area-tag {
+        max-width: 100%;
+        white-space: normal !important;
+        overflow-wrap: anywhere;
+      }
+    }
+
+  
+
+    /* Exact zones mobile class fix */
+    @media (max-width: 760px) {
+      .zones-grid {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+      .zone-card, .zone-header, .zone-title, .zone-locations {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+      }
+      .location-list, .drawer-tags {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 0.65rem !important;
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+      .location-tag, .drawer-tag {
+        max-width: 100% !important;
+        white-space: normal !important;
+        overflow-wrap: anywhere !important;
+        text-align: center;
+      }
+      .drawer {
+        width: calc(100vw - 1rem) !important;
+        max-width: calc(100vw - 1rem) !important;
+        right: 0 !important;
+        left: auto !important;
+      }
+      .drawer-header, .drawer-body, .drawer-count {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+      }
+      .drawer-title-block {
+        min-width: 0 !important;
+      }
+    }
+
+  
+
+    /* Mobile drawer hidden-state fix */
+    @media (max-width: 760px) {
+      .drawer {
+        transform: translateX(100%) !important;
+        visibility: hidden;
+      }
+
+      .drawer.open {
+        transform: translateX(0) !important;
+        visibility: visible;
+      }
+
+      .drawer-overlay {
+        visibility: hidden;
+      }
+
+      .drawer-overlay.active {
+        visibility: visible;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Drawer overlay ── -->
+  <div class="drawer-overlay" id="drawerOverlay"></div>
+
+  <!-- ── Drawer panel ── -->
+  <div class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+    <div class="drawer-header">
+      <div class="drawer-zone-badge" id="drawerBadge">A</div>
+      <div class="drawer-title-block">
+        <h2 id="drawerTitle">Zone A</h2>
+        <p id="drawerSubtitle">Central Region</p>
+      </div>
+      <button class="drawer-close" id="drawerClose" aria-label="Close panel">✕</button>
+    </div>
+    <div class="drawer-count" id="drawerCount">32 areas covered</div>
+    <div class="drawer-body" id="drawerBody"></div>
+  </div>
+
+    <header class="nav">
+    <div class="container">
+      <div class="nav-inner">
+        <a class="brand" href="index.html" aria-label="VirtuDrop Home">
+          <img src="assets/logo.png" alt="VirtuDrop logo" />
+          <span class="badge">Professional &bull; Reliable &bull; Structured</span>
+        </a>
+        <button class="mobile-toggle" type="button" data-mobile-toggle aria-label="Toggle navigation">Menu</button>
+        <nav class="links" data-nav-links>
+          <a href="index.html">Home</a>
+          <a href="how-it-works.html">How It Works</a>
+          <a href="pricing.html">Pricing</a>
+          <a href="zones.html" aria-current="page">Delivery Zones</a>
+          <a href="business-clients.html">Business Clients</a>
+          <a href="calculator.html">Calculator</a>
+          <a href="track.html">Track Delivery</a>
+          <a href="contact.html">Contact</a>
+          <a href="auth.html" class="nav-login">Login/Register</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main role="main">
+    <section class="page">
+      <div class="container">
+        <div class="page-header">
+          <h1>Delivery Zones</h1>
+          <p>VirtuDrop uses zones to keep delivery fast, predictable, and affordable across Trinidad.</p>
+        </div>
+
+        <div class="zones-grid">
+
+          <!-- Zone A – Central -->
+          <div class="zone-card">
+            <div class="zone-header">
+              <div class="zone-badge">A</div>
+              <div class="zone-title">
+                <h2>Zone A</h2>
+                <p class="zone-subtitle">Central Region</p>
+              </div>
+            </div>
+            <div class="zone-locations">
+              <h3>Covered Areas:</h3>
+              <div class="location-list">
+                <span class="location-tag">Chaguanas</span>
+                <span class="location-tag">Charlieville</span>
+                <span class="location-tag">Couva</span>
+                <span class="location-tag">Cunupia</span>
+                <span class="location-tag">Freeport</span>
+              </div>
+              <button class="see-full-btn" data-zone="A">
+                See full list <i class="btn-arrow">→</i>
+              </button>
+            </div>
+            <div class="zone-info">
+              <span class="zone-info-icon">📦</span>
+              <p>Same-day and next-day delivery available</p>
+            </div>
+          </div>
+
+          <!-- Zone B – South -->
+          <div class="zone-card">
+            <div class="zone-header">
+              <div class="zone-badge">B</div>
+              <div class="zone-title">
+                <h2>Zone B</h2>
+                <p class="zone-subtitle">South Region</p>
+              </div>
+            </div>
+            <div class="zone-locations">
+              <h3>Covered Areas:</h3>
+              <div class="location-list">
+                <span class="location-tag">Debe</span>
+                <span class="location-tag">Marabella</span>
+                <span class="location-tag">Penal</span>
+                <span class="location-tag">Princes Town</span>
+                <span class="location-tag">San Fernando</span>
+              </div>
+              <button class="see-full-btn" data-zone="B">
+                See full list <i class="btn-arrow">→</i>
+              </button>
+            </div>
+            <div class="zone-info">
+              <span class="zone-info-icon">📦</span>
+              <p>Same-day and next-day delivery available</p>
+            </div>
+          </div>
+
+          <!-- Zone C – East -->
+          <div class="zone-card">
+            <div class="zone-header">
+              <div class="zone-badge">C</div>
+              <div class="zone-title">
+                <h2>Zone C</h2>
+                <p class="zone-subtitle">East Region</p>
+              </div>
+            </div>
+            <div class="zone-locations">
+              <h3>Covered Areas:</h3>
+              <div class="location-list">
+                <span class="location-tag">Arima</span>
+                <span class="location-tag">Arouca</span>
+                <span class="location-tag">Trincity</span>
+                <span class="location-tag">Tunapuna</span>
+                <span class="location-tag">Valencia</span>
+              </div>
+              <button class="see-full-btn" data-zone="C">
+                See full list <i class="btn-arrow">→</i>
+              </button>
+            </div>
+            <div class="zone-info">
+              <span class="zone-info-icon">📦</span>
+              <p>Same-day and next-day delivery available</p>
+            </div>
+          </div>
+
+          <!-- Zone D – West -->
+          <div class="zone-card">
+            <div class="zone-header">
+              <div class="zone-badge">D</div>
+              <div class="zone-title">
+                <h2>Zone D</h2>
+                <p class="zone-subtitle">West Region</p>
+              </div>
+            </div>
+            <div class="zone-locations">
+              <h3>Covered Areas:</h3>
+              <div class="location-list">
+                <span class="location-tag">Diego Martin</span>
+                <span class="location-tag">Maraval</span>
+                <span class="location-tag">Port of Spain</span>
+                <span class="location-tag">San Juan</span>
+                <span class="location-tag">St James</span>
+              </div>
+              <button class="see-full-btn" data-zone="D">
+                See full list <i class="btn-arrow">→</i>
+              </button>
+            </div>
+            <div class="zone-info">
+              <span class="zone-info-icon">📦</span>
+              <p>Same-day and next-day delivery available</p>
+            </div>
+          </div>
+
+          
+
+        </div>
+
+        <!-- Info Grid -->
+        <div class="info-grid">
+          <div class="info-card">
+            <div class="info-icon">🗺️</div>
+            <h3>In-Zone Delivery</h3>
+            <p>Deliveries within the same zone are faster and more affordable.</p>
+          </div>
+          <div class="info-card">
+            <div class="info-icon">🔄</div>
+            <h3>Cross-Zone Delivery</h3>
+            <p>We also handle deliveries between different zones at adjusted rates.</p>
+          </div>
+          <div class="info-card">
+            <div class="info-icon">📍</div>
+            <h3>Coverage Expansion</h3>
+            <p>We're constantly expanding our coverage areas across Trinidad.</p>
+          </div>
+        </div>
+
+        <!-- Help Section -->
+        <div class="help-section">
+          <h2>Not sure which zone you're in?</h2>
+          <p>Contact us and we'll help you confirm your delivery zone and provide accurate pricing for your location.</p>
+          <div class="cta-row">
+            <a class="btn btn-primary" href="contact.html">Contact Us</a>
+            <a class="btn" href="pricing.html">View Pricing</a>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+    <footer class="footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div class="footer-brand">
+            <img src="assets/logo.png" alt="VirtuDrop" onerror="this.style.display='none'" />
+            <p>Zone-based, scheduled delivery for businesses across Trinidad. Structured logistics you can count on.</p>
+          </div>
+          <div class="footer-col">
+            <h4>Services</h4>
+            <a href="pricing.html">Pricing</a>
+            <a href="zones.html">Delivery Zones</a>
+            <a href="calculator.html">Calculator</a>
+            <a href="business-clients.html">Business Clients</a>
+          </div>
+          <div class="footer-col">
+            <h4>Company</h4>
+            <a href="how-it-works.html">How It Works</a>
+            <a href="about.html">About</a>
+            <a href="contact.html">Contact</a>
+            <a href="faq.html">FAQ</a>
+          </div>
+          <div class="footer-col">
+            <h4>Account</h4>
+            <a href="auth.html">Login</a>
+            <a href="auth.html">Register</a>
+            <a href="track.html">Track Delivery</a>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <p>© 2026 VirtuDrop — A VirtuForms Ltd Service — Trinidad and Tobago</p>
+          <p>797-3542 &nbsp;|&nbsp; 470-3704</p>
+        </div>
+      </div>
+    </footer>
+
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+    const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnbXp6YXZ4aHVhcmxhY252bm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Mjk4NTksImV4cCI6MjA5NDIwNTg1OX0.7-YKlwLrhUYUYbiii93ZvgX01TxVephApDNCP50Rl54';
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let zoneData = {};
+
+    const drawer = document.getElementById('drawer');
+    const overlay = document.getElementById('drawerOverlay');
+    const drawerClose = document.getElementById('drawerClose');
+    const drawerBadge = document.getElementById('drawerBadge');
+    const drawerTitle = document.getElementById('drawerTitle');
+    const drawerSub = document.getElementById('drawerSubtitle');
+    const drawerCount = document.getElementById('drawerCount');
+    const drawerBody = document.getElementById('drawerBody');
+
+    function buildAreaTags(areas, limit) {
+      return areas.slice(0, limit).map(area => {
+        const tag = document.createElement('span');
+        tag.className = 'location-tag';
+        tag.textContent = area;
+        return tag;
+      });
+    }
+
+    function updateZoneCards() {
+      document.querySelectorAll('.see-full-btn').forEach(btn => {
+        const zoneCode = btn.dataset.zone;
+        const data = zoneData[zoneCode];
+        const card = btn.closest('.zone-card');
+        if (!data || !card) return;
+
+        const title = card.querySelector('.zone-title h2');
+        const subtitle = card.querySelector('.zone-subtitle');
+        const previewList = card.querySelector('.location-list');
+
+        if (title) title.textContent = data.label;
+        if (subtitle) subtitle.textContent = data.subtitle;
+
+        if (previewList) {
+          previewList.innerHTML = '';
+          buildAreaTags(data.areas, 5).forEach(tag => previewList.appendChild(tag));
+        }
+      });
+    }
+
+    async function loadZones() {
+      const { data, error } = await supabase
+        .from('zones')
+        .select('code, name, region, zone_areas(area_name)')
+        .eq('active', true)
+        .in('code', ['A', 'B', 'C', 'D'])
+        .order('code', { ascending: true });
+
+      if (error) {
+        console.error('Unable to load zones:', error);
+        return;
+      }
+
+      zoneData = (data || []).reduce((zones, zone) => {
+        const areas = (zone.zone_areas || [])
+          .map(item => item.area_name)
+          .filter(Boolean)
+          .sort((a, b) => a.localeCompare(b));
+
+        zones[zone.code] = {
+          label: zone.name,
+          subtitle: zone.region || '',
+          areas
+        };
+
+        return zones;
+      }, {});
+
+      updateZoneCards();
+    }
+
+    function openDrawer(zoneCode) {
+      const data = zoneData[zoneCode];
+      if (!data) {
+        drawerBadge.textContent = zoneCode;
+        drawerTitle.textContent = 'Zone details unavailable';
+        drawerSub.textContent = 'Please try again shortly';
+        drawerCount.textContent = 'Unable to load areas';
+        drawerBody.innerHTML = '<p style="color:#6a6a6a; line-height:1.6;">The area list could not be loaded from the database. Please refresh the page or contact VirtuDrop for assistance.</p>';
+      } else {
+        drawerBadge.textContent = zoneCode;
+        drawerTitle.textContent = data.label;
+        drawerSub.textContent = data.subtitle;
+        drawerBody.innerHTML = '';
+        drawerCount.textContent = `${data.areas.length} areas covered`;
+
+        const tagWrap = document.createElement('div');
+        tagWrap.className = 'drawer-tags';
+
+        data.areas.forEach((area, index) => {
+          const tag = document.createElement('span');
+          tag.className = 'drawer-tag';
+          tag.textContent = area;
+          tag.style.animationDelay = `${index * 0.02}s`;
+          tagWrap.appendChild(tag);
+        });
+
+        drawerBody.appendChild(tagWrap);
+      }
+
+      drawer.classList.add('open');
+      overlay.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeDrawer() {
+      overlay.classList.remove('active');
+      drawer.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    drawerClose.addEventListener('click', closeDrawer);
+    overlay.addEventListener('click', closeDrawer);
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closeDrawer();
+    });
+
+    document.querySelectorAll('.see-full-btn').forEach(btn => {
+      btn.addEventListener('click', () => openDrawer(btn.dataset.zone));
+    });
+
+    const toggle = document.querySelector('[data-mobile-toggle]');
+    const navLinks = document.querySelector('[data-nav-links]');
+    if (toggle && navLinks) {
+      toggle.addEventListener('click', () => {
+        navLinks.classList.toggle('open');
+        toggle.textContent = navLinks.classList.contains('open') ? 'Close' : 'Menu';
+      });
+    }
+
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.style.opacity = '1';
+          entry.target.style.transform = 'translateY(0)';
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+    document.querySelectorAll('.zone-card, .info-card').forEach(el => observer.observe(el));
+
+    loadZones();
+  </script>
+</body>
+</html>

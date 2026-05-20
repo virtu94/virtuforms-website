@@ -1,0 +1,832 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FAQ | VirtuDrop</title>
+  <meta name="description" content="VirtuDrop FAQ – answers to common questions about delivery, pricing, pickups and policies.">
+  <link rel="icon" href="assets/logo.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      line-height: 1.7; color: #1a1a1a; background: #f8f9fa;
+    }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
+
+    /* Nav Bar */
+    .nav {
+      background: #ffffff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    /* Navbar container */
+    .nav .container {
+      max-width: none;
+      width: 100%;
+      margin: 0;
+      padding: 0 2.5rem;
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      gap: 2rem;
+      padding: 1rem 0;
+    }
+
+    /* Logo + slogan */
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      text-decoration: none;
+      flex-shrink: 0;
+      margin-right: auto;
+    }
+
+    .brand img {
+      height: 52px;
+      width: auto;
+    }
+
+    .badge {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #2a9d8f;
+      letter-spacing: 0.4px;
+      white-space: nowrap;
+    }
+
+    /* Nav links */
+    .links {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 1.8rem;
+      margin-left: auto;
+      flex-wrap: nowrap;
+      white-space: nowrap;
+    }
+
+    .links a {
+      text-decoration: none;
+      color: #1a1a1a;
+      font-weight: 500;
+      font-size: 0.92rem;
+      white-space: nowrap;
+    }
+
+    /* Login button */
+    .links a.nav-login {
+      background: #2a9d8f;
+      color: #ffffff !important;
+      padding: 0.5rem 1.2rem;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+
+    .links a.nav-login:hover {
+      background: #238277;
+    }
+
+    /* Mobile */
+    .mobile-toggle {
+      display: none;
+      align-items: center;
+      justify-content: center;
+
+      background: linear-gradient(135deg, #2a9d8f 0%, #238277 100%);
+      color: #ffffff;
+
+      border: none;
+      border-radius: 10px;
+
+      padding: 0.7rem 1rem;
+
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+
+      cursor: pointer;
+
+      box-shadow: 0 4px 12px rgba(42,157,143,0.25);
+
+      transition: all 0.25s ease;
+    }
+
+    .mobile-toggle:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(42,157,143,0.35);
+      background: linear-gradient(135deg, #31b3a3 0%, #2a9d8f 100%);
+    }
+
+    .mobile-toggle:active {
+      transform: scale(0.97);
+    }
+
+    .mobile-toggle::before {
+      content: "☰";
+      margin-right: 0.5rem;
+      font-size: 1rem;
+    }
+
+    /* ── Page ── */
+    .page { padding: 5rem 0; animation: fadeIn 0.8s ease-out; }
+    @keyframes fadeIn    { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes fadeInUp  { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+    .page-header { text-align: center; margin-bottom: 4rem; animation: fadeInUp 0.8s ease-out; }
+    .page-header h1 { font-size: 3.5rem; font-weight: 700; color: #1a1a1a; margin-bottom: 1.5rem; }
+    .page-header p  { font-size: 1.3rem; color: #4a4a4a; line-height: 1.7; }
+
+    /* ── Category tabs ── */
+    .faq-tabs {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      justify-content: center; margin-bottom: 3rem;
+    }
+    .faq-tab {
+      padding: 0.55rem 1.4rem; border-radius: 30px;
+      font-size: 0.88rem; font-weight: 600; cursor: pointer;
+      border: 2px solid #e0e0e0; background: #ffffff; color: #4a4a4a;
+      transition: all 0.25s ease;
+    }
+    .faq-tab.active { background: #2a9d8f; border-color: #2a9d8f; color: #ffffff; }
+    .faq-tab:hover:not(.active) { border-color: #2a9d8f; color: #2a9d8f; }
+
+    /* ── FAQ Container ── */
+    .faq-container { max-width: 860px; margin: 0 auto; }
+
+    .faq-group { display: none; }
+    .faq-group.active { display: block; }
+
+    .faq-group-label {
+      font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1.2px; color: #2a9d8f; margin-bottom: 1.2rem;
+      padding-left: 0.5rem;
+    }
+
+    /* ── Accordion ── */
+    .accordion { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2.5rem; }
+
+    details {
+      background: #ffffff; border-radius: 12px; padding: 0;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+      transition: all 0.3s ease; border: 2px solid transparent; overflow: hidden;
+      animation: fadeInUp 0.6s ease-out both;
+    }
+    details:hover { border-color: #2a9d8f; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    details[open] { border-color: #2a9d8f; }
+
+    summary {
+      padding: 1.5rem 2rem; font-size: 1.05rem; font-weight: 700;
+      color: #1a1a1a; cursor: pointer; list-style: none;
+      position: relative; transition: all 0.3s ease; user-select: none;
+      padding-right: 4rem;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::after {
+      content: '+'; position: absolute; right: 2rem; top: 50%;
+      transform: translateY(-50%); font-size: 1.6rem; font-weight: 700;
+      color: #2a9d8f; transition: all 0.3s ease; line-height: 1;
+    }
+    details[open] summary::after { content: '−'; }
+    summary:hover { color: #2a9d8f; background: #f8f9fa; }
+
+    .faq-content {
+      padding: 0 2rem 1.8rem 2rem; font-size: 1rem;
+      color: #4a4a4a; line-height: 1.8; animation: fadeIn 0.3s ease;
+    }
+    .faq-content p { margin-bottom: 0.9rem; }
+    .faq-content p:last-child { margin-bottom: 0; }
+    .faq-content ul { margin: 0.8rem 0; padding-left: 1.5rem; }
+    .faq-content li { margin-bottom: 0.5rem; }
+    .faq-content strong { color: #1a1a1a; }
+    .faq-content .highlight {
+      background: #f0f9f8; border-left: 3px solid #2a9d8f;
+      padding: 0.8rem 1rem; border-radius: 6px; margin-top: 0.8rem;
+      font-size: 0.95rem;
+    }
+    .faq-content .warning {
+      background: #fff8f0; border-left: 3px solid #e07a3a;
+      padding: 0.8rem 1rem; border-radius: 6px; margin-top: 0.8rem;
+      font-size: 0.95rem; color: #7a4a2a;
+    }
+
+    /* ── CTA ── */
+    .cta-section {
+      background: linear-gradient(135deg, #2a9d8f 0%, #3fb8a8 100%);
+      color: #ffffff; padding: 3rem; border-radius: 16px;
+      text-align: center; margin-top: 3rem;
+      box-shadow: 0 8px 30px rgba(42,157,143,0.25);
+    }
+    .cta-section h2 { font-size: 2rem; font-weight: 700; margin-bottom: 1rem; }
+    .cta-section p  { font-size: 1.1rem; margin-bottom: 2rem; opacity: 0.95; }
+    .btn {
+      display: inline-block; padding: 1rem 2.2rem; border-radius: 10px;
+      text-decoration: none; font-weight: 600; font-size: 1rem;
+      border: 2px solid #ffffff; color: #2a9d8f; background: #ffffff;
+      transition: all 0.3s ease; cursor: pointer;
+    }
+    .btn:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.15); background: #f0f9f8; }
+
+    /* ── Footer ── */
+    .footer { background: #1a1a1a; color: #ffffff; padding: 4rem 0 2rem; margin-top: 6rem; }
+    .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 3rem; margin-bottom: 3rem; }
+    .footer-brand img { height: 44px; margin-bottom: 1rem; }
+    .footer-brand p { font-size: 0.88rem; color: rgba(255,255,255,0.55); line-height: 1.7; }
+    .footer-col h4 { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #14d4ae; margin-bottom: 1rem; }
+    .footer-col a { display: block; font-size: 0.88rem; color: rgba(255,255,255,0.55); text-decoration: none; margin-bottom: 0.5rem; transition: color 0.2s; }
+    .footer-col a:hover { color: #ffffff; }
+    .footer-bottom { border-top: 1px solid rgba(255,255,255,0.08); padding-top: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
+    .footer-bottom p { font-size: 0.82rem; color: rgba(255,255,255,0.4); }
+
+    /* ── Responsive ── */
+    @media (max-width: 968px) {
+      .links {
+        display: none; position: absolute; top: 100%; left: 0; right: 0;
+        background: #ffffff; flex-direction: column; align-items: stretch;
+        gap: 0; box-shadow: 0 8px 20px rgba(0,0,0,0.1); z-index: 99;
+      }
+      .links.open { display: flex; }
+      .links a { padding: 1rem 2rem; border-bottom: 1px solid #f0f0f0; font-size: 0.95rem; }
+      .links a:last-child { border-bottom: none; }
+      .links a::after { display: none; }
+      .links a.nav-login { margin: 0.8rem 1.5rem; text-align: center; }
+      .nav-inner { position: relative; }
+      .mobile-toggle { display: block; }
+      .page-header h1 { font-size: 2.5rem; }
+      .footer-grid { grid-template-columns: 1fr 1fr; gap: 2rem; }
+    }
+
+    @media (max-width: 640px) {
+      .container { padding: 0 1.5rem; }
+      .brand { flex-direction: column; align-items: flex-start; gap: 0.3rem; }
+      .page { padding: 3rem 0; }
+      .page-header h1 { font-size: 2rem; }
+      .page-header p { font-size: 1.1rem; }
+      summary { padding: 1.2rem 1.5rem; font-size: 0.98rem; padding-right: 3.5rem; }
+      summary::after { right: 1.5rem; }
+      .faq-content { padding: 0 1.5rem 1.5rem; }
+      .cta-section { padding: 2rem; }
+      .cta-section h2 { font-size: 1.6rem; }
+      .footer-grid { grid-template-columns: 1fr; }
+      .footer-bottom { flex-direction: column; text-align: center; }
+    }
+  
+
+    /* Mobile header fit fix */
+    @media (max-width: 768px) {
+      .nav .container {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+      }
+
+      .nav-inner {
+        gap: 0.75rem !important;
+        min-width: 0;
+      }
+
+      .brand {
+        flex: 1 1 auto !important;
+        min-width: 0;
+        gap: 0.55rem !important;
+        margin-right: 0 !important;
+      }
+
+      .brand img {
+        height: 42px !important;
+        flex: 0 0 auto;
+      }
+
+      .badge {
+        white-space: normal !important;
+        line-height: 1.25;
+        font-size: 0.7rem !important;
+        max-width: 150px;
+      }
+
+      .mobile-toggle {
+        display: flex !important;
+        flex: 0 0 auto;
+        padding: 0.65rem 0.8rem !important;
+        min-width: 72px;
+        max-width: 92px;
+        white-space: nowrap;
+      }
+
+      .mobile-toggle::before {
+        content: "☰" !important;
+        margin-right: 0.4rem !important;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .badge {
+        max-width: 126px;
+        font-size: 0.66rem !important;
+      }
+
+      .mobile-toggle {
+        min-width: 64px;
+        max-width: 78px;
+        padding: 0.6rem 0.65rem !important;
+      }
+    }
+
+  </style>
+</head>
+<body>
+
+  <header class="nav">
+    <div class="container">
+      <div class="nav-inner">
+        <a class="brand" href="index.html" aria-label="VirtuDrop Home">
+          <img src="assets/logo.png" alt="VirtuDrop logo" />
+          <span class="badge">Professional • Reliable • Structured</span>
+        </a>
+        <button class="mobile-toggle" type="button" data-mobile-toggle>Menu</button>
+        <nav class="links" data-nav-links>
+          <a href="index.html">Home</a>
+          <a href="how-it-works.html">How It Works</a>
+          <a href="pricing.html">Pricing</a>
+          <a href="zones.html">Delivery Zones</a>
+          <a href="business-clients.html">Business Clients</a>
+          <a href="calculator.html">Calculator</a>
+          <a href="track.html">Track Delivery</a>
+          <a href="contact.html">Contact</a>
+          <a href="auth.html" class="nav-login">Login/Register</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="page">
+      <div class="container">
+
+        <div class="page-header">
+          <h1>Frequently Asked Questions</h1>
+          <p>Quick answers to the most common questions about VirtuDrop.</p>
+        </div>
+
+        <!-- ── Category Tabs ── -->
+        <div class="faq-tabs">
+          <button class="faq-tab active" onclick="showGroup('all', this)">All</button>
+          <button class="faq-tab" onclick="showGroup('pricing', this)">Pricing &amp; Fees</button>
+          <button class="faq-tab" onclick="showGroup('orders', this)">Orders &amp; Pickups</button>
+          <button class="faq-tab" onclick="showGroup('delivery', this)">Delivery</button>
+          <button class="faq-tab" onclick="showGroup('clients', this)">Business Clients</button>
+          <button class="faq-tab" onclick="showGroup('payments', this)">Payments &amp; COD</button>
+        </div>
+
+        <div class="faq-container">
+
+          <!-- ════════ ALL (shown by default) ════════ -->
+          <div class="faq-group active" id="group-all">
+
+            <!-- Pricing & Fees -->
+            <div class="faq-group-label">Pricing &amp; Fees</div>
+            <div class="accordion">
+
+              <details>
+                <summary>What are the delivery rates?</summary>
+                <div class="faq-content">
+                  <p>VirtuDrop charges based on zone coverage:</p>
+                  <ul>
+                    <li><strong>Same Zone Delivery — TTD $40</strong> per package. Pickup and drop-off are within the same delivery zone.</li>
+                    <li><strong>Cross Zone Delivery — TTD $50</strong> per package. Pickup and drop-off are in different zones.</li>
+                  </ul>
+                  <div class="highlight">All prices are in Trinidad and Tobago Dollars (TTD).</div>
+                </div>
+              </details>
+
+              <details>
+                <summary>Is there a pickup fee?</summary>
+                <div class="faq-content">
+                  <p>Yes — pickup fees apply based on the number of packages ready for collection per visit:</p>
+                  <ul>
+                    <li><strong>3 or more packages</strong> — Free pickup</li>
+                    <li><strong>Under 3 packages</strong> — TTD $20 collection fee</li>
+                  </ul>
+                  <div class="highlight">Tip: If you have fewer than 3 packages, consider batching orders to the same pickup to avoid the fee.</div>
+                </div>
+              </details>
+
+              <details>
+                <summary>What is Priority Same-Day delivery and how much does it cost?</summary>
+                <div class="faq-content">
+                  <p>Priority Same-Day is an urgent delivery option for situations where a scheduled collection was missed and the item needs to be delivered before the next cycle.</p>
+                  <p>It is <strong>not a standard service</strong> and is subject to route availability on the day.</p>
+                  <div class="warning">Priority Same-Day is not guaranteed. Contact us before 8:00 AM to check availability and receive a quoted price.</div>
+                </div>
+              </details>
+
+              <details>
+                <summary>Do you offer monthly plans or volume discounts?</summary>
+                <div class="faq-content">
+                  <p>Yes — we offer three recurring monthly logistics plans for consistent business clients:</p>
+                  <ul>
+                    <li><strong>Bronze</strong> — 20 deliveries/month at $38 per drop (TTD $760/month)</li>
+                    <li><strong>Silver</strong> — 40 deliveries/month at $36 per drop (TTD $1,440/month)</li>
+                    <li><strong>Gold</strong> — 75 deliveries/month at $34 per drop (TTD $2,550/month)</li>
+                  </ul>
+                  <p>We also offer a <strong>Structured Weekly Plan</strong> at TTD $225/week for up to 6 deliveries in one designated zone. Visit our <a href="pricing.html" style="color:#2a9d8f; font-weight:600;">Pricing page</a> for full details.</p>
+                </div>
+              </details>
+
+            </div>
+
+            <!-- Orders & Pickups -->
+            <div class="faq-group-label">Orders &amp; Pickups</div>
+            <div class="accordion">
+
+              <details>
+                <summary>What is the daily order cut-off time?</summary>
+                <div class="faq-content">
+                  <p>All orders must be submitted by <strong>8:00 PM daily</strong> to be included in the next delivery cycle.</p>
+                  <p>Orders submitted after 8:00 PM are automatically scheduled for the following delivery day cycle.</p>
+                  <div class="highlight">Submit early to ensure your order is picked up and delivered as quickly as possible.</div>
+                </div>
+              </details>
+
+              <details>
+                <summary>What happens if my order is submitted after 8:00 PM?</summary>
+                <div class="faq-content">
+                  <p>Any order submitted after the 8:00 PM cut-off is automatically moved to the next available delivery cycle. It will not be processed the same night.</p>
+                  <p>You will be notified and your order will be queued for the next scheduled pickup window.</p>
+                </div>
+              </details>
+
+              <details>
+                <summary>How does pickup work?</summary>
+                <div class="faq-content">
+                  <p>Pickups are conducted on <strong>scheduled days only</strong> — not on-demand or upon individual request. On your assigned pickup day, collection runs between <strong>8:00 AM and 10:00 AM</strong>.</p>
+                  <div class="warning">Packages must be ready before collection. Late or unavailable packages are moved to the next scheduled pickup day. Pickup timing within the window is based on route efficiency — not individual requests.</div>
+                </div>
+              </details>
+
+              <details>
+                <summary>How do I schedule a pickup?</summary>
+                <div class="faq-content">
+                  <p>As a business client, you submit delivery orders through your client dashboard or by sharing your unique VirtuDrop delivery link with your customers. Once an order is submitted before the 8:00 PM cut-off, it is automatically queued for the next pickup window.</p>
+                  <p>You can also contact us directly via WhatsApp for assistance.</p>
+                </div>
+              </details>
+
+              <details>
+                <summary>What package sizes and weights are accepted?</summary>
+                <div class="faq-content">
+                  <p>The following limits apply to all deliveries:</p>
+                  <ul>
+                    <li><strong>Maximum weight:</strong> 25 lbs per package</li>
+                    <li><strong>Oversized items:</strong> Not accepted</li>
+                  </ul>
+                  <p>If you are unsure whether your item qualifies, contact us before submitting the order.</p>
+                </div>
+              </details>
+
+              <details>
+                <summary>What items cannot be delivered?</summary>
+                <div class="faq-content">
+                  <p>We cannot deliver the following:</p>
+                  <ul>
+                    <li>Illegal goods or substances</li>
+                    <li>Hazardous or flammable materials</li>
+                    <li>Perishable food items without proper packaging</li>
+                    <li>Live animals or plants</li>
+                    <li>Firearms, weapons, or ammunition</li>
+                    <li>Items exceeding 25 lbs</li>
+                    <li>Oversized items that cannot be handled safely</li>
+                  </ul>
+                </div>
+              </details>
+
+            </div>
+
+            <!-- Delivery -->
+            <div class="faq-group-label">Delivery</div>
+            <div class="accordion">
+
+              <details>
+                <summary>What is the delivery timeline?</summary>
+                <div class="faq-content">
+                  <p>Standard deliveries are completed within <strong>1–2 days from the date of pickup</strong>. However, delivery is not on-demand — it runs on your zone's scheduled delivery day.</p>
+                  <p>After your package is picked up, it will be delivered on the next available scheduled delivery day for your zone. The exact day depends on your zone's assigned schedule and when in the cycle your order was received.</p>
+                  <div class="highlight">Specific delivery times within a scheduled day are not accommodated. All deliveries run within the zone's assigned window for that day.</div>
+                </div>
+              </details>
+
+              <details>
+                <summary>How does the customer get notified on delivery day?</summary>
+                <div class="faq-content">
+                  <p>Customers are contacted on the morning of their delivery day to confirm the delivery is on the way. This is done via phone call or WhatsApp message.</p>
+                  <p>The client is also notified once the delivery is completed.</p>
+                </div>
+              </details>
+
+              <details>
+                <summary>How is proof of delivery confirmed?</summary>
+                <div class="faq-content">
+                  <p>Delivery confirmation is sent via <strong>WhatsApp message</strong> to the client upon successful completion of each delivery. This serves as your official proof of delivery.</p>
+                </div>
+              </details>
+
+              <details>
+                <summary>What happens if a delivery attempt fails?</summary>
+                <div class="faq-content">
+                  <p>One delivery attempt is made per order. If the attempt fails:</p>
+                  <ul>
+                    <li>The delivery is marked as a failed attempt</li>
+                    <li>The client is notified immediately</li>
+                    <li>A <strong>new delivery fee</strong> applies for any redelivery attempt</li>
+                  </ul>
+                  <div class="warning">If the customer confirmed the delivery when contacted but then did not collect — the delivery fee still applies. The client is responsible for determining whether they or the customer absorbs this cost.</div>
+                </div>
+              </details>
+
+              <details>
+                <summary>What if the recipient is unavailable?</summary>
+                <div class="faq-content">
+                  <p>The driver will attempt to contact the recipient by phone. If no contact is made, the delivery is marked as failed.</p>
+                  <p>Redelivery requires a new delivery fee. The client decides whether to reattempt and who covers the cost.</p>
+                </div>
+              </details>
+
+              <details>
+                <summary>What if a customer asks to reschedule?</summary>
+                <div class="faq-content">
+                  <p>Rescheduled deliveries fall into the next available delivery cycle for that zone. There is no additional charge for rescheduling as long as the package has not yet been dispatched for delivery.</p>
+                  <p>Once a driver is out for delivery, the standard failed delivery and redelivery policy applies.</p>
+                </div>
+              </details>
+
+              <details>
+                <summary>What if a customer cancels before the driver attempts delivery?</summary>
+                <div class="faq-content">
+                  <p>If the customer cancels <strong>before</strong> a delivery attempt is made, no delivery fee is charged.</p>
+                  <p>Please notify us as early as possible so we can update the driver's route accordingly.</p>
+                </div>
+              </details>
+
+              <details>
+                <summary>How are returns handled?</summary>
+                <div class="faq-content">
+                  <p>Returns are processed only upon client request. A return delivery is treated as a <strong>full delivery</strong> and is charged at the standard delivery rate for the applicable zone.</p>
+                  <p>Returns are conducted on scheduled delivery days, not on-demand. The client determines whether they or the customer is responsible for the return delivery cost.</p>
+                </div>
+              </details>
+
+              <details>
+                <summary>What if a customer claims they did not receive the item?</summary>
+                <div class="faq-content">
+                  <p>If proof of delivery has been recorded and sent to the client via WhatsApp, the delivery is considered complete.</p>
+                  <p>The client bears responsibility for resolving the dispute with the customer. VirtuDrop's responsibility ends once proof of delivery is provided.</p>
+                </div>
+              </details>
+
+              <details>
+                <summary>Do you deliver on holidays?</summary>
+                <div class="faq-content">
+                  <p>Our goal is to maintain reliable service throughout the week including weekends.</p>
+                  <ul>
+                    <li>Deliveries may be available on certain public holidays depending on operational capacity</li>
+                    <li>Clients receive advance notice of any closures or schedule changes on public holidays</li>
+                  </ul>
+                </div>
+              </details>
+
+            </div>
+
+            <!-- Business Clients -->
+            <div class="faq-group-label">Business Clients</div>
+            <div class="accordion">
+
+              <details>
+                <summary>How does the unique client delivery link work?</summary>
+                <div class="faq-content">
+                  <p>Every registered business client receives their own unique VirtuDrop delivery link — for example: <strong>virtuforms.net/virtudrop/delivery-form.html?business=your-business-name</strong></p>
+                  <p>When a customer opens your link:</p>
+                  <ul>
+                    <li>The form is automatically tied to your business</li>
+                    <li>The customer fills in their name, phone number, delivery address and payment details</li>
+                    <li>The order is automatically attached to your account</li>
+                  </ul>
+                  <div class="highlight">You simply share your link with customers — no manual order entry needed.</div>
+                </div>
+              </details>
+
+              <details>
+                <summary>How can a customer track their delivery?</summary>
+                <div class="faq-content">
+                  <p>Customers have two ways to track their delivery:</p>
+                  <ul>
+                    <li><strong>Tracking link</strong> — after submitting a delivery request, the customer receives a unique tracking link via WhatsApp. Clicking it shows their live order status with no login required.</li>
+                    <li><strong>Phone + Order ID</strong> — if they lose the link, they can visit the <a href="track.html" style="color:#2a9d8f; font-weight:600;">Track Delivery</a> page and enter their phone number and order ID.</li>
+                  </ul>
+                </div>
+              </details>
+
+              <details>
+                <summary>What information do I need to provide when submitting an order?</summary>
+                <div class="faq-content">
+                  <p>Complete delivery details must be provided before pickup, including:</p>
+                  <ul>
+                    <li>Pickup location</li>
+                    <li>Customer full name</li>
+                    <li>Customer contact number</li>
+                    <li>Customer drop-off location (Google Maps pin or clear street address)</li>
+                    <li>Payment status — whether the customer is paying cash on delivery, paid online for the item only, or paid online for both item and delivery</li>
+                    <li>Any special requirements for the item</li>
+                  </ul>
+                </div>
+              </details>
+
+            </div>
+
+            <!-- Payments & COD -->
+            <div class="faq-group-label">Payments &amp; COD</div>
+            <div class="accordion">
+
+              <details>
+                <summary>What payment methods do you accept for deliveries (COD)?</summary>
+                <div class="faq-content">
+                  <p>VirtuDrop collects on behalf of clients via:</p>
+                  <ul>
+                    <li><strong>Cash</strong> — collected at the point of delivery</li>
+                    <li><strong>LINX</strong> — card payment collected at the point of delivery</li>
+                  </ul>
+                </div>
+              </details>
+
+              <details>
+                <summary>When will I receive my remittance?</summary>
+                <div class="faq-content">
+                  <p>Remittance timelines depend on how the customer paid:</p>
+                  <ul>
+                    <li><strong>Online payments</strong> — remitted the same evening after delivery completion via online transfer</li>
+                    <li><strong>Cash payments</strong> — returned on collection day on a weekly basis</li>
+                  </ul>
+                  <div class="highlight">You can view your remittance records directly in your client dashboard, including payment method and status.</div>
+                </div>
+              </details>
+
+            </div>
+
+          </div>
+          <!-- end group-all -->
+
+          <!-- ════════ PRICING GROUP ════════ -->
+          <div class="faq-group" id="group-pricing">
+            <div class="accordion">
+              <details><summary>What are the delivery rates?</summary><div class="faq-content"><p>VirtuDrop charges based on zone coverage:</p><ul><li><strong>Same Zone — TTD $40</strong> per package.</li><li><strong>Cross Zone — TTD $50</strong> per package.</li></ul></div></details>
+              <details><summary>Is there a pickup fee?</summary><div class="faq-content"><p><strong>3 or more packages</strong> — Free pickup. <strong>Under 3 packages</strong> — TTD $20 collection fee.</div></details>
+              <details><summary>What is Priority Same-Day delivery?</summary><div class="faq-content"><p>An urgent delivery option subject to availability. Not a standard service. Contact us before 8:00 AM for availability and a quoted price.</p></div></details>
+              <details><summary>Do you offer monthly plans or volume discounts?</summary><div class="faq-content"><p>Yes — Bronze ($760/20 drops), Silver ($1,440/40 drops) and Gold ($2,550/75 drops). Weekly plan at $225/week. See <a href="pricing.html" style="color:#2a9d8f;">Pricing</a> for details.</p></div></details>
+            </div>
+          </div>
+
+          <!-- ════════ ORDERS GROUP ════════ -->
+          <div class="faq-group" id="group-orders">
+            <div class="accordion">
+              <details><summary>What is the daily order cut-off time?</summary><div class="faq-content"><p>All orders must be submitted by <strong>8:00 PM daily</strong>. Orders after 8:00 PM move to the next cycle.</p></div></details>
+              <details><summary>What happens if my order is submitted after 8:00 PM?</summary><div class="faq-content"><p>It is automatically moved to the next available delivery cycle.</p></div></details>
+              <details><summary>How does pickup work?</summary><div class="faq-content"><p>Pickups are conducted on scheduled days only. On your assigned pickup day, collection runs between 8:00 AM and 10:00 AM. Packages must be ready before collection or they are moved to the next scheduled pickup day.</p></div></details>
+              <details><summary>How do I schedule a pickup?</summary><div class="faq-content"><p>Submit orders through your client dashboard or share your unique delivery link. Orders submitted before 8:00 PM are automatically queued.</p></div></details>
+              <details><summary>What package sizes and weights are accepted?</summary><div class="faq-content"><p>Maximum 25 lbs per package. No oversized items.</p></div></details>
+              <details><summary>What items cannot be delivered?</summary><div class="faq-content"><ul><li>Illegal goods</li><li>Hazardous/flammable materials</li><li>Perishable food without proper packaging</li><li>Live animals or plants</li><li>Firearms or weapons</li><li>Items over 25 lbs or oversized</li></ul></div></details>
+            </div>
+          </div>
+
+          <!-- ════════ DELIVERY GROUP ════════ -->
+          <div class="faq-group" id="group-delivery">
+            <div class="accordion">
+              <details><summary>What is the delivery timeline?</summary><div class="faq-content"><p>Deliveries are completed within 1–2 days from pickup, subject to your zone's scheduled delivery day. Delivery is not on-demand — it runs on assigned days per zone. Specific delivery times are not accommodated.</p></div></details>
+              <details><summary>How is proof of delivery confirmed?</summary><div class="faq-content"><p>WhatsApp confirmation message sent to the client upon successful delivery.</p></div></details>
+              <details><summary>What happens if a delivery attempt fails?</summary><div class="faq-content"><p>One attempt per order. If failed, a new delivery fee applies for redelivery. If customer confirmed then did not collect, the fee still applies.</p></div></details>
+              <details><summary>What if the recipient is unavailable?</summary><div class="faq-content"><p>Driver attempts to call. If no contact, delivery marked failed. Redelivery requires a new fee.</p></div></details>
+              <details><summary>What if a customer asks to reschedule?</summary><div class="faq-content"><p>Moves to the next available delivery cycle at no extra charge, provided the driver has not yet departed.</p></div></details>
+              <details><summary>What if a customer cancels before the driver attempts delivery?</summary><div class="faq-content"><p>No charge if cancelled before the attempt is made.</p></div></details>
+              <details><summary>How are returns handled?</summary><div class="faq-content"><p>Returns are treated as a full delivery at standard rate, done on scheduled delivery days upon client request.</p></div></details>
+              <details><summary>What if a customer claims they did not receive the item?</summary><div class="faq-content"><p>Once WhatsApp proof of delivery is sent to the client, the delivery is considered complete. The client resolves any dispute with the customer.</p></div></details>
+            </div>
+          </div>
+
+          <!-- ════════ CLIENTS GROUP ════════ -->
+          <div class="faq-group" id="group-clients">
+            <div class="accordion">
+              <details><summary>How does the unique client delivery link work?</summary><div class="faq-content"><p>Each client gets a unique link, for example <strong>virtuforms.net/virtudrop/delivery-form.html?business=your-business</strong>. Customers open it, fill in their details, and the order is automatically attached to your account.</p></div></details>
+              <details><summary>How can a customer track their delivery?</summary><div class="faq-content"><p>Via a unique tracking link sent by WhatsApp after submission, or by entering their phone number and order ID on the <a href="track.html" style="color:#2a9d8f;">Track Delivery</a> page.</p></div></details>
+              <details><summary>What information do I need to provide when submitting an order?</summary><div class="faq-content"><ul><li>Pickup location</li><li>Customer full name</li><li>Customer contact number</li><li>Delivery address or Google Maps pin</li><li>Payment status (COD / paid online for item / paid online for both)</li><li>Any special requirements</li></ul></div></details>
+            </div>
+          </div>
+
+          <!-- ════════ PAYMENTS GROUP ════════ -->
+          <div class="faq-group" id="group-payments">
+            <div class="accordion">
+              <details><summary>What payment methods do you accept for COD?</summary><div class="faq-content"><p>Cash and LINX collected at point of delivery on behalf of the client.</p></div></details>
+              <details><summary>When will I receive my remittance?</summary><div class="faq-content"><ul><li><strong>Online payments</strong> — same evening after delivery via online transfer.</li><li><strong>Cash payments</strong> — returned weekly on collection day.</li></ul></div></details>
+            </div>
+          </div>
+
+          <!-- CTA -->
+          <div class="cta-section">
+            <h2>Still have questions?</h2>
+            <p>Our team is happy to help. Reach out via WhatsApp or our contact page.</p>
+            <a href="contact.html" class="btn">Contact Us</a>
+          </div>
+
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ── Footer ── -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <img src="assets/logo.png" alt="VirtuDrop" onerror="this.style.display='none'" />
+          <p>Zone-based, scheduled delivery for businesses across Trinidad. Structured logistics you can count on.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Services</h4>
+          <a href="pricing.html">Pricing</a>
+          <a href="zones.html">Delivery Zones</a>
+          <a href="calculator.html">Calculator</a>
+          <a href="business-clients.html">Business Clients</a>
+        </div>
+        <div class="footer-col">
+          <h4>Company</h4>
+          <a href="how-it-works.html">How It Works</a>
+          <a href="about.html">About</a>
+          <a href="contact.html">Contact</a>
+          <a href="faq.html">FAQ</a>
+        </div>
+        <div class="footer-col">
+          <h4>Account</h4>
+          <a href="auth.html">Login</a>
+          <a href="auth.html">Register</a>
+          <a href="track.html">Track Delivery</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>© 2026 VirtuDrop · A VirtuForms Ltd Service · Trinidad and Tobago</p>
+        <p>797-3542 &nbsp;|&nbsp; 470-3704</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // ── Mobile nav ─────────────────────────────────────────────
+    const toggle   = document.querySelector('[data-mobile-toggle]');
+    const navLinks = document.querySelector('[data-nav-links]');
+    if (toggle && navLinks) {
+      toggle.addEventListener('click', () => {
+        navLinks.classList.toggle('open');
+        toggle.textContent = navLinks.classList.contains('open') ? 'Close' : 'Menu';
+      });
+    }
+
+    // ── Category tabs ──────────────────────────────────────────
+    function showGroup(groupId, btn) {
+      document.querySelectorAll('.faq-group').forEach(g => g.classList.remove('active'));
+      document.querySelectorAll('.faq-tab').forEach(b => b.classList.remove('active'));
+      document.getElementById('group-' + groupId).classList.add('active');
+      btn.classList.add('active');
+    }
+
+    // ── Accordion — close others when one opens ────────────────
+    document.addEventListener('click', e => {
+      const clickedDetails = e.target.closest('details');
+      if (!clickedDetails) return;
+      const group = clickedDetails.closest('.accordion');
+      if (!group) return;
+      group.querySelectorAll('details').forEach(d => {
+        if (d !== clickedDetails) d.removeAttribute('open');
+      });
+    });
+
+    // ── Scroll reveal ──────────────────────────────────────────
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.style.opacity  = '1';
+          entry.target.style.transform = 'translateY(0)';
+        }
+      });
+    }, { threshold: 0.05, rootMargin: '0px 0px -40px 0px' });
+
+    document.querySelectorAll('details').forEach(el => observer.observe(el));
+  </script>
+
+</body>
+</html>

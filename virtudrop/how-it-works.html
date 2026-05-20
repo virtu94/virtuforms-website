@@ -1,0 +1,908 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>How It Works | VirtuDrop</title>
+  <meta name="description" content="Learn how VirtuDrop works — from order submission to delivery confirmation and remittance.">
+  <link rel="icon" href="assets/logo.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --teal-dark:   #0d2b28;
+      --teal-mid:    #2a9d8f;
+      --teal-bright: #14d4ae;
+      --teal-pale:   #f0f9f8;
+      --teal-light:  #e8f5f3;
+      --orange:      #e07a3a;
+      --white:       #ffffff;
+      --black:       #1a1a1a;
+      --grey:        #4a4a4a;
+      --grey-light:  #f8f9fa;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      line-height: 1.7; color: var(--black); background: var(--grey-light);
+      overflow-x: hidden;
+    }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
+
+    /* Nav Bar */
+    .nav {
+      background: #ffffff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    /* Navbar container */
+    .nav .container {
+      max-width: none;
+      width: 100%;
+      margin: 0;
+      padding: 0 2.5rem;
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      gap: 2rem;
+      padding: 1rem 0;
+    }
+
+    /* Logo + slogan */
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      text-decoration: none;
+      flex-shrink: 0;
+      margin-right: auto;
+    }
+
+    .brand img {
+      height: 52px;
+      width: auto;
+    }
+
+    .badge {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #2a9d8f;
+      letter-spacing: 0.4px;
+      white-space: nowrap;
+    }
+
+    /* Nav links */
+    .links {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 1.8rem;
+      margin-left: auto;
+      flex-wrap: nowrap;
+      white-space: nowrap;
+    }
+
+    .links a {
+      text-decoration: none;
+      color: #1a1a1a;
+      font-weight: 500;
+      font-size: 0.92rem;
+      white-space: nowrap;
+    }
+
+    /* Login button */
+    .links a.nav-login {
+      background: #2a9d8f;
+      color: #ffffff !important;
+      padding: 0.5rem 1.2rem;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+
+    .links a.nav-login:hover {
+      background: #238277;
+    }
+
+    /* Mobile */
+    .mobile-toggle {
+      display: none;
+      align-items: center;
+      justify-content: center;
+
+      background: linear-gradient(135deg, #2a9d8f 0%, #238277 100%);
+      color: #ffffff;
+
+      border: none;
+      border-radius: 10px;
+
+      padding: 0.7rem 1rem;
+
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+
+      cursor: pointer;
+
+      box-shadow: 0 4px 12px rgba(42,157,143,0.25);
+
+      transition: all 0.25s ease;
+    }
+
+    .mobile-toggle:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(42,157,143,0.35);
+      background: linear-gradient(135deg, #31b3a3 0%, #2a9d8f 100%);
+    }
+
+    .mobile-toggle:active {
+      transform: scale(0.97);
+    }
+
+    .mobile-toggle::before {
+      content: "☰";
+      margin-right: 0.5rem;
+      font-size: 1rem;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      background: var(--teal-dark);
+      padding: 6rem 0 4rem;
+      overflow: hidden;
+      position: relative;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; top: -80px; right: -80px;
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(20,212,174,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-inner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4rem;
+      align-items: stretch;
+    }
+    .hero-text { padding-bottom: 5rem; }
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1.5px; color: var(--teal-bright);
+      margin-bottom: 1.5rem;
+    }
+    .hero-eyebrow::before {
+      content: ''; width: 24px; height: 2px;
+      background: var(--teal-bright); border-radius: 2px;
+    }
+    .hero h1 {
+      font-family: 'Inter', sans-serif;
+      font-size: 4rem;
+      font-weight: 800;
+      color: var(--white);
+      line-height: 1.15;
+      margin-bottom: 1.8rem;
+      letter-spacing: -1px;
+    }
+    .hero h1 em { font-style: italic; color: var(--teal-bright); }
+    .hero-desc {
+      font-size: 1.1rem; color: rgba(255,255,255,0.7);
+      line-height: 1.8; margin-bottom: 2.5rem; max-width: 480px;
+    }
+    .hero-cta { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.9rem 1.8rem; border-radius: 10px; text-decoration: none;
+      font-weight: 600; font-size: 0.95rem; transition: all 0.3s ease;
+      border: 2px solid transparent; cursor: pointer;
+    }
+    .btn-bright { background: var(--teal-bright); color: var(--teal-dark); border-color: var(--teal-bright); }
+    .btn-bright:hover { background: #10bda0; transform: translateY(-3px); box-shadow: 0 8px 24px rgba(20,212,174,0.3); }
+    .btn-ghost { background: transparent; color: var(--white); border-color: rgba(255,255,255,0.3); }
+    .btn-ghost:hover { border-color: var(--white); background: rgba(255,255,255,0.08); transform: translateY(-3px); }
+
+    /* Hero visual — quick stats */
+    .hero-visual {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px;
+      padding: 2rem;
+
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 1rem;
+
+      height: fit-content;
+      align-self: center;
+    }
+    .hero-visual-label {
+      font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1px; color: rgba(255,255,255,0.35); margin-bottom: 0.5rem;
+    }
+    .stat-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 1.2rem; background: rgba(255,255,255,0.05);
+      border-radius: 10px; border: 1px solid rgba(255,255,255,0.07);
+      transition: background 0.2s;
+    }
+    .stat-row:hover { background: rgba(20,212,174,0.08); }
+    .stat-label { font-size: 0.88rem; color: rgba(255,255,255,0.6); }
+    .stat-value { font-size: 1rem; font-weight: 700; color: var(--white); }
+    .stat-value.accent { color: var(--teal-bright); }
+
+    /* ── Audience toggle ── */
+    .audience-section { background: var(--white); padding: 5rem 0; }
+    .section-tag {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1.2px; color: var(--teal-mid); margin-bottom: 1rem;
+    }
+    .section-tag::before { content: ''; width: 20px; height: 2px; background: var(--teal-mid); border-radius: 2px; }
+    .section-title {
+      font-family: 'Inter', sans-serif;
+      font-size: 2.8rem;
+      font-weight: 800;
+      color: var(--black);
+      line-height: 1.2;
+      margin-bottom: 1rem;
+      letter-spacing: -1px;
+    }
+    .section-title em { font-style: italic; color: var(--teal-mid); }
+    .section-desc { font-size: 1.05rem; color: var(--grey); line-height: 1.7; max-width: 540px; }
+
+    .toggle-pills {
+      display: inline-flex; gap: 0; background: var(--grey-light);
+      border-radius: 30px; padding: 4px; margin: 2.5rem 0;
+    }
+    .pill {
+      padding: 0.55rem 1.6rem; border-radius: 26px; border: none;
+      font-family: 'Inter', sans-serif; font-size: 0.9rem;
+      font-weight: 600; cursor: pointer; transition: all 0.25s ease;
+      background: transparent; color: var(--grey);
+    }
+    .pill.active { background: var(--teal-dark); color: var(--white); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+
+    /* ── Steps timeline ── */
+    .steps-panel { display: none; }
+    .steps-panel.active { display: block; }
+
+    .timeline {
+      position: relative; padding-left: 3rem;
+    }
+    .timeline::before {
+      content: '';
+      position: absolute; left: 1rem; top: 1.5rem; bottom: 1.5rem;
+      width: 2px;
+      background: linear-gradient(to bottom, var(--teal-mid), var(--teal-bright));
+      border-radius: 2px;
+    }
+
+    .timeline-step {
+      position: relative; margin-bottom: 3rem; opacity: 0;
+      transform: translateX(-20px);
+      transition: all 0.5s ease;
+    }
+    .timeline-step.visible { opacity: 1; transform: translateX(0); }
+    .timeline-step:last-child { margin-bottom: 0; }
+
+    .step-dot {
+      position: absolute; left: -2.5rem; top: 0.2rem;
+      width: 2rem; height: 2rem;
+      background: var(--teal-mid); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem; font-weight: 800; color: var(--white);
+      box-shadow: 0 0 0 4px var(--white), 0 0 0 6px rgba(42,157,143,0.2);
+      z-index: 1; flex-shrink: 0;
+    }
+    .step-dot.accent { background: var(--teal-bright); }
+
+    .step-body {
+      background: var(--grey-light); border-radius: 14px; padding: 1.8rem 2rem;
+      border-left: 3px solid var(--teal-mid); transition: all 0.3s ease;
+    }
+    .step-body:hover {
+      background: var(--teal-pale);
+      border-left-color: var(--teal-bright);
+      transform: translateX(4px);
+    }
+    .step-body.highlight { background: var(--teal-dark); border-left-color: var(--teal-bright); }
+    .step-body.highlight .step-title { color: var(--white); }
+    .step-body.highlight .step-desc  { color: rgba(255,255,255,0.7); }
+    .step-body.highlight .step-note  { background: rgba(20,212,174,0.12); color: var(--teal-bright); }
+
+    .step-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.6rem; }
+    .step-icon { font-size: 1.4rem; flex-shrink: 0; }
+    .step-title { font-size: 1.1rem; font-weight: 700; color: var(--black); }
+    .step-desc  { font-size: 0.95rem; color: var(--grey); line-height: 1.7; }
+    .step-note  {
+      margin-top: 0.8rem; padding: 0.7rem 1rem;
+      background: var(--teal-light); border-radius: 8px;
+      font-size: 0.85rem; color: var(--teal-dark); line-height: 1.5;
+      font-weight: 500;
+    }
+
+    /* ── Split layout for two audiences side by side on large screens ── */
+    .split-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 4rem;
+      align-items: start;
+    }
+    .split-intro { position: sticky; top: 6rem; }
+
+    /* ── Policies strip ── */
+    .policies-section { background: var(--teal-dark); padding: 5rem 0; }
+    .policies-section .section-tag  { color: var(--teal-bright); }
+    .policies-section .section-tag::before { background: var(--teal-bright); }
+    .policies-section .section-title { color: var(--white); }
+    .policies-section .section-desc  { color: rgba(255,255,255,0.65); }
+
+    .policy-cards {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem;
+      margin-top: 3rem;
+    }
+    .policy-card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px; padding: 1.8rem;
+      transition: all 0.3s ease;
+    }
+    .policy-card:hover { background: rgba(20,212,174,0.08); border-color: rgba(20,212,174,0.3); transform: translateY(-4px); }
+    .policy-card-icon { font-size: 1.8rem; margin-bottom: 0.8rem; display: block; }
+    .policy-card h4 { font-size: 0.95rem; font-weight: 700; color: var(--white); margin-bottom: 0.5rem; }
+    .policy-card p  { font-size: 0.88rem; color: rgba(255,255,255,0.6); line-height: 1.7; }
+
+    /* ── CTA ── */
+    .cta-section { background: var(--white); padding: 6rem 0; }
+    .cta-inner {
+      background: linear-gradient(135deg, var(--teal-dark) 0%, #1e5c54 100%);
+      border-radius: 24px; padding: 5rem 4rem; text-align: center;
+      position: relative; overflow: hidden;
+      box-shadow: 0 20px 60px rgba(13,43,40,0.3);
+    }
+    .cta-inner::before {
+      content: '';
+      position: absolute; top: -100px; right: -100px;
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(20,212,174,0.15) 0%, transparent 70%);
+    }
+    .cta-inner::after {
+      content: '';
+      position: absolute; bottom: -80px; left: -80px;
+      width: 300px; height: 300px;
+      background: radial-gradient(circle, rgba(42,157,143,0.2) 0%, transparent 70%);
+    }
+    .cta-content { position: relative; z-index: 1; }
+    .cta-eyebrow {
+      font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1.5px; color: var(--teal-bright); margin-bottom: 1.5rem; display: block;
+    }
+    .cta-inner h2 {
+      font-family: 'Inter', sans-serif;
+      font-size: 3rem;
+      font-weight: 800;
+      color: var(--white);
+      line-height: 1.2;
+      margin-bottom: 1.2rem;
+      letter-spacing: -1px;
+    }
+    .cta-inner p { font-size: 1.1rem; color: rgba(255,255,255,0.75); margin-bottom: 3rem; max-width: 520px; margin-left: auto; margin-right: auto; }
+    .cta-buttons { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .btn-white { background: var(--white); color: var(--teal-dark); border-color: var(--white); }
+    .btn-white:hover { background: var(--teal-pale); transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+    .btn-outline-white { background: transparent; color: var(--white); border: 2px solid rgba(255,255,255,0.4); }
+    .btn-outline-white:hover { border-color: var(--white); background: rgba(255,255,255,0.08); transform: translateY(-3px); }
+
+    /* ── Footer ── */
+    .footer { background: #111; color: var(--white); padding: 4rem 0 2rem; }
+    .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 3rem; margin-bottom: 3rem; }
+    .footer-brand img { height: 44px; margin-bottom: 1rem; }
+    .footer-brand p { font-size: 0.88rem; color: rgba(255,255,255,0.45); line-height: 1.7; }
+    .footer-col h4 { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--teal-bright); margin-bottom: 1rem; }
+    .footer-col a { display: block; font-size: 0.88rem; color: rgba(255,255,255,0.45); text-decoration: none; margin-bottom: 0.5rem; transition: color 0.2s; }
+    .footer-col a:hover { color: var(--white); }
+    .footer-bottom { border-top: 1px solid rgba(255,255,255,0.07); padding-top: 2rem; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+    .footer-bottom p { font-size: 0.8rem; color: rgba(255,255,255,0.3); }
+
+    /* ── Responsive ── */
+    @media (max-width: 968px) {
+      .links {
+        display: none; position: absolute; top: 100%; left: 0; right: 0;
+        background: var(--white); flex-direction: column; align-items: stretch;
+        gap: 0; box-shadow: 0 8px 20px rgba(0,0,0,0.1); z-index: 99;
+      }
+      .links.open { display: flex; }
+      .links a { padding: 1rem 2rem; border-bottom: 1px solid #f0f0f0; font-size: 0.95rem; }
+      .links a:last-child { border-bottom: none; }
+      .links a::after { display: none; }
+      .links a.nav-login { margin: 0.8rem 1.5rem; text-align: center; }
+      .nav-inner { position: relative; }
+      .mobile-toggle { display: block; }
+
+      .hero-inner { grid-template-columns: 1fr; }
+      .hero-visual { display: none; }
+      .hero { padding: 4rem 0 0; }
+      .hero-text { padding-bottom: 4rem; }
+      .hero h1 { font-size: 3rem; }
+
+      .split-grid { grid-template-columns: 1fr; gap: 2rem; }
+      .split-intro { position: static; }
+      .policy-cards { grid-template-columns: 1fr; }
+      .footer-grid { grid-template-columns: 1fr 1fr; gap: 2rem; }
+      .cta-inner { padding: 3rem 2rem; }
+      .cta-inner h2 { font-size: 2.2rem; }
+    }
+
+    @media (max-width: 640px) {
+      .container { padding: 0 1.5rem; }
+      .brand { flex-direction: column; align-items: flex-start; gap: 0.3rem; }
+      .hero h1 { font-size: 2.4rem; }
+      .section-title { font-size: 2.2rem; }
+      .timeline { padding-left: 2.5rem; }
+      .step-dot { left: -2rem; }
+      .footer-grid { grid-template-columns: 1fr; }
+      .footer-bottom { flex-direction: column; text-align: center; }
+      .cta-buttons { flex-direction: column; }
+      .btn { width: 100%; justify-content: center; }
+    }
+  
+
+    /* Mobile header fit fix */
+    @media (max-width: 768px) {
+      .nav .container {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+      }
+
+      .nav-inner {
+        gap: 0.75rem !important;
+        min-width: 0;
+      }
+
+      .brand {
+        flex: 1 1 auto !important;
+        min-width: 0;
+        gap: 0.55rem !important;
+        margin-right: 0 !important;
+      }
+
+      .brand img {
+        height: 42px !important;
+        flex: 0 0 auto;
+      }
+
+      .badge {
+        white-space: normal !important;
+        line-height: 1.25;
+        font-size: 0.7rem !important;
+        max-width: 150px;
+      }
+
+      .mobile-toggle {
+        display: flex !important;
+        flex: 0 0 auto;
+        padding: 0.65rem 0.8rem !important;
+        min-width: 72px;
+        max-width: 92px;
+        white-space: nowrap;
+      }
+
+      .mobile-toggle::before {
+        content: "☰" !important;
+        margin-right: 0.4rem !important;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .badge {
+        max-width: 126px;
+        font-size: 0.66rem !important;
+      }
+
+      .mobile-toggle {
+        min-width: 64px;
+        max-width: 78px;
+        padding: 0.6rem 0.65rem !important;
+      }
+    }
+
+  </style>
+</head>
+<body>
+
+  <header class="nav">
+    <div class="container">
+      <div class="nav-inner">
+        <a class="brand" href="index.html" aria-label="VirtuDrop Home">
+          <img src="assets/logo.png" alt="VirtuDrop logo" />
+          <span class="badge">Professional • Reliable • Structured</span>
+        </a>
+        <button class="mobile-toggle" type="button" data-mobile-toggle>Menu</button>
+        <nav class="links" data-nav-links>
+          <a href="index.html">Home</a>
+          <a href="how-it-works.html" aria-current="page">How It Works</a>
+          <a href="pricing.html">Pricing</a>
+          <a href="zones.html">Delivery Zones</a>
+          <a href="business-clients.html">Business Clients</a>
+          <a href="calculator.html">Calculator</a>
+          <a href="track.html">Track Delivery</a>
+          <a href="contact.html">Contact</a>
+          <a href="auth.html" class="nav-login">Login/Register</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ── Hero ── -->
+    <section class="hero">
+      <div class="container">
+        <div class="hero-inner">
+          <div class="hero-text">
+            <div class="hero-eyebrow">The VirtuDrop Process</div>
+            <h1>From order<br>to <em>delivered</em> —<br>here's how.</h1>
+            <p class="hero-desc">A structured, zone-based delivery service built for businesses and their customers. Clear steps, predictable timelines, no surprises.</p>
+            <div class="hero-cta">
+              <a href="auth.html" class="btn btn-bright">Get Started</a>
+              <a href="pricing.html" class="btn btn-ghost">View Pricing</a>
+            </div>
+          </div>
+          <div class="hero-visual">
+            <div class="hero-visual-label">At a glance</div>
+            <div class="stat-row">
+              <span class="stat-label">Daily order cut-off</span>
+              <span class="stat-value accent">8:00 PM</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">Pickup window</span>
+              <span class="stat-value">8:00 AM – 10:00 AM</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">Delivery timeline</span>
+              <span class="stat-value">1–2 cycles from pickup</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">Same zone rate</span>
+              <span class="stat-value accent">TTD $40</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">Cross zone rate</span>
+              <span class="stat-value accent">TTD $50</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">Online remittance</span>
+              <span class="stat-value">Same evening</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">Cash remittance</span>
+              <span class="stat-value">Weekly</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Step-by-step ── -->
+    <section class="audience-section">
+      <div class="container">
+
+        <div class="split-grid">
+          <div class="split-intro">
+            <div class="section-tag">Step by Step</div>
+            <h2 class="section-title">Two paths,<br>one <em>system</em></h2>
+            <p class="section-desc">The same delivery connects a business client and their customer. Select your role to see your side of the journey.</p>
+
+            <div class="toggle-pills" style="margin-top:2rem;">
+              <button class="pill active" onclick="switchPanel('client', this)">🏢 Business Client</button>
+              <button class="pill" onclick="switchPanel('customer', this)">📦 Customer</button>
+            </div>
+          </div>
+
+          <div>
+            <!-- ── Business Client Steps ── -->
+            <div class="steps-panel active" id="panel-client">
+              <div class="timeline">
+
+                <div class="timeline-step">
+                  <div class="step-dot">1</div>
+                  <div class="step-body">
+                    <div class="step-header">
+                      <span class="step-icon">📝</span>
+                      <span class="step-title">Register your business</span>
+                    </div>
+                    <p class="step-desc">Create your VirtuDrop business account. Once registered, your account is set up and you receive access to your client dashboard.</p>
+                  </div>
+                </div>
+
+                <div class="timeline-step">
+                  <div class="step-dot">2</div>
+                  <div class="step-body">
+                    <div class="step-header">
+                      <span class="step-icon">🔗</span>
+                      <span class="step-title">Get your unique delivery link</span>
+                    </div>
+                    <p class="step-desc">Every business client receives their own unique VirtuDrop link — for example <strong>virtuforms.net/virtudrop/delivery-form.html?business=your-business</strong>. This link is permanently tied to your account.</p>
+                    <div class="step-note">Share this link with your customers via WhatsApp, social media or email. They fill in their own delivery details — no manual order entry needed from you.</div>
+                  </div>
+                </div>
+
+                <div class="timeline-step">
+                  <div class="step-dot">3</div>
+                  <div class="step-body">
+                    <div class="step-header">
+                      <span class="step-icon">📋</span>
+                      <span class="step-title">Submit orders by 8:00 PM</span>
+                    </div>
+                    <p class="step-desc">All orders — whether submitted by your customers through your link or entered manually through your dashboard — must be confirmed by <strong>8:00 PM daily</strong> to be included in the next delivery cycle.</p>
+                  </div>
+                </div>
+
+                <div class="timeline-step">
+                  <div class="step-dot">4</div>
+                  <div class="step-body">
+                    <div class="step-header">
+                      <span class="step-icon">✅</span>
+                      <span class="step-title">Admin reviews and confirms</span>
+                    </div>
+                    <p class="step-desc">Each order is reviewed by the VirtuDrop team before a driver is assigned. The zone is confirmed or corrected if needed, and the order is added to the delivery schedule.</p>
+                  </div>
+                </div>
+
+                <div class="timeline-step">
+                  <div class="step-dot">5</div>
+                  <div class="step-body">
+                    <div class="step-header">
+                      <span class="step-icon">📦</span>
+                      <span class="step-title">Package collected</span>
+                    </div>
+                    <p class="step-desc">Packages are collected either the same evening after order confirmation, or the following morning between <strong>8:00 AM and 10:00 AM</strong>. Packages must be ready by 10:00 AM or they move to the next cycle.</p>
+                    <div class="step-note">Pickup is free for 3 or more packages. A TTD $20 fee applies for fewer than 3.</div>
+                  </div>
+                </div>
+
+                <div class="timeline-step">
+                  <div class="step-dot">6</div>
+                  <div class="step-body">
+                    <div class="step-header">
+                      <span class="step-icon">🚚</span>
+                      <span class="step-title">Delivery runs on schedule</span>
+                    </div>
+                    <p class="step-desc">Deliveries are grouped by zone and completed within <strong>1–2 delivery cycles</strong> from the date of pickup. Specific delivery times are not accommodated — all deliveries run within the scheduled window for that zone and day.</p>
+                  </div>
+                </div>
+
+                <div class="timeline-step">
+                  <div class="step-dot accent">7</div>
+                  <div class="step-body highlight">
+                    <div class="step-header">
+                      <span class="step-icon">💸</span>
+                      <span class="step-title">You receive remittance</span>
+                    </div>
+                    <p class="step-desc">Once delivery is confirmed you receive the package amount minus the delivery fee. Online payments are remitted the same evening. Cash collected on delivery is returned weekly.</p>
+                    <div class="step-note">You can view all remittance records in your client dashboard, filtered by day, week or month.</div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- ── Customer Steps ── -->
+            <div class="steps-panel" id="panel-customer">
+              <div class="timeline">
+
+                <div class="timeline-step">
+                  <div class="step-dot">1</div>
+                  <div class="step-body">
+                    <div class="step-header">
+                      <span class="step-icon">🔗</span>
+                      <span class="step-title">Click your unique link</span>
+                    </div>
+                    <p class="step-desc">Your seller shares a unique VirtuDrop link with you. Clicking it opens a delivery form that is already tied to that business — no need to search for them or enter their details.</p>
+                  </div>
+                </div>
+
+                <div class="timeline-step">
+                  <div class="step-dot">2</div>
+                  <div class="step-body">
+                    <div class="step-header">
+                      <span class="step-icon">📋</span>
+                      <span class="step-title">Fill in your delivery details</span>
+                    </div>
+                    <p class="step-desc">Enter your name, phone number, and delivery address. You can share your location in two ways:</p>
+                    <ul style="margin:0.6rem 0 0 1rem; font-size:0.9rem; color:var(--grey); line-height:1.8;">
+                      <li><strong>Paste a Google Maps link</strong> or use your current location — the system detects your zone automatically</li>
+                      <li><strong>Enter your address manually</strong> — street name and area are required</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div class="timeline-step">
+                  <div class="step-dot">3</div>
+                  <div class="step-body">
+                    <div class="step-header">
+                      <span class="step-icon">💳</span>
+                      <span class="step-title">Confirm payment details</span>
+                    </div>
+                    <p class="step-desc">Let the form know whether you will be paying cash on delivery, or whether you have already paid the seller online. This ensures the driver knows what to collect at your door.</p>
+                    <div class="step-note">COD payments can be made by cash or LINX at the point of delivery.</div>
+                  </div>
+                </div>
+
+                <div class="timeline-step">
+                  <div class="step-dot">4</div>
+                  <div class="step-body">
+                    <div class="step-header">
+                      <span class="step-icon">📲</span>
+                      <span class="step-title">Receive your tracking link</span>
+                    </div>
+                    <p class="step-desc">After submitting your order you receive a unique tracking link via WhatsApp. Click it any time to see your delivery status — no account or password needed.</p>
+                    <div class="step-note">Lost your link? Visit the Track Delivery page and enter your phone number and order ID instead.</div>
+                  </div>
+                </div>
+
+                <div class="timeline-step">
+                  <div class="step-dot">5</div>
+                  <div class="step-body">
+                    <div class="step-header">
+                      <span class="step-icon">📍</span>
+                      <span class="step-title">Driver contacts you on delivery day</span>
+                    </div>
+                    <p class="step-desc">On your scheduled delivery day the driver will reach out to confirm they are on the way. Please ensure you or someone is available to receive the package.</p>
+                  </div>
+                </div>
+
+                <div class="timeline-step">
+                  <div class="step-dot accent">6</div>
+                  <div class="step-body highlight">
+                    <div class="step-header">
+                      <span class="step-icon">✅</span>
+                      <span class="step-title">Delivery confirmed via WhatsApp</span>
+                    </div>
+                    <p class="step-desc">Once your package is delivered, the seller receives a WhatsApp confirmation. Your tracking link will show your order as Delivered.</p>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Policy strip ── -->
+    <section class="policies-section">
+      <div class="container">
+        <div class="section-tag">Good to Know</div>
+        <h2 class="section-title" style="max-width:500px;">Key policies<br>that keep things <em>fair</em></h2>
+        <p class="section-desc">A few important rules that apply to every delivery.</p>
+
+        <div class="policy-cards">
+
+          <div class="policy-card">
+            <span class="policy-card-icon">❌</span>
+            <h4>Cancellations</h4>
+            <p>If a customer cancels before the driver attempts delivery, no charge applies. Please notify us as early as possible so the route can be adjusted.</p>
+          </div>
+
+          <div class="policy-card">
+            <span class="policy-card-icon">🔄</span>
+            <h4>Returns</h4>
+            <p>Returns are treated as a full standard delivery, charged at the applicable zone rate. Returns run on scheduled days only — not on-demand.</p>
+          </div>
+
+          <div class="policy-card">
+            <span class="policy-card-icon">📦</span>
+            <h4>Package Limits</h4>
+            <p>Maximum weight is 25 lbs per package. Oversized items are not accepted. Contact us before submitting if you are unsure.</p>
+          </div>
+
+          <div class="policy-card">
+            <span class="policy-card-icon">🗺️</span>
+            <h4>Route Planning</h4>
+            <p>Routes are planned in advance and cannot be adjusted for last-minute changes. Specific delivery times are not accommodated for standard deliveries.</p>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ── CTA ── -->
+    <section class="cta-section">
+      <div class="container">
+        <div class="cta-inner">
+          <div class="cta-content">
+            <span class="cta-eyebrow">Ready to get started?</span>
+            <h2>Structured delivery<br>starts here.</h2>
+            <p>Register your business today and get your unique VirtuDrop delivery link — share it with customers and let the system do the rest.</p>
+            <div class="cta-buttons">
+              <a href="auth.html" class="btn btn-white">Create a Business Account</a>
+              <a href="contact.html" class="btn btn-outline-white">Talk to Us First</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ── Footer ── -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <img src="assets/logo.png" alt="VirtuDrop" onerror="this.style.display='none'" />
+          <p>Zone-based, scheduled delivery for businesses across Trinidad. Structured logistics you can count on.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Services</h4>
+          <a href="pricing.html">Pricing</a>
+          <a href="zones.html">Delivery Zones</a>
+          <a href="calculator.html">Calculator</a>
+          <a href="business-clients.html">Business Clients</a>
+        </div>
+        <div class="footer-col">
+          <h4>Company</h4>
+          <a href="how-it-works.html">How It Works</a>
+          <a href="about.html">About</a>
+          <a href="contact.html">Contact</a>
+          <a href="faq.html">FAQ</a>
+        </div>
+        <div class="footer-col">
+          <h4>Account</h4>
+          <a href="auth.html">Login</a>
+          <a href="auth.html">Register</a>
+          <a href="track.html">Track Delivery</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>© 2026 VirtuDrop · A VirtuForms Ltd Service · Trinidad and Tobago</p>
+        <p>797-3542 &nbsp;|&nbsp; 470-3704</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // ── Mobile nav ─────────────────────────────────────────────
+    const toggle   = document.querySelector('[data-mobile-toggle]');
+    const navLinks = document.querySelector('[data-nav-links]');
+    if (toggle && navLinks) {
+      toggle.addEventListener('click', () => {
+        navLinks.classList.toggle('open');
+        toggle.textContent = navLinks.classList.contains('open') ? 'Close' : 'Menu';
+      });
+    }
+
+    // ── Tab switcher ───────────────────────────────────────────
+    function switchPanel(id, btn) {
+      document.querySelectorAll('.steps-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.pill').forEach(b => b.classList.remove('active'));
+      document.getElementById('panel-' + id).classList.add('active');
+      btn.classList.add('active');
+      // Re-trigger step animations for the new panel
+      document.querySelectorAll('#panel-' + id + ' .timeline-step').forEach((el, i) => {
+        el.classList.remove('visible');
+        setTimeout(() => el.classList.add('visible'), i * 120);
+      });
+    }
+
+    // ── Scroll-triggered step reveal ──────────────────────────
+    const stepObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) entry.target.classList.add('visible');
+      });
+    }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+
+    document.querySelectorAll('.timeline-step').forEach(el => stepObserver.observe(el));
+  </script>
+
+</body>
+</html>

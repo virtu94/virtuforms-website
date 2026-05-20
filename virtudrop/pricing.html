@@ -1,0 +1,1395 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pricing | VirtuDrop</title>
+  <meta name="description" content="VirtuDrop delivery pricing – transparent rates for business clients in Trinidad.">
+  <link rel="icon" href="assets/logo.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      line-height: 1.7;
+      color: #1a1a1a;
+      background: #f8f9fa;
+    }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
+
+    /* Nav Bar */
+    .nav {
+      background: #ffffff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    /* Navbar container */
+    .nav .container {
+      max-width: none;
+      width: 100%;
+      margin: 0;
+      padding: 0 2.5rem;
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      gap: 2rem;
+      padding: 1rem 0;
+    }
+
+    /* Logo + slogan */
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      text-decoration: none;
+      flex-shrink: 0;
+      margin-right: auto;
+    }
+
+    .brand img {
+      height: 52px;
+      width: auto;
+    }
+
+    .badge {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #2a9d8f;
+      letter-spacing: 0.4px;
+      white-space: nowrap;
+    }
+
+    /* Nav links */
+    .links {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 1.8rem;
+      margin-left: auto;
+      flex-wrap: nowrap;
+      white-space: nowrap;
+    }
+
+    .links a {
+      text-decoration: none;
+      color: #1a1a1a;
+      font-weight: 500;
+      font-size: 0.92rem;
+      white-space: nowrap;
+    }
+
+    /* Login button */
+    .links a.nav-login {
+      background: #2a9d8f;
+      color: #ffffff !important;
+      padding: 0.5rem 1.2rem;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+
+    .links a.nav-login:hover {
+      background: #238277;
+    }
+
+    /* Mobile */
+    .mobile-toggle {
+      display: none;
+      align-items: center;
+      justify-content: center;
+
+      background: linear-gradient(135deg, #2a9d8f 0%, #238277 100%);
+      color: #ffffff;
+
+      border: none;
+      border-radius: 10px;
+
+      padding: 0.7rem 1rem;
+
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+
+      cursor: pointer;
+
+      box-shadow: 0 4px 12px rgba(42,157,143,0.25);
+
+      transition: all 0.25s ease;
+    }
+
+    .mobile-toggle:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(42,157,143,0.35);
+      background: linear-gradient(135deg, #31b3a3 0%, #2a9d8f 100%);
+    }
+
+    .mobile-toggle:active {
+      transform: scale(0.97);
+    }
+
+    .mobile-toggle::before {
+      content: "☰";
+      margin-right: 0.5rem;
+      font-size: 1rem;
+    }
+
+    /* ── Page ── */
+    .page { padding: 5rem 0; animation: fadeIn 0.8s ease-out; }
+
+    @keyframes fadeIn    { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes fadeInUp  { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+    .page-header { text-align: center; margin-bottom: 4rem; animation: fadeInUp 0.8s ease-out; }
+    .page-header h1 { font-size: 3.5rem; font-weight: 700; color: #1a1a1a; margin-bottom: 1.5rem; }
+    .page-header p  { font-size: 1.3rem; color: #4a4a4a; line-height: 1.7; }
+
+    /* ── Section heading ── */
+    .section-heading {
+      text-align: center;
+      margin: 4rem 0 2.5rem;
+    }
+    .section-heading .section-line {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      justify-content: center;
+      margin-bottom: 1rem;
+    }
+    .section-heading .section-line::before,
+    .section-heading .section-line::after {
+      content: '';
+      flex: 1;
+      max-width: 80px;
+      height: 2px;
+      background: #2a9d8f;
+      border-radius: 2px;
+    }
+    .section-heading .section-line span {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #2a9d8f;
+    }
+    .section-heading h2 { font-size: 2rem; font-weight: 700; color: #1a1a1a; margin-bottom: 0.6rem; }
+    .section-heading p  { font-size: 1rem; color: #4a4a4a; line-height: 1.7; }
+
+    /* ── Pricing Cards ── */
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+      gap: 2rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 2.5rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      transition: all 0.4s ease;
+      border: 2px solid transparent;
+      position: relative;
+      overflow: hidden;
+      animation: fadeInUp 0.8s ease-out both;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 4px;
+      background: linear-gradient(90deg, #2a9d8f 0%, #3fb8a8 100%);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.4s ease;
+    }
+    .card:hover::before { transform: scaleX(1); }
+    .card:hover { transform: translateY(-6px); box-shadow: 0 12px 40px rgba(0,0,0,0.1); border-color: #2a9d8f; }
+
+    .card:nth-child(1) { animation-delay: 0.1s; }
+    .card:nth-child(2) { animation-delay: 0.2s; }
+    .card:nth-child(3) { animation-delay: 0.3s; }
+    .card:nth-child(4) { animation-delay: 0.4s; }
+
+    .card.featured {
+      background: linear-gradient(135deg, #2a9d8f 0%, #3fb8a8 100%);
+      border-color: transparent;
+    }
+    .card.featured::before { display: none; }
+    .card.featured h3, .card.featured .price { color: #ffffff; }
+    .card.featured .price-label { color: rgba(255,255,255,0.85); }
+    .card.featured .help { background: rgba(255,255,255,0.15); border-left-color: #ffffff; color: rgba(255,255,255,0.95); }
+    .card.featured:hover { transform: translateY(-6px); box-shadow: 0 12px 40px rgba(42,157,143,0.35); }
+
+    .card.premium {
+      background: linear-gradient(135deg, #1a1a2e 0%, #0d2b28 100%);
+      border-color: transparent;
+    }
+    .card.premium::before { background: linear-gradient(90deg, #14d4ae, #2a9d8f); transform: scaleX(1); }
+    .card.premium h3, .card.premium .price { color: #14d4ae; }
+    .card.premium .price-label { color: rgba(255,255,255,0.7); }
+    .card.premium .help { background: rgba(20,212,174,0.1); border-left-color: #14d4ae; color: rgba(255,255,255,0.85); }
+    .card.premium:hover { transform: translateY(-6px); box-shadow: 0 12px 40px rgba(0,0,0,0.3); }
+
+    .card.remote-card {
+      border-color: #e07a3a;
+      background: linear-gradient(135deg, #fff8f0 0%, #ffffff 100%);
+    }
+    .card.remote-card::before {
+      background: linear-gradient(90deg, #e07a3a 0%, #f0a060 100%);
+      transform: scaleX(1);
+    }
+    .card.remote-card .price {
+      color: #e07a3a;
+    }
+    .card.remote-card .help {
+      background: #fff8f0;
+      border-left-color: #e07a3a;
+    }
+
+    .card-cta {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      margin-top: 1.2rem;
+      padding: 0.7rem 1.2rem;
+      background: #2a9d8f;
+      border: 2px solid #2a9d8f;
+      border-radius: 8px;
+      color: #ffffff;
+      font-size: 0.88rem;
+      font-weight: 700;
+      text-decoration: none;
+      transition: all 0.25s ease;
+    }
+    .card-cta:hover {
+      background: #238277;
+      border-color: #238277;
+      color: #ffffff;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(42,157,143,0.3);
+    }
+
+    .card-cta.remote {
+      background: #e07a3a;
+      border-color: #e07a3a;
+    }
+    .card-cta.remote:hover {
+      background: #c96529;
+      border-color: #c96529;
+      box-shadow: 0 4px 12px rgba(224,122,58,0.3);
+    }
+
+
+    .card.contact-card {
+      /* removed - Direct Delivery no longer offered */
+    }
+
+    .card-tag {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      padding: 0.35rem 0.85rem;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      z-index: 2;
+    }
+
+    .card.featured h3,
+    .card.premium h3 {
+      padding-right: 130px;
+    }
+    .tag-popular  { background: #ffffff; color: #2a9d8f; }
+    .tag-premium  { background: #14d4ae; color: #0d2b28; }
+    .tag-special  { background: #e07a3a; color: #ffffff; }
+    .tag-remote   { background: #e07a3a; color: #ffffff; }
+
+    .calc-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-top: 1.2rem;
+      padding: 0.6rem 1.2rem;
+      background: #f0f9f8;
+      border: 2px solid #2a9d8f;
+      border-radius: 8px;
+      color: #2a9d8f;
+      font-size: 0.88rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.25s ease;
+    }
+    .calc-link:hover {
+      background: #2a9d8f;
+      color: #ffffff;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(42,157,143,0.3);
+    }
+
+    .card h3 { font-size: 1.4rem; font-weight: 700; color: #1a1a1a; margin-bottom: 1.5rem; line-height: 1.3; }
+    .price-display { margin-bottom: 1.5rem; }
+    .price { font-size: 3rem; font-weight: 800; color: #2a9d8f; line-height: 1; display: block; margin-bottom: 0.4rem; }
+    .price-label { font-size: 0.95rem; color: #4a4a4a; font-weight: 500; }
+    .help { padding: 1rem 1.2rem; background: #f8f9fa; border-radius: 10px; font-size: 0.92rem; color: #4a4a4a; line-height: 1.6; border-left: 3px solid #2a9d8f; }
+
+    /* ── Pickup Fee Banner ── */
+    .pickup-fee-banner {
+      background: #0d2b28;
+      border-radius: 14px;
+      padding: 1.8rem 2.2rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 3rem;
+      animation: fadeInUp 0.8s ease-out 0.4s both;
+    }
+    .pickup-fee-item {
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+    }
+    .pickup-fee-icon {
+      width: 52px; height: 52px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem;
+      flex-shrink: 0;
+    }
+    .pickup-fee-icon.free { background: rgba(20,212,174,0.15); }
+    .pickup-fee-icon.paid { background: rgba(224,122,58,0.15); }
+    .pickup-fee-text {}
+    .pickup-fee-label { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: rgba(255,255,255,0.5); margin-bottom: 0.2rem; }
+    .pickup-fee-value { font-size: 1.3rem; font-weight: 700; color: #ffffff; }
+    .pickup-fee-value.free-val { color: #14d4ae; }
+    .pickup-fee-value.paid-val { color: #f0a060; }
+    .pickup-fee-desc { font-size: 0.85rem; color: rgba(255,255,255,0.6); margin-top: 0.1rem; }
+
+    /* ── Cut-off Times ── */
+    .cutoff-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-bottom: 3rem;
+      animation: fadeInUp 0.8s ease-out 0.3s both;
+    }
+    .cutoff-item {
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 1.4rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      border-left: 4px solid #2a9d8f;
+      transition: transform 0.3s ease;
+    }
+    .cutoff-item:hover { transform: translateY(-3px); }
+    .cutoff-item.warning { border-left-color: #e07a3a; }
+    .cutoff-time { font-size: 1.6rem; font-weight: 800; color: #2a9d8f; line-height: 1; white-space: nowrap; }
+    .cutoff-item.warning .cutoff-time { color: #e07a3a; }
+    .cutoff-label { font-size: 0.85rem; font-weight: 600; color: #1a1a1a; margin-bottom: 0.2rem; }
+    .cutoff-desc  { font-size: 0.8rem; color: #6a6a6a; line-height: 1.5; }
+
+    /* ── Policy Cards ── */
+    .policy-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 3rem;
+      animation: fadeInUp 0.8s ease-out 0.3s both;
+    }
+    .policy-card {
+      background: #ffffff;
+      border-radius: 14px;
+      padding: 1.8rem;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+      transition: transform 0.3s ease;
+    }
+    .policy-card:hover { transform: translateY(-4px); }
+    .policy-icon { font-size: 1.8rem; margin-bottom: 0.8rem; display: block; }
+    .policy-card h4 { font-size: 1rem; font-weight: 700; color: #1a1a1a; margin-bottom: 0.6rem; }
+    .policy-card p  { font-size: 0.9rem; color: #4a4a4a; line-height: 1.7; }
+
+    /* ── Pickup Structure ── */
+    .pickup-structure {
+      background: #f0f9f8;
+      border-radius: 14px;
+      padding: 2rem;
+      border-left: 4px solid #2a9d8f;
+      margin-bottom: 3rem;
+      animation: fadeInUp 0.8s ease-out 0.3s both;
+    }
+    .pickup-structure h4 { font-size: 1rem; font-weight: 700; color: #2a9d8f; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1rem; }
+    .pickup-rows { display: flex; flex-direction: column; gap: 0.6rem; }
+    .pickup-row { display: flex; align-items: flex-start; gap: 0.8rem; font-size: 0.95rem; color: #1a1a1a; }
+    .pickup-row::before { content: '→'; color: #2a9d8f; font-weight: 700; flex-shrink: 0; margin-top: 0.05rem; }
+
+    /* ── Notice ── */
+    .notice {
+      padding: 1.8rem 2rem;
+      background: #f0f9f8;
+      border-left: 4px solid #2a9d8f;
+      border-radius: 12px;
+      font-size: 1rem;
+      color: #1a1a1a;
+      line-height: 1.8;
+      margin-bottom: 2rem;
+      animation: fadeInUp 0.8s ease-out 0.5s both;
+    }
+    .notice strong { color: #2a9d8f; font-weight: 700; }
+
+    /* ── Trial Banner ── */
+    .trial-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: 1.2rem;
+      padding: 1.8rem 2rem;
+      background: #fffbea;
+      border: 2px solid #f0c040;
+      border-radius: 14px;
+      margin: 2rem 0 1rem;
+      animation: fadeInUp 0.8s ease-out 0.3s both;
+    }
+    .trial-banner-icon { font-size: 2rem; flex-shrink: 0; line-height: 1; margin-top: 0.1rem; }
+    .trial-banner-body h3 { font-size: 1.1rem; font-weight: 700; color: #1a1a1a; margin-bottom: 0.4rem; }
+    .trial-banner-body p  { font-size: 0.95rem; color: #4a4a4a; line-height: 1.7; margin: 0; }
+    .trial-banner-body a  { color: #2a9d8f; font-weight: 600; text-decoration: none; }
+    .trial-banner-body a:hover { text-decoration: underline; }
+
+    /* ── Plans heading ── */
+    .plans-heading { text-align: center; margin: 3rem 0 2.5rem; }
+    .plans-heading h2 { font-size: 2.2rem; font-weight: 700; color: #1a1a1a; margin-bottom: 0.7rem; }
+    .plans-heading p  { font-size: 1.1rem; color: #4a4a4a; line-height: 1.7; }
+    .plans-heading .section-line { display: flex; align-items: center; gap: 1rem; justify-content: center; margin-bottom: 1.2rem; }
+    .plans-heading .section-line::before,
+    .plans-heading .section-line::after { content: ''; flex: 1; max-width: 80px; height: 2px; background: #2a9d8f; border-radius: 2px; }
+    .plans-heading .section-line span { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #2a9d8f; }
+
+    /* ── Weekly Plan ── */
+    .weekly-plan-card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 2.5rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      border: 2px solid transparent;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.4s ease;
+      animation: fadeInUp 0.8s ease-out 0.2s both;
+      max-width: 700px;
+      margin: 0 auto 4rem;
+    }
+    .weekly-plan-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: linear-gradient(90deg, #2a9d8f 0%, #3fb8a8 100%); }
+    .weekly-plan-card:hover { transform: translateY(-6px); box-shadow: 0 12px 40px rgba(0,0,0,0.1); border-color: #2a9d8f; }
+    .weekly-plan-header { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem; }
+    .weekly-plan-header h3 { font-size: 1.7rem; font-weight: 700; color: #1a1a1a; }
+    .weekly-plan-price { font-size: 2.8rem; font-weight: 800; color: #2a9d8f; line-height: 1; }
+    .weekly-plan-price span { font-size: 1rem; font-weight: 500; color: #4a4a4a; display: block; margin-top: 0.3rem; }
+    .weekly-plan-table { width: 100%; border-collapse: collapse; font-size: 1rem; }
+    .weekly-plan-table tr { border-bottom: 1px solid #f0f0f0; }
+    .weekly-plan-table tr:last-child { border-bottom: none; }
+    .weekly-plan-table td { padding: 0.9rem 0.5rem; color: #1a1a1a; vertical-align: top; }
+    .weekly-plan-table td:first-child { font-weight: 700; color: #2a9d8f; width: 45%; font-size: 0.95rem; }
+
+    /* ── Monthly Plans ── */
+    .monthly-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem; margin-bottom: 2.5rem; }
+
+    .plan-card {
+      border-radius: 16px; padding: 2.5rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      border: 2px solid transparent;
+      position: relative; overflow: hidden;
+      transition: all 0.4s ease;
+    }
+    .plan-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 5px; transform: scaleX(0); transform-origin: left; transition: transform 0.4s ease; }
+    .plan-card:hover::before { transform: scaleX(1); }
+    .plan-card:hover { transform: translateY(-8px); }
+
+    .plan-card.bronze { background: linear-gradient(145deg, #fdf6ee 0%, #faebd7 100%); border-color: #c8864a; box-shadow: 0 6px 30px rgba(180,110,50,0.18); transform: scale(1.03); }
+    .plan-card.bronze::before { background: linear-gradient(90deg, #8b5a2b 0%, #6b3f1a 100%); }
+    .plan-card.bronze:hover { transform: scale(1.05) translateY(-6px); box-shadow: 0 16px 45px rgba(180,110,50,0.28); border-color: #8b5a2b; }
+
+    .plan-card.silver { background: linear-gradient(145deg, #f7f7f9 0%, #eaeaee 100%); border-color: #a0a0b0; box-shadow: 0 4px 20px rgba(120,120,140,0.12); }
+    .plan-card.silver::before { background: linear-gradient(90deg, #9090a8 0%, #6e6e88 100%); }
+    .plan-card.silver:hover { box-shadow: 0 12px 40px rgba(120,120,140,0.22); border-color: #6e6e88; }
+    .plan-card.silver:hover::before { background: linear-gradient(90deg, #6e6e88 0%, #4e4e68 100%); }
+
+    .plan-card.gold { background: linear-gradient(145deg, #fffbea 0%, #fdf0c0 100%); border-color: #d4a017; box-shadow: 0 4px 20px rgba(200,160,0,0.14); }
+    .plan-card.gold::before { background: linear-gradient(90deg, #b8860b 0%, #8b6508 100%); }
+    .plan-card.gold:hover { box-shadow: 0 12px 40px rgba(200,160,0,0.28); border-color: #8b6508; }
+    .plan-card.gold:hover::before { background: linear-gradient(90deg, #8b6508 0%, #614500 100%); }
+
+    .plan-badge { position: absolute; top: 1.2rem; right: 1.2rem; padding: 0.35rem 0.9rem; border-radius: 20px; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.5px; }
+    .plan-badge.start-here { background: #8b5a2b; color: #ffffff; }
+    .plan-badge.silver-badge { background: #6e6e88; color: #ffffff; }
+    .plan-badge.gold-badge { background: #b8860b; color: #ffffff; }
+
+    .plan-tier { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #2a9d8f; margin-bottom: 0.4rem; }
+    .plan-card.bronze .plan-tier  { color: #8b5a2b; }
+    .plan-card.silver .plan-tier  { color: #6e6e88; }
+    .plan-card.gold   .plan-tier  { color: #b8860b; }
+    .plan-card.bronze .plan-monthly-price { color: #8b5a2b; }
+    .plan-card.silver .plan-monthly-price { color: #6e6e88; }
+    .plan-card.gold   .plan-monthly-price { color: #b8860b; }
+
+    .plan-card h3 { font-size: 1.8rem; font-weight: 700; color: #1a1a1a; margin-bottom: 1.5rem; }
+    .plan-price-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: nowrap;
+    }
+
+    .plan-monthly-price {
+      font-size: 2.8rem;
+      font-weight: 800;
+      color: #2a9d8f;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .plan-price-meta {
+      font-size: 0.9rem;
+      color: #4a4a4a;
+      line-height: 1.5;
+      padding-bottom: 0.2rem;
+      min-width: 110px;
+    }
+    .plan-price-meta strong { display: block; font-size: 1rem; color: #1a1a1a; }
+
+    .plan-details { display: flex; flex-direction: column; gap: 0.7rem; margin-bottom: 1.5rem; }
+    .plan-detail-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.95rem; padding: 0.6rem 0; border-bottom: 1px solid #f0f0f0; }
+    .plan-detail-row:last-child { border-bottom: none; }
+    .plan-detail-label { color: #6a6a6a; font-weight: 500; }
+    .plan-detail-value { font-weight: 700; color: #1a1a1a; }
+
+    .plan-conditions { background: #f8f9fa; border-radius: 10px; padding: 1.2rem; margin-top: 1.5rem; }
+    .plan-conditions p { font-size: 0.85rem; color: #6a6a6a; line-height: 1.6; margin: 0; font-style: italic; }
+
+    .monthly-conditions {
+      background: #f0f9f8; border-left: 4px solid #2a9d8f;
+      border-radius: 12px; padding: 2rem; margin-bottom: 1.5rem;
+      animation: fadeInUp 0.8s ease-out 0.4s both;
+    }
+    .monthly-conditions h4 { font-size: 1rem; font-weight: 700; color: #2a9d8f; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    .conditions-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 2rem; }
+    .condition-item { display: flex; align-items: flex-start; gap: 0.6rem; font-size: 0.95rem; color: #1a1a1a; line-height: 1.5; }
+    .condition-item::before { content: '✓'; color: #2a9d8f; font-weight: 700; flex-shrink: 0; margin-top: 0.05rem; }
+    .monthly-note { margin-top: 1rem; font-size: 0.9rem; color: #4a4a4a; font-style: italic; }
+
+    /* ── CTA ── */
+    .cta-section {
+      background: linear-gradient(135deg, #2a9d8f 0%, #3fb8a8 100%);
+      color: #ffffff;
+      padding: 4rem 3rem;
+      border-radius: 20px;
+      text-align: center;
+      margin-top: 5rem;
+      box-shadow: 0 10px 40px rgba(42,157,143,0.3);
+      animation: fadeInUp 0.8s ease-out 0.5s both;
+    }
+    .cta-section h2 { font-size: 2.5rem; font-weight: 700; margin-bottom: 1.5rem; }
+    .cta-section p  { font-size: 1.2rem; margin-bottom: 2.5rem; opacity: 0.95; line-height: 1.7; }
+
+    .btn {
+      display: inline-block;
+      padding: 1.2rem 2.5rem;
+      border-radius: 10px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1.1rem;
+      transition: all 0.3s ease;
+      border: 2px solid #ffffff;
+      color: #2a9d8f;
+      background: #ffffff;
+      cursor: pointer;
+      letter-spacing: 0.3px;
+    }
+    .btn:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,0.2); background: #f8f9fa; }
+
+    /* ── Footer ── */
+    .footer {
+      background: #111;
+      color: #ffffff;
+      padding: 4rem 0 2rem;
+      margin-top: 6rem;
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 3rem;
+      margin-bottom: 3rem;
+    }
+
+    .footer-brand img {
+      height: 44px;
+      margin-bottom: 1rem;
+    }
+
+    .footer-brand p {
+      font-size: 0.88rem;
+      color: rgba(255,255,255,0.45);
+      line-height: 1.7;
+    }
+
+    .footer-col h4 {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #14d4ae;
+      margin-bottom: 1rem;
+    }
+
+    .footer-col a {
+      display: block;
+      font-size: 0.88rem;
+      color: rgba(255,255,255,0.45);
+      text-decoration: none;
+      margin-bottom: 0.5rem;
+      transition: color 0.2s;
+    }
+
+    .footer-col a:hover {
+      color: #ffffff;
+    }
+
+    .footer-bottom {
+      border-top: 1px solid rgba(255,255,255,0.07);
+      padding-top: 2rem;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .footer-bottom p {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.3);
+    }
+
+    @media (max-width: 768px) {
+      .footer-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .footer-bottom {
+        flex-direction: column;
+        text-align: center;
+      }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 968px) {
+      .links {
+        display: none;
+        position: absolute;
+        top: 100%; left: 0; right: 0;
+        background: #ffffff;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        z-index: 99;
+      }
+      .links.open { display: flex; }
+      .links a { padding: 1rem 2rem; border-bottom: 1px solid #f0f0f0; font-size: 1rem; }
+      .links a:last-child { border-bottom: none; }
+      .links a::after { display: none; }
+      .nav-inner { position: relative; }
+      .mobile-toggle { display: block; }
+      .pickup-fee-banner { grid-template-columns: 1fr; }
+      .cutoff-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 640px) {
+      .container { padding: 0 1.5rem; }
+      .brand { flex-direction: column; align-items: flex-start; gap: 0.3rem; }
+      .page { padding: 3rem 0; }
+      .page-header h1 { font-size: 2rem; }
+      .page-header p { font-size: 1.1rem; }
+      .card { padding: 2rem; }
+      .price { font-size: 2.5rem; }
+      .cutoff-grid { grid-template-columns: 1fr; }
+      .conditions-cols { grid-template-columns: 1fr; }
+      .plan-card.bronze { transform: scale(1); }
+      .plan-card.bronze:hover { transform: translateY(-6px); }
+      .trial-banner { flex-direction: column; gap: 0.8rem; }
+      .cta-section { padding: 3rem 2rem; }
+      .cta-section h2 { font-size: 2rem; }
+      .weekly-plan-header { flex-direction: column; }
+    }
+  
+
+    /* Mobile header fit fix */
+    @media (max-width: 768px) {
+      .nav .container {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+      }
+
+      .nav-inner {
+        gap: 0.75rem !important;
+        min-width: 0;
+      }
+
+      .brand {
+        flex: 1 1 auto !important;
+        min-width: 0;
+        gap: 0.55rem !important;
+        margin-right: 0 !important;
+      }
+
+      .brand img {
+        height: 42px !important;
+        flex: 0 0 auto;
+      }
+
+      .badge {
+        white-space: normal !important;
+        line-height: 1.25;
+        font-size: 0.7rem !important;
+        max-width: 150px;
+      }
+
+      .mobile-toggle {
+        display: flex !important;
+        flex: 0 0 auto;
+        padding: 0.65rem 0.8rem !important;
+        min-width: 72px;
+        max-width: 92px;
+        white-space: nowrap;
+      }
+
+      .mobile-toggle::before {
+        content: "☰" !important;
+        margin-right: 0.4rem !important;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .badge {
+        max-width: 126px;
+        font-size: 0.66rem !important;
+      }
+
+      .mobile-toggle {
+        min-width: 64px;
+        max-width: 78px;
+        padding: 0.6rem 0.65rem !important;
+      }
+    }
+
+  
+
+    /* Mobile pricing overflow fix */
+    @media (max-width: 760px) {
+      html, body { max-width: 100%; overflow-x: hidden; }
+      .container { width: 100%; max-width: 100%; padding-left: 1rem !important; padding-right: 1rem !important; }
+      .pricing-grid, .monthly-grid, .conditions-cols, .cutoff-grid, .pickup-fee-banner { grid-template-columns: 1fr !important; }
+      .plan-card, .weekly-plan-card, .pricing-card, .trial-banner, .monthly-conditions, .comparison-card {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        padding-left: 1.25rem;
+        padding-right: 1.25rem;
+      }
+      .plan-card.bronze { transform: none !important; }
+      .plan-card.bronze:hover { transform: translateY(-4px) !important; }
+      .plan-price-row {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 0.4rem;
+      }
+      .plan-monthly-price, .weekly-plan-price, .price {
+        font-size: clamp(2rem, 12vw, 2.7rem) !important;
+        line-height: 1.1;
+        overflow-wrap: anywhere;
+      }
+      .plan-price-meta {
+        min-width: 0;
+        text-align: center;
+        padding-bottom: 0;
+      }
+      .plan-detail-row {
+        align-items: flex-start;
+        gap: 0.8rem;
+      }
+      .plan-detail-label, .plan-detail-value, .plan-conditions p, .condition-item {
+        overflow-wrap: anywhere;
+      }
+    }
+
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="container">
+      <div class="nav-inner">
+        <a class="brand" href="index.html" aria-label="VirtuDrop Home">
+          <img src="assets/logo.png" alt="VirtuDrop logo" />
+          <span class="badge">Professional • Reliable • Structured</span>
+        </a>
+        <button class="mobile-toggle" type="button" data-mobile-toggle>Menu</button>
+        <nav class="links" data-nav-links>
+          <a href="index.html">Home</a>
+          <a href="how-it-works.html">How It Works</a>
+          <a href="pricing.html">Pricing</a>
+          <a href="zones.html">Delivery Zones</a>
+          <a href="business-clients.html">Business Clients</a>
+          <a href="calculator.html">Calculator</a>
+          <a href="track.html">Track Delivery</a>
+          <a href="contact.html">Contact</a>
+          <a href="auth.html" class="nav-login">Login/Register</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="page">
+      <div class="container">
+
+        <div class="page-header">
+          <h1>Pricing &amp; Plans</h1>
+          <p>Transparent, structured pricing built for business clients across Trinidad.</p>
+        </div>
+
+        <!-- ── Delivery Pricing ── -->
+        <div class="section-heading">
+          <div class="section-line"><span>Delivery Rates</span></div>
+          <h2>Standard Delivery</h2>
+          <p>Per-package rates based on zone coverage. Orders must be submitted by 8:00 PM daily.</p>
+        </div>
+
+        <div class="pricing-grid">
+
+          <div class="card featured">
+            <span class="card-tag tag-popular">MOST COMMON</span>
+            <h3>Same Zone Delivery</h3>
+            <div class="price-display">
+              <span class="price">$40</span>
+              <span class="price-label">per package</span>
+            </div>
+            <p class="help">Pickup and drop-off within the same delivery zone. Delivered within 1–2 days from pickup on your zone's scheduled delivery days.</p>
+          </div>
+
+          <div class="card">
+            <h3>Cross Zone Delivery</h3>
+            <div class="price-display">
+              <span class="price">$50</span>
+              <span class="price-label">per package</span>
+            </div>
+            <p class="help">Pickup and drop-off across different zones. Delivery follows the schedule of the destination zone.</p>
+          </div>
+
+          <div class="card premium">
+            <span class="card-tag tag-premium">URGENT</span>
+            <h3>Priority Same-Day</h3>
+            <div class="price-display">
+              <span class="price" style="font-size:1.8rem;">Contact Us</span>
+              <span class="price-label">subject to availability · quoted per request</span>
+            </div>
+            <p class="help">For urgent deliveries that cannot wait for the next scheduled cycle. Subject to route availability. Contact us to confirm whether it can be accommodated and to receive a quote.</p>
+          </div>
+
+          <div class="card remote-card" style="grid-column: 1 / -1; max-width: 480px; margin: 0 auto;">
+            <span class="card-tag tag-remote">CONTACT FIRST</span>
+            <h3>Remote Areas</h3>
+            <div class="price-display">
+              <span class="price" style="font-size:1.8rem;">Contact Us</span>
+              <span class="price-label">scheduled delivery only · subject to route availability</span>
+            </div>
+            <p class="help">Remote areas are handled separately from standard delivery cycles. Please contact us first so we can confirm whether the area can be serviced, advise on scheduling, and provide the correct rate based on the route.</p>
+            <a href="contact.html" class="card-cta remote">Contact Us for Remote Delivery →</a>
+          </div>
+
+        </div>
+
+        <!-- ── Pickup Fee ── -->
+        <div class="section-heading">
+          <div class="section-line"><span>Pickup Fee</span></div>
+          <h2>Collection Fees</h2>
+          <p>Pickup fees apply based on the number of packages collected per visit.</p>
+        </div>
+
+        <div class="pickup-fee-banner">
+          <div class="pickup-fee-item">
+            <div class="pickup-fee-icon free">📦</div>
+            <div class="pickup-fee-text">
+              <div class="pickup-fee-label">3 or more packages</div>
+              <div class="pickup-fee-value free-val">Free Pickup</div>
+              <div class="pickup-fee-desc">No collection fee when you have 3 or more packages ready.</div>
+            </div>
+          </div>
+          <div class="pickup-fee-item">
+            <div class="pickup-fee-icon paid">📬</div>
+            <div class="pickup-fee-text">
+              <div class="pickup-fee-label">Under 3 packages</div>
+              <div class="pickup-fee-value paid-val">TTD $20 Fee</div>
+              <div class="pickup-fee-desc">A $20 collection fee applies when fewer than 3 packages are ready for pickup.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Cut-Off Times ── -->
+        <div class="section-heading">
+          <div class="section-line"><span>Cut-Off Times</span></div>
+          <h2>Order &amp; Pickup Deadlines</h2>
+          <p>All cut-offs are strictly enforced. Late submissions move to the next delivery cycle.</p>
+        </div>
+
+        <div class="cutoff-grid">
+          <div class="cutoff-item">
+            <div>
+              <div class="cutoff-time">8:00 PM</div>
+              <div class="cutoff-label">Delivery Cut-Off Time</div>
+              <div class="cutoff-desc">8:00 PM is the cut-off time for delivery. Anything submitted after 8:00 PM is scheduled for the following delivery cycle.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Pickup Structure ── -->
+        <div class="section-heading">
+          <div class="section-line"><span>Pickup Structure</span></div>
+          <h2>How Pickups Work</h2>
+          <p>Packages are collected on your scheduled pickup day within the morning window.</p>
+        </div>
+
+        <div class="pickup-structure">
+          <h4>Pickup Schedule</h4>
+          <div class="pickup-rows">
+            <div class="pickup-row">Pickup is conducted on scheduled days only — not on-demand or upon request.</div>
+            <div class="pickup-row">The pickup window runs between 8:00 AM and 10:00 AM on your assigned collection day.</div>
+            <div class="pickup-row">Packages must be ready before collection. Late or unavailable packages are moved to the next scheduled pickup day.</div>
+            <div class="pickup-row">Pickup timing within the window is determined by route efficiency — not by individual request.</div>
+          </div>
+        </div>
+
+        <!-- ── Delivery Schedule ── -->
+        <div class="section-heading" style="margin-top:3rem;">
+          <div class="section-line"><span>Delivery Schedule</span></div>
+          <h2>When Will My Order Be Delivered?</h2>
+          <p>Deliveries are zone-based and run on scheduled days — not on-demand.</p>
+        </div>
+
+        <div class="pickup-structure">
+          <h4>Delivery Timeline</h4>
+          <div class="pickup-rows">
+            <div class="pickup-row">Deliveries are completed within 1–2 days from the date of pickup, subject to your zone's scheduled delivery day.</div>
+            <div class="pickup-row">Each zone has assigned delivery days. Your order is delivered on the next available scheduled day for your zone after pickup.</div>
+            <div class="pickup-row">Specific delivery times within a scheduled day are not accommodated. All deliveries run within the zone's assigned window for that day.</div>
+            <div class="pickup-row">Orders submitted after the 8:00 PM cut-off are queued for the following delivery cycle and will be picked up on the next scheduled pickup day.</div>
+          </div>
+        </div>
+
+        <!-- ── Policy Cards ── -->
+        <div class="section-heading">
+          <div class="section-line"><span>Policies</span></div>
+          <h2>Operational Policies</h2>
+          <p>Structured rules that keep deliveries consistent and reliable for all business clients.</p>
+        </div>
+
+        <div class="policy-grid">
+
+          <div class="policy-card">
+            <span class="policy-icon">🔄</span>
+            <h4>Failed Delivery &amp; Redelivery</h4>
+            <p>One delivery attempt is made per order. If the customer confirms and then does not collect, the delivery fee still applies. Redelivery requires a new delivery fee. The client determines who absorbs the cost.</p>
+          </div>
+
+          <div class="policy-card">
+            <span class="policy-icon">✅</span>
+            <h4>Proof of Delivery</h4>
+            <p>Delivery confirmation is sent via WhatsApp message upon successful completion of each delivery.</p>
+          </div>
+
+          <div class="policy-card">
+            <span class="policy-icon">💳</span>
+            <h4>Cash on Delivery (COD)</h4>
+            <p>COD is available. Payments can be collected via cash or LINX on behalf of the client at the point of delivery.</p>
+          </div>
+
+          <div class="policy-card">
+            <span class="policy-icon">💸</span>
+            <h4>Remittance</h4>
+            <p>Online payments are remitted the same evening after delivery completion. Cash payments are returned on a weekly basis.</p>
+          </div>
+
+          <div class="policy-card">
+            <span class="policy-icon">📦</span>
+            <h4>Package Guidelines</h4>
+            <p>No large or oversized items are accepted. Maximum weight is 25 lbs per package. Items outside these limits will not be collected.</p>
+          </div>
+
+        </div>
+
+        <!-- ── Notice ── -->
+        <div class="notice">
+          <strong>Note:</strong> All prices are in Trinidad and Tobago Dollars (TTD). Routes are planned in advance and cannot be adjusted for last-minute changes. VirtuDrop reserves the right to reschedule deliveries, decline requests, or adjust routes for operational efficiency.
+        </div>
+
+        <!-- ── Trial Banner ── -->
+        <div class="trial-banner">
+          <div class="trial-banner-icon">💡</div>
+          <div class="trial-banner-body">
+            <h3>New to VirtuDrop? Try before you commit.</h3>
+            <p>We recommend trying our <strong>Structured Weekly Plan</strong> for at least one week before selecting a monthly package. This gives you a feel for our service, reliability, and turnaround times — so you can choose the right plan with full confidence. <a href="contact.html">Get in touch to get started.</a></p>
+          </div>
+        </div>
+
+        <!-- ── Weekly Plan ── -->
+        <div class="plans-heading">
+          <div class="section-line"><span>Weekly Plan</span></div>
+          <h2>Structured Weekly Logistics</h2>
+          <p>A flexible entry point — ideal for businesses testing volume before committing to a monthly package.</p>
+        </div>
+
+        <div class="weekly-plan-card">
+          <div class="weekly-plan-header">
+            <div>
+              <h3>Structured Weekly Plan</h3>
+              <p style="color:#4a4a4a; font-size:1rem; margin-top:0.3rem;">One designated zone &bull; Fixed weekly rate</p>
+            </div>
+            <div style="text-align:right;">
+              <div class="weekly-plan-price">$225<span>per week</span></div>
+            </div>
+          </div>
+          <table class="weekly-plan-table">
+            <tr><td>Deliveries</td><td>Up to 6 per week</td></tr>
+            <tr><td>Zone Coverage</td><td>One designated zone</td></tr>
+            <tr><td>Pricing Model</td><td>Fixed weekly rate</td></tr>
+            <tr><td>Schedule</td><td>Structured delivery day</td></tr>
+          </table>
+        </div>
+
+        <!-- ── Monthly Plans ── -->
+        <div class="plans-heading">
+          <div class="section-line"><span>Monthly Plans</span></div>
+          <h2>Recurring Monthly Logistics Plans</h2>
+          <p>Built for consistent business clients who want predictable costs and priority routing.</p>
+        </div>
+
+        <div class="monthly-grid">
+
+          <div class="plan-card bronze">
+            <span class="plan-badge start-here">BRONZE</span>
+            <h3>Bronze Plan</h3>
+            <div class="plan-price-row">
+              <div class="plan-monthly-price">$760</div>
+              <div class="plan-price-meta">per month<strong>$38 per drop</strong></div>
+            </div>
+            <div class="plan-details">
+              <div class="plan-detail-row">
+                <span class="plan-detail-label">Monthly Deliveries</span>
+                <span class="plan-detail-value">20</span>
+              </div>
+              <div class="plan-detail-row">
+                <span class="plan-detail-label">Coverage</span>
+                <span class="plan-detail-value">Primary Zone Only</span>
+              </div>
+              <div class="plan-detail-row">
+                <span class="plan-detail-label">Structure</span>
+                <span class="plan-detail-value">Fixed Delivery Day</span>
+              </div>
+            </div>
+            <div class="plan-conditions">
+              <p>Perfect for growing businesses with regular weekly orders. One fixed delivery day keeps things simple and predictable.</p>
+            </div>
+          </div>
+
+          <div class="plan-card silver">
+            <span class="plan-badge silver-badge">SILVER</span>
+            <h3>Silver Plan</h3>
+            <div class="plan-price-row">
+              <div class="plan-monthly-price">$1,440</div>
+              <div class="plan-price-meta">per month<strong>$36 per drop</strong></div>
+            </div>
+            <div class="plan-details">
+              <div class="plan-detail-row">
+                <span class="plan-detail-label">Monthly Deliveries</span>
+                <span class="plan-detail-value">40</span>
+              </div>
+              <div class="plan-detail-row">
+                <span class="plan-detail-label">Coverage</span>
+                <span class="plan-detail-value">Primary Zone Only</span>
+              </div>
+              <div class="plan-detail-row">
+                <span class="plan-detail-label">Structure</span>
+                <span class="plan-detail-value">Up to 2 Weekly Days</span>
+              </div>
+            </div>
+            <div class="plan-conditions">
+              <p>For established businesses needing twice-weekly runs. More flexibility with two scheduled delivery days per week.</p>
+            </div>
+          </div>
+
+          <div class="plan-card gold">
+            <span class="plan-badge gold-badge">GOLD</span>
+            <h3>Gold Plan</h3>
+            <div class="plan-price-row">
+              <div class="plan-monthly-price">$2,550</div>
+              <div class="plan-price-meta">per month<strong>$34 per drop</strong></div>
+            </div>
+            <div class="plan-details">
+              <div class="plan-detail-row">
+                <span class="plan-detail-label">Monthly Deliveries</span>
+                <span class="plan-detail-value">75</span>
+              </div>
+              <div class="plan-detail-row">
+                <span class="plan-detail-label">Coverage</span>
+                <span class="plan-detail-value">Primary Zone Only</span>
+              </div>
+              <div class="plan-detail-row">
+                <span class="plan-detail-label">Structure</span>
+                <span class="plan-detail-value">Priority Route Placement</span>
+              </div>
+            </div>
+            <div class="plan-conditions">
+              <p>High-volume businesses get the lowest per-drop rate and priority scheduling. Best value for consistent bulk orders.</p>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="monthly-conditions">
+          <h4>Plan Conditions &amp; Terms</h4>
+          <div class="conditions-cols">
+            <div class="condition-item">Valid within primary zones only</div>
+            <div class="condition-item">Remote areas excluded</div>
+            <div class="condition-item">Orders confirmed before 8:00 PM daily</div>
+            <div class="condition-item">Unused deliveries do not roll over</div>
+            <div class="condition-item">Cross-zones billed separately</div>
+            <div class="condition-item">Valid for 30 calendar days</div>
+          </div>
+          <p class="monthly-note">Remote area rate may vary based on route scheduling. Volume based and retainer packages available upon request.</p>
+        </div>
+
+        <!-- ── CTA ── -->
+        <div class="cta-section">
+          <h2>Ready to streamline your deliveries?</h2>
+          <p>Join VirtuDrop today and focus on what matters most — growing your business.</p>
+          <a href="auth.html" class="btn">Create Your Account</a>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+
+        <div class="footer-brand">
+          <img src="assets/logo.png" alt="VirtuDrop logo">
+          <p>Zone-based, scheduled delivery for businesses across Trinidad. Structured logistics you can count on.</p>
+        </div>
+
+        <div class="footer-col">
+          <h4>Services</h4>
+          <a href="pricing.html">Pricing</a>
+          <a href="zones.html">Delivery Zones</a>
+          <a href="calculator.html">Calculator</a>
+          <a href="business-clients.html">Business Clients</a>
+        </div>
+
+        <div class="footer-col">
+          <h4>Company</h4>
+          <a href="how-it-works.html">How It Works</a>
+          <a href="about.html">About</a>
+          <a href="contact.html">Contact</a>
+          <a href="faq.html">FAQ</a>
+        </div>
+
+        <div class="footer-col">
+          <h4>Account</h4>
+          <a href="auth.html">Login/Register</a>
+          <a href="track.html">Track Delivery</a>
+        </div>
+
+      </div>
+
+      <div class="footer-bottom">
+        <p>© 2026 VirtuDrop · A VirtuForms Ltd Service · Trinidad and Tobago</p>
+        <p>797-3542 &nbsp;|&nbsp; 470-3704</p>
+      </div>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+    const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnbXp6YXZ4aHVhcmxhY252bm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Mjk4NTksImV4cCI6MjA5NDIwNTg1OX0.7-YKlwLrhUYUYbiii93ZvgX01TxVephApDNCP50Rl54';
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const planDrops = {
+      'Bronze Monthly': 20,
+      'Silver Monthly': 40,
+      'Gold Monthly': 75
+    };
+
+    function formatMoney(amount) {
+      return Number(amount || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
+    }
+
+    function formatTime(value) {
+      if (!value || typeof value !== 'string') return '8:00 PM';
+      const [hoursRaw, minutes = '00'] = value.split(':');
+      let hours = Number(hoursRaw);
+      if (Number.isNaN(hours)) return value;
+      const suffix = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12 || 12;
+      return `${hours}:${minutes.padStart(2, '0')} ${suffix}`;
+    }
+
+    function getReferencePrices(rules) {
+      const sameZoneRule = rules.find(item =>
+        item.service_type === 'standard' &&
+        item.pickup_zone?.code === item.dropoff_zone?.code
+      );
+      const crossZoneRule = rules.find(item =>
+        item.service_type === 'standard' &&
+        item.pickup_zone?.code !== item.dropoff_zone?.code
+      );
+
+      return {
+        same: sameZoneRule?.base_price ?? 40,
+        cross: crossZoneRule?.base_price ?? 50
+      };
+    }
+
+    function updateDeliveryPrices(rules) {
+      const prices = getReferencePrices(rules);
+      const priceCards = document.querySelectorAll('.pricing-grid .card');
+      const sameZonePrice = priceCards[0]?.querySelector('.price');
+      const crossZonePrice = priceCards[1]?.querySelector('.price');
+
+      if (sameZonePrice) sameZonePrice.textContent = `$${formatMoney(prices.same)}`;
+      if (crossZonePrice) crossZonePrice.textContent = `$${formatMoney(prices.cross)}`;
+    }
+
+    function updatePlans(plans) {
+      const weekly = plans.find(plan => plan.name === 'Weekly Starter');
+      const bronze = plans.find(plan => plan.name === 'Bronze Monthly');
+      const silver = plans.find(plan => plan.name === 'Silver Monthly');
+      const gold = plans.find(plan => plan.name === 'Gold Monthly');
+
+      const weeklyPrice = document.querySelector('.weekly-plan-price');
+      if (weekly && weeklyPrice) {
+        weeklyPrice.innerHTML = `$${formatMoney(weekly.price)}<span>per week</span>`;
+      }
+
+      [
+        { selector: '.plan-card.bronze', plan: bronze },
+        { selector: '.plan-card.silver', plan: silver },
+        { selector: '.plan-card.gold', plan: gold }
+      ].forEach(({ selector, plan }) => {
+        if (!plan) return;
+        const card = document.querySelector(selector);
+        if (!card) return;
+
+        const price = card.querySelector('.plan-monthly-price');
+        const meta = card.querySelector('.plan-price-meta strong');
+        const coverage = [...card.querySelectorAll('.plan-detail-row')]
+          .find(row => row.querySelector('.plan-detail-label')?.textContent.trim() === 'Coverage')
+          ?.querySelector('.plan-detail-value');
+
+        if (price) price.textContent = `$${formatMoney(plan.price)}`;
+
+        const drops = planDrops[plan.name];
+        if (meta && drops) {
+          meta.textContent = `$${formatMoney(plan.price / drops)} per drop`;
+        }
+
+        if (coverage) {
+          coverage.textContent = plan.primary_zone_only ? 'Primary Zone Only' : 'Multiple Zones';
+        }
+      });
+    }
+
+    function updateSettings(settingsRows) {
+      const settings = (settingsRows || []).reduce((lookup, item) => {
+        lookup[item.key] = item.value;
+        return lookup;
+      }, {});
+
+      const cutoff = formatTime(settings.daily_cutoff_time);
+      document.querySelectorAll('.cutoff-time').forEach(el => {
+        el.textContent = cutoff;
+      });
+      document.querySelectorAll('.cutoff-desc, .pickup-row, .condition-item').forEach(el => {
+        el.textContent = el.textContent.replace(/8:00 PM/g, cutoff);
+      });
+    }
+
+    async function loadPricingData() {
+      const [plansRes, rulesRes, settingsRes] = await Promise.all([
+        supabase
+          .from('plans')
+          .select('name, billing_period, price, included_deliveries, primary_zone_only')
+          .eq('active', true),
+        supabase
+          .from('pricing_rules')
+          .select('service_type, base_price, pickup_zone:pickup_zone_id(code), dropoff_zone:dropoff_zone_id(code)')
+          .eq('active', true),
+        supabase
+          .from('app_settings')
+          .select('key, value')
+          .in('key', ['daily_cutoff_time', 'currency'])
+      ]);
+
+      if (plansRes.error || rulesRes.error || settingsRes.error) {
+        console.error('Unable to load pricing data:', {
+          plans: plansRes.error,
+          rules: rulesRes.error,
+          settings: settingsRes.error
+        });
+        return;
+      }
+
+      updateDeliveryPrices(rulesRes.data || []);
+      updatePlans(plansRes.data || []);
+      updateSettings(settingsRes.data || []);
+    }
+
+    const toggle = document.querySelector('[data-mobile-toggle]');
+    const navLinks = document.querySelector('[data-nav-links]');
+    if (toggle && navLinks) {
+      toggle.addEventListener('click', () => {
+        navLinks.classList.toggle('open');
+        toggle.textContent = navLinks.classList.contains('open') ? 'Close' : 'Menu';
+      });
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.style.opacity = '1';
+          entry.target.style.transform = entry.target.style.transform?.includes('scale') ? '' : 'translateY(0)';
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+    document.querySelectorAll('.card, .plan-card, .policy-card, .cutoff-item, .info-card').forEach(el => observer.observe(el));
+
+    loadPricingData();
+  </script>
+</body>
+</html>

@@ -1,0 +1,1111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>VirtuForms | Professional Business Solutions in Trinidad</title>
+  <meta name="description" content="VirtuForms provides professional business solutions including delivery services, virtual assistance, and business management tools for Trinidad enterprises.">
+  <link rel="icon" href="assets/virtuforms-logo.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      line-height: 1.7;
+      color: #f8f9fa;
+      background: #0b1616;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    /* Navigation */
+    .nav {
+      background: #0f2020;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      border-bottom: 2px solid #1a5656;
+      animation: slideDown 0.5s ease-out;
+    }
+
+    @keyframes slideDown {
+      from {
+        transform: translateY(-100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .nav-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem 0;
+      gap: 2rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      text-decoration: none;
+      transition: transform 0.3s ease;
+    }
+
+    .brand:hover {
+      transform: scale(1.02);
+    }
+
+    .brand img {
+      height: 60px;
+      width: auto;
+    }
+
+    .brand-logo {
+      height: 50px;
+      width: auto;
+      display: block;
+    }
+
+    .brand-text {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: #7dd3c0;
+      letter-spacing: -0.5px;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #7dd3c0;
+      letter-spacing: 0.5px;
+    }
+
+    .links {
+      display: flex;
+      gap: 2.5rem;
+      align-items: center;
+    }
+
+    .links a {
+      text-decoration: none;
+      color: #b8e6dc;
+      font-weight: 500;
+      font-size: 0.95rem;
+      position: relative;
+      transition: color 0.3s ease;
+    }
+
+    .links a::after {
+      content: '';
+      position: absolute;
+      bottom: -5px;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: #7dd3c0;
+      transition: width 0.3s ease;
+    }
+
+    .links a:hover {
+      color: #7dd3c0;
+    }
+
+    .links a:hover::after {
+      width: 100%;
+    }
+
+    .links a[aria-current="page"] {
+      color: #7dd3c0;
+    }
+
+    .links a[aria-current="page"]::after {
+      width: 100%;
+    }
+
+    /* Nav CTA Button */
+    .nav-cta {
+      background: linear-gradient(135deg, #2a9d8f 0%, #1a5656 100%);
+      color: #ffffff !important;
+      padding: 0.65rem 1.5rem;
+      border-radius: 50px;
+      font-weight: 600;
+      box-shadow: 0 2px 10px rgba(42, 157, 143, 0.3);
+      transition: all 0.3s ease;
+    }
+
+    .nav-cta::after {
+      display: none;
+    }
+
+    .nav-cta:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(42, 157, 143, 0.4);
+      color: #ffffff !important;
+    }
+
+    .dropdown {
+      position: relative;
+    }
+
+    .dropdown-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      background: none;
+      border: none;
+      color: #b8e6dc;
+      font-weight: 500;
+      font-size: 0.95rem;
+      cursor: pointer;
+      padding: 0.5rem 0;
+      position: relative;
+      transition: color 0.3s ease;
+    }
+
+    .dropdown-toggle::after {
+      content: '';
+      position: absolute;
+      bottom: -5px;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: #7dd3c0;
+      transition: width 0.3s ease;
+    }
+
+    .dropdown-toggle:hover {
+      color: #7dd3c0;
+    }
+
+    .dropdown-toggle:hover::after {
+      width: 100%;
+    }
+
+    .dropdown-menu {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background: #0f2020;
+      border: 2px solid #2a9d8f;
+      border-radius: 8px;
+      padding: 1rem 0;
+      min-width: 220px;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-10px);
+      transition: all 0.3s ease;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+      margin-top: 0.5rem;
+      z-index: 1000;
+    }
+
+    .dropdown:hover .dropdown-menu {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .dropdown-menu a {
+      display: block;
+      padding: 0.8rem 1.5rem;
+      color: #b8e6dc;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      font-size: 0.95rem;
+    }
+
+    .dropdown-menu a::after {
+      display: none;
+    }
+
+    .dropdown-menu a:hover {
+      background: #1a5656;
+      color: #7dd3c0;
+      padding-left: 2rem;
+    }
+
+    .mobile-toggle {
+      display: none;
+      background: none;
+      border: 2px solid #7dd3c0;
+      color: #7dd3c0;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      position: relative;
+      z-index: 1001;
+      font-size: 1rem;
+    }
+
+    /* Mobile menu open state - works at all screen sizes */
+    .links.mobile-open {
+      display: flex !important;
+      position: fixed;
+      top: 76px;
+      left: 0;
+      right: 0;
+      background: #0f2020;
+      flex-direction: column;
+      padding: 2rem;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+      border-top: 2px solid #1a5656;
+      gap: 0;
+      z-index: 999;
+      max-height: calc(100vh - 76px);
+      overflow-y: auto;
+    }
+
+    .links.mobile-open a,
+    .links.mobile-open .dropdown-toggle {
+      padding: 1rem;
+      border-bottom: 1px solid #1a5656;
+    }
+
+    .links.mobile-open a:last-child {
+      border-bottom: none;
+    }
+
+    .dropdown-menu.mobile-open {
+      display: block !important;
+      position: static;
+      opacity: 1;
+      visibility: visible;
+      transform: none;
+      margin-top: 0;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+      background: #0b1616;
+    }
+
+    .dropdown-menu.mobile-open a {
+      padding: 1rem 1rem 1rem 2rem;
+    }
+
+    /* Hero Section */
+    .hero {
+      min-height: 90vh;
+      display: flex;
+      align-items: center;
+      background: linear-gradient(135deg, #0b1616 0%, #1a5656 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: -20%;
+      width: 60%;
+      height: 100%;
+      background: radial-gradient(circle, rgba(125, 211, 192, 0.15) 0%, transparent 70%);
+      animation: float 20s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      50% { transform: translate(-30px, 30px) rotate(5deg); }
+    }
+
+    .hero-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 5rem 2rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-content {
+      max-width: 900px;
+      text-align: center;
+      margin: 0 auto;
+    }
+
+    .hero-content h1 {
+      font-size: 5rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #7dd3c0 0%, #b8e6dc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.1;
+      margin-bottom: 2rem;
+      animation: slideInUp 0.8s ease-out;
+    }
+
+    @keyframes slideInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .hero-content .tagline {
+      font-size: 1.5rem;
+      color: #b8e6dc;
+      margin-bottom: 3rem;
+      line-height: 1.8;
+      animation: slideInUp 0.8s ease-out 0.2s both;
+    }
+
+    .cta-buttons {
+      display: flex;
+      gap: 1.5rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      animation: slideInUp 0.8s ease-out 0.4s both;
+    }
+
+    .btn {
+      padding: 1.3rem 3rem;
+      font-weight: 700;
+      font-size: 1.1rem;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #2a9d8f 0%, #3fb8a8 100%);
+      color: #ffffff;
+      box-shadow: 0 6px 30px rgba(42, 157, 143, 0.4);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 40px rgba(42, 157, 143, 0.6);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: #7dd3c0;
+      border: 2px solid #7dd3c0;
+    }
+
+    .btn-secondary:hover {
+      background: #7dd3c0;
+      color: #0b1616;
+      transform: translateY(-3px);
+    }
+
+    /* Services Section */
+    .services {
+      padding: 8rem 0;
+      background: #0f2020;
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 5rem;
+      animation: slideInUp 0.8s ease-out;
+    }
+
+    .section-header h2 {
+      font-size: 3.5rem;
+      font-weight: 800;
+      color: #7dd3c0;
+      margin-bottom: 1.5rem;
+    }
+
+    .section-header p {
+      font-size: 1.3rem;
+      color: #b8e6dc;
+      max-width: 700px;
+      margin: 0 auto;
+      line-height: 1.8;
+    }
+
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 3rem;
+      margin-top: 4rem;
+    }
+
+    .service-card {
+      background: linear-gradient(135deg, #1a5656 0%, #0f2020 100%);
+      border-radius: 20px;
+      padding: 4rem;
+      border: 2px solid #2a9d8f;
+      transition: all 0.4s ease;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .service-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, #7dd3c0 0%, #3fb8a8 100%);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.4s ease;
+    }
+
+    .service-card:hover::before {
+      transform: scaleX(1);
+    }
+
+    .service-card:hover {
+      transform: translateY(-10px);
+      box-shadow: 0 20px 60px rgba(42, 157, 143, 0.3);
+      border-color: #7dd3c0;
+    }
+
+    .service-card[style*="cursor: not-allowed"]:hover {
+      transform: none;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      border-color: #2a9d8f;
+    }
+
+    .service-icon {
+      width: 80px;
+      height: 80px;
+      background: #0f2020;
+      border: 3px solid #7dd3c0;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      margin-bottom: 2rem;
+      transition: all 0.3s ease;
+    }
+
+    .service-card:hover .service-icon {
+      transform: scale(1.1) rotate(5deg);
+    }
+
+    .service-card h3 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #7dd3c0;
+      margin-bottom: 1.5rem;
+    }
+
+    .service-card p {
+      font-size: 1.1rem;
+      color: #b8e6dc;
+      line-height: 1.8;
+      margin-bottom: 2rem;
+      flex-grow: 1;
+    }
+
+    .service-card .btn {
+      width: 100%;
+      margin-top: auto;
+    }
+
+    /* Why Choose Us */
+    .why-choose {
+      padding: 8rem 0;
+      background: #0b1616;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 3rem;
+      margin-top: 4rem;
+    }
+
+    .feature-card {
+      background: #0f2020;
+      padding: 3rem;
+      border-radius: 16px;
+      border-left: 4px solid #2a9d8f;
+      transition: all 0.3s ease;
+    }
+
+    .feature-card:hover {
+      transform: translateX(10px);
+      border-left-color: #7dd3c0;
+      box-shadow: 0 10px 40px rgba(42, 157, 143, 0.2);
+    }
+
+    .feature-card h3 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #7dd3c0;
+      margin-bottom: 1rem;
+    }
+
+    .feature-card p {
+      font-size: 1.1rem;
+      color: #b8e6dc;
+      line-height: 1.8;
+    }
+
+    /* CTA Section */
+    .cta-section {
+      padding: 6rem 4rem;
+      background: linear-gradient(135deg, #2a9d8f 0%, #3fb8a8 100%);
+      border-radius: 24px;
+      text-align: center;
+      margin: 6rem 2rem;
+      box-shadow: 0 20px 60px rgba(42, 157, 143, 0.4);
+    }
+
+    .cta-section h2 {
+      font-size: 3rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 1.5rem;
+    }
+
+    .cta-section p {
+      font-size: 1.4rem;
+      color: #ffffff;
+      margin-bottom: 3rem;
+      opacity: 0.95;
+    }
+
+    .cta-section .btn {
+      background: #ffffff;
+      color: #2a9d8f;
+      font-size: 1.2rem;
+      padding: 1.5rem 3.5rem;
+    }
+
+    .cta-section .btn:hover {
+      background: #f8f9fa;
+    }
+
+    /* Footer */
+    .footer {
+      background: #000000;
+      color: #b8e6dc;
+      padding: 4rem 0 2rem;
+      border-top: 2px solid #1a5656;
+    }
+
+    .footer-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 3rem;
+      margin-bottom: 3rem;
+    }
+
+    .footer-section h3 {
+      color: #7dd3c0;
+      font-size: 1.3rem;
+      margin-bottom: 1.5rem;
+      font-weight: 700;
+    }
+
+    .footer-section p,
+    .footer-section a {
+      color: #b8e6dc;
+      text-decoration: none;
+      display: block;
+      margin-bottom: 0.8rem;
+      transition: color 0.3s ease;
+    }
+
+    .footer-section a:hover {
+      color: #7dd3c0;
+    }
+
+    .footer-bottom {
+      text-align: center;
+      padding-top: 2rem;
+      border-top: 1px solid #1a5656;
+      color: #7dd3c0;
+      opacity: 0.8;
+    }
+
+    /* Animations */
+    .service-card:nth-child(1) { animation: slideInUp 0.8s ease-out 0.1s both; }
+    .service-card:nth-child(2) { animation: slideInUp 0.8s ease-out 0.2s both; }
+    .service-card:nth-child(3) { animation: slideInUp 0.8s ease-out 0.3s both; }
+    .service-card:nth-child(4) { animation: slideInUp 0.8s ease-out 0.4s both; }
+    .service-card:nth-child(5) { animation: slideInUp 0.8s ease-out 0.5s both; }
+    .service-card:nth-child(6) { animation: slideInUp 0.8s ease-out 0.6s both; }
+
+    /* Responsive */
+    @media (max-width: 968px) {
+      .nav-inner {
+        padding: 1rem 0;
+        gap: 1rem;
+      }
+
+      .brand-logo {
+        height: 40px;
+      }
+
+      .brand-text {
+        font-size: 1.3rem;
+      }
+
+      .container {
+        padding: 0 1rem;
+      }
+
+      .links {
+        display: none;
+        position: fixed;
+        top: 76px;
+        left: 0;
+        right: 0;
+        background: #0f2020;
+        flex-direction: column;
+        padding: 2rem;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        border-top: 2px solid #1a5656;
+        gap: 0;
+        z-index: 999;
+        max-height: calc(100vh - 76px);
+        overflow-y: auto;
+      }
+
+      .links.mobile-open {
+        display: flex;
+      }
+
+      .links a,
+      .links .dropdown-toggle {
+        padding: 1rem;
+        border-bottom: 1px solid #1a5656;
+      }
+
+      .links a:last-child {
+        border-bottom: none;
+      }
+
+      .dropdown-menu {
+        position: static;
+        opacity: 1;
+        visibility: visible;
+        transform: none;
+        margin-top: 0;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        background: #0b1616;
+        display: none;
+      }
+
+      .dropdown-menu.mobile-open {
+        display: block;
+      }
+
+      .dropdown-menu a {
+        padding: 1rem 1rem 1rem 2rem;
+      }
+
+      .dropdown-menu a:hover {
+        padding-left: 2.5rem;
+      }
+
+      .mobile-toggle {
+        display: block;
+      }
+
+      .hero-content h1 {
+        font-size: 3.5rem;
+      }
+
+      .services-grid,
+      .features-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .cta-section {
+        margin: 4rem 1rem;
+        padding: 4rem 2rem;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .container {
+        padding: 0 1rem;
+      }
+
+      .nav-inner {
+        padding: 0.75rem 0;
+      }
+
+      .brand-logo {
+        height: 35px;
+      }
+
+      .brand-text {
+        font-size: 1.1rem;
+      }
+
+      .mobile-toggle {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.9rem;
+      }
+
+      .hero-content h1 {
+        font-size: 2rem;
+        line-height: 1.2;
+      }
+
+      .hero-content .tagline {
+        font-size: 1.1rem;
+      }
+
+      .section-header h2 {
+        font-size: 2rem;
+      }
+
+      .service-card {
+        padding: 2rem 1.5rem;
+      }
+
+      .service-card h3 {
+        font-size: 1.5rem;
+      }
+
+      .cta-buttons {
+        flex-direction: column;
+      }
+
+      .btn {
+        width: 100%;
+        padding: 1rem 1.5rem;
+      }
+
+      .stat-number {
+        font-size: 2.5rem;
+      }
+
+      .cta-section {
+        padding: 3rem 1.5rem;
+        margin: 3rem 0.5rem;
+      }
+
+      .cta-section h2 {
+        font-size: 1.8rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="container">
+      <div class="nav-inner">
+        <a class="brand" href="index.html" aria-label="VirtuForms Home">
+          <img src="assets/virtuforms-logo.png" alt="VirtuForms logo" class="brand-logo" />
+          <span class="brand-text">VirtuForms</span>
+        </a>
+        <button class="mobile-toggle" type="button" data-mobile-toggle aria-label="Toggle navigation" onclick="var nav = document.querySelector('[data-nav-links]'); if(nav.style.display === 'flex' && nav.style.position === 'fixed') { nav.style.display = 'none'; nav.style.position = ''; } else { nav.style.display = 'flex'; nav.style.position = 'fixed'; nav.style.flexDirection = 'column'; nav.style.top = '76px'; nav.style.left = '0'; nav.style.right = '0'; nav.style.background = '#0f2020'; nav.style.padding = '2rem'; nav.style.zIndex = '999'; nav.style.borderTop = '2px solid #1a5656'; }">Menu</button>
+        <nav class="links" data-nav-links>
+          <a href="index.html" aria-current="page">Home</a>
+          <div class="dropdown">
+            <button class="dropdown-toggle" onclick="var menu = this.nextElementSibling; if(menu.style.display === 'block') { menu.style.display = 'none'; } else { menu.style.display = 'block'; menu.style.position = 'static'; menu.style.background = '#0b1616'; menu.style.border = 'none'; menu.style.borderRadius = '0'; menu.style.boxShadow = 'none'; menu.style.marginTop = '0'; menu.style.padding = '0'; } event.stopPropagation();">
+              Services
+              <span style="font-size: 0.7rem;">▼</span>
+            </button>
+            <div class="dropdown-menu">
+              <a href="business-services.html">Business Services</a>
+              <a href="government-services.html">Government Services</a>
+              <a href="travel-services.html">Travel Services</a>
+              <a href="personal-services.html">Personal Services</a>
+              <a href="virtudrop/index.html">VirtuDrop</a>
+            </div>
+          </div>
+          <a href="about.html">About</a>
+          <a href="contact.html">Contact</a>
+          <a href="order-form.html">Get Started</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="hero-container">
+        <div class="hero-content">
+          <h1>Professional Administrative Solutions for Trinidad</h1>
+          <p class="tagline">
+            Simplifying business, government, travel, and personal administrative services. From company registration 
+            to passport applications, we handle the paperwork so you can focus on what matters most.
+          </p>
+          <div class="cta-buttons">
+            <a href="order-form.html" class="btn btn-primary">Get Started</a>
+            <a href="business-services.html" class="btn btn-secondary">View Services</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Services Section -->
+    <section class="services">
+      <div class="container">
+        <div class="section-header">
+          <h2>Our Services</h2>
+          <p>Complete administrative solutions covering business, government, travel, personal needs, and delivery services.</p>
+        </div>
+
+        <div class="services-grid">
+          <div class="service-card">
+            <div class="service-icon">
+              <img src="assets/virtudrop-logo.png" alt="VirtuDrop" style="width: 100%; height: 100%; object-fit: contain;" />
+            </div>
+            <h3>VirtuDrop</h3>
+            <p>
+              Fast, reliable delivery services for online sellers. Same-day and next-day options with 
+              zoned pricing across Trinidad. Focus on selling while we handle the logistics.
+            </p>
+            <a href="virtudrop/index.html" class="btn btn-primary">Learn More</a>
+          </div>
+
+          <div class="service-card">
+            <div class="service-icon">🏢</div>
+            <h3>Business Services</h3>
+            <p>
+              Complete business solutions including company registration, LLC conversion, bank account 
+              setup, annual returns, amendments, and closures. Expert handling of all your business needs.
+            </p>
+            <a href="business-services.html" class="btn btn-secondary">View Services</a>
+          </div>
+
+          <div class="service-card">
+            <div class="service-icon">📋</div>
+            <h3>Government Services</h3>
+            <p>
+              Streamlined assistance with driver's permit renewals, certified copies, birth/marriage/death 
+              certificates, and other essential government documentation.
+            </p>
+            <a href="government-services.html" class="btn btn-secondary">View Services</a>
+          </div>
+
+          <div class="service-card">
+            <div class="service-icon">✈️</div>
+            <h3>Travel Services</h3>
+            <p>
+              Complete support for passport renewals, new passport applications, and visa applications. 
+              Making your travel preparations hassle-free.
+            </p>
+            <a href="travel-services.html" class="btn btn-secondary">View Services</a>
+          </div>
+
+          <div class="service-card">
+            <div class="service-icon">📄</div>
+            <h3>Personal Services</h3>
+            <p>
+              Professional assistance with tax returns, BIR number applications, and other personal 
+              administrative needs. Expert guidance every step of the way.
+            </p>
+            <a href="personal-services.html" class="btn btn-secondary">View Services</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Why Choose Us -->
+    <section class="why-choose">
+      <div class="container">
+        <div class="section-header">
+          <h2>Why Choose VirtuForms</h2>
+          <p>We're committed to providing efficient, professional administrative services for Trinidad residents and businesses.</p>
+        </div>
+
+        <div class="features-grid">
+          <div class="feature-card">
+            <h3>🚀 Fast & Reliable</h3>
+            <p>
+              Quick turnaround times and dependable service you can count on. We understand that in business and personal matters, time is critical.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <h3>💰 Affordable Pricing</h3>
+            <p>
+              Transparent pricing with no hidden fees. Quality professional services at rates that make sense for Trinidad businesses and individuals.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <h3>🔒 Secure & Professional</h3>
+            <p>
+              Your personal and business documents are handled with the highest level of security, confidentiality, and professionalism.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <h3>📊 Comprehensive Solutions</h3>
+            <p>
+              From business registration to travel documents, we provide end-to-end support for all your administrative needs in one place.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA Section -->
+    <div class="container">
+      <section class="cta-section">
+        <h2>Ready to Simplify Your Administrative Tasks?</h2>
+        <p>Let VirtuForms handle the paperwork while you focus on what matters most.</p>
+        <a href="order-form.html" class="btn">Get Started Today</a>
+      </section>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-grid">
+        <div class="footer-section">
+          <h3>VirtuForms</h3>
+          <p>Professional administrative solutions for Trinidad. From business services to travel documents, we handle the paperwork so you don't have to.</p>
+        </div>
+
+        <div class="footer-section">
+          <h3>Services</h3>
+          <a href="business-services.html">Business Services</a>
+          <a href="government-services.html">Government Services</a>
+          <a href="travel-services.html">Travel Services</a>
+          <a href="personal-services.html">Personal Services</a>
+          <a href="virtudrop/index.html">VirtuDrop</a>
+        </div>
+
+        <div class="footer-section">
+          <h3>Company</h3>
+          <a href="about.html">About Us</a>
+          <a href="contact.html">Contact</a>
+          <a href="privacy-policy.html">Privacy Policy</a>
+          <a href="terms-of-service.html">Terms of Service</a>
+        </div>
+
+        <div class="footer-section">
+          <h3>Contact</h3>
+          <p>Email: info@virtuforms.net</p>
+          <p>Phone: 868-797-3543</p>
+          <p>Phone: 868-470-3704</p>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <small>© 2026 VirtuForms. Professional administrative solutions for Trinidad. All rights reserved.</small>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Mobile menu toggle - Simplified version
+    function initMobileMenu() {
+      const toggle = document.querySelector('[data-mobile-toggle]');
+      const navLinks = document.querySelector('[data-nav-links]');
+      const dropdownToggle = document.querySelector('.dropdown-toggle');
+      const dropdownMenu = document.querySelector('.dropdown-menu');
+      
+      if (!toggle || !navLinks) {
+        console.error('Mobile menu elements not found!');
+        return;
+      }
+      
+      console.log('Mobile menu initialized successfully');
+      
+      // Main toggle function
+      toggle.onclick = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Menu button clicked!');
+        navLinks.classList.toggle('mobile-open');
+        console.log('Menu is now:', navLinks.classList.contains('mobile-open') ? 'OPEN' : 'CLOSED');
+        
+        // Close dropdown when closing main menu
+        if (!navLinks.classList.contains('mobile-open') && dropdownMenu) {
+          dropdownMenu.classList.remove('mobile-open');
+        }
+      };
+
+      // Mobile dropdown toggle
+      if (dropdownToggle && dropdownMenu) {
+        dropdownToggle.onclick = function(e) {
+          if (window.innerWidth <= 968) {
+            e.preventDefault();
+            e.stopPropagation();
+            dropdownMenu.classList.toggle('mobile-open');
+            console.log('Dropdown toggled');
+          }
+        };
+      }
+
+      // Close mobile menu when clicking outside
+      document.onclick = function(e) {
+        if (window.innerWidth <= 968) {
+          if (!e.target.closest('.nav-inner') && navLinks.classList.contains('mobile-open')) {
+            navLinks.classList.remove('mobile-open');
+            if (dropdownMenu) dropdownMenu.classList.remove('mobile-open');
+            console.log('Menu closed by outside click');
+          }
+        }
+      };
+
+      // Close mobile menu when clicking a link
+      const navLinksElements = document.querySelectorAll('[data-nav-links] a');
+      navLinksElements.forEach(function(link) {
+        link.onclick = function() {
+          if (window.innerWidth <= 968) {
+            navLinks.classList.remove('mobile-open');
+            if (dropdownMenu) dropdownMenu.classList.remove('mobile-open');
+            console.log('Menu closed by link click');
+          }
+        };
+      });
+    }
+    
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initMobileMenu);
+    } else {
+      initMobileMenu();
+    }
+
+    // Animate stats on scroll
+    const statsSection = document.querySelector('.stats');
+    const statNumbers = document.querySelectorAll('.stat-number');
+    
+    const observerOptions = {
+      threshold: 0.5
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          statNumbers.forEach(stat => {
+            stat.style.transform = 'scale(1.1)';
+            setTimeout(() => {
+              stat.style.transform = 'sc

@@ -1,0 +1,936 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Personal Services | VirtuForms</title>
+  <meta name="description" content="Professional tax return preparation and BIR number application services in Trinidad and Tobago.">
+  <link rel="icon" href="assets/virtuforms-logo.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      line-height: 1.7;
+      color: #f8f9fa;
+      background: #0b1616;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    /* Navigation */
+    .nav {
+      background: #0f2020;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      border-bottom: 2px solid #1a5656;
+    }
+
+    .nav-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem 0;
+      gap: 2rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      text-decoration: none;
+      transition: transform 0.3s ease;
+    }
+
+    .brand:hover {
+      transform: scale(1.02);
+    }
+
+    .brand-logo {
+      height: 50px;
+      width: auto;
+      display: block;
+    }
+
+    .brand-text {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: #7dd3c0;
+      letter-spacing: -0.5px;
+    }
+
+    .links {
+      display: flex;
+      gap: 2rem;
+      align-items: center;
+      position: relative;
+    }
+
+    .links a,
+    .links .dropdown-toggle {
+      text-decoration: none;
+      color: #b8e6dc;
+      font-weight: 500;
+      font-size: 0.95rem;
+      position: relative;
+      transition: color 0.3s ease;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0.5rem 0;
+    }
+
+    .links a::after,
+    .links .dropdown-toggle::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 0;
+      height: 2px;
+      background: #7dd3c0;
+      transition: width 0.3s ease;
+    }
+
+    .links a:hover,
+    .links .dropdown-toggle:hover {
+      color: #7dd3c0;
+    }
+
+    .links a:hover::after,
+    .links .dropdown-toggle:hover::after {
+      width: 100%;
+    }
+
+    /* Nav CTA Button */
+    .nav-cta {
+      background: linear-gradient(135deg, #2a9d8f 0%, #1a5656 100%) !important;
+      color: #ffffff !important;
+      padding: 0.65rem 1.5rem !important;
+      border-radius: 50px !important;
+      font-weight: 600 !important;
+      box-shadow: 0 2px 10px rgba(42, 157, 143, 0.3) !important;
+      transition: all 0.3s ease !important;
+      text-decoration: none !important;
+      border: none !important;
+    }
+
+    .nav-cta::after {
+      display: none !important;
+      content: none !important;
+    }
+
+    .nav-cta:hover {
+      transform: translateY(-2px) !important;
+      box-shadow: 0 4px 15px rgba(42, 157, 143, 0.4) !important;
+      color: #ffffff !important;
+      background: linear-gradient(135deg, #2a9d8f 0%, #1a5656 100%) !important;
+    }
+
+    .dropdown {
+      position: relative;
+    }
+
+    .dropdown-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .dropdown-menu {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background: #0f2020;
+      border: 2px solid #2a9d8f;
+      border-radius: 8px;
+      padding: 1rem 0;
+      min-width: 220px;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-10px);
+      transition: all 0.3s ease;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+      margin-top: 0.5rem;
+    }
+
+    .dropdown:hover .dropdown-menu {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .dropdown-menu a {
+      display: block;
+      padding: 0.8rem 1.5rem;
+      color: #b8e6dc;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      font-size: 0.95rem;
+    }
+
+    .dropdown-menu a::after {
+      display: none;
+    }
+
+    .dropdown-menu a:hover {
+      background: #1a5656;
+      color: #7dd3c0;
+      padding-left: 2rem;
+    }
+
+    .mobile-toggle {
+      display: none;
+      background: none;
+      border: 2px solid #7dd3c0;
+      color: #7dd3c0;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* Hero Section */
+    .hero {
+      padding: 6rem 0 4rem;
+      background: linear-gradient(135deg, #0b1616 0%, #1a5656 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: -20%;
+      width: 60%;
+      height: 100%;
+      background: radial-gradient(circle, rgba(125, 211, 192, 0.1) 0%, transparent 70%);
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+    }
+
+    .hero-content h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 4rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #7dd3c0 0%, #b8e6dc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 1.5rem;
+    }
+
+    .hero-content p {
+      font-size: 1.4rem;
+      color: #b8e6dc;
+      margin-bottom: 2rem;
+    }
+
+    .breadcrumb {
+      font-size: 0.95rem;
+      color: #7dd3c0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-top: 1.5rem;
+    }
+
+    .breadcrumb a {
+      color: #b8e6dc;
+      text-decoration: none;
+      transition: color 0.3s ease;
+    }
+
+    .breadcrumb a:hover {
+      color: #7dd3c0;
+    }
+
+    /* Services Section */
+    .services-section {
+      padding: 5rem 0;
+      background: #0f2020;
+    }
+
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 3rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* Service Card */
+    .service-card {
+      background: linear-gradient(135deg, #1a5656 0%, #0f2020 100%);
+      border: 2px solid #2a9d8f;
+      border-radius: 20px;
+      padding: 3rem;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.4s ease;
+    }
+
+    .service-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, #7dd3c0 0%, #3fb8a8 100%);
+    }
+
+    .service-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 20px 50px rgba(42, 157, 143, 0.3);
+      border-color: #7dd3c0;
+    }
+
+    .service-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 2rem;
+      margin-bottom: 2rem;
+      padding-bottom: 2rem;
+      border-bottom: 2px solid rgba(125, 211, 192, 0.2);
+    }
+
+    .service-icon {
+      font-size: 3.5rem;
+      line-height: 1;
+    }
+
+    .service-price {
+      text-align: right;
+    }
+
+    .price-amount {
+      font-family: 'Poppins', sans-serif;
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: #7dd3c0;
+      display: block;
+      line-height: 1;
+    }
+
+    .price-period {
+      font-size: 1rem;
+      color: #b8e6dc;
+      margin-top: 0.5rem;
+      opacity: 0.8;
+    }
+
+    .service-title {
+      font-family: 'Poppins', sans-serif;
+      font-size: 2rem;
+      font-weight: 700;
+      color: #7dd3c0;
+      margin-bottom: 1rem;
+    }
+
+    .service-description {
+      font-size: 1.1rem;
+      color: #b8e6dc;
+      line-height: 1.7;
+      margin-bottom: 2rem;
+    }
+
+    .section-subtitle {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #7dd3c0;
+      margin-bottom: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .requirements-list {
+      list-style: none;
+      margin-bottom: 1.5rem;
+    }
+
+    .requirements-list li {
+      padding: 0.7rem 0;
+      color: #b8e6dc;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.8rem;
+      font-size: 1.05rem;
+      line-height: 1.6;
+    }
+
+    .requirements-list li::before {
+      content: '✓';
+      color: #2a9d8f;
+      font-weight: bold;
+      font-size: 1.3rem;
+      flex-shrink: 0;
+    }
+
+    .category-title {
+      font-weight: 600;
+      color: #7dd3c0;
+      margin-top: 1rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .info-note {
+      background: rgba(42, 157, 143, 0.1);
+      border-left: 4px solid #2a9d8f;
+      border-radius: 8px;
+      padding: 1.2rem;
+      margin-top: 1.5rem;
+      color: #b8e6dc;
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+
+    .info-note strong {
+      color: #7dd3c0;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 1.2rem 2.5rem;
+      border-radius: 10px;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 1.1rem;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      border: none;
+      width: 100%;
+      text-align: center;
+      margin-top: 1.5rem;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #2a9d8f 0%, #3fb8a8 100%);
+      color: #ffffff;
+      box-shadow: 0 6px 20px rgba(42, 157, 143, 0.4);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 30px rgba(42, 157, 143, 0.6);
+    }
+
+    /* CTA Section */
+    .cta-section {
+      margin: 6rem auto;
+      padding: 4rem;
+      background: linear-gradient(135deg, #2a9d8f 0%, #3fb8a8 100%);
+      border-radius: 20px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(42, 157, 143, 0.4);
+    }
+
+    .cta-section h2 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 1rem;
+    }
+
+    .cta-section p {
+      font-size: 1.3rem;
+      color: #ffffff;
+      margin-bottom: 2.5rem;
+      opacity: 0.95;
+    }
+
+    .cta-section .btn {
+      background: #ffffff;
+      color: #2a9d8f;
+      width: auto;
+      padding: 1.3rem 3rem;
+    }
+
+    .cta-section .btn:hover {
+      background: #f8f9fa;
+      transform: translateY(-3px);
+    }
+
+    /* Footer */
+    .footer {
+      background: #000000;
+      color: #b8e6dc;
+      padding: 4rem 0 2rem;
+      border-top: 2px solid #1a5656;
+    }
+
+    .footer-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 3rem;
+      margin-bottom: 3rem;
+    }
+
+    .footer-section h3 {
+      color: #7dd3c0;
+      font-size: 1.3rem;
+      margin-bottom: 1.5rem;
+      font-weight: 700;
+    }
+
+    .footer-section p,
+    .footer-section a {
+      color: #b8e6dc;
+      text-decoration: none;
+      display: block;
+      margin-bottom: 0.8rem;
+      transition: color 0.3s ease;
+    }
+
+    .footer-section a:hover {
+      color: #7dd3c0;
+    }
+
+    .footer-bottom {
+      text-align: center;
+      padding-top: 2rem;
+      border-top: 1px solid #1a5656;
+      color: #7dd3c0;
+      opacity: 0.8;
+    }
+
+    /* Responsive */
+    @media (max-width: 968px) {
+      .nav-inner {
+        padding: 1rem 0;
+        gap: 1rem;
+      }
+
+      .brand-logo {
+        height: 40px;
+      }
+
+      .brand-text {
+        font-size: 1.3rem;
+      }
+
+      .container {
+        padding: 0 1rem;
+      }
+
+      .links {
+        display: none;
+        position: fixed;
+        top: 76px;
+        left: 0;
+        right: 0;
+        background: #0f2020;
+        flex-direction: column;
+        padding: 2rem;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        border-top: 2px solid #1a5656;
+        gap: 0;
+        z-index: 999;
+        max-height: calc(100vh - 76px);
+        overflow-y: auto;
+      }
+
+      .links.mobile-open {
+        display: flex;
+      }
+
+      .links a,
+      .links .dropdown-toggle {
+        padding: 1rem;
+        border-bottom: 1px solid #1a5656;
+      }
+
+      .links a:last-child {
+        border-bottom: none;
+      }
+
+      .dropdown-menu {
+        position: static;
+        opacity: 1;
+        visibility: visible;
+        transform: none;
+        margin-top: 0;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        background: #0b1616;
+        display: none;
+      }
+
+      .dropdown-menu.mobile-open {
+        display: block;
+      }
+
+      .dropdown-menu a {
+        padding: 1rem 1rem 1rem 2rem;
+      }
+
+      .dropdown-menu a:hover {
+        padding-left: 2.5rem;
+      }
+
+      .mobile-toggle {
+        display: block;
+      }
+
+      .hero-content h1 {
+        font-size: 2.5rem;
+      }
+
+      .services-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .service-card {
+        padding: 2.5rem 2rem;
+      }
+
+      .cta-section {
+        padding: 3rem 2rem;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .container {
+        padding: 0 1rem;
+      }
+
+      .nav-inner {
+        padding: 0.75rem 0;
+      }
+
+      .brand-logo {
+        height: 35px;
+      }
+
+      .brand-text {
+        font-size: 1.1rem;
+      }
+
+      .mobile-toggle {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.9rem;
+      }
+
+      .hero-content h1 {
+        font-size: 2rem;
+        line-height: 1.2;
+      }
+
+      .hero-content p {
+        font-size: 1rem;
+      }
+
+      .service-card {
+        padding: 2rem 1.5rem;
+      }
+
+      .service-title {
+        font-size: 1.6rem;
+      }
+
+      .service-description {
+        font-size: 1rem;
+      }
+
+      .section-subtitle {
+        font-size: 1.1rem;
+      }
+
+      .cta-section {
+        padding: 2.5rem 1.5rem;
+        margin: 3rem 0.5rem;
+      }
+
+      .cta-section h2 {
+        font-size: 1.8rem;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .container {
+        padding: 0 1.5rem;
+      }
+
+      .hero-content h1 {
+        font-size: 2.2rem;
+      }
+
+      .hero-content p {
+        font-size: 1.1rem;
+      }
+
+      .service-card {
+        padding: 2rem;
+      }
+
+      .service-title {
+        font-size: 1.6rem;
+      }
+
+      .price-amount {
+        font-size: 2rem;
+      }
+
+      .service-header {
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .service-price {
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="container">
+      <div class="nav-inner">
+        <a class="brand" href="index.html" aria-label="VirtuForms Home">
+          <img src="assets/virtuforms-logo.png" alt="VirtuForms logo" class="brand-logo" />
+          <span class="brand-text">VirtuForms</span>
+        </a>
+        <button class="mobile-toggle" type="button" data-mobile-toggle aria-label="Toggle navigation" onclick="var nav = document.querySelector('[data-nav-links]'); if(nav.style.display === 'flex' && nav.style.position === 'fixed') { nav.style.display = 'none'; nav.style.position = ''; } else { nav.style.display = 'flex'; nav.style.position = 'fixed'; nav.style.flexDirection = 'column'; nav.style.top = '76px'; nav.style.left = '0'; nav.style.right = '0'; nav.style.background = '#0f2020'; nav.style.padding = '2rem'; nav.style.zIndex = '999'; nav.style.borderTop = '2px solid #1a5656'; }">Menu</button>
+        <nav class="links" data-nav-links>
+          <a href="index.html">Home</a>
+          <div class="dropdown">
+            <button class="dropdown-toggle" onclick="var menu = this.nextElementSibling; if(menu.style.display === 'block') { menu.style.display = 'none'; } else { menu.style.display = 'block'; menu.style.position = 'static'; menu.style.background = '#0b1616'; menu.style.border = 'none'; menu.style.borderRadius = '0'; menu.style.boxShadow = 'none'; menu.style.marginTop = '0'; menu.style.padding = '0'; } event.stopPropagation();">
+              Services
+              <span style="font-size: 0.7rem;">▼</span>
+            </button>
+            <div class="dropdown-menu">
+              <a href="business-services.html">Business Services</a>
+              <a href="government-services.html">Government Services</a>
+              <a href="travel-services.html">Travel Services</a>
+              <a href="personal-services.html">Personal Services</a>
+              <a href="virtudrop/index.html">VirtuDrop</a>
+            </div>
+          </div>
+          <a href="about.html">About</a>
+          <a href="contact.html">Contact</a>
+          <a href="order-form.html" class="nav-cta">Get Started</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="container">
+        <div class="hero-content">
+          <h1>Personal Services</h1>
+          <p>Tax returns and BIR number applications made simple</p>
+          <div class="breadcrumb">
+            <a href="index.html">Home</a>
+            <span>›</span>
+            <span>Personal Services</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Services Section -->
+    <section class="services-section">
+      <div class="container">
+        <div class="services-grid">
+          <!-- Individual Tax Return -->
+          <div class="service-card">
+            <div class="service-header">
+              <div class="service-icon">📊</div>
+              <div class="service-price">
+                <span class="price-amount">$150</span>
+                <div class="price-period">per year</div>
+              </div>
+            </div>
+            <h3 class="service-title">Individual Tax Return</h3>
+            <p class="service-description">
+              Professional preparation and filing of your annual tax return as an employee. We ensure accuracy and compliance with all BIR requirements.
+            </p>
+            <div class="info-note">
+              <strong>Need help?</strong> Contact us for a free consultation to discuss your specific tax situation and required documents.
+            </div>
+            <a href="order-form.html" class="btn btn-primary">Get Started</a>
+          </div>
+
+          <!-- Sole Trader Tax Return -->
+          <div class="service-card">
+            <div class="service-header">
+              <div class="service-icon">📈</div>
+              <div class="service-price">
+                <span class="price-amount">$250</span>
+                <div class="price-period">per year</div>
+              </div>
+            </div>
+            <h3 class="service-title">Sole Trader Tax Return</h3>
+            <p class="service-description">
+              Comprehensive tax return preparation for self-employed individuals and sole traders. Includes income statement review and all necessary calculations.
+            </p>
+            <div class="info-note">
+              <strong>Need help?</strong> Contact us for a free consultation to discuss your business records and required documents.
+            </div>
+            <a href="order-form.html" class="btn btn-primary">Get Started</a>
+          </div>
+
+          <!-- BIR Number Application -->
+          <div class="service-card">
+            <div class="service-header">
+              <div class="service-icon">🆔</div>
+              <div class="service-price">
+                <span class="price-amount">$200</span>
+              </div>
+            </div>
+            <h3 class="service-title">BIR Number Application</h3>
+            <p class="service-description">
+              Fast and efficient assistance with obtaining your Board of Inland Revenue (BIR) number for tax purposes.
+            </p>
+
+            <h4 class="section-subtitle">Required Documents</h4>
+
+            <p class="category-title">For Individuals (Employees):</p>
+            <ul class="requirements-list">
+              <li>Copy of National ID card (front and back) OR Passport OR Driver's Permit with Birth Certificate</li>
+              <li>Letter from employer indicating the effective date of employment and salary OR TD4s for prior years (not older than 2 years) OR Copy of Contract</li>
+            </ul>
+
+            <p class="category-title">For Individuals (Self Employed / Sole Traders):</p>
+            <ul class="requirements-list">
+              <li>Certificate of Registration (if applicable)</li>
+              <li>Income Statement(s) or Proof of Income</li>
+              <li>Copy of National ID card (front and back) OR Passport OR Driver's Permit with Birth Certificate</li>
+            </ul>
+
+            <a href="order-form.html" class="btn btn-primary">Apply Now</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA Section -->
+    <div class="container">
+      <section class="cta-section">
+        <h2>Need Tax or BIR Assistance?</h2>
+        <p>Let us handle your tax returns and applications professionally</p>
+        <a href="order-form.html" class="btn">Contact Us Today</a>
+      </section>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-grid">
+        <div class="footer-section">
+          <h3>VirtuForms</h3>
+          <p>Professional administrative solutions for Trinidad. From business services to travel documents, we handle the paperwork so you don't have to.</p>
+        </div>
+
+        <div class="footer-section">
+          <h3>Services</h3>
+          <a href="business-services.html">Business Services</a>
+          <a href="government-services.html">Government Services</a>
+          <a href="travel-services.html">Travel Services</a>
+          <a href="personal-services.html">Personal Services</a>
+          <a href="virtudrop/index.html">VirtuDrop</a>
+        </div>
+
+        <div class="footer-section">
+          <h3>Company</h3>
+          <a href="about.html">About Us</a>
+          <a href="contact.html">Contact</a>
+          <a href="order-form.html">Get Started</a>
+          <a href="privacy-policy.html">Privacy Policy</a>
+          <a href="terms-of-service.html">Terms of Service</a>
+        </div>
+
+        <div class="footer-section">
+          <h3>Contact</h3>
+          <p>Email: info@virtuforms.net</p>
+          <p>Phone: 868-797-3543</p>
+          <p>Phone: 868-470-3704</p>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <small>© 2026 VirtuForms. Professional administrative solutions for Trinidad. All rights reserved.</small>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Mobile menu toggle
+    const toggle = document.querySelector('[data-mobile-toggle]');
+    const navLinks = document.querySelector('[data-nav-links]');
+    const dropdownToggle = document.querySelector('.dropdown-toggle');
+    const dropdownMenu = document.querySelector('.dropdown-menu');
+    
+    if (toggle && navLinks) {
+      toggle.addEventListener('click', () => {
+        navLinks.classList.toggle('mobile-open');
+        
+        // Close dropdown when closing main menu
+        if (!navLinks.classList.contains('mobile-open') && dropdownMenu) {
+          dropdownMenu.classList.remove('mobile-open');
+        }
+      });
+    }
+
+    // Mobile dropdown toggle
+    if (dropdownToggle && dropdownMenu) {
+      dropdownToggle.addEventListener('click', (e) => {
+        // Only toggle on mobile
+        if (window.innerWidth <= 968) {
+          e.preventDefault();
+          dropdownMenu.classList.toggle('mobile-open');
+        }
+      });
+    }
+
+    // Close mobile menu when clicking outside
+    document.addEventListener('click', (e) => {
+      if (window.innerWidth <= 968) {
+        if (!e.target.closest('.nav-inner') && navLinks?.classList.contains('mobile-open')) {
+          navLinks.classList.remove('mobile-open');
+          dropdownMenu?.classList.remove('mobile-open');
+        }
+      }
+    });
+
+    // Close mobile menu when clicking a link
+    const navLinksElements = document.querySelectorAll('[data-nav-links] a');
+    navLinksElements.forEach(link => {
+      link.addEventListener('click', () => {
+        if (window.innerWidth <= 968) {
+          navLinks?.classList.remove('mobile-open');
+          dropdownMenu?.classList.remove('mobile-open');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

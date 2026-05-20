@@ -1,0 +1,857 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Delivery Calculator | VirtuDrop</title>
+  <meta name="description" content="Calculate your VirtuDrop delivery cost instantly by zone and service type.">
+  <link rel="icon" href="assets/logo.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      line-height: 1.7;
+      color: #1a1a1a;
+      background: #f8f9fa;
+    }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
+
+    /* Nav Bar */
+    .nav {
+      background: #ffffff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    /* Navbar container */
+    .nav .container {
+      max-width: none;
+      width: 100%;
+      margin: 0;
+      padding: 0 2.5rem;
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      gap: 2rem;
+      padding: 1rem 0;
+    }
+
+    /* Logo + slogan */
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      text-decoration: none;
+      flex-shrink: 0;
+      margin-right: auto;
+    }
+
+    .brand img {
+      height: 52px;
+      width: auto;
+    }
+
+    .badge {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #2a9d8f;
+      letter-spacing: 0.4px;
+      white-space: nowrap;
+    }
+
+    /* Nav links */
+    .links {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 1.8rem;
+      margin-left: auto;
+      flex-wrap: nowrap;
+      white-space: nowrap;
+    }
+
+    .links a {
+      text-decoration: none;
+      color: #1a1a1a;
+      font-weight: 500;
+      font-size: 0.92rem;
+      white-space: nowrap;
+    }
+
+    /* Login button */
+    .links a.nav-login {
+      background: #2a9d8f;
+      color: #ffffff !important;
+      padding: 0.5rem 1.2rem;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+
+    .links a.nav-login:hover {
+      background: #238277;
+    }
+
+    /* Mobile */
+    .mobile-toggle {
+      display: none;
+      align-items: center;
+      justify-content: center;
+
+      background: linear-gradient(135deg, #2a9d8f 0%, #238277 100%);
+      color: #ffffff;
+
+      border: none;
+      border-radius: 10px;
+
+      padding: 0.7rem 1rem;
+
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+
+      cursor: pointer;
+
+      box-shadow: 0 4px 12px rgba(42,157,143,0.25);
+
+      transition: all 0.25s ease;
+    }
+
+    .mobile-toggle:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(42,157,143,0.35);
+      background: linear-gradient(135deg, #31b3a3 0%, #2a9d8f 100%);
+    }
+
+    .mobile-toggle:active {
+      transform: scale(0.97);
+    }
+
+    .mobile-toggle::before {
+      content: "☰";
+      margin-right: 0.5rem;
+      font-size: 1rem;
+    }
+
+    /* ── Page ── */
+    .page { padding: 5rem 0; animation: fadeIn 0.8s ease-out; }
+    @keyframes fadeIn    { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes fadeInUp  { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+    .page-header { text-align: center; margin-bottom: 4rem; animation: fadeInUp 0.8s ease-out; }
+    .page-header h1 { font-size: 3rem; font-weight: 700; color: #1a1a1a; margin-bottom: 1rem; }
+    .page-header p  { font-size: 1.2rem; color: #4a4a4a; line-height: 1.7; }
+
+    .calc-wrapper {
+      max-width: 860px; margin: 0 auto;
+      display: flex; flex-direction: column; gap: 2rem;
+      animation: fadeInUp 0.8s ease-out 0.2s both;
+    }
+
+    .card {
+      background: #ffffff; border-radius: 16px; padding: 2.5rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    }
+
+    .card-title {
+      font-size: 1.1rem; font-weight: 700; color: #2a9d8f;
+      text-transform: uppercase; letter-spacing: 0.8px;
+      margin-bottom: 1.8rem; display: flex; align-items: center; gap: 0.6rem;
+    }
+    .card-title::after { content: ''; flex: 1; height: 2px; background: #f0f9f8; border-radius: 2px; }
+
+    /* ── Zone Grid ── */
+    .zone-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .zone-block { display: flex; flex-direction: column; gap: 0.8rem; }
+    .zone-block label { font-weight: 600; font-size: 0.9rem; color: #1a1a1a; }
+    .zone-block label span { font-weight: 400; color: #6a6a6a; font-size: 0.85rem; }
+
+    .zone-subregion-row {
+      grid-column: 1 / -1; display: none;
+      grid-template-columns: 1fr 1fr; gap: 1.5rem;
+    }
+    .zone-subregion-row.visible { display: grid; }
+
+    .input {
+      width: 100%; padding: 0.9rem 1rem;
+      border: 2px solid #e0e0e0; border-radius: 8px;
+      font-size: 0.95rem; font-family: 'Inter', sans-serif;
+      color: #1a1a1a; background: #ffffff;
+      transition: all 0.3s ease; appearance: none; -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%232a9d8f' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 1rem center;
+      padding-right: 2.5rem; cursor: pointer;
+    }
+    .input:focus { outline: none; border-color: #2a9d8f; box-shadow: 0 0 0 3px rgba(42,157,143,0.1); }
+    .input:disabled { background-color: #f8f9fa; color: #aaa; cursor: not-allowed; border-color: #e0e0e0; }
+
+    /* ── Service Type ── */
+    .service-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+    .service-option { position: relative; }
+    .service-option input[type="radio"] { position: absolute; opacity: 0; width: 0; height: 0; }
+    .service-option label {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 1.2rem 0.8rem;
+      border: 2px solid #e0e0e0; border-radius: 12px;
+      cursor: pointer; transition: all 0.3s ease; gap: 0.4rem; min-height: 100px;
+    }
+    .service-option label:hover { border-color: #2a9d8f; background: #f0f9f8; }
+    .service-option input[type="radio"]:checked + label {
+      border-color: #2a9d8f; background: #f0f9f8;
+      box-shadow: 0 0 0 3px rgba(42,157,143,0.15);
+    }
+    .service-option.disabled label {
+      opacity: 0.3; cursor: not-allowed; pointer-events: none; background: #f8f9fa;
+    }
+    .service-icon { font-size: 1.4rem; line-height: 1; }
+    .service-name { font-weight: 700; font-size: 0.85rem; color: #1a1a1a; line-height: 1.3; }
+    .service-note { font-size: 0.72rem; color: #6a6a6a; line-height: 1.3; }
+
+    /* Priority & Direct — styled differently */
+    .service-option.contact-svc input[type="radio"]:checked + label {
+      border-color: #e07a3a; background: #fff8f0;
+      box-shadow: 0 0 0 3px rgba(224,122,58,0.15);
+    }
+    .service-option.contact-svc label:hover { border-color: #e07a3a; background: #fff8f0; }
+    .service-option.contact-svc .service-name { color: #b85a20; }
+    .service-option.contact-svc .service-note { color: #c07040; }
+
+    /* ── Package Count ── */
+input[type="number"].input {
+      background-image: none; padding-right: 1rem;
+    }
+
+    /* ── Same-Day Notice ── */
+    .sameday-notice {
+      padding: 1.4rem 1.6rem; background: #0d2b28;
+      border-radius: 12px; font-size: 0.92rem;
+      color: rgba(255,255,255,0.85); line-height: 1.7;
+    }
+    .sameday-notice strong { color: #14d4ae; }
+    .sameday-notice a { color: #14d4ae; font-weight: 600; text-decoration: none; }
+    .sameday-notice a:hover { text-decoration: underline; }
+
+    /* ── Result ── */
+    .result-empty {
+      background: #ffffff; border: 2px dashed #e0e0e0;
+      border-radius: 16px; padding: 3rem; text-align: center; color: #aaa;
+    }
+    .result-empty .empty-icon { font-size: 2.5rem; margin-bottom: 1rem; display: block; }
+
+    .result-filled {
+      display: none; background: #0d2b28;
+      border-radius: 16px; padding: 2.5rem; color: #ffffff;
+      animation: fadeInUp 0.4s ease-out;
+    }
+    .result-filled.visible { display: block; }
+
+    .result-label { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #14d4ae; margin-bottom: 0.5rem; }
+    .result-price { font-size: 4rem; font-weight: 700; color: #ffffff; line-height: 1; margin-bottom: 0.3rem; }
+    .result-price .currency { font-size: 2rem; vertical-align: super; font-weight: 500; color: #14d4ae; }
+    .result-price-range { font-size: 2.4rem; font-weight: 700; color: #14d4ae; line-height: 1; margin-bottom: 0.3rem; }
+    .result-currency-note { font-size: 0.9rem; color: rgba(255,255,255,0.6); margin-bottom: 2rem; }
+
+    .result-breakdown { border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1.5rem; display: flex; flex-direction: column; gap: 0.7rem; }
+    .breakdown-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.95rem; }
+    .breakdown-label { color: rgba(255,255,255,0.7); }
+    .breakdown-value { font-weight: 600; color: #ffffff; }
+    .breakdown-value.highlight { color: #14d4ae; }
+    .breakdown-value.fee { color: #f0a060; }
+    .breakdown-divider { border-top: 1px solid rgba(255,255,255,0.15); margin: 0.3rem 0; }
+
+    .result-note { margin-top: 1rem; padding: 1rem 1.2rem; background: rgba(20,212,174,0.1); border-left: 3px solid #14d4ae; border-radius: 6px; font-size: 0.9rem; color: rgba(255,255,255,0.85); line-height: 1.6; }
+    .result-note + .result-note { margin-top: 0.6rem; }
+    .result-note.contact-note { background: rgba(224,122,58,0.12); border-left-color: #e07a3a; }
+
+    /* ── Pricing Reference ── */
+    .pricing-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-bottom: 1.5rem; }
+    .pricing-table:last-child { margin-bottom: 0; }
+    .pricing-table th { text-align: left; padding: 0.8rem 1rem; font-weight: 700; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; color: #6a6a6a; border-bottom: 2px solid #f0f0f0; }
+    .pricing-table td { padding: 0.8rem 1rem; border-bottom: 1px solid #f5f5f5; color: #1a1a1a; }
+    .pricing-table tr:last-child td { border-bottom: none; }
+    .pricing-table .price-val { font-weight: 700; color: #2a9d8f; white-space: nowrap; }
+    .pricing-table .contact-val { font-weight: 700; color: #e07a3a; white-space: nowrap; }
+    .pricing-table tr:hover td { background: #f8f9fa; }
+    .table-section-head td { background: #f0f9f8 !important; font-weight: 700; color: #2a9d8f; font-size: 0.85rem; padding: 0.6rem 1rem; }
+    .table-divider { margin: 1.5rem 0; border: none; border-top: 2px solid #f0f0f0; }
+
+    /* ── Footer ── */
+    .footer { background: #1a1a1a; color: #ffffff; padding: 3rem 0; text-align: center; margin-top: 6rem; }
+    .footer small { font-size: 0.95rem; opacity: 0.8; line-height: 1.7; }
+
+    /* ── Responsive ── */
+    @media (max-width: 968px) {
+      .links {
+        display: none; position: absolute; top: 100%; left: 0; right: 0;
+        background: #ffffff; flex-direction: column; align-items: stretch;
+        gap: 0; box-shadow: 0 8px 20px rgba(0,0,0,0.1); z-index: 99;
+      }
+      .links.open { display: flex; }
+      .links a { padding: 1rem 2rem; border-bottom: 1px solid #f0f0f0; font-size: 1rem; }
+      .links a:last-child { border-bottom: none; }
+      .links a::after { display: none; }
+      .nav-inner { position: relative; }
+      .mobile-toggle { display: block; }
+      .page-header h1 { font-size: 2.2rem; }
+      .service-options { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    @media (max-width: 640px) {
+      .container { padding: 0 1.5rem; }
+      .brand { flex-direction: column; align-items: flex-start; gap: 0.3rem; }
+      .page { padding: 3rem 0; }
+      .page-header h1 { font-size: 1.9rem; }
+      .page-header p { font-size: 1rem; }
+      .card { padding: 1.8rem; }
+      .zone-grid { grid-template-columns: 1fr; }
+      .zone-subregion-row { grid-template-columns: 1fr; }
+      .service-options { grid-template-columns: 1fr; }
+.result-price { font-size: 3rem; }
+      .result-price-range { font-size: 1.8rem; }
+    }
+  
+
+    /* Mobile header fit fix */
+    @media (max-width: 768px) {
+      .nav .container {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+      }
+
+      .nav-inner {
+        gap: 0.75rem !important;
+        min-width: 0;
+      }
+
+      .brand {
+        flex: 1 1 auto !important;
+        min-width: 0;
+        gap: 0.55rem !important;
+        margin-right: 0 !important;
+      }
+
+      .brand img {
+        height: 42px !important;
+        flex: 0 0 auto;
+      }
+
+      .badge {
+        white-space: normal !important;
+        line-height: 1.25;
+        font-size: 0.7rem !important;
+        max-width: 150px;
+      }
+
+      .mobile-toggle {
+        display: flex !important;
+        flex: 0 0 auto;
+        padding: 0.65rem 0.8rem !important;
+        min-width: 72px;
+        max-width: 92px;
+        white-space: nowrap;
+      }
+
+      .mobile-toggle::before {
+        content: "☰" !important;
+        margin-right: 0.4rem !important;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .badge {
+        max-width: 126px;
+        font-size: 0.66rem !important;
+      }
+
+      .mobile-toggle {
+        min-width: 64px;
+        max-width: 78px;
+        padding: 0.6rem 0.65rem !important;
+      }
+    }
+
+  
+
+    /* Mobile calculator overflow fix */
+    @media (max-width: 760px) {
+      html, body { max-width: 100%; overflow-x: hidden; }
+      .container { width: 100%; max-width: 100%; padding-left: 1rem !important; padding-right: 1rem !important; }
+      .calculator-grid, .calc-grid, .form-grid, .route-grid, .zones-row, .result-grid {
+        grid-template-columns: 1fr !important;
+        width: 100%;
+        max-width: 100%;
+      }
+      .calculator-card, .result-card, .card, .estimate-box {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+      }
+      .breakdown-row {
+        display: grid !important;
+        grid-template-columns: 1fr;
+        gap: 0.25rem;
+        text-align: left;
+      }
+      .breakdown-value, .breakdown-label, .result-price, select, .input {
+        max-width: 100%;
+        overflow-wrap: anywhere;
+        white-space: normal;
+      }
+      table {
+        width: 100% !important;
+        table-layout: fixed;
+      }
+      th, td {
+        white-space: normal !important;
+        overflow-wrap: anywhere;
+        word-break: normal;
+        padding-left: 0.65rem !important;
+        padding-right: 0.65rem !important;
+      }
+      .table-wrap, .pricing-table-wrap {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden !important;
+      }
+    }
+
+  </style>
+</head>
+<body>
+
+  <header class="nav">
+    <div class="container">
+      <div class="nav-inner">
+        <a class="brand" href="index.html" aria-label="VirtuDrop Home">
+          <img src="assets/logo.png" alt="VirtuDrop logo" />
+          <span class="badge">Professional • Reliable • Structured</span>
+        </a>
+        <button class="mobile-toggle" type="button" data-mobile-toggle>Menu</button>
+        <nav class="links" data-nav-links>
+          <a href="index.html">Home</a>
+          <a href="how-it-works.html">How It Works</a>
+          <a href="pricing.html">Pricing</a>
+          <a href="zones.html">Delivery Zones</a>
+          <a href="business-clients.html">Business Clients</a>
+          <a href="calculator.html">Calculator</a>
+          <a href="track.html">Track Delivery</a>
+          <a href="contact.html">Contact</a>
+          <a href="auth.html" class="nav-login">Login/Register</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="page">
+      <div class="container">
+        <div class="page-header">
+          <h1>Delivery Cost Calculator</h1>
+          <p>Select your zones and service type to get an instant price estimate.</p>
+        </div>
+
+        <div class="calc-wrapper">
+
+          <!-- ── Pickup Location ── -->
+          <div class="card">
+            <div class="card-title">📦 Pickup Location</div>
+            <div class="zone-grid">
+              <div class="zone-block">
+                <label for="pickupZone">Pickup Zone <span>(select first)</span></label>
+                <select class="input" id="pickupZone">
+                  <option value="">— Select zone —</option>
+                  <option value="A">Central</option>
+                  <option value="B">South</option>
+                  <option value="C">East</option>
+                  <option value="D">West</option>
+                </select>
+              </div>
+              <div class="zone-block" id="pickupAreaBlock">
+                <label for="pickupArea">Pickup Area <span>(select zone first)</span></label>
+                <select class="input" id="pickupArea" disabled>
+                  <option value="">— Select zone first —</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+
+          <!-- ── Drop-off Location ── -->
+          <div class="card">
+            <div class="card-title">🏠 Drop-off Location</div>
+            <div class="zone-grid">
+              <div class="zone-block">
+                <label for="dropZone">Drop-off Zone <span>(select first)</span></label>
+                <select class="input" id="dropZone">
+                  <option value="">— Select zone —</option>
+                  <option value="A">Central</option>
+                  <option value="B">South</option>
+                  <option value="C">East</option>
+                  <option value="D">West</option>
+                </select>
+              </div>
+              <div class="zone-block" id="dropAreaBlock">
+                <label for="dropArea">Drop-off Area <span>(select zone first)</span></label>
+                <select class="input" id="dropArea" disabled>
+                  <option value="">— Select zone first —</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Service Type ── -->
+          <div class="card">
+            <div class="card-title">🚚 Service Type</div>
+            <div class="service-options">
+
+              <div class="service-option" id="opt-standard">
+                <input type="radio" name="service" id="svc-standard" value="standard">
+                <label for="svc-standard">
+                  <span class="service-icon">📅</span>
+                  <span class="service-name">Standard Delivery</span>
+                  <span class="service-note">Same or cross zone · $40 / $50</span>
+                </label>
+              </div>
+
+              <div class="service-option contact-svc" id="opt-priority">
+                <input type="radio" name="service" id="svc-priority" value="priority">
+                <label for="svc-priority">
+                  <span class="service-icon">⚡</span>
+                  <span class="service-name">Priority Same-Day</span>
+                  <span class="service-note">Contact us · subject to availability</span>
+                </label>
+              </div>
+
+            </div>
+
+            <!-- Same-day/Direct notice shown below service selector -->
+            <div class="sameday-notice" id="contactNotice" style="display:none; margin-top:1.2rem;">
+              <span id="contactNoticeText"></span>
+            </div>
+          </div>
+
+          <!-- ── Result ── -->
+          <div>
+            <div class="result-empty" id="resultEmpty">
+              <span class="empty-icon">🧮</span>
+              Select your locations and service type above to see the delivery cost.
+            </div>
+            <div class="result-filled" id="resultFilled">
+              <div class="result-label">Estimated Delivery Cost</div>
+              <div id="resultPriceDisplay"></div>
+              <div class="result-currency-note" id="resultCurrencyNote"></div>
+              <div class="result-breakdown" id="resultBreakdown"></div>
+              <div id="resultNotes"></div>
+            </div>
+          </div>
+
+          <!-- ── Pricing Reference Table ── -->
+          <div class="card">
+            <div class="card-title">📋 Pricing Reference</div>
+
+            <table class="pricing-table">
+              <thead>
+                <tr>
+                  <th>Service Type</th>
+                  <th>Same Zone</th>
+                  <th>Cross Zone</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Standard Delivery</td><td class="price-val">TTD $40</td><td class="price-val">TTD $50</td></tr>
+                <tr><td>Priority Same-Day</td><td class="contact-val">Contact Us</td><td class="contact-val">Contact Us</td></tr>
+              </tbody>
+            </table>
+
+            
+
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <small>© 2026 VirtuDrop. Delivery pricing calculator for business clients and customers.</small>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+    const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnbXp6YXZ4aHVhcmxhY252bm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Mjk4NTksImV4cCI6MjA5NDIwNTg1OX0.7-YKlwLrhUYUYbiii93ZvgX01TxVephApDNCP50Rl54';
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let zoneAreas = {};
+    let zoneNames = {};
+    let pricingRules = [];
+    let appSettings = { currency: 'TTD', same_day_enabled: true };
+
+    const pickupZone = document.getElementById('pickupZone');
+    const dropZone = document.getElementById('dropZone');
+    const standardNote = document.querySelector('#opt-standard .service-note');
+    const pricingRow = document.querySelector('.pricing-table tbody tr:first-child');
+
+    function formatMoney(amount) {
+      return Number(amount || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
+    }
+
+    function setSelectOptions(select, zones) {
+      select.innerHTML = '<option value="">- Select zone -</option>';
+      zones.forEach(zone => {
+        const option = document.createElement('option');
+        option.value = zone.code;
+        option.textContent = zone.region ? zone.region.replace(' Region', '') : zone.name;
+        select.appendChild(option);
+      });
+    }
+
+    function populateStandard(zone, sel) {
+      sel.innerHTML = '';
+      if (!zone || !zoneAreas[zone]) {
+        sel.innerHTML = '<option value="">- Select zone first -</option>';
+        sel.disabled = true;
+        return;
+      }
+
+      sel.disabled = false;
+      sel.innerHTML = '<option value="">- Select area -</option>';
+      zoneAreas[zone].forEach(area => {
+        const option = document.createElement('option');
+        option.value = area;
+        option.textContent = area;
+        sel.appendChild(option);
+      });
+    }
+
+    function getLocationInfo(prefix) {
+      const zone = document.getElementById(prefix + 'Zone').value;
+      if (!zone) return null;
+      const area = document.getElementById(prefix + 'Area').value;
+      return area ? { zone, area } : null;
+    }
+
+    function getStandardPrice(pickup, drop) {
+      const rule = pricingRules.find(item =>
+        item.service_type === 'standard' &&
+        item.pickup_zone?.code === pickup.zone &&
+        item.dropoff_zone?.code === drop.zone
+      );
+
+      return rule?.base_price ?? null;
+    }
+
+    function getReferencePrices() {
+      const sameZoneRule = pricingRules.find(item =>
+        item.service_type === 'standard' &&
+        item.pickup_zone?.code === item.dropoff_zone?.code
+      );
+      const crossZoneRule = pricingRules.find(item =>
+        item.service_type === 'standard' &&
+        item.pickup_zone?.code !== item.dropoff_zone?.code
+      );
+
+      return {
+        same: sameZoneRule?.base_price ?? 40,
+        cross: crossZoneRule?.base_price ?? 50
+      };
+    }
+
+    function updatePricingReference() {
+      const prices = getReferencePrices();
+      if (standardNote) {
+        standardNote.textContent = `Same or cross zone - $${formatMoney(prices.same)} / $${formatMoney(prices.cross)}`;
+      }
+      if (pricingRow) {
+        const cells = pricingRow.querySelectorAll('td');
+        if (cells[1]) cells[1].textContent = `${appSettings.currency} $${formatMoney(prices.same)}`;
+        if (cells[2]) cells[2].textContent = `${appSettings.currency} $${formatMoney(prices.cross)}`;
+      }
+    }
+
+    async function loadCalculatorData() {
+      const [zonesRes, pricingRes, settingsRes] = await Promise.all([
+        supabase
+          .from('zones')
+          .select('code, name, region, zone_areas(area_name)')
+          .eq('active', true)
+          .in('code', ['A', 'B', 'C', 'D'])
+          .order('code', { ascending: true }),
+        supabase
+          .from('pricing_rules')
+          .select('service_type, base_price, requires_quote, pickup_zone:pickup_zone_id(code), dropoff_zone:dropoff_zone_id(code)')
+          .eq('active', true),
+        supabase
+          .from('app_settings')
+          .select('key, value')
+          .in('key', ['currency', 'same_day_enabled'])
+      ]);
+
+      if (zonesRes.error || pricingRes.error || settingsRes.error) {
+        console.error('Unable to load calculator data:', {
+          zones: zonesRes.error,
+          pricing: pricingRes.error,
+          settings: settingsRes.error
+        });
+        document.getElementById('resultEmpty').textContent = 'Pricing data could not be loaded. Please refresh the page or contact VirtuDrop.';
+        return;
+      }
+
+      const zones = zonesRes.data || [];
+      zoneAreas = zones.reduce((lookup, zone) => {
+        lookup[zone.code] = (zone.zone_areas || [])
+          .map(item => item.area_name)
+          .filter(Boolean)
+          .sort((a, b) => a.localeCompare(b));
+        return lookup;
+      }, {});
+
+      zoneNames = zones.reduce((lookup, zone) => {
+        lookup[zone.code] = zone.region ? zone.region.replace(' Region', '') : zone.name;
+        return lookup;
+      }, {});
+
+      pricingRules = pricingRes.data || [];
+      appSettings = (settingsRes.data || []).reduce((settings, item) => {
+        settings[item.key] = item.value;
+        return settings;
+      }, appSettings);
+
+      setSelectOptions(pickupZone, zones);
+      setSelectOptions(dropZone, zones);
+      updatePricingReference();
+    }
+
+    function onZoneChange(prefix) {
+      const zone = document.getElementById(prefix + 'Zone').value;
+      const areaSelect = document.getElementById(prefix + 'Area');
+      populateStandard(zone, areaSelect);
+      updateResult();
+    }
+
+    function updateContactNotice() {
+      const service = document.querySelector('input[name="service"]:checked')?.value;
+      const notice = document.getElementById('contactNotice');
+      const text = document.getElementById('contactNoticeText');
+
+      if (service === 'priority') {
+        notice.style.display = 'block';
+        text.innerHTML = '<strong>Priority Same-Day:</strong> Subject to route availability. Package must be ready before 10:00 AM. Contact us to confirm whether it can be accommodated and to receive a quoted price. <a href="contact.html">Contact us here</a>.';
+      } else {
+        notice.style.display = 'none';
+      }
+    }
+
+    ['pickup', 'drop'].forEach(prefix => {
+      document.getElementById(prefix + 'Zone').addEventListener('change', () => onZoneChange(prefix));
+      document.getElementById(prefix + 'Area').addEventListener('change', updateResult);
+    });
+
+    document.querySelectorAll('input[name="service"]').forEach(radio => {
+      radio.addEventListener('change', () => {
+        updateContactNotice();
+        updateResult();
+      });
+    });
+
+    function updateResult() {
+      const pickup = getLocationInfo('pickup');
+      const drop = getLocationInfo('drop');
+      const service = document.querySelector('input[name="service"]:checked')?.value;
+      const empty = document.getElementById('resultEmpty');
+      const filled = document.getElementById('resultFilled');
+
+      if (!pickup || !drop || !service) {
+        empty.style.display = 'block';
+        filled.classList.remove('visible');
+        return;
+      }
+
+      empty.style.display = 'none';
+      filled.classList.add('visible');
+
+      const notes = [];
+      let priceHTML = '';
+      let currencyNote = 'Trinidad and Tobago Dollars (TTD)';
+      let breakdownHTML = '';
+      const sameZone = pickup.zone === drop.zone;
+      const routeLabel = sameZone
+        ? 'Same zone (' + zoneNames[pickup.zone] + ')'
+        : zoneNames[pickup.zone] + ' &rarr; ' + zoneNames[drop.zone];
+
+      if (service === 'priority') {
+        priceHTML = '<div class="result-price-range">Contact Us</div>';
+        currencyNote = 'Price quoted per request - subject to availability';
+        breakdownHTML = `
+          <div class="breakdown-row"><span class="breakdown-label">Pickup</span><span class="breakdown-value">${pickup.area}</span></div>
+          <div class="breakdown-row"><span class="breakdown-label">Drop-off</span><span class="breakdown-value">${drop.area}</span></div>
+          <div class="breakdown-row"><span class="breakdown-label">Route</span><span class="breakdown-value highlight">${routeLabel}</span></div>
+          <div class="breakdown-row"><span class="breakdown-label">Service</span><span class="breakdown-value">Priority Same-Day</span></div>
+          <div class="breakdown-divider"></div>
+          <div class="breakdown-row"><span class="breakdown-label">Delivery price</span><span class="breakdown-value highlight">Contact us for quote</span></div>
+        `;
+        notes.push('<strong>Priority Same-Day:</strong> Subject to availability. Package must be ready before 10:00 AM. Contact us to confirm whether it can be accommodated and to receive a quoted price.');
+      } else {
+        const basePrice = getStandardPrice(pickup, drop);
+
+        if (basePrice === null) {
+          priceHTML = '<div class="result-price-range">Contact Us</div>';
+          currencyNote = 'This route requires confirmation';
+          breakdownHTML = `
+            <div class="breakdown-row"><span class="breakdown-label">Pickup</span><span class="breakdown-value">${pickup.area}</span></div>
+            <div class="breakdown-row"><span class="breakdown-label">Drop-off</span><span class="breakdown-value">${drop.area}</span></div>
+            <div class="breakdown-row"><span class="breakdown-label">Route</span><span class="breakdown-value highlight">${routeLabel}</span></div>
+            <div class="breakdown-divider"></div>
+            <div class="breakdown-row"><span class="breakdown-label">Delivery price</span><span class="breakdown-value highlight">Contact us for quote</span></div>
+          `;
+          notes.push('Please contact VirtuDrop to confirm pricing for this route.');
+        } else {
+          priceHTML = `<div class="result-price"><span class="currency">${appSettings.currency} $</span>${formatMoney(basePrice)}</div>`;
+          breakdownHTML = `
+            <div class="breakdown-row"><span class="breakdown-label">Pickup</span><span class="breakdown-value">${pickup.area}</span></div>
+            <div class="breakdown-row"><span class="breakdown-label">Drop-off</span><span class="breakdown-value">${drop.area}</span></div>
+            <div class="breakdown-row"><span class="breakdown-label">Route</span><span class="breakdown-value highlight">${routeLabel}</span></div>
+            <div class="breakdown-row"><span class="breakdown-label">Service</span><span class="breakdown-value">Standard Delivery</span></div>
+            <div class="breakdown-divider"></div>
+            <div class="breakdown-row"><span class="breakdown-label">Estimated cost</span><span class="breakdown-value highlight">${appSettings.currency} $${formatMoney(basePrice)} ${sameZone ? '(same zone)' : '(cross zone)'}</span></div>
+          `;
+          notes.push('<strong>Standard Delivery:</strong> Delivery is scheduled on your zone\'s assigned days. Orders must be submitted by 8:00 PM daily.');
+        }
+      }
+
+      document.getElementById('resultPriceDisplay').innerHTML = priceHTML;
+      document.getElementById('resultCurrencyNote').textContent = currencyNote;
+      document.getElementById('resultBreakdown').innerHTML = breakdownHTML;
+      document.getElementById('resultNotes').innerHTML = notes.map(note =>
+        `<div class="result-note${note.includes('Contact us') || note.includes('Subject') ? ' contact-note' : ''}">${note}</div>`
+      ).join('');
+    }
+
+    const toggle = document.querySelector('[data-mobile-toggle]');
+    const navLinks = document.querySelector('[data-nav-links]');
+    if (toggle && navLinks) {
+      toggle.addEventListener('click', () => {
+        navLinks.classList.toggle('open');
+        toggle.textContent = navLinks.classList.contains('open') ? 'Close' : 'Menu';
+      });
+    }
+
+    loadCalculatorData();
+  </script>
+</body>
+</html>
