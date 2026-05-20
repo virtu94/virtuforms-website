@@ -852,12 +852,18 @@
       submitBtn.disabled = true;
       submitBtn.textContent = 'Sending...';
       
-      // Send email using EmailJS
+      // Send BOTH emails explicitly (owner notification + customer confirmation)
+      // Email 1: Send to owner (info@virtuforms.net)
       emailjs.sendForm('service_ncqjttb', 'template_wfvtocf', this)
         .then(function() {
-          // Success - redirect to thank you page
+          // Email 1 sent successfully, now send Email 2 to customer
+          return emailjs.sendForm('service_ncqjttb', 'template_e5as5hg', form);
+        })
+        .then(function() {
+          // Both emails sent successfully - redirect to thank you page
           window.location.href = 'https://virtuforms.net/thank-you.html';
-        }, function(error) {
+        })
+        .catch(function(error) {
           // Error - show message and re-enable button
           alert('There was an error submitting your request. Please try again or contact us at 868-797-3543.');
           submitBtn.disabled = false;
