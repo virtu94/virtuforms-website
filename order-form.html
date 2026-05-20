@@ -680,14 +680,14 @@
           </ul>
         </div>
 
-        <form action="https://formsubmit.co/info@virtuforms.net" method="POST" id="order-form">
-          <!-- Hidden fields for FormSubmit configuration -->
-          <input type="hidden" name="_subject" value="New Service Request - VirtuForms">
-          <input type="hidden" name="_captcha" value="false">
-          <input type="hidden" name="_next" value="https://virtuforms.net/thank-you.html">
-          <input type="hidden" name="_autoresponse" value="Thank you for choosing VirtuForms! We have received your service request and will contact you within 24 hours to discuss your requirements and provide a detailed quote. If you have any urgent questions, please call us at 868-797-3543 or 868-470-3704. Best regards, VirtuForms Team">
-          <input type="hidden" id="agreement-timestamp" name="terms_agreed_at" value="">
-          <input type="hidden" name="terms_agreed" value="Yes">
+        <form action="https://api.web3forms.com/submit" method="POST" id="order-form">
+          <!-- Web3Forms Access Key -->
+          <input type="hidden" name="access_key" value="94056b71-d085-4d90-b91e-34423c9601b3">
+          
+          <!-- Configuration -->
+          <input type="hidden" name="subject" value="New Service Request - VirtuForms">
+          <input type="hidden" name="from_name" value="VirtuForms Order System">
+          <input type="hidden" name="redirect" value="https://virtuforms.net/thank-you.html">
           
           <!-- Full Name -->
           <div class="form-group">
