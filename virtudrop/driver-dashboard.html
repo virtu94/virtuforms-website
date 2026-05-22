@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -706,7 +706,7 @@
       const maps = mapsTarget(order);
 
       if (status === 'delivered') {
-        return `<button class="action-btn btn-whatsapp" onclick="whatsappCustomer('${phone}', '${order.order_number}', '${order.tracking_token || ''}')" style="opacity:0.8;">💬 WhatsApp</button>`;
+        return `<button class="action-btn btn-whatsapp" onclick="whatsappCustomer('${phone}')" style="opacity:0.8;">💬 WhatsApp Customer</button>`;
       }
 
       if (status === 'failed' || status === 'rescheduled') {
@@ -716,6 +716,7 @@
       const common = `
         <button class="action-btn btn-maps" onclick="openMaps('${maps.replaceAll("'", "\\'")}')">🗺️ Open in Maps</button>
         <button class="action-btn btn-call" onclick="callCustomer('${phone}')">📞 Call Customer</button>
+        <button class="action-btn btn-whatsapp" onclick="whatsappCustomer('${phone}')">💬 WhatsApp Customer</button>
       `;
 
       if (status === 'queued') {
@@ -723,7 +724,7 @@
       }
 
       return common + `
-        <button class="action-btn btn-whatsapp" onclick="whatsappCustomer('${phone}', '${order.order_number}', '${order.tracking_token || ''}')">💬 WhatsApp</button>
+        <button class="action-btn btn-whatsapp" onclick="whatsappCustomer('${phone}')">💬 WhatsApp Customer</button>
         <button class="action-btn btn-delivered" onclick="markDelivered('${order.id}', ${collect})">✅ Mark Delivered</button>
         <button class="action-btn btn-unavailable" onclick="markUnavailable('${order.id}')">📵 Unavailable</button>
         <button class="action-btn btn-failed" onclick="markFailed('${order.id}')">❌ Mark Failed</button>
@@ -977,14 +978,8 @@
       window.location.href = `tel:+${phoneForLink(phone)}`;
     };
 
-    window.whatsappCustomer = function(phone, orderNumber, trackingToken = '') {
-      const base = window.location.origin + window.location.pathname.replace(/driver-dashboard\.html$/, 'track.html');
-      const link = orderNumber && trackingToken
-        ? ` Track it here: ${base}?order=${encodeURIComponent(orderNumber)}&token=${encodeURIComponent(trackingToken)}`
-        : '';
-      const orderText = orderNumber ? ` (${orderNumber})` : '';
-      const message = `Hi, this is VirtuDrop. Your delivery${orderText} is on the way.${link} Please be available to receive your package.`;
-      const url = `https://wa.me/${phoneForLink(phone)}?text=${encodeURIComponent(message)}`;
+    window.whatsappCustomer = function(phone) {
+      const url = `https://wa.me/${phoneForLink(phone)}`;
       window.open(url, '_blank');
     };
 
