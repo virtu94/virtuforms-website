@@ -407,6 +407,75 @@
     .modal h3 { font-size: 1.4rem; font-weight: 700; color: #1a1a1a; margin-bottom: 0.8rem; }
     .modal p { font-size: 0.95rem; color: #4a4a4a; line-height: 1.7; margin-bottom: 1.5rem; }
 
+    /* Order details modal - Codex */
+    .order-detail-modal {
+      max-width: 720px;
+      text-align: left;
+      max-height: 88vh;
+      overflow-y: auto;
+    }
+    .order-detail-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #eef3f2;
+    }
+    .order-detail-title { font-size: 1.25rem; font-weight: 800; color: #0d2b28; }
+    .order-detail-sub { margin-top: 0.25rem; color: #6a6a6a; font-size: 0.88rem; }
+    .order-detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75rem;
+      margin: 1rem 0;
+    }
+    .order-detail-item {
+      background: #f8fbfa;
+      border: 1px solid #edf4f3;
+      border-radius: 10px;
+      padding: 0.8rem;
+      min-width: 0;
+    }
+    .order-detail-item.full { grid-column: 1 / -1; }
+    .order-detail-label {
+      font-size: 0.72rem;
+      color: #6a6a6a;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 0.3rem;
+    }
+    .order-detail-value {
+      color: #1a1a1a;
+      font-size: 0.95rem;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+    .order-detail-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.7rem;
+      margin-top: 1rem;
+    }
+    .order-clickable { cursor: pointer; }
+    .order-clickable:hover td { background: #f0f9f8; }
+    .order-detail-link {
+      border: 0;
+      background: transparent;
+      color: #2a9d8f;
+      font-weight: 800;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: inherit;
+      padding: 0;
+    }
+    @media (max-width: 640px) {
+      .order-detail-grid { grid-template-columns: 1fr; }
+      .order-detail-head { flex-direction: column; }
+    }
+
     /* ── Mobile bottom nav ── */
     .bottom-nav {
       display: none;
@@ -1407,6 +1476,14 @@
 
   </div><!-- /content -->
 </div><!-- /main -->
+
+<!-- Order Detail Modal -->
+<div class="modal-overlay" id="orderDetailModal">
+  <div class="modal order-detail-modal">
+    <div id="orderDetailContent"></div>
+    <button class="btn btn-primary" style="width:100%; justify-content:center; margin-top:1rem;" onclick="closeOrderDetails()">Close</button>
+  </div>
+</div>
 
 <!-- Order Success Modal -->
 <div class="modal-overlay" id="successModal">
