@@ -147,6 +147,38 @@ function trackingLink(order) {
   return `${base}?order=${encodeURIComponent(order.order_number)}&token=${encodeURIComponent(order.tracking_token)}`;
 }
 
+function mapsLink(order) {
+  if (order?.maps_link) return order.maps_link;
+  if (order?.latitude && order?.longitude) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.latitude + ',' + order.longitude)}`;
+  }
+  if (order?.delivery_address || order?.area_name) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((order.delivery_address || order.area_name) + ', Trinidad')}`;
+  }
+  return '';
+}
+
+function customerNotesParts(order) {
+  const notes = String(order?.customer_notes || '');
+  const packageMatch = notes.match(/^Package:\s*(.*)$/m);
+  const packageText = packageMatch ? packageMatch[1].trim() : '';
+  const extraNotes = notes
+    .split('\n')
+    .filter(line => !line.trim().toLowerCase().startsWith('package:'))
+    .join('\n')
+    .trim();
+  return { packageText, extraNotes };
+}
+
+function detailItem(label, value, full = false) {
+  return `
+    <div class="order-detail-item${full ? ' full' : ''}">
+      <div class="order-detail-label">${escapeHtml(label)}</div>
+      <div class="order-detail-value">${value || '—'}</div>
+    </div>
+  `;
+}
+
 function deliveryLink() {
   const base = window.location.origin + window.location.pathname.replace(/dashboard\.html$/, 'delivery-form.html');
   return `${base}?business=${encodeURIComponent(business?.slug || '')}`;
@@ -168,14 +200,14 @@ function emptyRow(cols, message) {
 function orderTableRow(order, includeCost = false) {
   const link = trackingLink(order);
   return `
-    <tr>
-      <td><strong>${escapeHtml(order.order_number)}</strong></td>
+    <tr class="order-clickable" onclick="openOrderDetails('${order.id}')">
+      <td><strong><button type="button" class="order-detail-link" onclick="event.stopPropagation(); openOrderDetails('${order.id}')">${escapeHtml(order.order_number)}</button></strong></td>
       <td>${escapeHtml(routeText(order))}</td>
       <td>${escapeHtml(paymentLabels[order.payment_type] || 'Delivery')}</td>
       ${includeCost ? `<td>${money(order.delivery_fee)}</td>` : ''}
       <td>${formatDate(order.created_at)}</td>
       <td><span class="status-badge ${statusClass(order.order_status)}">${escapeHtml(statusLabel(order.order_status))}</span></td>
-      ${includeCost ? `<td>${link ? `<a href="${escapeHtml(link)}" target="_blank" style="color:#2a9d8f; font-weight:700;">Track</a>` : '—'}</td>` : ''}
+      ${includeCost ? `<td>${link ? `<a href="${escapeHtml(link)}" target="_blank" onclick="event.stopPropagation()" style="color:#2a9d8f; font-weight:700;">Track</a>` : '—'}</td>` : ''}
     </tr>
   `;
 }
@@ -183,7 +215,7 @@ function orderTableRow(order, includeCost = false) {
 function orderCard(order) {
   const link = trackingLink(order);
   return `
-    <div class="order-card">
+    <div class="order-card order-clickable" onclick="openOrderDetails('${order.id}')">
       <div class="order-card-top">
         <span class="order-card-id">${escapeHtml(order.order_number)}</span>
         <span class="status-badge ${statusClass(order.order_status)}">${escapeHtml(statusLabel(order.order_status))}</span>
@@ -193,10 +225,65 @@ function orderCard(order) {
         <span>${escapeHtml(paymentLabels[order.payment_type] || 'Delivery')}</span>
         <span>${formatDate(order.created_at)}</span>
       </div>
-      <div class="order-card-cost">${money(order.delivery_fee)}${link ? ` · <a href="${escapeHtml(link)}" target="_blank" style="color:#2a9d8f;">Track</a>` : ''}</div>
+      <div class="order-card-cost">${money(order.delivery_fee)}${link ? ` · <a href="${escapeHtml(link)}" target="_blank" onclick="event.stopPropagation()" style="color:#2a9d8f;">Track</a>` : ''} · <button type="button" class="order-detail-link" onclick="event.stopPropagation(); openOrderDetails('${order.id}')">View details</button></div>
     </div>
   `;
 }
+
+window.openOrderDetails = function(orderId) {
+  const order = orders.find(item => item.id === orderId);
+  const modal = el('#orderDetailModal');
+  const content = el('#orderDetailContent');
+  if (!order || !modal || !content) return;
+
+  const link = trackingLink(order);
+  const map = mapsLink(order);
+  const notes = customerNotesParts(order);
+  const payment = paymentLabels[order.payment_type] || order.payment_type || 'Delivery';
+  const status = statusLabel(order.order_status);
+  const amountToCollect = order.payment_type === 'prepaid'
+    ? 0
+    : order.payment_type === 'delivery_only'
+      ? Number(order.delivery_fee || 0)
+      : Number(order.cod_amount || 0) + Number(order.delivery_fee || 0);
+
+  content.innerHTML = `
+    <div class="order-detail-head">
+      <div>
+        <div class="order-detail-title">${escapeHtml(order.order_number)}</div>
+        <div class="order-detail-sub">${escapeHtml(status)} · ${escapeHtml(formatDate(order.created_at))}</div>
+      </div>
+      <span class="status-badge ${statusClass(order.order_status)}">${escapeHtml(status)}</span>
+    </div>
+    <div class="order-detail-grid">
+      ${detailItem('Customer', escapeHtml(order.customer_name || ''))}
+      ${detailItem('Phone', escapeHtml(order.customer_phone || ''))}
+      ${detailItem('Payment Type', escapeHtml(payment))}
+      ${detailItem('Amount to Collect', escapeHtml(money(amountToCollect)))}
+      ${detailItem('COD Amount', escapeHtml(money(order.cod_amount)))}
+      ${detailItem('Delivery Fee', escapeHtml(money(order.delivery_fee)))}
+      ${detailItem('Zone Status', escapeHtml(order.zone_status || 'pending'))}
+      ${detailItem('Order Status', escapeHtml(status))}
+      ${detailItem('Package', escapeHtml(notes.packageText || 'Not entered'), true)}
+      ${detailItem('Delivery Address', escapeHtml(order.delivery_address || 'Location pending'), true)}
+      ${detailItem('House / Apt', escapeHtml(order.house_number || ''))}
+      ${detailItem('Street', escapeHtml(order.street_name || ''))}
+      ${detailItem('Area', escapeHtml(order.area_name || ''))}
+      ${detailItem('GPS', order.latitude && order.longitude ? escapeHtml(order.latitude + ', ' + order.longitude) : '')}
+      ${detailItem('Notes', escapeHtml(notes.extraNotes || 'None'), true)}
+    </div>
+    <div class="order-detail-actions">
+      ${map ? `<a class="btn btn-primary" href="${escapeHtml(map)}" target="_blank">Open Location</a>` : ''}
+      ${link ? `<a class="btn btn-ghost" href="${escapeHtml(link)}" target="_blank">Track Order</a>` : ''}
+    </div>
+  `;
+
+  modal.classList.add('active');
+};
+
+window.closeOrderDetails = function() {
+  el('#orderDetailModal')?.classList.remove('active');
+};
 
 function renderOverview() {
   const month = new Date().toISOString().slice(0, 7);
@@ -700,7 +787,7 @@ async function loadBusinessData() {
   const [{ data: orderData, error: orderError }, { data: remitData, error: remitError }] = await Promise.all([
     supabase
       .from('orders')
-      .select('id, order_number, customer_name, customer_phone, delivery_address, area_name, maps_link, payment_type, cod_amount, delivery_fee, zone_status, order_status, tracking_token, customer_notes, created_at, updated_at')
+      .select('id, order_number, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, payment_type, cod_amount, delivery_fee, zone_status, order_status, tracking_token, customer_notes, created_at, updated_at')
       .eq('business_client_id', business.id)
       .order('created_at', { ascending: false }),
     supabase
