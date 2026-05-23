@@ -683,6 +683,10 @@
         <form id="order-form">
           <!-- EmailJS will handle form submission via JavaScript -->
           
+          <!-- Hidden fields for form data -->
+          <input type="hidden" id="agreement-timestamp" name="terms_agreed_at" value="">
+          <input type="hidden" name="terms_agreed" value="Yes">
+          
           <!-- Full Name -->
           <div class="form-group">
             <label for="name">Full Name <span class="required">*</span></label>
