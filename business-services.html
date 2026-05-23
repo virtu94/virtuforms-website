@@ -562,14 +562,16 @@
 
     .comparison-table th {
       padding: 1.5rem;
-      text-align: left;
+      text-align: center; /* Center all headers by default */
       color: #ffffff;
       font-weight: 700;
       font-size: 1.1rem;
       border-bottom: 2px solid #7dd3c0;
     }
 
+    /* Keep first column header left-aligned */
     .comparison-table th:first-child {
+      text-align: left;
       border-radius: 12px 0 0 0;
     }
 
@@ -582,6 +584,12 @@
       border-bottom: 1px solid rgba(125, 211, 192, 0.1);
       color: #b8e6dc;
       font-size: 1rem;
+      text-align: center; /* Center all cells by default */
+    }
+
+    /* Keep first column (feature names) left-aligned */
+    .comparison-table td:first-child {
+      text-align: left;
     }
 
     .comparison-table tbody tr {
@@ -917,17 +925,19 @@
         display: table-cell;
         padding: 0.85rem;
         font-size: 0.85rem;
-        text-align: left;
+        text-align: center; /* Center all cells */
         vertical-align: middle;
+      }
+
+      /* Keep first column left-aligned on mobile too */
+      .comparison-table td:first-child,
+      .comparison-table th:first-child {
+        text-align: left;
+        min-width: 180px;
       }
 
       .comparison-table th {
         min-width: 100px;
-      }
-
-      .comparison-table td:first-child,
-      .comparison-table th:first-child {
-        min-width: 180px;
       }
 
       .cta-section {
