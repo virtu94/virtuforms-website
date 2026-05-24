@@ -292,7 +292,7 @@ function renderOverview() {
   const delivered = thisMonth.filter(order => order.order_status === 'delivered');
 
   const heading = el('#panel-overview .section-heading');
-  if (heading?.childNodes?.[0]) heading.childNodes[0].nodeValue = `Good morning, ${firstName()}! 👋 `;
+  if (heading?.childNodes?.[0]) heading.childNodes[0].nodeValue = `Good day, ${firstName()}! 👋 `;
   setText('#panel-overview .section-sub', `Here is a live snapshot for ${business?.business_name || 'your business'}.`);
 
   const statValues = all('#panel-overview .stat-value');
