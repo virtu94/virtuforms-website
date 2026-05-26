@@ -649,67 +649,6 @@
         flex-direction: column;
       }
     }
-  
-
-    /* Mobile header fit fix */
-    @media (max-width: 768px) {
-      .nav .container {
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
-      }
-
-      .nav-inner {
-        gap: 0.75rem !important;
-        min-width: 0;
-      }
-
-      .brand {
-        flex: 1 1 auto !important;
-        min-width: 0;
-        gap: 0.55rem !important;
-        margin-right: 0 !important;
-      }
-
-      .brand img {
-        height: 42px !important;
-        flex: 0 0 auto;
-      }
-
-      .badge {
-        white-space: normal !important;
-        line-height: 1.25;
-        font-size: 0.7rem !important;
-        max-width: 150px;
-      }
-
-      .mobile-toggle {
-        display: flex !important;
-        flex: 0 0 auto;
-        padding: 0.65rem 0.8rem !important;
-        min-width: 72px;
-        max-width: 92px;
-        white-space: nowrap;
-      }
-
-      .mobile-toggle::before {
-        content: "☰" !important;
-        margin-right: 0.4rem !important;
-      }
-    }
-
-    @media (max-width: 380px) {
-      .badge {
-        max-width: 126px;
-        font-size: 0.66rem !important;
-      }
-
-      .mobile-toggle {
-        min-width: 64px;
-        max-width: 78px;
-        padding: 0.6rem 0.65rem !important;
-      }
-    }
-
   </style>
 </head>
 <body>
@@ -759,7 +698,7 @@
             <div id="lockoutNotice" style="display:none; padding:1rem 1.2rem; background:#fff3f3; border-left:4px solid #e05555; border-radius:8px; margin-bottom:1.5rem; font-size:0.92rem; color:#8b2020; line-height:1.6;">
               🔒 <strong>Account locked.</strong> Your account has been locked after too many failed login attempts. Please <a href="contact.html" style="color:#2a9d8f; font-weight:600;">contact VirtuDrop</a> to unlock your account.
             </div>
-            <form id="loginForm" novalidate>
+            <form id="loginForm">
               <div class="field">
                 <label for="loginEmail">Email address</label>
                 <input class="input" id="loginEmail" type="email" placeholder="name@example.com" required />
@@ -779,7 +718,7 @@
 
           <!-- Register Form -->
           <section data-panel="register" hidden aria-label="Register form">
-            <form id="registerForm" novalidate>
+            <form id="registerForm">
               <div class="grid-3" style="grid-template-columns:1fr 1fr;">
                 <div class="field">
                   <label for="firstName">First Name</label>
@@ -810,7 +749,7 @@
 
               <div class="field">
                 <label for="businessName">Business Name</label>
-                <input class="input" id="businessName" type="text" placeholder="Your business name" required />
+                <input class="input" id="businessName" type="text" placeholder="e.g. Classic Couture" required />
                 <div id="businessNameError" class="error-message" style="display: none;"></div>
               </div>
 
@@ -909,27 +848,6 @@
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnbXp6YXZ4aHVhcmxhY252bm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Mjk4NTksImV4cCI6MjA5NDIwNTg1OX0.7-YKlwLrhUYUYbiii93ZvgX01TxVephApDNCP50Rl54';
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    let registrationEnabled = true;
-
-    async function loadRegistrationSetting() {
-      const { data, error } = await supabase
-        .from('app_settings')
-        .select('value')
-        .eq('key', 'registration_enabled')
-        .maybeSingle();
-
-      if (!error && data) {
-        registrationEnabled = data.value !== false;
-      }
-
-      const registerBtn = document.querySelector('#registerForm button[type="submit"]');
-      if (registerBtn) {
-        registerBtn.disabled = !registrationEnabled;
-        registerBtn.textContent = registrationEnabled ? 'Create account' : 'Registration closed';
-      }
-    }
-
-    loadRegistrationSetting();
 
     const tabs = document.querySelectorAll('[data-tab]');
     const panels = document.querySelectorAll('[data-panel]');
@@ -988,7 +906,6 @@
     function showError(inputId, message) {
       const input = document.getElementById(inputId);
       const errorDiv = document.getElementById(inputId + 'Error');
-      if (!input || !errorDiv) return;
       input.classList.add('error');
       input.classList.remove('success');
       errorDiv.textContent = message;
@@ -998,7 +915,6 @@
     function showSuccess(inputId) {
       const input = document.getElementById(inputId);
       const errorDiv = document.getElementById(inputId + 'Error');
-      if (!input || !errorDiv) return;
       input.classList.remove('error');
       input.classList.add('success');
       errorDiv.style.display = 'none';
@@ -1007,25 +923,12 @@
     function clearError(inputId) {
       const input = document.getElementById(inputId);
       const errorDiv = document.getElementById(inputId + 'Error');
-      if (!input || !errorDiv) return;
       input.classList.remove('error', 'success');
       errorDiv.style.display = 'none';
     }
 
-    function showValidationNotice(message = 'Please fix the highlighted fields, then try again.') {
-      showModal('Check This Form', message);
-    }
-
     function validateEmail(email) {
       return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    }
-
-    function normalizeName(value) {
-      return value.replace(/\s+/g, ' ').trim();
-    }
-
-    function hasUsableName(value) {
-      return /^[A-Za-z][A-Za-z' -]{1,49}$/.test(value);
     }
 
     function slugify(value) {
@@ -1059,7 +962,7 @@
     function redirectForRole(role) {
       const params = new URLSearchParams(window.location.search);
       const returnTo = params.get('returnTo');
-      if (returnTo) return returnTo;
+      if (returnTo && role === 'admin') return returnTo;
       if (role === 'admin') return 'admin-dashboard.html';
       if (role === 'driver') return 'driver-dashboard.html';
       return 'dashboard.html';
@@ -1088,11 +991,6 @@
       const password = document.getElementById('loginPass').value;
       const submitBtn = e.currentTarget.querySelector('button[type="submit"]');
       const originalText = submitBtn.textContent;
-      await loadRegistrationSetting();
-      if (!registrationEnabled) {
-        showModal('Registration Closed', 'New business registrations are currently paused. Please contact VirtuDrop for help.');
-        return;
-      }
       let isValid = true;
 
       if (!email) {
@@ -1112,10 +1010,7 @@
         showSuccess('loginPass');
       }
 
-      if (!isValid) {
-        showValidationNotice('Please enter your email and password to log in.');
-        return;
-      }
+      if (!isValid) return;
 
       submitBtn.disabled = true;
       submitBtn.textContent = 'Logging in...';
@@ -1131,7 +1026,7 @@
         const profile = await getCurrentProfile();
         if (!profile || profile.status !== 'active') {
           await supabase.auth.signOut();
-          showModal('Account Not Active', 'Your account is not active. Please contact VirtuDrop if you need help.');
+          showModal('Account Pending', 'Your account is not active yet. Please contact VirtuDrop if you need help.');
           return;
         }
 
@@ -1149,28 +1044,26 @@
       e.preventDefault();
 
       const form = e.currentTarget;
-      const firstName = normalizeName(document.getElementById('firstName').value);
-      const lastName = normalizeName(document.getElementById('lastName').value);
-      const email = document.getElementById('regEmail').value.trim().toLowerCase();
+      const firstName = document.getElementById('firstName').value.trim();
+      const lastName = document.getElementById('lastName').value.trim();
+      const email = document.getElementById('regEmail').value.trim();
       const phone = document.getElementById('phone').value.trim();
-      const phoneDigits = phone.replace(/\D/g, '');
-      const businessName = normalizeName(document.getElementById('businessName').value);
-      const businessSlug = slugify(businessName);
+      const businessName = document.getElementById('businessName').value.trim();
       const password = document.getElementById('regPass').value;
       const password2 = document.getElementById('regPass2').value;
       const submitBtn = form.querySelector('button[type="submit"]');
       const originalText = submitBtn.textContent;
       let isValid = true;
 
-      if (!hasUsableName(firstName)) {
-        showError('firstName', 'Enter a valid first name');
+      if (!firstName || firstName.length < 2) {
+        showError('firstName', 'First name must be at least 2 characters');
         isValid = false;
       } else {
         showSuccess('firstName');
       }
 
-      if (!hasUsableName(lastName)) {
-        showError('lastName', 'Enter a valid last name');
+      if (!lastName || lastName.length < 2) {
+        showError('lastName', 'Last name must be at least 2 characters');
         isValid = false;
       } else {
         showSuccess('lastName');
@@ -1186,18 +1079,15 @@
         showSuccess('regEmail');
       }
 
-      if (phoneDigits.length !== 7) {
+      if (!phone || phone.replace(/\D/g, '').length !== 7) {
         showError('phone', 'Please enter a valid 7-digit phone number');
         isValid = false;
       } else {
         showSuccess('phone');
       }
 
-      if (businessName.length < 2 || businessName.length > 80) {
-        showError('businessName', 'Business name must be between 2 and 80 characters');
-        isValid = false;
-      } else if (!businessSlug || businessSlug.length < 2) {
-        showError('businessName', 'Business name must include letters or numbers');
+      if (!businessName || businessName.length < 2) {
+        showError('businessName', 'Please enter your business name');
         isValid = false;
       } else {
         showSuccess('businessName');
@@ -1223,11 +1113,7 @@
         showSuccess('regPass2');
       }
 
-      if (!isValid) {
-        showValidationNotice();
-        document.querySelector('#registerForm .input.error')?.closest('.field')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        return;
-      }
+      if (!isValid) return;
 
       submitBtn.disabled = true;
       submitBtn.textContent = 'Creating account...';
@@ -1241,11 +1127,9 @@
               role: 'business',
               first_name: firstName,
               last_name: lastName,
-              phone: '868-' + phoneDigits,
+              phone: '868-' + phone,
               business_name: businessName,
-              business_slug: businessSlug,
-              status: 'active',
-              business_status: 'active'
+              business_slug: slugify(businessName)
             },
             emailRedirectTo: `${window.location.origin}${window.location.pathname}`
           }
@@ -1287,6 +1171,5 @@
       });
     }
   </script>
-  <script type="module" src="session-nav.js"></script>
 </body>
 </html>
