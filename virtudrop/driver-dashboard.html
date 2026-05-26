@@ -551,8 +551,9 @@
 
   <!-- ── Bottom bar ── -->
   <div class="bottom-bar">
-    <button class="bottom-btn ghost" onclick="window.location.href='auth.html'">🚪 Sign Out</button>
-    <button class="bottom-btn primary" onclick="showToast('Admin has been notified of your status.')">📡 Update Admin</button>
+    <button class="bottom-btn ghost" id="driverWebsiteBtn" type="button">🌐 Website</button>
+    <button class="bottom-btn primary" id="driverUpdateAdminBtn" type="button">📡 Update Admin</button>
+    <button class="bottom-btn ghost" id="driverLogoutBtn" type="button">🚪 Sign Out</button>
   </div>
 
   <!-- ── Action modal (bottom sheet) ── -->
@@ -1115,12 +1116,17 @@
       window.open(url, '_blank');
     };
 
-    document.querySelector('.bottom-btn.ghost').onclick = async () => {
+    document.getElementById('driverWebsiteBtn')?.addEventListener('click', () => {
+      window.location.href = 'index.html';
+    });
+
+    document.getElementById('driverLogoutBtn')?.addEventListener('click', async () => {
+      localStorage.setItem('vd-explicit-logout', String(Date.now()));
       await supabase.auth.signOut();
       window.location.href = 'auth.html';
-    };
+    });
 
-    document.querySelector('.bottom-btn.primary').onclick = async () => {
+    document.getElementById('driverUpdateAdminBtn')?.addEventListener('click', async () => {
       const cards = [...document.querySelectorAll('.delivery-card[data-order-id]')];
       const updates = cards
         .map(card => ({
@@ -1134,7 +1140,7 @@
         return;
       }
 
-      const btn = document.querySelector('.bottom-btn.primary');
+      const btn = document.getElementById('driverUpdateAdminBtn');
       const originalText = btn.textContent;
       btn.disabled = true;
       btn.textContent = 'Updating...';
@@ -1150,7 +1156,7 @@
         btn.disabled = false;
         btn.textContent = originalText;
       }
-    };
+    });
 
     loadDriverData().catch(error => {
       console.error('Driver dashboard load error:', error);

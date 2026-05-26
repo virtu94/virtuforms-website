@@ -765,7 +765,7 @@ async function loadBusinessData() {
 
   if (profileError || profileData?.role !== 'business' || profileData?.status !== 'active') {
     await supabase.auth.signOut();
-    window.vdNotify('Account Pending', 'Your business account is not active yet. Please contact VirtuDrop.', 'warning');
+    window.vdNotify('Account Not Active', 'Your business account is not active. Please contact VirtuDrop.', 'warning');
     window.location.href = 'auth.html';
     return;
   }
@@ -1157,9 +1157,10 @@ function bindUi() {
   el('#submitOrderBtn')?.addEventListener('click', submitBusinessOrder);
   window.resetOrderForm();
 
-  const logout = el('.logout-btn');
+  const logout = el('#businessLogoutBtn');
   if (logout) {
     logout.onclick = async () => {
+      localStorage.setItem('vd-explicit-logout', String(Date.now()));
       await supabase.auth.signOut();
       window.location.href = 'auth.html';
     };

@@ -731,10 +731,11 @@
     </nav>
 
     <div class="sidebar-footer">
-      <button class="logout-btn" id="adminLogoutBtn">
-        🚪 Sign Out
-      </button>
-    </div>
+        <a class="logout-btn" href="index.html" style="text-decoration:none;">🌐 Browse Website</a>
+        <button class="logout-btn" id="adminLogoutBtn">
+          🚪 Sign Out
+        </button>
+      </div>
   </aside>
 
   <!-- ── Main ── -->
@@ -2879,6 +2880,7 @@
 
 
     document.getElementById('adminLogoutBtn')?.addEventListener('click', async () => {
+      localStorage.setItem('vd-explicit-logout', String(Date.now()));
       await supabase.auth.signOut();
       window.location.href = 'auth.html?returnTo=admin-dashboard.html';
     });
