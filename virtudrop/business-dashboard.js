@@ -185,7 +185,25 @@ function deliveryLink() {
 }
 
 function firstName() {
-  return profile?.first_name || currentUser?.email?.split('@')[0] || 'there';
+  return profile?.first_name || business?.business_name?.split(/\s+/)[0] || currentUser?.email?.split('@')[0] || 'there';
+}
+
+function renderSidebarAccount() {
+  const businessName = business?.business_name || 'Business Account';
+  const nameEl = el('.user-name');
+  const planEl = el('.user-plan');
+  const avatarEl = el('.user-avatar');
+
+  if (nameEl) nameEl.textContent = businessName;
+  if (planEl) planEl.textContent = 'Business Account';
+  if (avatarEl) {
+    avatarEl.textContent = businessName
+      .split(/\s+/)
+      .map(part => part[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() || 'VD';
+  }
 }
 
 function setText(selector, value) {
@@ -783,6 +801,7 @@ async function loadBusinessData() {
   }
 
   business = businessData;
+  renderSidebarAccount();
 
   const [{ data: orderData, error: orderError }, { data: remitData, error: remitError }] = await Promise.all([
     supabase
