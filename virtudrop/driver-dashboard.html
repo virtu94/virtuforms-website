@@ -1,10 +1,8 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta http-equiv="Cache-Control" content="no-store" />
-  <meta http-equiv="Pragma" content="no-cache" />
   <title>Driver Dashboard | VirtuDrop</title>
   <link rel="icon" href="assets/logo.png">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -40,7 +38,7 @@
       line-height: 1.6; min-height: 100vh;
     }
 
-    /* ── Top bar ── */
+    /* â”€â”€ Top bar â”€â”€ */
     .topbar {
       background: var(--teal-dark); padding: 0 1.5rem;
       height: 64px; display: flex; align-items: center;
@@ -70,7 +68,7 @@
       font-weight: 700; font-size: 0.9rem; color: var(--white); flex-shrink: 0;
     }
 
-    /* ── Day summary strip ── */
+    /* â”€â”€ Day summary strip â”€â”€ */
     .day-strip {
       background: var(--white); border-bottom: 1px solid var(--grey-mid);
       padding: 0.8rem 1.5rem; display: flex; gap: 1.5rem;
@@ -87,7 +85,7 @@
 
     .day-strip-date { margin-left: auto; font-size: 0.82rem; color: var(--grey); white-space: nowrap; }
 
-    /* ── Filter tabs ── */
+    /* â”€â”€ Filter tabs â”€â”€ */
     .filter-tabs {
       display: flex; gap: 0.4rem; padding: 1rem 1.5rem 0;
       overflow-x: auto; flex-shrink: 0;
@@ -101,10 +99,10 @@
     .filter-tab.active { background: var(--teal-dark); border-color: var(--teal-dark); color: var(--white); }
     .filter-tab:not(.active):hover { border-color: var(--teal-mid); color: var(--teal-mid); }
 
-    /* ── Delivery list ── */
+    /* â”€â”€ Delivery list â”€â”€ */
     .delivery-list { padding: 1rem 1.5rem 6rem; display: flex; flex-direction: column; gap: 1rem; }
 
-    /* ── Delivery card ── */
+    /* â”€â”€ Delivery card â”€â”€ */
     .delivery-card {
       background: var(--white); border-radius: 16px;
       box-shadow: 0 2px 12px rgba(0,0,0,0.06);
@@ -138,7 +136,7 @@
     .badge-rescheduled { background: var(--yellow-pale); color: #856404; }
     .badge-collected   { background: var(--yellow-pale); color: #856404; }
 
-    /* ── Customer info ── */
+    /* â”€â”€ Customer info â”€â”€ */
     .customer-info {
       padding: 0 1.4rem 1rem;
       display: grid; grid-template-columns: 1fr 1fr;
@@ -151,7 +149,7 @@
     .info-value.cod     { color: var(--orange); font-size: 1rem; font-weight: 800; }
     .info-value.no-cod  { color: var(--grey); font-size: 0.85rem; font-weight: 500; }
 
-    /* ── Notes ── */
+    /* â”€â”€ Notes â”€â”€ */
     .delivery-notes {
       margin: 0 1.4rem 1rem;
       padding: 0.7rem 1rem; background: var(--yellow-pale);
@@ -160,7 +158,7 @@
     }
 
 
-    /* ── Driver Update Notes ── */
+    /* â”€â”€ Driver Update Notes â”€â”€ */
     .driver-update-box {
       margin: 0 1.4rem 1rem;
       padding: 1rem;
@@ -227,7 +225,7 @@
       color: var(--white);
     }
 
-    /* ── Action buttons ── */
+    /* â”€â”€ Action buttons â”€â”€ */
     .card-actions {
       padding: 0 1.4rem 1.4rem;
       display: flex; flex-wrap: wrap; gap: 0.6rem;
@@ -257,7 +255,7 @@
     .btn-whatsapp  { background: #e8fdf1; color: #1a8a3a; border-color: #a3d9b5; }
     .btn-whatsapp:hover { background: #1a8a3a; color: var(--white); }
 
-    /* ── Empty state ── */
+    /* â”€â”€ Empty state â”€â”€ */
     .empty-state {
       text-align: center; padding: 4rem 2rem;
       display: none;
@@ -267,7 +265,7 @@
     .empty-state h3 { font-size: 1.2rem; font-weight: 700; color: var(--black); margin-bottom: 0.5rem; }
     .empty-state p  { font-size: 0.9rem; color: var(--grey); line-height: 1.7; }
 
-    /* ── Bottom CTA bar ── */
+    /* â”€â”€ Bottom CTA bar â”€â”€ */
     .bottom-bar {
       position: fixed; bottom: 0; left: 0; right: 0;
       background: var(--white); border-top: 1px solid var(--grey-mid);
@@ -285,7 +283,7 @@
     .bottom-btn.ghost   { background: var(--grey-light); color: var(--grey); border-color: var(--grey-mid); }
     .bottom-btn.ghost:hover { border-color: var(--teal-mid); color: var(--teal-mid); }
 
-    /* ── Modal ── */
+    /* â”€â”€ Modal â”€â”€ */
     .modal-overlay {
       display: none; position: fixed; inset: 0;
       background: rgba(0,0,0,0.5); z-index: 500;
@@ -318,43 +316,8 @@
     .modal-btn.danger:hover   { background: var(--red); color: var(--white); }
     .modal-btn.cancel   { background: var(--grey-light); color: var(--grey); border-color: var(--grey-mid); }
     .modal-btn.cancel:hover   { border-color: var(--grey); }
-    .collection-method-box {
-      background: var(--teal-pale);
-      border: 1px solid rgba(45,166,155,0.25);
-      border-radius: 10px;
-      padding: 0.9rem;
-      margin-bottom: 1rem;
-    }
-    .collection-method-title {
-      font-size: 0.82rem;
-      font-weight: 800;
-      color: var(--teal-dark);
-      margin-bottom: 0.6rem;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
-    }
-    .collection-method-options {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.6rem;
-    }
-    .collection-method-options label {
-      display: flex;
-      align-items: center;
-      gap: 0.45rem;
-      background: var(--white);
-      border: 2px solid var(--grey-mid);
-      border-radius: 10px;
-      padding: 0.75rem;
-      font-weight: 700;
-      color: var(--black);
-      cursor: pointer;
-    }
-    .collection-method-options input {
-      accent-color: var(--teal-mid);
-    }
 
-    /* ── Toast ── */
+    /* â”€â”€ Toast â”€â”€ */
     .toast {
       position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
       background: var(--teal-dark); color: var(--white);
@@ -371,116 +334,11 @@
       .action-btn { flex: 1 1 calc(50% - 0.3rem); }
       .day-strip { gap: 1rem; }
     }
-  
-
-    /* Mobile launch safety layer - Codex */
-    html, body { max-width: 100%; overflow-x: hidden; }
-    .topbar, .day-strip, .filter-tabs, .delivery-list, .delivery-card, .card-header, .customer-info, .action-row, .driver-update-box { min-width: 0; max-width: 100%; }
-    .delivery-card, .customer-name, .address-text, .info-value, .notes-content { overflow-wrap: anywhere; }
-    button, textarea, input, select { max-width: 100%; }
-
-    @media (max-width: 640px) {
-      .topbar { height: auto; min-height: 64px; padding: 0.75rem 1rem; align-items: flex-start; }
-      .brand-name { font-size: 1rem; line-height: 1.15; }
-      .brand-name span { display: block; margin-left: 0; font-size: 0.72rem; }
-      .topbar-driver { min-width: 0; }
-      .driver-info { display: none; }
-      .day-strip { padding: 0.75rem 1rem; gap: 0.8rem; flex-wrap: nowrap; }
-      .day-strip-date { display: none; }
-      .filter-tabs { padding: 0.85rem 1rem 0; }
-      .delivery-list { padding: 1rem; }
-      .card-header { padding: 1rem; gap: 0.8rem; }
-      .order-id { font-size: 0.9rem; }
-      .customer-info { grid-template-columns: 1fr; padding: 0 1rem 1rem; }
-      .address-block, .notes-block, .driver-update-box { margin-left: 1rem; margin-right: 1rem; }
-      .action-row { padding: 1rem; gap: 0.55rem; }
-      .action-btn { flex: 1 1 100%; min-width: 0; min-height: 44px; white-space: normal; }
-      .modal { max-height: 88vh; overflow-y: auto; }
-      .toast { width: calc(100vw - 2rem); max-width: 420px; }
-    }
-
-    @media (max-width: 420px) {
-      .day-stat { min-width: 58px; }
-      .day-stat-val { font-size: 1.15rem; }
-      .day-stat-label { font-size: 0.6rem; }
-      .day-divider { display: none; }
-      .delivery-list { padding: 0.75rem; }
-      .filter-tab { padding: 0.45rem 0.85rem; }
-    }
-
-  
-
-    /* Hybrid mobile cards and report tables - Codex */
-    .delivery-card,
-    .customer-name,
-    .address-text,
-    .info-value,
-    .notes-content {
-      word-break: normal;
-      overflow-wrap: break-word;
-    }
-    .order-num,
-    .client-tag,
-    .status-badge,
-    .action-btn {
-      word-break: normal;
-      overflow-wrap: normal;
-    }
-    .order-num,
-    .status-badge {
-      white-space: nowrap;
-      line-height: 1.25;
-    }
-    .card-header {
-      gap: 0.75rem;
-    }
-    .card-order {
-      min-width: 0;
-    }
-
-    @media (max-width: 640px) {
-      .card-header {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr);
-      }
-      .status-badge {
-        justify-self: start;
-        max-width: 100%;
-      }
-      .action-btn {
-        justify-content: center;
-      }
-    }
-
-    /* Keep driver cards clear of fixed bottom bar - Codex */
-    :root {
-      --driver-bottom-bar-space: 7.5rem;
-    }
-    .delivery-list {
-      padding-bottom: calc(var(--driver-bottom-bar-space) + env(safe-area-inset-bottom));
-    }
-    .bottom-bar {
-      padding-bottom: calc(0.8rem + env(safe-area-inset-bottom));
-    }
-    @media (max-width: 640px) {
-      :root {
-        --driver-bottom-bar-space: 8.75rem;
-      }
-      .delivery-list {
-        padding-bottom: calc(var(--driver-bottom-bar-space) + env(safe-area-inset-bottom));
-      }
-    }
-    @media (max-width: 420px) {
-      .delivery-list {
-        padding-bottom: calc(var(--driver-bottom-bar-space) + env(safe-area-inset-bottom));
-      }
-    }
-
   </style>
 </head>
 <body>
 
-  <!-- ── Top bar ── -->
+  <!-- â”€â”€ Top bar â”€â”€ -->
   <div class="topbar">
     <div class="topbar-brand">
       <div class="brand-mark">VD</div>
@@ -495,7 +353,7 @@
     </div>
   </div>
 
-  <!-- ── Day summary ── -->
+  <!-- â”€â”€ Day summary â”€â”€ -->
   <div class="day-strip">
     <div class="day-stat">
       <div class="day-stat-val blue" id="statTotal">8</div>
@@ -524,39 +382,419 @@
     <div class="day-strip-date" id="todayDate"></div>
   </div>
 
-  <!-- ── Filter tabs ── -->
+  <!-- â”€â”€ Filter tabs â”€â”€ -->
   <div class="filter-tabs">
-    <button class="filter-tab active" onclick="filterCards('all', this)">All (0)</button>
-    <button class="filter-tab" onclick="filterCards('queued', this)">Queued (0)</button>
-    <button class="filter-tab" onclick="filterCards('out', this)">Out for Delivery (0)</button>
-    <button class="filter-tab" onclick="filterCards('delivered', this)">Delivered (0)</button>
-    <button class="filter-tab" onclick="filterCards('failed', this)">Failed (0)</button>
+    <button class="filter-tab active" onclick="filterCards('all', this)">All (8)</button>
+    <button class="filter-tab" onclick="filterCards('queued', this)">Queued (3)</button>
+    <button class="filter-tab" onclick="filterCards('out', this)">Out for Delivery (2)</button>
+    <button class="filter-tab" onclick="filterCards('delivered', this)">Delivered (2)</button>
+    <button class="filter-tab" onclick="filterCards('failed', this)">Failed (1)</button>
   </div>
 
-  <!-- ── Delivery list ── -->
+  <!-- â”€â”€ Delivery list â”€â”€ -->
   <div class="delivery-list" id="deliveryList">
-    <div class="delivery-card">
+
+    <!-- Card 1 â€” Out for Delivery -->
+    <div class="delivery-card status-out" data-status="out">
       <div class="card-header">
-        <div>Loading assigned orders...</div>
+        <div class="card-order">
+          <div class="order-num">VD250526-012</div>
+          <div class="client-tag">Classic Couture</div>
+        </div>
+        <span class="status-badge badge-out">ðŸšš Out for Delivery</span>
+      </div>
+      <div class="customer-info">
+        <div class="info-row">
+          <div class="info-label">Customer</div>
+          <div class="info-value">Sarah James</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Phone</div>
+          <div class="info-value">868-797-3542</div>
+        </div>
+        <div class="info-row" style="grid-column:1/-1;">
+          <div class="info-label">Delivery Address</div>
+          <div class="info-value address">15 Bamboo Drive, Arima â€” East Zone</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">COD to Collect</div>
+          <div class="info-value cod">TTD $390.00</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Payment Type</div>
+          <div class="info-value">Cash on Delivery</div>
+        </div>
+      </div>
+      <div class="delivery-notes">
+        ðŸ“ Call before arrival. Customer works from home.
+      </div>
+
+      <div class="driver-update-box">
+        <label>Driver Update / Customer Conversation Notes</label>
+        <textarea placeholder="Example: Customer asked to deliver after 3 PM, customer requested updated address, customer said to leave package with security..."></textarea>
+        <div class="driver-update-actions">
+          <button class="action-btn btn-note-save" onclick="saveDriverNote(this)">ðŸ“ Save Note</button>
+          <button class="action-btn btn-note-client" onclick="sendClientUpdate(this)">ðŸ’¬ Send Update to Client</button>
+        </div>
+      </div>
+      <div class="card-actions">
+        <button class="action-btn btn-maps" onclick="openMaps('15 Bamboo Drive, Arima, Trinidad')">ðŸ—ºï¸ Open in Maps</button>
+        <button class="action-btn btn-call" onclick="callCustomer('8687973542')">ðŸ“ž Call Customer</button>
+        <button class="action-btn btn-whatsapp" onclick="whatsappCustomer('8687973542')">ðŸ’¬ WhatsApp</button>
+        <button class="action-btn btn-delivered" onclick="markDelivered(this, 'VD250526-012', 390)">âœ… Mark Delivered</button>
+        <button class="action-btn btn-unavailable" onclick="markUnavailable(this, 'VD250526-012')">ðŸ“µ Unavailable</button>
+        <button class="action-btn btn-failed" onclick="markFailed(this, 'VD250526-012')">âŒ Mark Failed</button>
       </div>
     </div>
+
+    <!-- Card 2 â€” Out for Delivery, no COD -->
+    <div class="delivery-card status-out" data-status="out">
+      <div class="card-header">
+        <div class="card-order">
+          <div class="order-num">VD250526-006</div>
+          <div class="client-tag">StyleHaus</div>
+        </div>
+        <span class="status-badge badge-out">ðŸšš Out for Delivery</span>
+      </div>
+      <div class="customer-info">
+        <div class="info-row">
+          <div class="info-label">Customer</div>
+          <div class="info-value">Leah Mohammed</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Phone</div>
+          <div class="info-value">868-488-2233</div>
+        </div>
+        <div class="info-row" style="grid-column:1/-1;">
+          <div class="info-label">Delivery Address</div>
+          <div class="info-value address">8 Circular Road, Diego Martin â€” West Zone</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">COD to Collect</div>
+          <div class="info-value no-cod">Nothing â€” package paid online</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Payment Type</div>
+          <div class="info-value">Package Paid Online</div>
+        </div>
+      </div>
+
+      <div class="driver-update-box">
+        <label>Driver Update / Customer Conversation Notes</label>
+        <textarea placeholder="Example: Customer asked to deliver after 3 PM, customer requested updated address, customer said to leave package with security..."></textarea>
+        <div class="driver-update-actions">
+          <button class="action-btn btn-note-save" onclick="saveDriverNote(this)">ðŸ“ Save Note</button>
+          <button class="action-btn btn-note-client" onclick="sendClientUpdate(this)">ðŸ’¬ Send Update to Client</button>
+        </div>
+      </div>
+      <div class="card-actions">
+        <button class="action-btn btn-maps" onclick="openMaps('8 Circular Road, Diego Martin, Trinidad')">ðŸ—ºï¸ Open in Maps</button>
+        <button class="action-btn btn-call" onclick="callCustomer('8684882233')">ðŸ“ž Call Customer</button>
+        <button class="action-btn btn-whatsapp" onclick="whatsappCustomer('8684882233')">ðŸ’¬ WhatsApp</button>
+        <button class="action-btn btn-delivered" onclick="markDelivered(this, 'VD250526-006', 0)">âœ… Mark Delivered</button>
+        <button class="action-btn btn-unavailable" onclick="markUnavailable(this, 'VD250526-006')">ðŸ“µ Unavailable</button>
+        <button class="action-btn btn-failed" onclick="markFailed(this, 'VD250526-006')">âŒ Mark Failed</button>
+      </div>
+    </div>
+
+    <!-- Card 3 â€” Queued -->
+    <div class="delivery-card" data-status="queued">
+      <div class="card-header">
+        <div class="card-order">
+          <div class="order-num">VD250526-004</div>
+          <div class="client-tag">GadgetHub TT</div>
+        </div>
+        <span class="status-badge badge-queued">ðŸ“‹ Queued</span>
+      </div>
+      <div class="customer-info">
+        <div class="info-row">
+          <div class="info-label">Customer</div>
+          <div class="info-value">Jerome Baptiste</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Phone</div>
+          <div class="info-value">868-362-1111</div>
+        </div>
+        <div class="info-row" style="grid-column:1/-1;">
+          <div class="info-label">Delivery Address</div>
+          <div class="info-value address">22 Long Circular Mall, St James â€” West Zone</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">COD to Collect</div>
+          <div class="info-value cod">TTD $330.00</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Payment Type</div>
+          <div class="info-value">Cash on Delivery</div>
+        </div>
+      </div>
+
+      <div class="driver-update-box">
+        <label>Driver Update / Customer Conversation Notes</label>
+        <textarea placeholder="Example: Customer asked to deliver after 3 PM, customer requested updated address, customer said to leave package with security..."></textarea>
+        <div class="driver-update-actions">
+          <button class="action-btn btn-note-save" onclick="saveDriverNote(this)">ðŸ“ Save Note</button>
+          <button class="action-btn btn-note-client" onclick="sendClientUpdate(this)">ðŸ’¬ Send Update to Client</button>
+        </div>
+      </div>
+      <div class="card-actions">
+        <button class="action-btn btn-maps" onclick="openMaps('Long Circular Mall, St James, Trinidad')">ðŸ—ºï¸ Open in Maps</button>
+        <button class="action-btn btn-call" onclick="callCustomer('8683621111')">ðŸ“ž Call Customer</button>
+        <button class="action-btn btn-collected" onclick="markCollected(this, 'VD250526-004')">ðŸ“¦ Mark Collected</button>
+      </div>
+    </div>
+
+    <!-- Card 4 â€” Queued -->
+    <div class="delivery-card" data-status="queued">
+      <div class="card-header">
+        <div class="card-order">
+          <div class="order-num">VD250526-003</div>
+          <div class="client-tag">TechZone TT</div>
+        </div>
+        <span class="status-badge badge-queued">ðŸ“‹ Queued</span>
+      </div>
+      <div class="customer-info">
+        <div class="info-row">
+          <div class="info-label">Customer</div>
+          <div class="info-value">Priya Ramkissoon</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Phone</div>
+          <div class="info-value">868-765-1234</div>
+        </div>
+        <div class="info-row" style="grid-column:1/-1;">
+          <div class="info-label">Delivery Address</div>
+          <div class="info-value address">5 Westmoorings Avenue, Westmoorings â€” West Zone</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">COD to Collect</div>
+          <div class="info-value no-cod">Nothing â€” fully paid online</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Payment Type</div>
+          <div class="info-value">Fully Paid Online</div>
+        </div>
+      </div>
+      <div class="delivery-notes">
+        ðŸ“ Fragile â€” handle with care. Leave with security if no answer.
+      </div>
+
+      <div class="driver-update-box">
+        <label>Driver Update / Customer Conversation Notes</label>
+        <textarea placeholder="Example: Customer asked to deliver after 3 PM, customer requested updated address, customer said to leave package with security..."></textarea>
+        <div class="driver-update-actions">
+          <button class="action-btn btn-note-save" onclick="saveDriverNote(this)">ðŸ“ Save Note</button>
+          <button class="action-btn btn-note-client" onclick="sendClientUpdate(this)">ðŸ’¬ Send Update to Client</button>
+        </div>
+      </div>
+      <div class="card-actions">
+        <button class="action-btn btn-maps" onclick="openMaps('Westmoorings Avenue, Westmoorings, Trinidad')">ðŸ—ºï¸ Open in Maps</button>
+        <button class="action-btn btn-call" onclick="callCustomer('8687651234')">ðŸ“ž Call Customer</button>
+        <button class="action-btn btn-collected" onclick="markCollected(this, 'VD250526-003')">ðŸ“¦ Mark Collected</button>
+      </div>
+    </div>
+
+    <!-- Card 5 â€” Queued -->
+    <div class="delivery-card" data-status="queued">
+      <div class="card-header">
+        <div class="card-order">
+          <div class="order-num">VD250526-001</div>
+          <div class="client-tag">Classic Couture</div>
+        </div>
+        <span class="status-badge badge-queued">ðŸ“‹ Queued</span>
+      </div>
+      <div class="customer-info">
+        <div class="info-row">
+          <div class="info-label">Customer</div>
+          <div class="info-value">Amanda Clarke</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Phone</div>
+          <div class="info-value">868-621-8888</div>
+        </div>
+        <div class="info-row" style="grid-column:1/-1;">
+          <div class="info-label">Delivery Address</div>
+          <div class="info-value address">10 Roberts Street, Woodbrook â€” West Zone</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">COD to Collect</div>
+          <div class="info-value cod">TTD $215.00</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Payment Type</div>
+          <div class="info-value">Cash on Delivery</div>
+        </div>
+      </div>
+
+      <div class="driver-update-box">
+        <label>Driver Update / Customer Conversation Notes</label>
+        <textarea placeholder="Example: Customer asked to deliver after 3 PM, customer requested updated address, customer said to leave package with security..."></textarea>
+        <div class="driver-update-actions">
+          <button class="action-btn btn-note-save" onclick="saveDriverNote(this)">ðŸ“ Save Note</button>
+          <button class="action-btn btn-note-client" onclick="sendClientUpdate(this)">ðŸ’¬ Send Update to Client</button>
+        </div>
+      </div>
+      <div class="card-actions">
+        <button class="action-btn btn-maps" onclick="openMaps('Roberts Street, Woodbrook, Trinidad')">ðŸ—ºï¸ Open in Maps</button>
+        <button class="action-btn btn-call" onclick="callCustomer('8686218888')">ðŸ“ž Call Customer</button>
+        <button class="action-btn btn-collected" onclick="markCollected(this, 'VD250526-001')">ðŸ“¦ Mark Collected</button>
+      </div>
+    </div>
+
+    <!-- Card 6 â€” Delivered -->
+    <div class="delivery-card status-delivered" data-status="delivered">
+      <div class="card-header">
+        <div class="card-order">
+          <div class="order-num">VD250526-010</div>
+          <div class="client-tag">TechZone TT</div>
+        </div>
+        <span class="status-badge badge-delivered">âœ… Delivered</span>
+      </div>
+      <div class="customer-info">
+        <div class="info-row">
+          <div class="info-label">Customer</div>
+          <div class="info-value">Marcus Williams</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Phone</div>
+          <div class="info-value">868-470-3704</div>
+        </div>
+        <div class="info-row" style="grid-column:1/-1;">
+          <div class="info-label">Delivery Address</div>
+          <div class="info-value address">3 Glencoe Heights, Glencoe â€” West Zone</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">COD Collected</div>
+          <div class="info-value" style="color:var(--green);">TTD $175.00 âœ“</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Delivered At</div>
+          <div class="info-value">10:42 AM</div>
+        </div>
+      </div>
+
+      <div class="driver-update-box">
+        <label>Driver Update / Customer Conversation Notes</label>
+        <textarea placeholder="Example: Customer asked to deliver after 3 PM, customer requested updated address, customer said to leave package with security..."></textarea>
+        <div class="driver-update-actions">
+          <button class="action-btn btn-note-save" onclick="saveDriverNote(this)">ðŸ“ Save Note</button>
+          <button class="action-btn btn-note-client" onclick="sendClientUpdate(this)">ðŸ’¬ Send Update to Client</button>
+        </div>
+      </div>
+      <div class="card-actions">
+        <button class="action-btn btn-whatsapp" onclick="whatsappCustomer('8684703704')" style="opacity:0.7;">ðŸ’¬ WhatsApp Confirmation Sent</button>
+      </div>
+    </div>
+
+    <!-- Card 7 â€” Delivered, no COD -->
+    <div class="delivery-card status-delivered" data-status="delivered">
+      <div class="card-header">
+        <div class="card-order">
+          <div class="order-num">VD250526-008</div>
+          <div class="client-tag">StyleHaus</div>
+        </div>
+        <span class="status-badge badge-delivered">âœ… Delivered</span>
+      </div>
+      <div class="customer-info">
+        <div class="info-row">
+          <div class="info-label">Customer</div>
+          <div class="info-value">Kim Ramlogan</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Phone</div>
+          <div class="info-value">868-613-5566</div>
+        </div>
+        <div class="info-row" style="grid-column:1/-1;">
+          <div class="info-label">Delivery Address</div>
+          <div class="info-value address">7 Maraval Road, Maraval â€” West Zone</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">COD Collected</div>
+          <div class="info-value no-cod">None â€” pre-paid</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Delivered At</div>
+          <div class="info-value">09:18 AM</div>
+        </div>
+      </div>
+
+      <div class="driver-update-box">
+        <label>Driver Update / Customer Conversation Notes</label>
+        <textarea placeholder="Example: Customer asked to deliver after 3 PM, customer requested updated address, customer said to leave package with security..."></textarea>
+        <div class="driver-update-actions">
+          <button class="action-btn btn-note-save" onclick="saveDriverNote(this)">ðŸ“ Save Note</button>
+          <button class="action-btn btn-note-client" onclick="sendClientUpdate(this)">ðŸ’¬ Send Update to Client</button>
+        </div>
+      </div>
+      <div class="card-actions">
+        <button class="action-btn btn-whatsapp" onclick="whatsappCustomer('8686135566')" style="opacity:0.7;">ðŸ’¬ WhatsApp Confirmation Sent</button>
+      </div>
+    </div>
+
+    <!-- Card 8 â€” Failed -->
+    <div class="delivery-card status-failed" data-status="failed">
+      <div class="card-header">
+        <div class="card-order">
+          <div class="order-num">VD250526-002</div>
+          <div class="client-tag">Classic Couture</div>
+        </div>
+        <span class="status-badge badge-failed">âŒ Failed Attempt</span>
+      </div>
+      <div class="customer-info">
+        <div class="info-row">
+          <div class="info-label">Customer</div>
+          <div class="info-value">Natasha Joseph</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Phone</div>
+          <div class="info-value">868-688-4455</div>
+        </div>
+        <div class="info-row" style="grid-column:1/-1;">
+          <div class="info-label">Delivery Address</div>
+          <div class="info-value address">45 El Socorro Ext., San Juan â€” East Zone</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Failure Reason</div>
+          <div class="info-value" style="color:var(--red);">Customer unavailable</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Attempted At</div>
+          <div class="info-value">11:05 AM</div>
+        </div>
+      </div>
+      <div class="delivery-notes" style="background:var(--red-pale); border-left-color:var(--red); color:#8b2020;">
+        âš ï¸ Customer confirmed by phone but did not answer the door. Client has been notified.
+      </div>
+
+      <div class="driver-update-box">
+        <label>Driver Update / Customer Conversation Notes</label>
+        <textarea placeholder="Example: Customer asked to deliver after 3 PM, customer requested updated address, customer said to leave package with security..."></textarea>
+        <div class="driver-update-actions">
+          <button class="action-btn btn-note-save" onclick="saveDriverNote(this)">ðŸ“ Save Note</button>
+          <button class="action-btn btn-note-client" onclick="sendClientUpdate(this)">ðŸ’¬ Send Update to Client</button>
+        </div>
+      </div>
+      <div class="card-actions">
+        <button class="action-btn btn-reschedule" onclick="showToast('Reschedule request sent to admin.')">ðŸ”„ Request Reschedule</button>
+      </div>
+    </div>
+
   </div>
 
-  <!-- ── Empty state ── -->
+  <!-- â”€â”€ Empty state â”€â”€ -->
   <div class="empty-state" id="emptyState">
-    <span class="empty-icon">📭</span>
+    <span class="empty-icon">ðŸ“­</span>
     <h3>No deliveries in this category</h3>
     <p>All caught up! Check another filter or contact admin if you're missing assignments.</p>
   </div>
 
-  <!-- ── Bottom bar ── -->
+  <!-- â”€â”€ Bottom bar â”€â”€ -->
   <div class="bottom-bar">
-    <button class="bottom-btn ghost" id="driverWebsiteBtn" type="button">🌐 Website</button>
-    <button class="bottom-btn primary" id="driverUpdateAdminBtn" type="button">📡 Update Admin</button>
-    <button class="bottom-btn ghost" id="driverLogoutBtn" type="button">🚪 Sign Out</button>
+    <button class="bottom-btn ghost" onclick="window.location.href='auth.html'">ðŸšª Sign Out</button>
+    <button class="bottom-btn primary" onclick="showToast('Admin has been notified of your status.')">ðŸ“¡ Update Admin</button>
   </div>
 
-  <!-- ── Action modal (bottom sheet) ── -->
+  <!-- â”€â”€ Action modal (bottom sheet) â”€â”€ -->
   <div class="modal-overlay" id="modal" onclick="closeModalIfBg(event)">
     <div class="modal" id="modalContent">
       <div class="modal-handle"></div>
@@ -566,50 +804,15 @@
     </div>
   </div>
 
-  <!-- ── Toast ── -->
+  <!-- â”€â”€ Toast â”€â”€ -->
   <div class="toast" id="toast"></div>
 
-  <script src="vd-modal.js"></script>
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
     const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnbXp6YXZ4aHVhcmxhY252bm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Mjk4NTksImV4cCI6MjA5NDIwNTg1OX0.7-YKlwLrhUYUYbiii93ZvgX01TxVephApDNCP50Rl54';
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    function showLoggedOutGate() {
-      document.body.style.margin = '0';
-      document.body.style.display = 'block';
-      document.body.style.minHeight = '100vh';
-      document.body.style.background = '#f4f8f7';
-      document.body.innerHTML = `
-        <div style="min-height:100vh; display:flex; align-items:center; justify-content:center; background:#f4f8f7; padding:1.5rem; font-family:Inter, Arial, sans-serif;">
-          <div style="width:min(440px,100%); background:#fff; border-radius:14px; box-shadow:0 12px 35px rgba(13,43,40,0.14); padding:2rem; text-align:center; border-top:4px solid #2a9d8f;">
-            <h1 style="margin:0 0 0.8rem; color:#0d2b28; font-size:1.6rem;">Please log in again</h1>
-            <p style="margin:0 0 1.4rem; color:#4a4a4a; line-height:1.6;">Your driver dashboard session has ended. Log back in to view protected information.</p>
-            <button style="border:0; border-radius:10px; background:#2a9d8f; color:#fff; padding:0.85rem 1.4rem; font-weight:700; cursor:pointer;" onclick="window.location.href='auth.html?returnTo=driver-dashboard.html'">Log In</button>
-          </div>
-        </div>
-      `;
-    }
-
-    async function hasActiveSession() {
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) {
-        showLoggedOutGate();
-        return false;
-      }
-      return true;
-    }
-
-    function installSessionRestoreGuard() {
-      window.addEventListener('pageshow', () => { hasActiveSession(); });
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') hasActiveSession();
-      });
-      window.addEventListener('focus', () => { hasActiveSession(); });
-    }
-    installSessionRestoreGuard();
 
     let toastTimer;
     let currentDriver = null;
@@ -649,11 +852,11 @@
     }
 
     function statusBadge(status) {
-      if (status === 'out') return '<span class="status-badge badge-out">🚚 Out for Delivery</span>';
-      if (status === 'delivered') return '<span class="status-badge badge-delivered">✅ Delivered</span>';
-      if (status === 'failed') return '<span class="status-badge badge-failed">❌ Failed Attempt</span>';
-      if (status === 'rescheduled') return '<span class="status-badge badge-rescheduled">🔄 Rescheduled</span>';
-      return '<span class="status-badge badge-queued">📋 Queued</span>';
+      if (status === 'out') return '<span class="status-badge badge-out">ðŸšš Out for Delivery</span>';
+      if (status === 'delivered') return '<span class="status-badge badge-delivered">âœ… Delivered</span>';
+      if (status === 'failed') return '<span class="status-badge badge-failed">âŒ Failed Attempt</span>';
+      if (status === 'rescheduled') return '<span class="status-badge badge-rescheduled">ðŸ”„ Rescheduled</span>';
+      return '<span class="status-badge badge-queued">ðŸ“‹ Queued</span>';
     }
 
     function cardClass(status) {
@@ -707,28 +910,27 @@
       const maps = mapsTarget(order);
 
       if (status === 'delivered') {
-        return `<button class="action-btn btn-whatsapp" onclick="whatsappCustomer('${phone}')" style="opacity:0.8;">💬 WhatsApp Customer</button>`;
+        return `<button class="action-btn btn-whatsapp" onclick="whatsappCustomer('${phone}', '${order.order_number}')" style="opacity:0.8;">ðŸ’¬ WhatsApp</button>`;
       }
 
       if (status === 'failed' || status === 'rescheduled') {
-        return `<button class="action-btn btn-reschedule" onclick="showToast('Reschedule request will be handled by admin.')">🔄 Request Reschedule</button>`;
+        return `<button class="action-btn btn-reschedule" onclick="showToast('Reschedule request will be handled by admin.')">ðŸ”„ Request Reschedule</button>`;
       }
 
       const common = `
-        <button class="action-btn btn-maps" onclick="openMaps('${maps.replaceAll("'", "\\'")}')">🗺️ Open in Maps</button>
-        <button class="action-btn btn-call" onclick="callCustomer('${phone}')">📞 Call Customer</button>
-        <button class="action-btn btn-whatsapp" onclick="whatsappCustomer('${phone}')">💬 WhatsApp Customer</button>
+        <button class="action-btn btn-maps" onclick="openMaps('${maps.replaceAll("'", "\\'")}')">ðŸ—ºï¸ Open in Maps</button>
+        <button class="action-btn btn-call" onclick="callCustomer('${phone}')">ðŸ“ž Call Customer</button>
       `;
 
       if (status === 'queued') {
-        return common + `<button class="action-btn btn-collected" onclick="markCollected('${order.id}')">📦 Mark Collected</button>`;
+        return common + `<button class="action-btn btn-collected" onclick="markCollected('${order.id}')">ðŸ“¦ Mark Collected</button>`;
       }
 
       return common + `
-        <button class="action-btn btn-whatsapp" onclick="whatsappCustomer('${phone}')">💬 WhatsApp Customer</button>
-        <button class="action-btn btn-delivered" onclick="markDelivered('${order.id}', ${collect})">✅ Mark Delivered</button>
-        <button class="action-btn btn-unavailable" onclick="markUnavailable('${order.id}')">📵 Unavailable</button>
-        <button class="action-btn btn-failed" onclick="markFailed('${order.id}')">❌ Mark Failed</button>
+        <button class="action-btn btn-whatsapp" onclick="whatsappCustomer('${phone}', '${order.order_number}')">ðŸ’¬ WhatsApp</button>
+        <button class="action-btn btn-delivered" onclick="markDelivered('${order.id}', ${collect})">âœ… Mark Delivered</button>
+        <button class="action-btn btn-unavailable" onclick="markUnavailable('${order.id}')">ðŸ“µ Unavailable</button>
+        <button class="action-btn btn-failed" onclick="markFailed('${order.id}')">âŒ Mark Failed</button>
       `;
     }
 
@@ -737,12 +939,12 @@
       list.innerHTML = orders.map(order => {
         const status = normalizeStatus(order.order_status);
         const collect = amountToCollect(order);
-        const notes = order.customer_notes ? `<div class="delivery-notes">📝 ${order.customer_notes}</div>` : '';
+        const notes = order.customer_notes ? `<div class="delivery-notes">ðŸ“ ${order.customer_notes}</div>` : '';
         const collectClass = collect > 0 ? 'cod' : 'no-cod';
-        const collectLabel = collect > 0 ? money(collect) : `${money(collect)} — ${paymentLabel(order.payment_type).toLowerCase()}`;
+        const collectLabel = collect > 0 ? money(collect) : `${money(collect)} â€” ${paymentLabel(order.payment_type).toLowerCase()}`;
 
         return `
-          <div class="delivery-card${cardClass(status)}" data-status="${status}" data-order-id="${order.id}">
+          <div class="delivery-card${cardClass(status)}" data-status="${status}">
             <div class="card-header">
               <div class="card-order">
                 <div class="order-num">${order.order_number}</div>
@@ -753,11 +955,11 @@
             <div class="customer-info">
               <div class="info-row">
                 <div class="info-label">Customer</div>
-                <div class="info-value">${order.customer_name || '—'}</div>
+                <div class="info-value">${order.customer_name || 'â€”'}</div>
               </div>
               <div class="info-row">
                 <div class="info-label">Phone</div>
-                <div class="info-value">${order.customer_phone || '—'}</div>
+                <div class="info-value">${order.customer_phone || 'â€”'}</div>
               </div>
               <div class="info-row" style="grid-column:1/-1;">
                 <div class="info-label">Delivery Address</div>
@@ -777,8 +979,8 @@
               <label>Driver Update / Customer Conversation Notes</label>
               <textarea placeholder="Example: Customer asked to deliver after 3 PM, customer requested updated address, customer said to leave package with security..."></textarea>
               <div class="driver-update-actions">
-                <button class="action-btn btn-note-save" onclick="saveDriverNote('${order.id}', this)">📝 Save Note</button>
-                <button class="action-btn btn-note-client" onclick="sendClientUpdate('${order.id}', this)">💬 Send Update to Client</button>
+                <button class="action-btn btn-note-save" onclick="saveDriverNote('${order.id}', this)">ðŸ“ Save Note</button>
+                <button class="action-btn btn-note-client" onclick="sendClientUpdate('${order.id}', this)">ðŸ’¬ Send Update to Client</button>
               </div>
             </div>
             <div class="card-actions">${renderActions(order, status)}</div>
@@ -846,7 +1048,7 @@
 
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) {
-        showLoggedOutGate();
+        document.getElementById('deliveryList').innerHTML = '<div class="delivery-card"><div class="card-header"><div>Please log in as a driver first.</div><button class="action-btn btn-call" onclick="window.location.href=\'auth.html?returnTo=driver-dashboard.html\'">Login</button></div></div>';
         return;
       }
 
@@ -886,7 +1088,7 @@
       const [ordersRes, clientsRes] = await Promise.all([
         supabase
           .from('orders')
-          .select('id, order_number, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, cod_amount, delivery_fee, order_status, assigned_driver_id, customer_notes, driver_notes, tracking_token, created_at')
+          .select('id, order_number, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, cod_amount, delivery_fee, order_status, assigned_driver_id, customer_notes, created_at')
           .eq('assigned_driver_id', driver.id)
           .order('created_at', { ascending: false }),
         supabase.from('business_clients').select('id, business_name')
@@ -900,34 +1102,6 @@
       renderOrders();
     }
 
-    async function readOrderStatus(orderId) {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('id, order_status, assigned_driver_id')
-        .eq('id', orderId)
-        .limit(1);
-
-      if (error) throw error;
-      const row = Array.isArray(data) ? data[0] : data;
-      return row?.order_status || null;
-    }
-
-    async function directOrderStatusUpdate(orderId, status, note = null) {
-      const payload = { order_status: status };
-      if (note !== null) payload.driver_notes = note;
-      const { error } = await supabase
-        .from('orders')
-        .update(payload)
-        .eq('id', orderId);
-
-      if (error) throw error;
-
-      const savedStatus = await readOrderStatus(orderId);
-      if (savedStatus !== status) {
-        throw new Error('The order status did not change in the database. Refresh the driver dashboard and try again.');
-      }
-    }
-
     async function saveOrderStatus(orderId, status, note = null) {
       const rpcResult = await supabase.rpc('driver_update_order_status', {
         p_order_id: orderId,
@@ -935,40 +1109,21 @@
         p_note: note
       });
 
-      if (rpcResult.error) {
-        console.warn('RPC driver status update failed, trying direct update:', rpcResult.error);
-        await directOrderStatusUpdate(orderId, status, note);
-        return;
-      }
+      if (!rpcResult.error) return;
 
-      const savedStatus = await readOrderStatus(orderId);
-      if (savedStatus === status) return;
+      console.warn('RPC driver status update failed, trying direct update:', rpcResult.error);
 
-      console.warn('RPC completed but order status did not change, trying direct update:', {
-        orderId,
-        expected: status,
-        actual: savedStatus
-      });
+      const updateResult = await supabase
+        .from('orders')
+        .update({ order_status: status })
+        .eq('id', orderId)
+        .eq('assigned_driver_id', currentDriver.id);
 
-      await directOrderStatusUpdate(orderId, status, note);
+      if (updateResult.error) throw rpcResult.error;
     }
 
     function findOrder(orderId) {
       return orders.find(o => o.id === orderId);
-    }
-
-    function resolveOrderRef(orderRef, maybeOrderNumber = null) {
-      if (typeof orderRef === 'string') {
-        const direct = orders.find(o => o.id === orderRef || o.order_number === orderRef);
-        if (direct) return direct;
-      }
-
-      if (typeof maybeOrderNumber === 'string') {
-        const byNumber = orders.find(o => o.order_number === maybeOrderNumber || o.id === maybeOrderNumber);
-        if (byNumber) return byNumber;
-      }
-
-      return null;
     }
 
     window.openMaps = function(target) {
@@ -979,84 +1134,44 @@
       window.location.href = `tel:+${phoneForLink(phone)}`;
     };
 
-    window.whatsappCustomer = function(phone) {
-      const url = `https://wa.me/${phoneForLink(phone)}`;
+    window.whatsappCustomer = function(phone, orderNumber) {
+      const message = `Hi, this is VirtuDrop. Your delivery ${orderNumber ? '(' + orderNumber + ')' : ''} is on the way. Please be available to receive your package.`;
+      const url = `https://wa.me/${phoneForLink(phone)}?text=${encodeURIComponent(message)}`;
       window.open(url, '_blank');
     };
 
-    window.markCollected = function(orderRef, maybeOrderNumber = null) {
-      const order = resolveOrderRef(orderRef, maybeOrderNumber);
-      if (!order) {
-        window.vdNotify('Order Not Ready', 'This card is not connected to a live assigned order. Refresh the driver dashboard and try again.', 'error');
-        return;
-      }
+    window.markCollected = function(orderId) {
+      const order = findOrder(orderId);
       openModal(
-        '📦 Mark as Collected',
-        `Confirm that package ${order.order_number} has been collected and is ready for delivery.`,
-        `<button class="modal-btn confirm" onclick="confirmStatus('${order.id}', 'out_for_delivery')">✅ Yes, Package Collected</button>
+        'ðŸ“¦ Mark as Collected',
+        `Confirm that package ${order?.order_number || 'this order'} has been collected and is ready for delivery.`,
+        `<button class="modal-btn confirm" onclick="confirmStatus('${orderId}', 'out_for_delivery')">âœ… Yes, Package Collected</button>
          <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>`
       );
     };
 
-    window.markDelivered = function(orderRef, maybeOrderNumberOrCollect = 0, maybeCollectAmount = 0) {
-      const order = resolveOrderRef(orderRef, maybeOrderNumberOrCollect);
-      if (!order) {
-        window.vdNotify('Order Not Ready', 'This card is not connected to a live assigned order. Refresh the driver dashboard and try again.', 'error');
-        return;
-      }
-      const collectAmount = typeof maybeOrderNumberOrCollect === 'number' ? maybeOrderNumberOrCollect : maybeCollectAmount;
-      const codText = collectAmount > 0 ? ` Confirm how ${money(collectAmount)} was collected before completing this delivery.` : ' No payment to collect.';
-      const methodBox = collectAmount > 0
-        ? `<div class="collection-method-box">
-             <div class="collection-method-title">Collection Method Required</div>
-             <div class="collection-method-options">
-               <label><input type="radio" name="collectionMethod" value="Cash" /> 💵 Cash</label>
-               <label><input type="radio" name="collectionMethod" value="LINX" /> 💳 LINX</label>
-             </div>
-           </div>`
-        : '';
+    window.markDelivered = function(orderId, collectAmount) {
+      const order = findOrder(orderId);
+      const codText = collectAmount > 0 ? ` Collected ${money(collectAmount)}.` : ' No payment to collect.';
       openModal(
-        '✅ Mark as Delivered',
-        `Confirm delivery of ${order.order_number} is complete.${codText}`,
-        `${methodBox}<button class="modal-btn confirm" onclick="confirmDeliveredWithCollection('${order.id}', ${collectAmount})">✅ Confirm Delivery</button>
+        'âœ… Mark as Delivered',
+        `Confirm delivery of ${order?.order_number || 'this order'} is complete.${codText}`,
+        `<button class="modal-btn confirm" onclick="confirmStatus('${orderId}', 'delivered')">âœ… Confirm Delivery</button>
          <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>`
       );
     };
 
-    window.confirmDeliveredWithCollection = function(orderId, collectAmount = 0) {
-      let note = null;
-      if (Number(collectAmount) > 0) {
-        const method = document.querySelector('input[name="collectionMethod"]:checked')?.value;
-        if (!method) {
-          showToast('Select Cash or LINX before confirming delivery.');
-          return;
-        }
-        note = `Customer payment collected by driver: ${method} - ${money(collectAmount)}`;
-      }
-      window.confirmStatus(orderId, 'delivered', note);
+    window.markUnavailable = function(orderId) {
+      window.confirmStatus(orderId, 'failed', 'Customer unavailable - did not answer');
     };
 
-    window.markUnavailable = function(orderRef, maybeOrderNumber = null) {
-      const order = resolveOrderRef(orderRef, maybeOrderNumber);
-      if (!order) {
-        window.vdNotify('Order Not Ready', 'This card is not connected to a live assigned order. Refresh the driver dashboard and try again.', 'error');
-        return;
-      }
-      window.confirmStatus(order.id, 'failed', 'Customer unavailable - did not answer');
-    };
-
-    window.markFailed = function(orderRef, maybeOrderNumber = null) {
-      const order = resolveOrderRef(orderRef, maybeOrderNumber);
-      if (!order) {
-        window.vdNotify('Order Not Ready', 'This card is not connected to a live assigned order. Refresh the driver dashboard and try again.', 'error');
-        return;
-      }
+    window.markFailed = function(orderId) {
       openModal(
-        '❌ Mark as Failed',
+        'âŒ Mark as Failed',
         'Select a reason for the failed delivery:',
-        `<button class="modal-btn danger" onclick="confirmStatus('${order.id}', 'failed', 'Customer unavailable')">📵 Customer unavailable</button>
-         <button class="modal-btn danger" onclick="confirmStatus('${order.id}', 'failed', 'Customer refused item')">🚫 Customer refused item</button>
-         <button class="modal-btn danger" onclick="confirmStatus('${order.id}', 'failed', 'Wrong address')">📍 Wrong address</button>
+        `<button class="modal-btn danger" onclick="confirmStatus('${orderId}', 'failed', 'Customer unavailable')">ðŸ“µ Customer unavailable</button>
+         <button class="modal-btn danger" onclick="confirmStatus('${orderId}', 'failed', 'Customer refused item')">ðŸš« Customer refused item</button>
+         <button class="modal-btn danger" onclick="confirmStatus('${orderId}', 'failed', 'Wrong address')">ðŸ“ Wrong address</button>
          <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>`
       );
     };
@@ -1071,36 +1186,17 @@
         renderOrders();
       } catch (error) {
         console.error('Driver order update error:', error);
-        window.vdNotify('Order Not Updated', error.message || 'Could not update order status.', 'error');
+        alert(error.message || 'Could not update order status.');
       }
     };
 
-    async function saveAdminUpdateForOrder(orderId, note) {
-      const order = findOrder(orderId);
-      if (!order) throw new Error('Could not find this order.');
-      await saveOrderStatus(orderId, order.order_status || 'assigned', note);
-      order.driver_notes = note;
-    }
-
-    window.saveDriverNote = async function(orderId, btn) {
+    window.saveDriverNote = function(orderId, btn) {
       const note = btn.closest('.delivery-card').querySelector('textarea')?.value.trim();
       if (!note) {
         showToast('Please enter a note before saving.');
         return;
       }
-      btn.disabled = true;
-      const originalText = btn.textContent;
-      btn.textContent = 'Saving...';
-      try {
-        await saveAdminUpdateForOrder(orderId, note);
-        showToast('Admin update saved.');
-      } catch (error) {
-        console.error('Driver note save error:', error);
-        window.vdNotify('Update Not Saved', error.message || 'Could not save the admin update.', 'error');
-      } finally {
-        btn.disabled = false;
-        btn.textContent = originalText;
-      }
+      showToast('Note saved locally for now. Admin note syncing is next.');
     };
 
     window.sendClientUpdate = function(orderId, btn) {
@@ -1110,53 +1206,17 @@
         showToast('Please enter an update before sending.');
         return;
       }
-      const tracking = order?.order_number && order?.tracking_token ? ` Track it here: ${window.location.origin + window.location.pathname.replace(/driver-dashboard\.html$/, 'track.html')}?order=${encodeURIComponent(order.order_number)}&token=${encodeURIComponent(order.tracking_token)}` : '';
-      const message = `VirtuDrop Update for ${order?.order_number || 'your delivery'}: ${note}${tracking}`;
+      const message = `VirtuDrop Update for ${order?.order_number || 'your delivery'}: ${note}`;
       const url = `https://wa.me/${phoneForLink(order?.customer_phone)}?text=${encodeURIComponent(message)}`;
       window.open(url, '_blank');
     };
 
-    document.getElementById('driverWebsiteBtn')?.addEventListener('click', () => {
-      window.location.href = 'index.html';
-    });
-
-    document.getElementById('driverLogoutBtn')?.addEventListener('click', async () => {
-      localStorage.setItem('vd-explicit-logout', String(Date.now()));
+    document.querySelector('.bottom-btn.ghost').onclick = async () => {
       await supabase.auth.signOut();
       window.location.href = 'auth.html';
-    });
+    };
 
-    document.getElementById('driverUpdateAdminBtn')?.addEventListener('click', async () => {
-      const cards = [...document.querySelectorAll('.delivery-card[data-order-id]')];
-      const updates = cards
-        .map(card => ({
-          orderId: card.dataset.orderId,
-          note: card.querySelector('textarea')?.value.trim() || ''
-        }))
-        .filter(item => item.note);
-
-      if (!updates.length) {
-        window.vdNotify('No Update Entered', 'Type an update in an order note box, then tap Update Admin again.', 'warning');
-        return;
-      }
-
-      const btn = document.getElementById('driverUpdateAdminBtn');
-      const originalText = btn.textContent;
-      btn.disabled = true;
-      btn.textContent = 'Updating...';
-      try {
-        for (const update of updates) {
-          await saveAdminUpdateForOrder(update.orderId, update.note);
-        }
-        showToast(`${updates.length} admin update${updates.length === 1 ? '' : 's'} saved.`);
-      } catch (error) {
-        console.error('Update admin error:', error);
-        window.vdNotify('Admin Update Failed', error.message || 'Could not save the admin update.', 'error');
-      } finally {
-        btn.disabled = false;
-        btn.textContent = originalText;
-      }
-    });
+    document.querySelector('.bottom-btn.primary').onclick = () => showToast('Admin update message will be connected later.');
 
     loadDriverData().catch(error => {
       console.error('Driver dashboard load error:', error);
