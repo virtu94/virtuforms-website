@@ -59,10 +59,31 @@ function injectStyles() {
     .vd-account-divider { height: 1px; background: #edf4f3; margin: 0.45rem 0; }
     .vd-account-logout { color: #c0392b !important; }
     @media (max-width: 768px) {
-      .vd-account-menu { width: calc(100% - 3rem); margin: 0.6rem 1.5rem 0.9rem; justify-content: center; }
-      .vd-account-button { width: 100%; height: auto; min-height: 42px; border-radius: 10px; gap: 0.45rem; }
-      .vd-account-button::after { content: 'Account'; font-weight: 800; }
-      .vd-account-dropdown { position: static; width: 100%; margin-top: 0.5rem; box-shadow: none; }
+      .vd-account-menu {
+        width: auto;
+        margin: 0.95rem 1.5rem 1rem;
+        display: flex;
+        justify-content: flex-end;
+      }
+      .vd-account-button {
+        width: 46px;
+        height: 46px;
+        min-height: 46px;
+        border-radius: 999px;
+        flex: 0 0 46px;
+      }
+      .vd-account-button::after { content: none; }
+      .vd-account-dropdown {
+        position: fixed;
+        top: 5.35rem;
+        right: 1rem;
+        left: auto;
+        width: min(270px, calc(100vw - 2rem));
+        min-width: 0;
+        max-height: calc(100vh - 6.4rem);
+        overflow-y: auto;
+        box-shadow: 0 18px 45px rgba(13,43,40,0.22);
+      }
     }
   `;
   document.head.appendChild(style);
