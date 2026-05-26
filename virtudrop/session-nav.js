@@ -36,7 +36,7 @@ function injectStyles() {
   const style = document.createElement('style');
   style.id = 'vd-session-nav-style';
   style.textContent = `
-    .vd-account-menu { position: relative; display: inline-flex; align-items: center; margin-left: 0.35rem; }
+    .vd-account-menu { position: relative; display: inline-flex; align-items: center; margin-left: 0.35rem; flex-shrink: 0; }
     .vd-account-button {
       width: 42px; height: 42px; border-radius: 999px; border: 2px solid rgba(42,157,143,0.22);
       background: #2a9d8f; color: #fff; display: inline-flex; align-items: center; justify-content: center;
@@ -59,18 +59,21 @@ function injectStyles() {
     .vd-account-divider { height: 1px; background: #edf4f3; margin: 0.45rem 0; }
     .vd-account-logout { color: #c0392b !important; }
     @media (max-width: 768px) {
+      body.vd-session-authenticated [data-mobile-toggle] { display: none !important; }
       .vd-account-menu {
         width: auto;
-        margin: 0.95rem 1.5rem 1rem;
-        display: flex;
-        justify-content: flex-end;
+        margin: 0;
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 2600;
       }
       .vd-account-button {
-        width: 46px;
-        height: 46px;
-        min-height: 46px;
+        width: 48px;
+        height: 48px;
+        min-height: 48px;
         border-radius: 999px;
-        flex: 0 0 46px;
+        flex: 0 0 48px;
       }
       .vd-account-button::after { content: none; }
       .vd-account-dropdown {
@@ -83,6 +86,9 @@ function injectStyles() {
         max-height: calc(100vh - 6.4rem);
         overflow-y: auto;
         box-shadow: 0 18px 45px rgba(13,43,40,0.22);
+      }
+      body.vd-session-authenticated [data-nav-links] {
+        display: none !important;
       }
     }
   `;
@@ -124,7 +130,16 @@ function closeMenu(menu) {
 
 function renderAccountMenu(sessionProfile) {
   const nav = document.querySelector('[data-nav-links]');
+  const toggle = document.querySelector('[data-mobile-toggle]');
   if (!nav || document.querySelector('.vd-account-menu')) return;
+
+  document.body.classList.add('vd-session-authenticated');
+  nav.classList.remove('open');
+  if (toggle) {
+    toggle.textContent = 'Menu';
+    toggle.setAttribute('aria-hidden', 'true');
+    toggle.tabIndex = -1;
+  }
 
   document.querySelectorAll('.nav-login').forEach(link => {
     link.style.display = 'none';
@@ -162,7 +177,11 @@ function renderAccountMenu(sessionProfile) {
     if (!menu.contains(event.target)) closeMenu(menu);
   });
 
-  nav.appendChild(menu);
+  if (toggle?.parentElement) {
+    toggle.insertAdjacentElement('afterend', menu);
+  } else {
+    nav.appendChild(menu);
+  }
 }
 
 async function init() {
