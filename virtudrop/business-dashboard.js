@@ -4,6 +4,7 @@ const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnbXp6YXZ4aHVhcmxhY252bm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Mjk4NTksImV4cCI6MjA5NDIwNTg1OX0.7-YKlwLrhUYUYbiii93ZvgX01TxVephApDNCP50Rl54';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+window.supabase = supabase; // expose for vd-track-modal.js
 
     function showLoggedOutGate() {
       document.body.style.margin = '0';
@@ -225,7 +226,7 @@ function orderTableRow(order, includeCost = false) {
       ${includeCost ? `<td>${money(order.delivery_fee)}</td>` : ''}
       <td>${formatDate(order.created_at)}</td>
       <td><span class="status-badge ${statusClass(order.order_status)}">${escapeHtml(statusLabel(order.order_status))}</span></td>
-      ${includeCost ? `<td>${link ? `<a href="${escapeHtml(link)}" target="_blank" onclick="event.stopPropagation()" style="color:#2a9d8f; font-weight:700;">Track</a>` : '—'}</td>` : ''}
+      ${includeCost ? `<td>${link ? `<button type="button" class="order-detail-link" style="color:#2a9d8f; font-weight:700; background:none; border:none; cursor:pointer; font-family:inherit; font-size:inherit;" onclick="event.stopPropagation(); vdTrackOrder('${escapeHtml(order.order_number)}', '${escapeHtml(order.tracking_token)}', supabase)">Track</button>` : '—'}</td>` : ''}
     </tr>
   `;
 }
@@ -243,7 +244,7 @@ function orderCard(order) {
         <span>${escapeHtml(paymentLabels[order.payment_type] || 'Delivery')}</span>
         <span>${formatDate(order.created_at)}</span>
       </div>
-      <div class="order-card-cost">${money(order.delivery_fee)}${link ? ` · <a href="${escapeHtml(link)}" target="_blank" onclick="event.stopPropagation()" style="color:#2a9d8f;">Track</a>` : ''} · <button type="button" class="order-detail-link" onclick="event.stopPropagation(); openOrderDetails('${order.id}')">View details</button></div>
+      <div class="order-card-cost">${money(order.delivery_fee)}${link ? ` · <button type="button" style="color:#2a9d8f; background:none; border:none; cursor:pointer; font-family:inherit; font-size:inherit; padding:0;" onclick="event.stopPropagation(); vdTrackOrder('${escapeHtml(order.order_number)}', '${escapeHtml(order.tracking_token)}', supabase)">Track</button>` : ''} · <button type="button" class="order-detail-link" onclick="event.stopPropagation(); openOrderDetails('${order.id}')">View details</button></div>
     </div>
   `;
 }
@@ -292,7 +293,7 @@ window.openOrderDetails = function(orderId) {
     </div>
     <div class="order-detail-actions">
       ${map ? `<a class="btn btn-primary" href="${escapeHtml(map)}" target="_blank">Open Location</a>` : ''}
-      ${link ? `<a class="btn btn-ghost" href="${escapeHtml(link)}" target="_blank">Track Order</a>` : ''}
+      ${link ? `<button type="button" class="btn btn-ghost" onclick="vdTrackOrder('${escapeHtml(order.order_number)}', '${escapeHtml(order.tracking_token)}', supabase)">Track Order</button>` : ''}
     </div>
   `;
 

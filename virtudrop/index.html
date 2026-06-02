@@ -786,7 +786,7 @@
       event.target.classList.add('active');
     }
 
-    // ── Track delivery form ───────────────────────────────────
+    // ── Track delivery form — redirects to track.html ─────────
     function handleTrack(e) {
       e.preventDefault();
       const phone   = document.getElementById('trackPhone').value.trim();
@@ -795,7 +795,6 @@
         window.vdNotify('Tracking Details Needed', 'Please enter both your phone number and order ID.', 'warning');
         return;
       }
-      // Redirect to track page with params
       window.location.href = `track.html?phone=${encodeURIComponent(phone)}&order=${encodeURIComponent(orderId)}`;
     }
 
