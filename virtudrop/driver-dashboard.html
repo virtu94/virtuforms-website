@@ -776,6 +776,7 @@
         <button class="action-btn btn-delivered" onclick="markDelivered('${order.id}', ${collect})">✅ Mark Delivered</button>
         <button class="action-btn btn-unavailable" onclick="markUnavailable('${order.id}')">📵 Unavailable</button>
         <button class="action-btn btn-failed" onclick="markFailed('${order.id}')">❌ Mark Failed</button>
+        <button class="action-btn btn-reschedule" onclick="markOtherUpdate('${order.id}')">📝 Other Update</button>
       `;
     }
 
@@ -948,6 +949,7 @@
       clientsById = new Map((clientsRes.data || []).map(client => [client.id, client]));
       orders = ordersRes.data || [];
       renderOrders();
+      loadDriverNotificationBadge();
     }
 
     async function readOrderStatus(orderId) {
@@ -1110,6 +1112,87 @@
          <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>`
       );
     };
+
+    // ── Other / Custom Update ─────────────────────────────────────
+    window.markOtherUpdate = function(orderRef) {
+      const order = resolveOrderRef(orderRef);
+      if (!order) {
+        window.vdNotify('Order Not Found', 'Could not find this order. Please refresh.', 'error');
+        return;
+      }
+      const noteId = `other-note-${order.id}`;
+      openModal(
+        '📝 Add Update',
+        'Enter a note to update admin on this delivery:',
+        `<textarea id="${noteId}" style="width:100%; padding:0.75rem; border:2px solid #e0e0e0; border-radius:8px; font-family:inherit; font-size:0.92rem; min-height:80px; resize:vertical; box-sizing:border-box;" placeholder="e.g. Customer asked to reschedule, road blocked, package left with neighbour..."></textarea>
+         <div style="display:flex; gap:0.6rem; margin-top:0.8rem; flex-wrap:wrap;">
+           <button class="modal-btn primary" onclick="saveOtherUpdate('${order.id}', '${noteId}')">Save Update</button>
+           <button class="modal-btn" onclick="sendOtherUpdateWhatsApp('${order.id}', '${noteId}')">💬 Also WhatsApp Customer</button>
+           <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>
+         </div>`
+      );
+    };
+
+    window.saveOtherUpdate = async function(orderId, noteId) {
+      const note = document.getElementById(noteId)?.value.trim();
+      if (!note) { showToast('Please enter a note.'); return; }
+      closeModal();
+      try {
+        await saveAdminUpdateForOrder(orderId, note);
+        // Notify admin via notifications table
+        const order = findOrder(orderId);
+        if (order) {
+          order.driver_notes = note;
+          // Insert notification for admin — we find admin profile via profiles table
+          await supabase.from('notifications').insert({
+            profile_id: null, // admin will see all — use a query in admin dashboard
+            order_id: orderId,
+            message: `Driver update on ${order.order_number}: ${note}`,
+            type: 'info'
+          }).then(() => {}); // best-effort, don't block
+        }
+        showToast('Update saved and admin notified.');
+        renderOrders();
+      } catch (err) {
+        console.error('Other update error:', err);
+        window.vdNotify('Update Failed', err.message || 'Could not save the update.', 'error');
+      }
+    };
+
+    window.sendOtherUpdateWhatsApp = function(orderId, noteId) {
+      const note = document.getElementById(noteId)?.value.trim();
+      const order = findOrder(orderId);
+      if (!note) { showToast('Please enter a note first.'); return; }
+      window.saveOtherUpdate(orderId, noteId);
+      if (order?.customer_phone) {
+        const tracking = order.order_number && order.tracking_token
+          ? ` Track your order: ${window.location.origin + window.location.pathname.replace(/driver-dashboard\.html$/, 'track.html')}?order=${encodeURIComponent(order.order_number)}&token=${encodeURIComponent(order.tracking_token)}`
+          : '';
+        const message = `VirtuDrop update for ${order.order_number}: ${note}${tracking}`;
+        window.open(`https://wa.me/${phoneForLink(order.customer_phone)}?text=${encodeURIComponent(message)}`, '_blank');
+      }
+    };
+
+    // ── Driver notification badge ─────────────────────────────────
+    async function loadDriverNotificationBadge() {
+      try {
+        const { data: authData } = await supabase.auth.getUser();
+        if (!authData?.user) return;
+        const { data } = await supabase
+          .from('notifications')
+          .select('id')
+          .eq('profile_id', authData.user.id)
+          .eq('read', false);
+        const count = data?.length || 0;
+        const badge = document.querySelector('.driver-notif-badge');
+        if (badge) {
+          badge.textContent = count > 0 ? count : '';
+          badge.style.display = count > 0 ? '' : 'none';
+        }
+      } catch (err) {
+        console.warn('Driver notification badge error:', err);
+      }
+    }
 
     window.confirmStatus = async function(orderId, status, note = null) {
       closeModal();

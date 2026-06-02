@@ -4,7 +4,68 @@ const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnbXp6YXZ4aHVhcmxhY252bm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Mjk4NTksImV4cCI6MjA5NDIwNTg1OX0.7-YKlwLrhUYUYbiii93ZvgX01TxVephApDNCP50Rl54';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-window.supabase = supabase; // expose for vd-track-modal.js
+window.supabase = supabase;
+
+// ── Payment field sync ────────────────────────────────────────────
+window.vdSyncBusinessAmountField = function() {
+  const paymentType = el('#paymentType')?.value || '';
+  const block = el('#codAmountBlock');
+  const label = el('#codAmountLabel');
+  if (!block) return;
+  if (paymentType === 'cod') {
+    block.style.display = '';
+    if (label) label.textContent = 'Package Value (TTD)';
+    el('#codAmount').placeholder = 'e.g. 350.00';
+  } else if (paymentType === 'pkg-online') {
+    block.style.display = 'none';
+  } else if (paymentType === 'all-online') {
+    block.style.display = 'none';
+  } else {
+    block.style.display = 'none';
+  }
+  updateBizEstimate();
+};
+
+// ── Business order estimate ───────────────────────────────────────
+const BIZ_PRICING = { same_zone: 40, cross_zone: 50 };
+
+function updateBizEstimate() {
+  const block = el('#bizEstimateBlock');
+  if (!block) return;
+  const paymentType = el('#paymentType')?.value || '';
+  const gpsResult = el('#gpsResult');
+  const mapsLink = el('#mapsLink')?.value.trim() || '';
+  const areaName = el('#areaName')?.value.trim() || '';
+  const hasLocation = (gpsResult?.dataset.lat && gpsResult?.dataset.lng) || mapsLink || areaName;
+
+  if (!paymentType || !hasLocation) { block.style.display = 'none'; return; }
+  block.style.display = '';
+
+  const pkgVal = paymentType === 'cod' ? (Number(el('#codAmount')?.value) || 0) : 0;
+  const rows = [
+    ['Same Zone', `$${BIZ_PRICING.same_zone.toFixed(2)}`],
+    ['Cross Zone', `$${BIZ_PRICING.cross_zone.toFixed(2)}`],
+  ];
+  if (paymentType === 'cod' && pkgVal > 0) {
+    rows.push(['Package Value', `$${pkgVal.toFixed(2)}`]);
+    rows.push(['Driver Collects (same zone)', `$${(pkgVal + BIZ_PRICING.same_zone).toFixed(2)}`]);
+    rows.push(['Driver Collects (cross zone)', `$${(pkgVal + BIZ_PRICING.cross_zone).toFixed(2)}`]);
+  } else if (paymentType === 'pkg-online') {
+    rows.push(['Driver Collects', 'Delivery fee only']);
+  } else if (paymentType === 'all-online') {
+    rows.push(['Driver Collects', 'Nothing']);
+  }
+
+  const breakdown = el('#bizEstimateBreakdown');
+  if (breakdown) {
+    breakdown.innerHTML = rows.map(([k, v]) => `
+      <div style="display:flex; justify-content:space-between; font-size:0.82rem; padding:0.25rem 0; border-bottom:1px solid rgba(255,255,255,0.06);">
+        <span style="color:rgba(255,255,255,0.5);">${k}</span>
+        <span style="color:#ffffff; font-weight:600;">${v}</span>
+      </div>`).join('');
+  }
+}
+window.updateBizEstimate = updateBizEstimate;
 
     function showLoggedOutGate() {
       document.body.style.margin = '0';
@@ -126,7 +187,8 @@ function statusLabel(status) {
     out_for_delivery: 'Out for Delivery',
     delivered: 'Delivered',
     failed: 'Failed',
-    rescheduled: 'Rescheduled'
+    rescheduled: 'Rescheduled',
+    rejected: 'Rejected'
   };
   return labels[status] || String(status || 'Pending').replaceAll('_', ' ');
 }
@@ -135,6 +197,7 @@ function statusClass(status) {
   if (status === 'delivered') return 'delivered';
   if (status === 'out_for_delivery') return 'out';
   if (status === 'failed' || status === 'rescheduled') return 'failed';
+  if (status === 'rejected') return 'failed';
   return 'picked-up';
 }
 
@@ -226,7 +289,7 @@ function orderTableRow(order, includeCost = false) {
       ${includeCost ? `<td>${money(order.delivery_fee)}</td>` : ''}
       <td>${formatDate(order.created_at)}</td>
       <td><span class="status-badge ${statusClass(order.order_status)}">${escapeHtml(statusLabel(order.order_status))}</span></td>
-      ${includeCost ? `<td>${link ? `<button type="button" class="order-detail-link" style="color:#2a9d8f; font-weight:700; background:none; border:none; cursor:pointer; font-family:inherit; font-size:inherit;" onclick="event.stopPropagation(); vdTrackOrder('${escapeHtml(order.order_number)}', '${escapeHtml(order.tracking_token)}', supabase)">Track</button>` : '—'}</td>` : ''}
+      ${includeCost ? `<td>${link ? `<a href="${escapeHtml(link)}" target="_blank" onclick="event.stopPropagation()" style="color:#2a9d8f; font-weight:700;">Track</a>` : '—'}</td>` : ''}
     </tr>
   `;
 }
@@ -244,7 +307,7 @@ function orderCard(order) {
         <span>${escapeHtml(paymentLabels[order.payment_type] || 'Delivery')}</span>
         <span>${formatDate(order.created_at)}</span>
       </div>
-      <div class="order-card-cost">${money(order.delivery_fee)}${link ? ` · <button type="button" style="color:#2a9d8f; background:none; border:none; cursor:pointer; font-family:inherit; font-size:inherit; padding:0;" onclick="event.stopPropagation(); vdTrackOrder('${escapeHtml(order.order_number)}', '${escapeHtml(order.tracking_token)}', supabase)">Track</button>` : ''} · <button type="button" class="order-detail-link" onclick="event.stopPropagation(); openOrderDetails('${order.id}')">View details</button></div>
+      <div class="order-card-cost">${money(order.delivery_fee)}${link ? ` · <a href="${escapeHtml(link)}" target="_blank" onclick="event.stopPropagation()" style="color:#2a9d8f;">Track</a>` : ''} · <button type="button" class="order-detail-link" onclick="event.stopPropagation(); openOrderDetails('${order.id}')">View details</button></div>
     </div>
   `;
 }
@@ -284,6 +347,8 @@ window.openOrderDetails = function(orderId) {
       ${detailItem('Zone Status', escapeHtml(order.zone_status || 'pending'))}
       ${detailItem('Order Status', escapeHtml(status))}
       ${detailItem('Package', escapeHtml(notes.packageText || 'Not entered'), true)}
+      ${order.package_value > 0 ? detailItem('Package Value', escapeHtml(money(order.package_value))) : ''}
+      ${order.rejection_reason ? detailItem('❌ Rejection Reason', `<span style="color:#e05555; font-weight:600;">${escapeHtml(order.rejection_reason)}</span>`, true) : ''}
       ${detailItem('Delivery Address', escapeHtml(order.delivery_address || 'Location pending'), true)}
       ${detailItem('House / Apt', escapeHtml(order.house_number || ''))}
       ${detailItem('Street', escapeHtml(order.street_name || ''))}
@@ -293,7 +358,7 @@ window.openOrderDetails = function(orderId) {
     </div>
     <div class="order-detail-actions">
       ${map ? `<a class="btn btn-primary" href="${escapeHtml(map)}" target="_blank">Open Location</a>` : ''}
-      ${link ? `<button type="button" class="btn btn-ghost" onclick="vdTrackOrder('${escapeHtml(order.order_number)}', '${escapeHtml(order.tracking_token)}', supabase)">Track Order</button>` : ''}
+      ${link ? `<a class="btn btn-ghost" href="${escapeHtml(link)}" target="_blank">Track Order</a>` : ''}
     </div>
   `;
 
@@ -766,6 +831,7 @@ function renderAll() {
   renderPlan();
   renderSettings();
   renderDeliveryLink();
+  loadNotificationBadge();
 }
 
 async function loadBusinessData() {
@@ -807,7 +873,7 @@ async function loadBusinessData() {
   const [{ data: orderData, error: orderError }, { data: remitData, error: remitError }] = await Promise.all([
     supabase
       .from('orders')
-      .select('id, order_number, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, payment_type, cod_amount, delivery_fee, zone_status, order_status, tracking_token, customer_notes, created_at, updated_at')
+      .select('id, order_number, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, payment_type, cod_amount, delivery_fee, zone_status, order_status, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, package_value, estimated_fee, payment_confirmed_at, created_at, updated_at')
       .eq('business_client_id', business.id)
       .order('created_at', { ascending: false }),
     supabase
@@ -972,6 +1038,8 @@ async function submitBusinessOrder(event) {
     ...locationPayload,
     payment_type: paymentValue ? paymentMap[paymentValue] : '',
     cod_amount: paymentValue === 'cod' ? Number(el('#codAmount')?.value || 0) : 0,
+    package_value: paymentValue === 'cod' ? Number(el('#codAmount')?.value || 0) : 0,
+    estimated_fee: BIZ_PRICING.same_zone,
     customer_notes: [`Package: ${packageDescription}`, specialNotes].filter(Boolean).join('\n') || null
   };
 
@@ -1177,6 +1245,11 @@ function bindUi() {
   el('#submitOrderBtn')?.addEventListener('click', submitBusinessOrder);
   window.resetOrderForm();
 
+  // Wire location inputs to estimate updater
+  el('#mapsLink')?.addEventListener('input', updateBizEstimate);
+  el('#areaName')?.addEventListener('input', updateBizEstimate);
+  el('#codAmount')?.addEventListener('input', updateBizEstimate);
+
   const logout = el('#businessLogoutBtn');
   if (logout) {
     logout.onclick = async () => {
@@ -1186,6 +1259,54 @@ function bindUi() {
     };
   }
 }
+
+// ── Notification badge ────────────────────────────────────────────
+async function loadNotificationBadge() {
+  if (!profile?.id) return;
+  try {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('id', { count: 'exact' })
+      .eq('profile_id', profile.id)
+      .eq('read', false);
+    if (error) return;
+    const count = data?.length || 0;
+    const badge = el('[data-panel="notifications"] .nav-badge');
+    if (badge) {
+      badge.textContent = count > 0 ? count : '';
+      badge.style.display = count > 0 ? '' : 'none';
+    }
+    // Also update notification panel content
+    const card = el('#panel-notifications .card');
+    if (card && count > 0) {
+      const { data: notifs } = await supabase
+        .from('notifications')
+        .select('id, message, type, read, created_at, order_id')
+        .eq('profile_id', profile.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (notifs?.length) {
+        card.innerHTML = notifs.map(n => `
+          <div style="display:flex; gap:0.8rem; align-items:flex-start; padding:0.9rem; border-radius:10px; background:${n.read ? '#f8f9fa' : '#f0f9f8'}; margin-bottom:0.6rem; border-left:3px solid ${n.read ? '#e0e0e0' : '#2a9d8f'};">
+            <span style="font-size:1.1rem; flex-shrink:0;">${n.type === 'error' ? '❌' : n.type === 'warning' ? '⚠️' : '📬'}</span>
+            <div style="flex:1;">
+              <div style="font-size:0.88rem; color:#1a1a1a; font-weight:${n.read ? '400' : '600'}; line-height:1.5;">${escapeHtml(n.message)}</div>
+              <div style="font-size:0.75rem; color:#aaa; margin-top:0.2rem;">${formatDateTime(n.created_at)}</div>
+            </div>
+            ${!n.read ? `<button onclick="markNotifRead('${n.id}')" style="font-size:0.75rem; color:#2a9d8f; background:none; border:none; cursor:pointer; white-space:nowrap; padding:0;">Mark read</button>` : ''}
+          </div>
+        `).join('');
+      }
+    }
+  } catch (err) {
+    console.warn('Notification badge load error:', err);
+  }
+}
+
+window.markNotifRead = async function(notifId) {
+  await supabase.from('notifications').update({ read: true }).eq('id', notifId);
+  loadNotificationBadge();
+};
 
 bindUi();
 loadBusinessData().catch(error => {

@@ -1659,6 +1659,157 @@
       window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
     };
 
+    // ── WhatsApp to client ────────────────────────────────────────
+    window.whatsappClient = function(orderId) {
+      const order = orders.find(o => o.id === orderId);
+      if (!order) { showToast('Order not found.'); return; }
+      const client = businessClients.find(c => c.id === order.business_client_id);
+      const rawPhone = client?.phone || '';
+      const phone = phoneForWhatsApp(rawPhone);
+      if (!phone) { showToast('This client does not have a phone number on file.'); return; }
+      const message = `Hi ${client?.business_name || 'there'}, this is VirtuDrop. Regarding order ${order.order_number} for ${order.customer_name || 'your customer'} — please contact us if you have any questions.`;
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
+    };
+
+    // ── Reject order ──────────────────────────────────────────────
+    window.rejectOrder = function(orderId) {
+      const order = orders.find(o => o.id === orderId);
+      if (!order) { showToast('Order not found.'); return; }
+
+      // Build inline rejection reason input inside a confirm dialog
+      const reasonId = `reject-reason-${orderId}`;
+      if (typeof window.vdNotify === 'function') {
+        // Use a custom modal approach — inject into vdNotify overlay
+        const overlay = document.getElementById('vdNotifyOverlay') || (() => {
+          window.vdNotify('', '', 'warning');
+          window.vdNotifyClose();
+          return document.getElementById('vdNotifyOverlay');
+        })();
+
+        const style = document.createElement('style');
+        style.textContent = `.vd-reject-input { width:100%; padding:0.75rem 1rem; border:2px solid #e0e0e0; border-radius:8px; font-family:Inter,sans-serif; font-size:0.95rem; margin-top:0.5rem; box-sizing:border-box; } .vd-reject-input:focus { outline:none; border-color:#e05555; }`;
+        document.head.appendChild(style);
+
+        const card = `
+          <div style="position:fixed;inset:0;z-index:10001;display:flex;align-items:center;justify-content:center;padding:1.25rem;background:rgba(13,43,40,0.65);" id="vdRejectOverlay">
+            <div style="width:min(460px,100%);background:#fff;border-radius:14px;box-shadow:0 18px 45px rgba(13,43,40,0.22);padding:2rem;border-top:4px solid #e05555;font-family:Inter,sans-serif;">
+              <h2 style="margin:0 0 0.5rem;color:#0d2b28;font-size:1.2rem;font-weight:800;">❌ Reject Order ${order.order_number}</h2>
+              <p style="margin:0 0 1rem;color:#4a4a4a;font-size:0.92rem;line-height:1.6;">Please enter a reason for rejecting this order. The client will be notified.</p>
+              <textarea id="${reasonId}" class="vd-reject-input" rows="3" placeholder="e.g. Area not covered, incomplete address, duplicate order..."></textarea>
+              <div style="display:flex;gap:0.75rem;justify-content:flex-end;margin-top:1.2rem;">
+                <button onclick="document.getElementById('vdRejectOverlay').remove()" style="border:2px solid #e0e0e0;border-radius:8px;background:#fff;padding:0.7rem 1.2rem;font-weight:600;cursor:pointer;">Cancel</button>
+                <button onclick="confirmRejectOrder('${orderId}')" style="border:none;border-radius:8px;background:#e05555;color:#fff;padding:0.7rem 1.2rem;font-weight:700;cursor:pointer;">Confirm Rejection</button>
+              </div>
+            </div>
+          </div>`;
+        document.body.insertAdjacentHTML('beforeend', card);
+        document.getElementById(reasonId)?.focus();
+      }
+    };
+
+    window.confirmRejectOrder = async function(orderId) {
+      const reasonEl = document.querySelector(`[id^="reject-reason-${orderId}"]`);
+      const reason = reasonEl?.value.trim() || '';
+      if (!reason) { showToast('Please enter a rejection reason.'); return; }
+
+      document.getElementById('vdRejectOverlay')?.remove();
+
+      try {
+        const { error } = await supabase
+          .from('orders')
+          .update({ order_status: 'rejected', rejection_reason: reason, admin_notes: reason })
+          .eq('id', orderId);
+        if (error) throw error;
+
+        // Create notification for the client
+        const order = orders.find(o => o.id === orderId);
+        if (order?.business_client_id) {
+          const client = businessClients.find(c => c.id === order.business_client_id);
+          if (client?.profile_id) {
+            await supabase.from('notifications').insert({
+              profile_id: client.profile_id,
+              order_id: orderId,
+              message: `Order ${order.order_number} was rejected. Reason: ${reason}`,
+              type: 'error'
+            });
+          }
+        }
+
+        // Update local state
+        const localOrder = orders.find(o => o.id === orderId);
+        if (localOrder) {
+          localOrder.order_status = 'rejected';
+          localOrder.rejection_reason = reason;
+        }
+        showToast(`Order rejected.`);
+        renderZonePending();
+        updateBadgesAndStats();
+      } catch (err) {
+        console.error('Reject order error:', err);
+        window.vdNotify('Rejection Failed', err.message || 'Could not reject the order. Try again.', 'error');
+      }
+    };
+
+    // ── Confirm payment received (COD/Linx) ───────────────────────
+    window.confirmPaymentReceived = async function(orderId) {
+      const order = orders.find(o => o.id === orderId);
+      if (!order) { showToast('Order not found.'); return; }
+      try {
+        const { data: adminUser } = await supabase.auth.getUser();
+        const confirmedBy = adminUser?.user?.email || 'admin';
+        const { error } = await supabase
+          .from('orders')
+          .update({
+            payment_confirmed_at: new Date().toISOString(),
+            payment_confirmed_by: confirmedBy
+          })
+          .eq('id', orderId);
+        if (error) throw error;
+
+        // Notify client
+        if (order.business_client_id) {
+          const client = businessClients.find(c => c.id === order.business_client_id);
+          if (client?.profile_id) {
+            await supabase.from('notifications').insert({
+              profile_id: client.profile_id,
+              order_id: orderId,
+              message: `Payment for order ${order.order_number} has been confirmed received by VirtuDrop.`,
+              type: 'info'
+            });
+          }
+        }
+
+        order.payment_confirmed_at = new Date().toISOString();
+        showToast(`Payment confirmed for ${order.order_number}.`);
+        renderAll();
+      } catch (err) {
+        console.error('Confirm payment error:', err);
+        window.vdNotify('Error', err.message || 'Could not confirm payment.', 'error');
+      }
+    };
+
+    // ── Admin notification badge ──────────────────────────────────
+    async function loadAdminNotificationBadge() {
+      try {
+        const { data: adminUser } = await supabase.auth.getUser();
+        if (!adminUser?.user) return;
+        const { data } = await supabase
+          .from('notifications')
+          .select('id')
+          .eq('profile_id', adminUser.user.id)
+          .eq('read', false);
+        const count = data?.length || 0;
+        const bell = document.querySelector('.topbar-notif');
+        if (bell) {
+          bell.title = count > 0 ? `${count} unread notification${count > 1 ? 's' : ''}` : 'Notifications';
+          const dot = bell.querySelector('.notif-dot');
+          if (dot) dot.style.display = count > 0 ? '' : 'none';
+        }
+      } catch (err) {
+        console.warn('Admin notification badge error:', err);
+      }
+    }
+
     function driverName(driverId) {
       const driver = drivers.find(d => d.id === driverId);
       if (!driver) return 'Assigned';
@@ -2285,17 +2436,21 @@
         <tr>
           <td class="td-id">${order.order_number}</td>
           <td><div class="td-name">${clientName(order)}</div></td>
-          <td><div class="td-name">${order.customer_name || '—'}</div><div class="td-sub">${order.customer_phone || ''}</div>${order.driver_notes ? `<div class="td-sub" style="color:var(--teal-dark); font-weight:700;">Driver: ${escapeHtml(order.driver_notes)}</div>` : ''}</td>
+          <td><div class="td-name">${order.customer_name || '—'}</div><div class="td-sub">${order.customer_phone || ''}</div>${order.driver_notes ? `<div class="td-sub" style="color:var(--teal-dark); font-weight:700;">Driver: ${escapeHtml(order.driver_notes)}</div>` : ''}${order.rejection_reason ? `<div class="td-sub" style="color:var(--red); font-weight:700;">Rejected: ${escapeHtml(order.rejection_reason)}</div>` : ''}</td>
           <td>${zoneLabel(order)}</td>
           <td>${money(order.cod_amount)}</td>
           <td>${badgeForStatus(order)}</td>
           <td>${order.assigned_driver_id ? driverName(order.assigned_driver_id) : '—'}</td>
           <td>
             <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
-              <button class="btn btn-ghost btn-sm" onclick="openCustomerTrackingWhatsApp('${order.id}')">WhatsApp</button>
+              <button class="btn btn-ghost btn-sm" onclick="openCustomerTrackingWhatsApp('${order.id}')">💬 Customer</button>
+              <button class="btn btn-ghost btn-sm" onclick="whatsappClient('${order.id}')">💬 Client</button>
+              ${order.order_status === 'delivered' && (order.payment_type === 'cod' || order.payment_type === 'delivery_only') && !order.payment_confirmed_at
+                ? `<button class="btn btn-primary btn-sm" onclick="confirmPaymentReceived('${order.id}')">✅ Confirm Payment</button>`
+                : order.payment_confirmed_at ? `<span class="badge badge-paid" title="Confirmed ${new Date(order.payment_confirmed_at).toLocaleDateString('en-TT')}">💳 Paid</span>` : ''}
               ${order.zone_status === 'pending' || order.order_status === 'zone_pending'
                 ? '<button class="btn btn-warn btn-sm" onclick="showPanel(\'zone-confirm\')">Confirm Zone</button>'
-                : '<button class="btn btn-primary btn-sm" onclick="showPanel(\'driver-assign\')">Assign Driver</button>'}
+                : order.order_status !== 'rejected' ? '<button class="btn btn-primary btn-sm" onclick="showPanel(\'driver-assign\')">Assign Driver</button>' : ''}
             </div>
           </td>
         </tr>
@@ -2451,6 +2606,9 @@
               <select class="zone-select">${zoneOptions()}</select>
               <input class="zone-select fee-input" type="number" min="0" step="1" value="${Number(appSettings.default_delivery_fee || 40)}" title="Delivery fee" />
               <button class="btn btn-primary btn-sm" onclick="confirmZone('${order.id}')">✅ Confirm Zone</button>
+              <button class="btn btn-warn btn-sm" onclick="rejectOrder('${order.id}')">❌ Reject</button>
+              <button class="btn btn-ghost btn-sm" onclick="openCustomerTrackingWhatsApp('${order.id}')">💬 WhatsApp Customer</button>
+              <button class="btn btn-ghost btn-sm" onclick="whatsappClient('${order.id}')">💬 WhatsApp Client</button>
             </div>
           </div>
         `);
@@ -2528,7 +2686,7 @@
         supabase.from('zones').select('id, code, name, region, active, zone_areas(area_name)').eq('active', true).order('code'),
         supabase
           .from('orders')
-          .select('id, order_number, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, cod_amount, delivery_fee, zone_status, order_status, assigned_driver_id, tracking_token, customer_notes, driver_notes, source, created_at, updated_at')
+          .select('id, order_number, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, cod_amount, delivery_fee, zone_status, order_status, assigned_driver_id, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, package_value, estimated_fee, payment_confirmed_at, payment_confirmed_by, source, created_at, updated_at')
           .order('created_at', { ascending: false }),
         supabase.from('drivers').select('id, profile_id, status'),
         supabase.from('profiles').select('id, role, first_name, last_name, status').eq('role', 'driver'),
@@ -2580,6 +2738,7 @@
       renderAccounts();
       applySettingsToControls();
       updateBadgesAndStats();
+      loadAdminNotificationBadge();
     }
 
     async function saveZoneConfirmation(orderId, zoneId, fee) {
