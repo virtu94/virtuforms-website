@@ -92,19 +92,26 @@ async function updateBizEstimate() {
       let detectedArea = null;
       let zoneA = false;
 
+      console.log('[VD Estimate] Starting calculation:', { areaNameVal, hasGps, mapsLinkVal });
+
       if (areaNameVal.length >= 3) {
         detectedArea = areaNameVal;
         zoneA = isZoneA(areaNameVal);
+        console.log('[VD Estimate] Manual area match:', { detectedArea, zoneA });
       } else if (hasGps) {
+        console.log('[VD Estimate] Geocoding GPS:', gpsResult.dataset.lat, gpsResult.dataset.lng);
         detectedArea = await geocodeLatLng(
           parseFloat(gpsResult.dataset.lat),
           parseFloat(gpsResult.dataset.lng)
         );
+        console.log('[VD Estimate] Geocode result:', detectedArea);
         if (detectedArea) zoneA = isZoneA(detectedArea);
       } else if (mapsLinkVal) {
         const coords = extractLatLngFromMapsUrl(mapsLinkVal);
+        console.log('[VD Estimate] Extracted coords from Maps link:', coords);
         if (coords) {
           detectedArea = await geocodeLatLng(coords.lat, coords.lng);
+          console.log('[VD Estimate] Geocode result:', detectedArea);
           if (detectedArea) zoneA = isZoneA(detectedArea);
         }
       }
@@ -112,6 +119,8 @@ async function updateBizEstimate() {
       const fee = detectedArea !== null
         ? (zoneA ? BIZ_PRICING.same_zone : BIZ_PRICING.cross_zone)
         : null;
+
+      console.log('[VD Estimate] Fee calculated:', fee, '| amountEl:', amountEl, '| breakdownEl:', breakdownEl);
 
       if (amountEl) {
         amountEl.textContent = fee !== null
@@ -158,8 +167,10 @@ async function updateBizEstimate() {
       }
 
     } catch (err) {
-      console.warn('Biz estimate error:', err);
+      console.error('[VD Estimate] Error:', err);
       if (amountEl) amountEl.textContent = '$40 – $50 TTD';
+      const routeEl = el('#bizEstimateRoute');
+      if (routeEl) routeEl.textContent = 'Zone to be confirmed by VirtuDrop';
     }
   }, 600);
 }
