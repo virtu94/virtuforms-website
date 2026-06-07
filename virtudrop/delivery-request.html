@@ -481,61 +481,166 @@
       updateEstimate();
     };
 
-    // Pricing config (mirrors Supabase pricing table)
-    const PRICING = {
-      same_zone: 40,
-      cross_zone: 50,
-      pickup_fee_under_3: 20,
-      pickup_fee_3_plus: 0
-    };
+    // ── Config ────────────────────────────────────────────────────
+    const GOOGLE_API_KEY = 'AIzaSyArqAch6rqPSr9Q4qrijBP0__U2WI0Hy38';
+    const PRICING = { same_zone: 40, cross_zone: 50 };
 
-    function updateEstimate() {
+    // Zone A areas — same zone as head office (Charlieville)
+    const ZONE_A_AREAS = [
+      'balmain','bonne aventure','brechin castle','calcutta road','california','dow village',
+      'carapichaima','carlsen field','cedar hill','claxton bay','chaguanas','charlieville',
+      'chase village','couva','cunupia','edinburgh','endeavour','enterprise',
+      'felicity','felicity hall','freeport','gasparillo','jerningham junction','lange park',
+      'mc bean','mcbean','montrose','orange valley','point lisas','phoenix park','preysal',
+      'reform village','spring village','st marys village','union village','waterloo',
+      'gran couva','carlsen field','claxton bay','brechin castle'
+    ];
+
+    function normaliseArea(str) {
+      return String(str || '').toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ').trim();
+    }
+
+    function isZoneA(areaName) {
+      const norm = normaliseArea(areaName);
+      return ZONE_A_AREAS.some(a => norm.includes(a) || a.includes(norm) && norm.length > 3);
+    }
+
+    function extractLatLngFromMapsUrl(url) {
+      try {
+        // Format: @lat,lng or q=lat,lng or !3dlat!4dlng
+        const patterns = [
+          /@(-?\d+\.\d+),(-?\d+\.\d+)/,
+          /[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/,
+          /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/,
+          /ll=(-?\d+\.\d+),(-?\d+\.\d+)/
+        ];
+        for (const p of patterns) {
+          const m = url.match(p);
+          if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+        }
+      } catch {}
+      return null;
+    }
+
+    async function geocodeLatLng(lat, lng) {
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_API_KEY}&region=tt`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.status !== 'OK') return null;
+      // Extract locality or sublocality
+      for (const result of data.results) {
+        for (const comp of result.address_components) {
+          if (comp.types.includes('locality') || comp.types.includes('sublocality') ||
+              comp.types.includes('neighborhood') || comp.types.includes('administrative_area_level_3')) {
+            return comp.long_name;
+          }
+        }
+      }
+      return null;
+    }
+
+    let estimateDebounceTimer = null;
+
+    async function updateEstimate() {
       const card = document.getElementById('estimateCard');
       const payment = document.querySelector('input[name="payment"]:checked')?.value;
       if (!payment) { card.style.display = 'none'; return; }
 
-      // We show estimate once we have any location signal
       const gpsResult = document.getElementById('gpsResult');
-      const mapsLink = document.getElementById('mapsLink').value.trim();
-      const areaName = document.getElementById('areaName').value.trim();
-      const hasLocation = (gpsResult.dataset.lat && gpsResult.dataset.lng) || mapsLink || areaName;
+      const mapsLinkVal = document.getElementById('mapsLink').value.trim();
+      const areaNameVal = document.getElementById('areaName').value.trim();
+      const hasGps = gpsResult.dataset.lat && gpsResult.dataset.lng;
+      const hasLocation = hasGps || mapsLinkVal || areaNameVal;
       if (!hasLocation) { card.style.display = 'none'; return; }
 
       card.style.display = 'block';
-
-      // Base delivery fee estimate — we don't know zone yet so use same-zone as default
-      const baseFee = PRICING.same_zone;
       const estimateAmount = document.getElementById('estimateAmount');
       const estimateRoute = document.getElementById('estimateRoute');
       const estimateBreakdown = document.getElementById('estimateBreakdown');
 
-      estimateAmount.textContent = `$${baseFee.toFixed(2)} – $${PRICING.cross_zone.toFixed(2)}`;
-      estimateRoute.textContent = 'Depends on zone — confirmed by VirtuDrop';
+      // Show loading state
+      estimateAmount.textContent = 'Calculating...';
+      estimateRoute.textContent = 'Detecting zone...';
+      estimateBreakdown.innerHTML = '';
 
-      const rows = [
-        ['Same Zone Delivery', `$${PRICING.same_zone.toFixed(2)}`],
-        ['Cross Zone Delivery', `$${PRICING.cross_zone.toFixed(2)}`],
-      ];
+      clearTimeout(estimateDebounceTimer);
+      estimateDebounceTimer = setTimeout(async () => {
+        try {
+          let detectedArea = null;
+          let zoneA = false;
 
-      if (payment === 'pkg-online') {
-        rows.push(['Driver collects', 'Delivery fee only']);
-      } else if (payment === 'all-online') {
-        rows.push(['Driver collects', 'Nothing']);
-      } else if (payment === 'cod') {
-        const pkgVal = Number(document.getElementById('pkgValue').value) || 0;
-        if (pkgVal > 0) {
-          rows.push(['Package value', `$${pkgVal.toFixed(2)}`]);
-          rows.push(['Driver collects (same zone)', `$${(pkgVal + PRICING.same_zone).toFixed(2)}`]);
-          rows.push(['Driver collects (cross zone)', `$${(pkgVal + PRICING.cross_zone).toFixed(2)}`]);
+          if (areaNameVal.length >= 3) {
+            // Manual entry — match directly
+            detectedArea = areaNameVal;
+            zoneA = isZoneA(areaNameVal);
+          } else if (hasGps) {
+            // GPS coordinates — call Geocoding API
+            detectedArea = await geocodeLatLng(
+              parseFloat(gpsResult.dataset.lat),
+              parseFloat(gpsResult.dataset.lng)
+            );
+            if (detectedArea) zoneA = isZoneA(detectedArea);
+          } else if (mapsLinkVal) {
+            // Maps link — extract coords then geocode
+            const coords = extractLatLngFromMapsUrl(mapsLinkVal);
+            if (coords) {
+              detectedArea = await geocodeLatLng(coords.lat, coords.lng);
+              if (detectedArea) zoneA = isZoneA(detectedArea);
+            }
+          }
+
+          const fee = (detectedArea && (zoneA !== null))
+            ? (zoneA ? PRICING.same_zone : PRICING.cross_zone)
+            : null;
+
+          if (fee !== null) {
+            estimateAmount.textContent = `$${fee.toFixed(2)} TTD`;
+            estimateRoute.textContent = detectedArea
+              ? `${detectedArea} → ${zoneA ? 'Zone A (Same Zone)' : 'Cross Zone'}`
+              : 'Zone detected';
+          } else {
+            estimateAmount.textContent = '$40 – $50 TTD';
+            estimateRoute.textContent = 'Zone to be confirmed by VirtuDrop';
+          }
+
+          const pkgVal = payment === 'cod' ? (Number(document.getElementById('pkgValue').value) || 0) : 0;
+          const rows = [];
+
+          if (fee !== null) {
+            rows.push(['Delivery Fee', `$${fee.toFixed(2)}`]);
+          } else {
+            rows.push(['Same Zone', '$40.00']);
+            rows.push(['Cross Zone', '$50.00']);
+          }
+
+          if (payment === 'cod' && pkgVal > 0) {
+            rows.push(['Package Value', `$${pkgVal.toFixed(2)}`]);
+            rows.push(['Driver Collects', fee !== null
+              ? `$${(pkgVal + fee).toFixed(2)}`
+              : `$${(pkgVal + PRICING.same_zone).toFixed(2)} – $${(pkgVal + PRICING.cross_zone).toFixed(2)}`
+            ]);
+          } else if (payment === 'pkg-online') {
+            rows.push(['Driver Collects', fee !== null ? `$${fee.toFixed(2)} (delivery fee)` : 'Delivery fee only']);
+          } else if (payment === 'all-online') {
+            rows.push(['Driver Collects', 'Nothing']);
+          }
+
+          estimateBreakdown.innerHTML = rows.map(([k, v]) => `
+            <div style="display:flex; justify-content:space-between; font-size:0.84rem; padding:0.3rem 0; border-bottom:1px solid rgba(255,255,255,0.06);">
+              <span style="color:rgba(255,255,255,0.5);">${k}</span>
+              <span style="color:#ffffff; font-weight:600;">${v}</span>
+            </div>
+          `).join('');
+
+        } catch (err) {
+          console.warn('Estimate error:', err);
+          estimateAmount.textContent = '$40 – $50 TTD';
+          estimateRoute.textContent = 'Zone to be confirmed by VirtuDrop';
         }
-      }
-
-      estimateBreakdown.innerHTML = rows.map(([k, v]) => `
-        <div style="display:flex; justify-content:space-between; font-size:0.84rem; padding:0.3rem 0; border-bottom:1px solid rgba(255,255,255,0.06);">
-          <span style="color:rgba(255,255,255,0.5);">${k}</span>
-          <span style="color:#ffffff; font-weight:600;">${v}</span>
-        </div>
-      `).join('');
+      }, 600); // debounce 600ms
     }
 
     // Trigger estimate update on location/value changes

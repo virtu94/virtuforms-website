@@ -6,8 +6,164 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 window.supabase = supabase;
 
-// ── Payment field sync ────────────────────────────────────────────
-window.vdSyncBusinessAmountField = function() {
+// ── Config ────────────────────────────────────────────────────────
+const GOOGLE_API_KEY = 'AIzaSyArqAch6rqPSr9Q4qrijBP0__U2WI0Hy38';
+const BIZ_PRICING = { same_zone: 40, cross_zone: 50 };
+
+// Zone A areas — same zone as head office (Charlieville)
+const ZONE_A_AREAS = [
+  'balmain','bonne aventure','brechin castle','calcutta road','california','dow village',
+  'carapichaima','carlsen field','cedar hill','claxton bay','chaguanas','charlieville',
+  'chase village','couva','cunupia','edinburgh','endeavour','enterprise',
+  'felicity','felicity hall','freeport','gasparillo','jerningham junction','lange park',
+  'mc bean','mcbean','montrose','orange valley','point lisas','phoenix park','preysal',
+  'reform village','spring village','st marys village','union village','waterloo',
+  'gran couva','claxton bay','brechin castle'
+];
+
+function normaliseArea(str) {
+  return String(str || '').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+}
+
+function isZoneA(areaName) {
+  const norm = normaliseArea(areaName);
+  return ZONE_A_AREAS.some(a => norm.includes(a) || (a.includes(norm) && norm.length > 3));
+}
+
+function extractLatLngFromMapsUrl(url) {
+  try {
+    const patterns = [
+      /@(-?\d+\.\d+),(-?\d+\.\d+)/,
+      /[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/,
+      /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/,
+      /ll=(-?\d+\.\d+),(-?\d+\.\d+)/
+    ];
+    for (const p of patterns) {
+      const m = url.match(p);
+      if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+    }
+  } catch {}
+  return null;
+}
+
+async function geocodeLatLng(lat, lng) {
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_API_KEY}&region=tt`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (data.status !== 'OK') return null;
+  for (const result of data.results) {
+    for (const comp of result.address_components) {
+      if (comp.types.includes('locality') || comp.types.includes('sublocality') ||
+          comp.types.includes('neighborhood') || comp.types.includes('administrative_area_level_3')) {
+        return comp.long_name;
+      }
+    }
+  }
+  return null;
+}
+
+let bizEstimateTimer = null;
+
+async function updateBizEstimate() {
+  const block = el('#bizEstimateBlock');
+  if (!block) return;
+  const paymentType = el('#paymentType')?.value || '';
+  if (!paymentType) { block.style.display = 'none'; return; }
+
+  const gpsResult = el('#gpsResult');
+  const mapsLinkVal = el('#mapsLink')?.value.trim() || '';
+  const areaNameVal = el('#areaName')?.value.trim() || '';
+  const hasGps = gpsResult?.dataset.lat && gpsResult?.dataset.lng;
+  const hasLocation = hasGps || mapsLinkVal || areaNameVal;
+  if (!hasLocation) { block.style.display = 'none'; return; }
+
+  block.style.display = '';
+  const amountEl = el('#bizEstimateAmount');
+  const breakdownEl = el('#bizEstimateBreakdown');
+  if (amountEl) amountEl.textContent = 'Calculating...';
+  if (breakdownEl) breakdownEl.innerHTML = '';
+
+  clearTimeout(bizEstimateTimer);
+  bizEstimateTimer = setTimeout(async () => {
+    try {
+      let detectedArea = null;
+      let zoneA = false;
+
+      if (areaNameVal.length >= 3) {
+        detectedArea = areaNameVal;
+        zoneA = isZoneA(areaNameVal);
+      } else if (hasGps) {
+        detectedArea = await geocodeLatLng(
+          parseFloat(gpsResult.dataset.lat),
+          parseFloat(gpsResult.dataset.lng)
+        );
+        if (detectedArea) zoneA = isZoneA(detectedArea);
+      } else if (mapsLinkVal) {
+        const coords = extractLatLngFromMapsUrl(mapsLinkVal);
+        if (coords) {
+          detectedArea = await geocodeLatLng(coords.lat, coords.lng);
+          if (detectedArea) zoneA = isZoneA(detectedArea);
+        }
+      }
+
+      const fee = detectedArea !== null
+        ? (zoneA ? BIZ_PRICING.same_zone : BIZ_PRICING.cross_zone)
+        : null;
+
+      if (amountEl) {
+        amountEl.textContent = fee !== null
+          ? `$${fee.toFixed(2)} TTD`
+          : '$40 – $50 TTD';
+      }
+
+      // Add a route label below the amount
+      const routeEl = el('#bizEstimateRoute');
+      if (routeEl) {
+        routeEl.textContent = detectedArea
+          ? `${detectedArea} → ${zoneA ? 'Zone A (Same Zone)' : 'Cross Zone'}`
+          : 'Zone to be confirmed by VirtuDrop';
+      }
+
+      const pkgVal = paymentType === 'cod' ? (Number(el('#codAmount')?.value) || 0) : 0;
+      const rows = [];
+
+      if (fee !== null) {
+        rows.push(['Delivery Fee', `$${fee.toFixed(2)}`]);
+      } else {
+        rows.push(['Same Zone', '$40.00']);
+        rows.push(['Cross Zone', '$50.00']);
+      }
+
+      if (paymentType === 'cod' && pkgVal > 0) {
+        rows.push(['Package Value', `$${pkgVal.toFixed(2)}`]);
+        rows.push(['Driver Collects', fee !== null
+          ? `$${(pkgVal + fee).toFixed(2)}`
+          : `$${(pkgVal + BIZ_PRICING.same_zone).toFixed(2)} – $${(pkgVal + BIZ_PRICING.cross_zone).toFixed(2)}`
+        ]);
+      } else if (paymentType === 'pkg-online') {
+        rows.push(['Driver Collects', fee !== null ? `$${fee.toFixed(2)} (delivery fee)` : 'Delivery fee only']);
+      } else if (paymentType === 'all-online') {
+        rows.push(['Driver Collects', 'Nothing']);
+      }
+
+      if (breakdownEl) {
+        breakdownEl.innerHTML = rows.map(([k, v]) => `
+          <div style="display:flex; justify-content:space-between; font-size:0.82rem; padding:0.25rem 0; border-bottom:1px solid rgba(255,255,255,0.06);">
+            <span style="color:rgba(255,255,255,0.5);">${k}</span>
+            <span style="color:#ffffff; font-weight:600;">${v}</span>
+          </div>`).join('');
+      }
+
+    } catch (err) {
+      console.warn('Biz estimate error:', err);
+      if (amountEl) amountEl.textContent = '$40 – $50 TTD';
+    }
+  }, 600);
+}
+window.updateBizEstimate = updateBizEstimate;
   const paymentType = el('#paymentType')?.value || '';
   const block = el('#codAmountBlock');
   const label = el('#codAmountLabel');

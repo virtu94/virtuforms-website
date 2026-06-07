@@ -1078,8 +1078,8 @@
                   <span style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(255,255,255,0.45);">Estimated Delivery Fee</span>
                   <span style="padding:0.25rem 0.7rem; background:rgba(20,212,174,0.15); border-radius:20px; font-size:0.78rem; font-weight:700; color:#14d4ae;">Estimate</span>
                 </div>
-                <div style="font-size:2rem; font-weight:800; color:#14d4ae; margin-bottom:0.4rem;" id="bizEstimateAmount">$40.00 – $50.00</div>
-                <div style="font-size:0.8rem; color:rgba(255,255,255,0.5); margin-bottom:0.8rem;">Same zone $40 · Cross zone $50</div>
+                <div style="font-size:2rem; font-weight:800; color:#14d4ae; margin-bottom:0.4rem;" id="bizEstimateAmount">Calculating...</div>
+                <div style="font-size:0.8rem; color:rgba(255,255,255,0.5); margin-bottom:0.8rem;" id="bizEstimateRoute">Enter location to calculate</div>
                 <div id="bizEstimateBreakdown" style="border-top:1px solid rgba(255,255,255,0.08); padding-top:0.8rem; display:flex; flex-direction:column; gap:0.3rem;"></div>
               </div>
               <p style="font-size:0.8rem; color:#7a4a1a; background:#fff8f0; border-left:3px solid #e07a3a; border-radius:8px; padding:0.7rem 1rem; margin-top:0.6rem; line-height:1.5;">
@@ -1553,6 +1553,7 @@
         result.dataset.lat = String(position.coords.latitude);
         result.dataset.lng = String(position.coords.longitude);
         result.textContent = 'Location captured. You can submit the order now.';
+        if (typeof window.updateBizEstimate === 'function') window.updateBizEstimate();
       },
       function () {
         result.textContent = 'Location permission was blocked or unavailable. Paste a Google Maps link or enter the address.';
