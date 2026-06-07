@@ -164,6 +164,9 @@ async function updateBizEstimate() {
   }, 600);
 }
 window.updateBizEstimate = updateBizEstimate;
+
+// ── Payment field sync ────────────────────────────────────────────
+window.vdSyncBusinessAmountField = function() {
   const paymentType = el('#paymentType')?.value || '';
   const block = el('#codAmountBlock');
   const label = el('#codAmountLabel');
@@ -181,47 +184,16 @@ window.updateBizEstimate = updateBizEstimate;
   }
   updateBizEstimate();
 };
-
-// ── Business order estimate ───────────────────────────────────────
-const BIZ_PRICING = { same_zone: 40, cross_zone: 50 };
-
-function updateBizEstimate() {
-  const block = el('#bizEstimateBlock');
-  if (!block) return;
-  const paymentType = el('#paymentType')?.value || '';
-  const gpsResult = el('#gpsResult');
-  const mapsLink = el('#mapsLink')?.value.trim() || '';
-  const areaName = el('#areaName')?.value.trim() || '';
-  const hasLocation = (gpsResult?.dataset.lat && gpsResult?.dataset.lng) || mapsLink || areaName;
-
-  if (!paymentType || !hasLocation) { block.style.display = 'none'; return; }
-  block.style.display = '';
-
-  const pkgVal = paymentType === 'cod' ? (Number(el('#codAmount')?.value) || 0) : 0;
-  const rows = [
-    ['Same Zone', `$${BIZ_PRICING.same_zone.toFixed(2)}`],
-    ['Cross Zone', `$${BIZ_PRICING.cross_zone.toFixed(2)}`],
-  ];
-  if (paymentType === 'cod' && pkgVal > 0) {
-    rows.push(['Package Value', `$${pkgVal.toFixed(2)}`]);
-    rows.push(['Driver Collects (same zone)', `$${(pkgVal + BIZ_PRICING.same_zone).toFixed(2)}`]);
-    rows.push(['Driver Collects (cross zone)', `$${(pkgVal + BIZ_PRICING.cross_zone).toFixed(2)}`]);
   } else if (paymentType === 'pkg-online') {
-    rows.push(['Driver Collects', 'Delivery fee only']);
+    block.style.display = 'none';
   } else if (paymentType === 'all-online') {
-    rows.push(['Driver Collects', 'Nothing']);
+    block.style.display = 'none';
+  } else {
+    block.style.display = 'none';
   }
+  updateBizEstimate();
+};
 
-  const breakdown = el('#bizEstimateBreakdown');
-  if (breakdown) {
-    breakdown.innerHTML = rows.map(([k, v]) => `
-      <div style="display:flex; justify-content:space-between; font-size:0.82rem; padding:0.25rem 0; border-bottom:1px solid rgba(255,255,255,0.06);">
-        <span style="color:rgba(255,255,255,0.5);">${k}</span>
-        <span style="color:#ffffff; font-weight:600;">${v}</span>
-      </div>`).join('');
-  }
-}
-window.updateBizEstimate = updateBizEstimate;
 
     function showLoggedOutGate() {
       document.body.style.margin = '0';
