@@ -81,13 +81,19 @@ async function updateBizEstimate() {
   if (!hasLocation) { block.style.display = 'none'; return; }
 
   block.style.display = '';
-  const amountEl = el('#bizEstimateAmount');
-  const breakdownEl = el('#bizEstimateBreakdown');
-  if (amountEl) amountEl.textContent = 'Calculating...';
-  if (breakdownEl) breakdownEl.innerHTML = '';
+
+  // Show loading
+  const amountElPre = el('#bizEstimateAmount');
+  const breakdownElPre = el('#bizEstimateBreakdown');
+  if (amountElPre) amountElPre.textContent = 'Calculating...';
+  if (breakdownElPre) breakdownElPre.innerHTML = '';
 
   clearTimeout(bizEstimateTimer);
   bizEstimateTimer = setTimeout(async () => {
+    // Re-query elements inside timeout so they're always fresh
+    const amountEl = el('#bizEstimateAmount');
+    const breakdownEl = el('#bizEstimateBreakdown');
+    const routeEl = el('#bizEstimateRoute');
     try {
       let detectedArea = null;
       let zoneA = false;
@@ -129,7 +135,6 @@ async function updateBizEstimate() {
       }
 
       // Add a route label below the amount
-      const routeEl = el('#bizEstimateRoute');
       if (routeEl) {
         routeEl.textContent = detectedArea
           ? `${detectedArea} → ${zoneA ? 'Zone A (Same Zone)' : 'Cross Zone'}`
@@ -169,7 +174,6 @@ async function updateBizEstimate() {
     } catch (err) {
       console.error('[VD Estimate] Error:', err);
       if (amountEl) amountEl.textContent = '$40 – $50 TTD';
-      const routeEl = el('#bizEstimateRoute');
       if (routeEl) routeEl.textContent = 'Zone to be confirmed by VirtuDrop';
     }
   }, 600);
@@ -1384,10 +1388,19 @@ function bindUi() {
   el('#submitOrderBtn')?.addEventListener('click', submitBusinessOrder);
   window.resetOrderForm();
 
-  // Wire location inputs to estimate updater
-  el('#mapsLink')?.addEventListener('input', updateBizEstimate);
-  el('#areaName')?.addEventListener('input', updateBizEstimate);
-  el('#codAmount')?.addEventListener('input', updateBizEstimate);
+  // Wire location inputs to estimate updater — use delegation so hidden panel inputs are covered
+  document.addEventListener('input', event => {
+    const id = event.target?.id;
+    if (id === 'mapsLink' || id === 'areaName' || id === 'codAmount') {
+      updateBizEstimate();
+    }
+  });
+  document.addEventListener('change', event => {
+    const id = event.target?.id;
+    if (id === 'paymentType') {
+      window.vdSyncBusinessAmountField && window.vdSyncBusinessAmountField();
+    }
+  });
 
   const logout = el('#businessLogoutBtn');
   if (logout) {
