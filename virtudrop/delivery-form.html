@@ -517,11 +517,22 @@
       }
 
       navigator.geolocation.getCurrentPosition(
-        pos => {
+        async pos => {
           el.className = 'gps-result success';
-          el.textContent = `Location captured (${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}). Zone will be confirmed before your order is accepted.`;
+          el.textContent = 'Location captured. Identifying address and zone...';
           el.dataset.lat = pos.coords.latitude.toFixed(6);
           el.dataset.lng = pos.coords.longitude.toFixed(6);
+          try {
+            const estimate = await estimateDeliveryZone(estimateInput());
+            latestEstimate = estimate;
+            const addressText = estimate.sourceText || estimate.label || 'address detected';
+            el.textContent = estimate.zoneCode
+              ? `Location captured: ${addressText} - ${estimate.zoneName} (${estimate.region}).`
+              : `Location captured: ${addressText}. ${estimate.message}.`;
+          } catch (error) {
+            console.warn('GPS estimate failed:', error);
+            el.textContent = `Location captured (${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}). Zone will be confirmed before your order is accepted.`;
+          }
           updateEstimate();
         },
         () => {

@@ -1,5 +1,4 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { estimateDeliveryZone, formatEstimateRows } from './vd-zone-estimator.js';
 
 const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnbXp6YXZ4aHVhcmxhY252bm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Mjk4NTksImV4cCI6MjA5NDIwNTg1OX0.7-YKlwLrhUYUYbiii93ZvgX01TxVephApDNCP50Rl54';
@@ -9,9 +8,204 @@ window.supabase = supabase;
 
 // ── Config ────────────────────────────────────────────────────────
 const GOOGLE_API_KEY = 'AIzaSyArqAch6rqPSr9Q4qrijBP0__U2WI0Hy38';
+const CENTRAL_ZONE_CODE = 'A';
+const REMOTE_ZONE_CODE = 'REMOTE';
+const STANDARD_FEES = { central: 40, other: 50 };
 
 let bizEstimateTimer = null;
 let latestBizEstimate = null;
+let zonesPromise = null;
+
+function normaliseZoneText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function areaMatches(input, area) {
+  const text = normaliseZoneText(input);
+  const target = normaliseZoneText(area);
+  if (!text || !target) return false;
+  return text.includes(target) || (target.includes(text) && text.length >= 4);
+}
+
+async function loadEstimateZones() {
+  if (!zonesPromise) {
+    zonesPromise = supabase
+      .from('zones')
+      .select('id, code, name, region, active, zone_areas(area_name)')
+      .eq('active', true)
+      .order('code')
+      .then(({ data, error }) => {
+        if (error) throw error;
+        return data || [];
+      });
+  }
+  return zonesPromise;
+}
+
+function extractLatLngFromMapsUrl(url) {
+  try {
+    const decoded = decodeURIComponent(String(url || ''));
+    const patterns = [
+      /@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/,
+      /[?&](?:q|query|ll)=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/,
+      /!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/,
+      /(-?\d+\.\d+),\s*(-?\d+\.\d+)/
+    ];
+    for (const pattern of patterns) {
+      const match = decoded.match(pattern);
+      if (match) return { lat: Number(match[1]), lng: Number(match[2]) };
+    }
+  } catch {}
+  return null;
+}
+
+async function reverseGeocode(lat, lng) {
+  if (!GOOGLE_API_KEY || !Number.isFinite(lat) || !Number.isFinite(lng)) return '';
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_API_KEY}&region=tt`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (data.status !== 'OK') return '';
+
+  const parts = [];
+  for (const result of data.results || []) {
+    if (result.formatted_address) parts.push(result.formatted_address);
+    for (const comp of result.address_components || []) {
+      if (comp.long_name) parts.push(comp.long_name);
+      if (comp.short_name) parts.push(comp.short_name);
+    }
+  }
+  return [...new Set(parts.filter(Boolean))].join(' ');
+}
+
+function matchZoneFromText(zones, text) {
+  for (const zone of zones) {
+    const areas = zone.zone_areas || [];
+    const matchedArea = areas.find(area => areaMatches(text, area.area_name));
+    if (matchedArea) return { zone, matchedArea: matchedArea.area_name };
+  }
+  return null;
+}
+
+function classifyZoneMatch(match) {
+  if (!match?.zone) {
+    return {
+      status: 'remote',
+      fee: null,
+      zoneCode: REMOTE_ZONE_CODE,
+      zoneName: 'Remote / Special Route',
+      region: 'Manual Review',
+      matchedArea: '',
+      message: 'Outside listed zones - quote required'
+    };
+  }
+
+  const code = String(match.zone.code || '').toUpperCase();
+  if (code === REMOTE_ZONE_CODE) {
+    return {
+      status: 'remote',
+      fee: null,
+      zoneCode: code,
+      zoneName: match.zone.name || 'Remote / Special Route',
+      region: match.zone.region || 'Manual Review',
+      matchedArea: match.matchedArea || '',
+      message: 'Remote / special route - quote required'
+    };
+  }
+
+  if (code === CENTRAL_ZONE_CODE) {
+    return {
+      status: 'central',
+      fee: STANDARD_FEES.central,
+      zoneCode: code,
+      zoneName: match.zone.name || 'Zone A',
+      region: match.zone.region || 'Central Region',
+      matchedArea: match.matchedArea || '',
+      message: 'Central Region'
+    };
+  }
+
+  return {
+    status: 'listed_non_central',
+    fee: STANDARD_FEES.other,
+    zoneCode: code,
+    zoneName: match.zone.name || `Zone ${code}`,
+    region: match.zone.region || 'Listed Zone',
+    matchedArea: match.matchedArea || '',
+    message: match.zone.region || 'Listed delivery zone'
+  };
+}
+
+async function estimateDeliveryZone({
+  houseNumber = '',
+  streetName = '',
+  areaName = '',
+  mapsLink = '',
+  latitude = null,
+  longitude = null
+}) {
+  const zones = await loadEstimateZones();
+  const manualText = [houseNumber, streetName, areaName].filter(Boolean).join(' ');
+  let sourceText = manualText;
+  let sourceLabel = areaName || streetName || '';
+
+  if (!sourceText && Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude))) {
+    sourceText = await reverseGeocode(Number(latitude), Number(longitude));
+    sourceLabel = sourceText;
+  }
+
+  if (!sourceText && mapsLink) {
+    const coords = extractLatLngFromMapsUrl(mapsLink);
+    if (coords) {
+      sourceText = await reverseGeocode(coords.lat, coords.lng);
+      sourceLabel = sourceText;
+    }
+  }
+
+  if (!sourceText) {
+    return {
+      status: 'unknown',
+      fee: null,
+      zoneCode: '',
+      zoneName: '',
+      region: '',
+      matchedArea: '',
+      sourceText: '',
+      label: 'Location could not be identified',
+      message: 'Enter an area or use GPS to estimate'
+    };
+  }
+
+  const match = matchZoneFromText(zones, sourceText);
+  return {
+    ...classifyZoneMatch(match),
+    sourceText,
+    label: match?.matchedArea || sourceLabel || sourceText
+  };
+}
+
+function formatEstimateRows({ estimate, paymentType, packageValue }) {
+  const rows = [];
+  const packageAmount = Number(packageValue || 0);
+
+  rows.push(['Delivery Fee', estimate.fee !== null ? `$${Number(estimate.fee).toFixed(2)}` : 'Quote required']);
+  rows.push(['Zone', estimate.zoneCode ? `${estimate.zoneName} - ${estimate.region}` : estimate.message]);
+
+  if (paymentType === 'cod' && packageAmount > 0) {
+    rows.push(['Package Value', `$${packageAmount.toFixed(2)}`]);
+    rows.push(['Driver Collects', estimate.fee !== null ? `$${(packageAmount + estimate.fee).toFixed(2)}` : 'To be quoted']);
+  } else if (paymentType === 'pkg-online') {
+    rows.push(['Driver Collects', estimate.fee !== null ? `$${Number(estimate.fee).toFixed(2)} (delivery fee)` : 'To be quoted']);
+  } else if (paymentType === 'all-online') {
+    rows.push(['Driver Collects', 'Nothing']);
+  }
+
+  return rows;
+}
 
 function currentEstimateInput() {
   const gpsResult = el('#gpsResult');
@@ -1179,6 +1373,7 @@ window.switchLocTab = function(tab, btn) {
   const area = el('#areaName');
   if (street) street.required = tab === 'manual';
   if (area) area.required = tab === 'manual';
+  updateBizEstimate();
 };
 
 window.useCurrentLocation = function() {
@@ -1194,10 +1389,21 @@ window.useCurrentLocation = function() {
   result.style.background = '#e8f5f3';
   result.textContent = '📍 Detecting your location...';
   navigator.geolocation.getCurrentPosition(
-    position => {
+    async position => {
       result.dataset.lat = position.coords.latitude.toFixed(6);
       result.dataset.lng = position.coords.longitude.toFixed(6);
-      result.textContent = `📍 Location detected: ${result.dataset.lat}, ${result.dataset.lng}. Zone will be confirmed by VirtuDrop.`;
+      result.textContent = `📍 Location captured. Identifying address and zone...`;
+      try {
+        const estimate = await estimateDeliveryZone(currentEstimateInput());
+        latestBizEstimate = estimate;
+        const addressText = estimate.sourceText || estimate.label || 'address detected';
+        result.textContent = estimate.zoneCode
+          ? `📍 Location captured: ${addressText} - ${estimate.zoneName} (${estimate.region}).`
+          : `📍 Location captured: ${addressText}. ${estimate.message}.`;
+      } catch (error) {
+        console.warn('GPS estimate failed:', error);
+        result.textContent = `📍 Location detected: ${result.dataset.lat}, ${result.dataset.lng}. Zone will be confirmed by VirtuDrop.`;
+      }
       updateBizEstimate();
     },
     () => {

@@ -1625,6 +1625,7 @@
     }
 
     window.vdFallbackSwitchPanel = fallbackSwitchPanel;
+    window.switchPanel = window.switchPanel || fallbackSwitchPanel;
 
     document.querySelectorAll('[data-panel]').forEach(function (button) {
       button.addEventListener('click', function () {
@@ -1635,6 +1636,23 @@
         }
       });
     });
+
+    var logoutBtn = document.getElementById('businessLogoutBtn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', function () {
+        try {
+          localStorage.setItem('vd-explicit-logout', String(Date.now()));
+          Object.keys(localStorage).forEach(function (key) {
+            if (key.indexOf('sb-') === 0 || key.indexOf('supabase') !== -1) {
+              localStorage.removeItem(key);
+            }
+          });
+        } catch (error) {
+          console.warn('Logout fallback could not clear local session:', error);
+        }
+        window.location.href = 'auth.html';
+      });
+    }
   }());
 </script>
 
@@ -1644,4 +1662,3 @@
 
 </body>
 </html>
-
