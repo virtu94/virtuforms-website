@@ -399,6 +399,7 @@
   <script src="vd-modal.js"></script>
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+    import { estimateDeliveryZone, formatEstimateRows } from './vd-zone-estimator.js';
 
     const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnbXp6YXZ4aHVhcmxhY252bm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Mjk4NTksImV4cCI6MjA5NDIwNTg1OX0.7-YKlwLrhUYUYbiii93ZvgX01TxVephApDNCP50Rl54';
@@ -483,78 +484,45 @@
 
     // ── Config ────────────────────────────────────────────────────
     const GOOGLE_API_KEY = 'AIzaSyArqAch6rqPSr9Q4qrijBP0__U2WI0Hy38';
-    const PRICING = { same_zone: 40, cross_zone: 50 };
-
-    // Zone A areas — same zone as head office (Charlieville)
-    const ZONE_A_AREAS = [
-      'balmain','bonne aventure','brechin castle','calcutta road','california','dow village',
-      'carapichaima','carlsen field','cedar hill','claxton bay','chaguanas','charlieville',
-      'chase village','couva','cunupia','edinburgh','endeavour','enterprise',
-      'felicity','felicity hall','freeport','gasparillo','jerningham junction','lange park',
-      'mc bean','mcbean','montrose','orange valley','point lisas','phoenix park','preysal',
-      'reform village','spring village','st marys village','union village','waterloo',
-      'gran couva','carlsen field','claxton bay','brechin castle'
-    ];
-
-    function normaliseArea(str) {
-      return String(str || '').toLowerCase()
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9\s]/g, ' ')
-        .replace(/\s+/g, ' ').trim();
-    }
-
-    function isZoneA(areaName) {
-      const norm = normaliseArea(areaName);
-      return ZONE_A_AREAS.some(a => norm.includes(a) || a.includes(norm) && norm.length > 3);
-    }
-
-    function extractLatLngFromMapsUrl(url) {
-      try {
-        // Format: @lat,lng or q=lat,lng or !3dlat!4dlng
-        const patterns = [
-          /@(-?\d+\.\d+),(-?\d+\.\d+)/,
-          /[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/,
-          /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/,
-          /ll=(-?\d+\.\d+),(-?\d+\.\d+)/
-        ];
-        for (const p of patterns) {
-          const m = url.match(p);
-          if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
-        }
-      } catch {}
-      return null;
-    }
-
-    async function geocodeLatLng(lat, lng) {
-      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_API_KEY}&region=tt`;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data.status !== 'OK') return null;
-      // Extract locality or sublocality
-      for (const result of data.results) {
-        for (const comp of result.address_components) {
-          if (comp.types.includes('locality') || comp.types.includes('sublocality') ||
-              comp.types.includes('neighborhood') || comp.types.includes('administrative_area_level_3')) {
-            return comp.long_name;
-          }
-        }
-      }
-      return null;
-    }
 
     let estimateDebounceTimer = null;
+    let latestEstimate = null;
+
+    function estimateInput() {
+      const gpsResult = document.getElementById('gpsResult');
+      return {
+        supabase,
+        googleApiKey: GOOGLE_API_KEY,
+        houseNumber: document.getElementById('houseNum').value.trim(),
+        streetName: document.getElementById('streetName').value.trim(),
+        areaName: document.getElementById('areaName').value.trim(),
+        mapsLink: document.getElementById('mapsLink').value.trim(),
+        latitude: gpsResult.dataset.lat ? Number(gpsResult.dataset.lat) : null,
+        longitude: gpsResult.dataset.lng ? Number(gpsResult.dataset.lng) : null
+      };
+    }
+
+    function hasEstimateLocation(input) {
+      return Boolean(input.areaName || input.streetName || input.mapsLink ||
+        (Number.isFinite(input.latitude) && Number.isFinite(input.longitude)));
+    }
+
+    function renderRows(target, rows) {
+      target.innerHTML = rows.map(([k, v]) => `
+        <div style="display:flex; justify-content:space-between; font-size:0.84rem; padding:0.3rem 0; border-bottom:1px solid rgba(255,255,255,0.06); gap:1rem;">
+          <span style="color:rgba(255,255,255,0.5);">${k}</span>
+          <span style="color:#ffffff; font-weight:600; text-align:right;">${v}</span>
+        </div>
+      `).join('');
+    }
 
     async function updateEstimate() {
       const card = document.getElementById('estimateCard');
       const payment = document.querySelector('input[name="payment"]:checked')?.value;
       if (!payment) { card.style.display = 'none'; return; }
 
-      const gpsResult = document.getElementById('gpsResult');
-      const mapsLinkVal = document.getElementById('mapsLink').value.trim();
-      const areaNameVal = document.getElementById('areaName').value.trim();
-      const hasGps = gpsResult.dataset.lat && gpsResult.dataset.lng;
-      const hasLocation = hasGps || mapsLinkVal || areaNameVal;
-      if (!hasLocation) { card.style.display = 'none'; return; }
+      const input = estimateInput();
+      if (!hasEstimateLocation(input)) { card.style.display = 'none'; return; }
 
       card.style.display = 'block';
       const estimateAmount = document.getElementById('estimateAmount');
@@ -569,75 +537,26 @@
       clearTimeout(estimateDebounceTimer);
       estimateDebounceTimer = setTimeout(async () => {
         try {
-          let detectedArea = null;
-          let zoneA = false;
+          const estimate = await estimateDeliveryZone(input);
+          latestEstimate = estimate;
 
-          if (areaNameVal.length >= 3) {
-            // Manual entry — match directly
-            detectedArea = areaNameVal;
-            zoneA = isZoneA(areaNameVal);
-          } else if (hasGps) {
-            // GPS coordinates — call Geocoding API
-            detectedArea = await geocodeLatLng(
-              parseFloat(gpsResult.dataset.lat),
-              parseFloat(gpsResult.dataset.lng)
-            );
-            if (detectedArea) zoneA = isZoneA(detectedArea);
-          } else if (mapsLinkVal) {
-            // Maps link — extract coords then geocode
-            const coords = extractLatLngFromMapsUrl(mapsLinkVal);
-            if (coords) {
-              detectedArea = await geocodeLatLng(coords.lat, coords.lng);
-              if (detectedArea) zoneA = isZoneA(detectedArea);
-            }
-          }
-
-          const fee = (detectedArea && (zoneA !== null))
-            ? (zoneA ? PRICING.same_zone : PRICING.cross_zone)
-            : null;
-
-          if (fee !== null) {
-            estimateAmount.textContent = `$${fee.toFixed(2)} TTD`;
-            estimateRoute.textContent = detectedArea
-              ? `${detectedArea} → ${zoneA ? 'Zone A (Same Zone)' : 'Cross Zone'}`
-              : 'Zone detected';
+          if (estimate.fee !== null) {
+            estimateAmount.textContent = `$${Number(estimate.fee).toFixed(2)} TTD`;
+            estimateRoute.textContent = `${estimate.label} → ${estimate.zoneName} (${estimate.region})`;
           } else {
-            estimateAmount.textContent = '$40 – $50 TTD';
-            estimateRoute.textContent = 'Zone to be confirmed by VirtuDrop';
+            estimateAmount.textContent = 'Quote Required';
+            estimateRoute.textContent = estimate.zoneCode
+              ? `${estimate.label} → ${estimate.zoneName} (${estimate.region})`
+              : estimate.message;
           }
 
           const pkgVal = payment === 'cod' ? (Number(document.getElementById('pkgValue').value) || 0) : 0;
-          const rows = [];
-
-          if (fee !== null) {
-            rows.push(['Delivery Fee', `$${fee.toFixed(2)}`]);
-          } else {
-            rows.push(['Same Zone', '$40.00']);
-            rows.push(['Cross Zone', '$50.00']);
-          }
-
-          if (payment === 'cod' && pkgVal > 0) {
-            rows.push(['Package Value', `$${pkgVal.toFixed(2)}`]);
-            rows.push(['Driver Collects', fee !== null
-              ? `$${(pkgVal + fee).toFixed(2)}`
-              : `$${(pkgVal + PRICING.same_zone).toFixed(2)} – $${(pkgVal + PRICING.cross_zone).toFixed(2)}`
-            ]);
-          } else if (payment === 'pkg-online') {
-            rows.push(['Driver Collects', fee !== null ? `$${fee.toFixed(2)} (delivery fee)` : 'Delivery fee only']);
-          } else if (payment === 'all-online') {
-            rows.push(['Driver Collects', 'Nothing']);
-          }
-
-          estimateBreakdown.innerHTML = rows.map(([k, v]) => `
-            <div style="display:flex; justify-content:space-between; font-size:0.84rem; padding:0.3rem 0; border-bottom:1px solid rgba(255,255,255,0.06);">
-              <span style="color:rgba(255,255,255,0.5);">${k}</span>
-              <span style="color:#ffffff; font-weight:600;">${v}</span>
-            </div>
-          `).join('');
+          renderRows(estimateBreakdown, formatEstimateRows({ estimate, paymentType: payment, packageValue: pkgVal }));
 
         } catch (err) {
           console.warn('Estimate error:', err);
-          estimateAmount.textContent = '$40 – $50 TTD';
+          latestEstimate = null;
+          estimateAmount.textContent = 'Quote Required';
           estimateRoute.textContent = 'Zone to be confirmed by VirtuDrop';
         }
       }, 600); // debounce 600ms
@@ -647,6 +566,8 @@
     document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('mapsLink').addEventListener('input', updateEstimate);
       document.getElementById('areaName').addEventListener('input', updateEstimate);
+      document.getElementById('streetName').addEventListener('input', updateEstimate);
+      document.getElementById('houseNum').addEventListener('input', updateEstimate);
       document.getElementById('pkgValue').addEventListener('input', updateEstimate);
     });
 
@@ -703,7 +624,7 @@
       const areaName = document.getElementById('areaName').value.trim();
       const notes = document.getElementById('custNotes').value.trim();
       const payment = document.querySelector('input[name="payment"]:checked');
-      const codAmount = Number(document.getElementById('codAmount').value);
+      const codAmount = Number(document.getElementById('pkgValue').value);
 
       if (!clientSelect.value) {
         showErr('clientSelect', 'clientErr', 'Please select a business. If the seller is not listed, select "Other / Not Listed".');
@@ -810,6 +731,10 @@
       const selectedClientId = clientSelect.value === 'other' ? null : clientSelect.value;
       const selectedClientName = clientSelect.options[clientSelect.selectedIndex].textContent;
       const notes = document.getElementById('custNotes').value.trim();
+      const estimate = await estimateDeliveryZone(estimateInput()).catch(error => {
+        console.warn('Submit estimate failed:', error);
+        return latestEstimate;
+      });
 
       const requestData = {
         business_client_id: selectedClientId,
@@ -819,7 +744,7 @@
         payment_type: paymentMap[paymentValue] || 'cod',
         cod_amount: paymentValue === 'cod' ? Number(document.getElementById('pkgValue').value) : 0,
         package_value: paymentValue === 'cod' ? Number(document.getElementById('pkgValue').value) : 0,
-        estimated_fee: PRICING.same_zone,
+        estimated_fee: estimate?.fee ?? null,
         customer_notes: clientSelect.value === 'other'
           ? ['Business not listed by customer', notes].filter(Boolean).join(' - ')
           : (notes || null)
@@ -859,5 +784,3 @@
 
 </body>
 </html>
-
-

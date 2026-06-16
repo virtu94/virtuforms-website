@@ -366,11 +366,28 @@
 
         <div class="cod-amount" id="codAmountBlock">
           <div class="field">
-            <label for="codAmount">Amount to Collect (TTD) <span class="req">*</span></label>
+            <label for="codAmount">Package Value (TTD) <span class="req">*</span></label>
             <input class="input" type="number" id="codAmount" placeholder="e.g. 350.00" min="0" step="0.01" />
-            <span style="font-size:0.8rem; color:#6a6a6a; margin-top:0.2rem;">Enter the full amount the driver should collect from you.</span>
+            <span style="font-size:0.8rem; color:#6a6a6a; margin-top:0.2rem;">Enter the package price. The delivery fee estimate will be added below.</span>
             <span class="error-text" id="codAmountErr">Please enter the amount to collect.</span>
           </div>
+        </div>
+      </div>
+
+      <!-- ── 4. Delivery Fee Estimate ── -->
+      <div class="form-card" id="estimateCard" style="display:none;">
+        <div class="card-label">Delivery Fee Estimate</div>
+        <div id="estimateBox" style="background:#0d2b28; border-radius:12px; padding:1.5rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+            <span style="font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(255,255,255,0.45);">Estimated Delivery Fee</span>
+            <span id="estimateBadge" style="padding:0.3rem 0.8rem; background:rgba(20,212,174,0.15); border-radius:20px; font-size:0.8rem; font-weight:700; color:#14d4ae;">Estimate</span>
+          </div>
+          <div style="font-size:2.2rem; font-weight:800; color:#14d4ae; margin-bottom:0.5rem;" id="estimateAmount">$—</div>
+          <div style="font-size:0.82rem; color:rgba(255,255,255,0.55); margin-bottom:1rem;" id="estimateRoute">Zone pending</div>
+          <div id="estimateBreakdown" style="border-top:1px solid rgba(255,255,255,0.08); padding-top:1rem; display:flex; flex-direction:column; gap:0.4rem;"></div>
+        </div>
+        <div style="margin-top:0.8rem; padding:0.9rem 1rem; background:#fff8f0; border-left:3px solid #e07a3a; border-radius:8px; font-size:0.84rem; color:#7a4a1a; line-height:1.6;">
+          ⚠️ <strong>This is an estimate only.</strong> Remote or special-route addresses will be quoted by VirtuDrop before your order is accepted.
         </div>
       </div>
 
@@ -418,15 +435,19 @@
   <script src="vd-modal.js"></script>
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+    import { estimateDeliveryZone, formatEstimateRows } from './vd-zone-estimator.js';
 
     const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnbXp6YXZ4aHVhcmxhY252bm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Mjk4NTksImV4cCI6MjA5NDIwNTg1OX0.7-YKlwLrhUYUYbiii93ZvgX01TxVephApDNCP50Rl54';
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    const GOOGLE_API_KEY = 'AIzaSyArqAch6rqPSr9Q4qrijBP0__U2WI0Hy38';
     const paymentMap = { cod: 'cod', 'pkg-online': 'delivery_only', 'all-online': 'prepaid' };
     let activeLocTab = 'share';
     let selectedPayment = '';
     let businessClient = null;
+    let estimateDebounceTimer = null;
+    let latestEstimate = null;
 
     function getBusinessSlug() {
       const params = new URLSearchParams(window.location.search);
@@ -480,6 +501,7 @@
       document.getElementById('loc-' + tab).classList.add('active');
       activeLocTab = tab;
       clearErrors();
+      updateEstimate();
     };
 
     window.useGPS = function() {
@@ -500,6 +522,7 @@
           el.textContent = `Location captured (${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}). Zone will be confirmed before your order is accepted.`;
           el.dataset.lat = pos.coords.latitude.toFixed(6);
           el.dataset.lng = pos.coords.longitude.toFixed(6);
+          updateEstimate();
         },
         () => {
           el.className = 'gps-result error';
@@ -517,12 +540,89 @@
       if (radio) radio.checked = true;
       document.getElementById('codAmountBlock').classList.toggle('show', value === 'cod');
       document.getElementById('paymentErr').classList.remove('show');
+      updateEstimate();
     };
+
+    function estimateInput() {
+      const gpsResult = document.getElementById('gpsResult');
+      return {
+        supabase,
+        googleApiKey: GOOGLE_API_KEY,
+        houseNumber: document.getElementById('houseNum').value.trim(),
+        streetName: document.getElementById('streetName').value.trim(),
+        areaName: document.getElementById('areaName').value.trim(),
+        mapsLink: document.getElementById('mapsLink').value.trim(),
+        latitude: gpsResult.dataset.lat ? Number(gpsResult.dataset.lat) : null,
+        longitude: gpsResult.dataset.lng ? Number(gpsResult.dataset.lng) : null
+      };
+    }
+
+    function hasEstimateLocation(input) {
+      return Boolean(input.areaName || input.streetName || input.mapsLink ||
+        (Number.isFinite(input.latitude) && Number.isFinite(input.longitude)));
+    }
+
+    function renderRows(target, rows) {
+      target.innerHTML = rows.map(([k, v]) => `
+        <div style="display:flex; justify-content:space-between; font-size:0.84rem; padding:0.3rem 0; border-bottom:1px solid rgba(255,255,255,0.06); gap:1rem;">
+          <span style="color:rgba(255,255,255,0.5);">${k}</span>
+          <span style="color:#ffffff; font-weight:600; text-align:right;">${v}</span>
+        </div>
+      `).join('');
+    }
+
+    async function updateEstimate() {
+      const card = document.getElementById('estimateCard');
+      const payment = document.querySelector('input[name="payment"]:checked')?.value;
+      if (!payment) { card.style.display = 'none'; return; }
+
+      const input = estimateInput();
+      if (!hasEstimateLocation(input)) { card.style.display = 'none'; return; }
+
+      card.style.display = 'block';
+      const estimateAmount = document.getElementById('estimateAmount');
+      const estimateRoute = document.getElementById('estimateRoute');
+      const estimateBreakdown = document.getElementById('estimateBreakdown');
+
+      estimateAmount.textContent = 'Calculating...';
+      estimateRoute.textContent = 'Detecting zone...';
+      estimateBreakdown.innerHTML = '';
+
+      clearTimeout(estimateDebounceTimer);
+      estimateDebounceTimer = setTimeout(async () => {
+        try {
+          const estimate = await estimateDeliveryZone(input);
+          latestEstimate = estimate;
+
+          if (estimate.fee !== null) {
+            estimateAmount.textContent = `$${Number(estimate.fee).toFixed(2)} TTD`;
+            estimateRoute.textContent = `${estimate.label} → ${estimate.zoneName} (${estimate.region})`;
+          } else {
+            estimateAmount.textContent = 'Quote Required';
+            estimateRoute.textContent = estimate.zoneCode
+              ? `${estimate.label} → ${estimate.zoneName} (${estimate.region})`
+              : estimate.message;
+          }
+
+          const packageValue = payment === 'cod' ? (Number(document.getElementById('codAmount').value) || 0) : 0;
+          renderRows(estimateBreakdown, formatEstimateRows({ estimate, paymentType: payment, packageValue }));
+        } catch (error) {
+          console.warn('Estimate error:', error);
+          latestEstimate = null;
+          estimateAmount.textContent = 'Quote Required';
+          estimateRoute.textContent = 'Zone to be confirmed by VirtuDrop';
+        }
+      }, 600);
+    }
 
     document.getElementById('custPhone').addEventListener('input', (e) => {
       let value = e.target.value.replace(/\D/g, '');
       if (value.length > 3) value = value.slice(0, 3) + '-' + value.slice(3, 7);
       e.target.value = value;
+    });
+
+    ['mapsLink', 'houseNum', 'streetName', 'areaName', 'codAmount'].forEach(id => {
+      document.getElementById(id)?.addEventListener('input', updateEstimate);
     });
 
     function clearErrors() {
@@ -669,6 +769,10 @@
       btn.disabled = true;
 
       const paymentValue = document.querySelector('input[name="payment"]:checked').value;
+      const estimate = await estimateDeliveryZone(estimateInput()).catch(error => {
+        console.warn('Submit estimate failed:', error);
+        return latestEstimate;
+      });
       const requestData = {
         business_client_id: businessClient.id,
         customer_name: document.getElementById('custName').value.trim(),
@@ -676,6 +780,8 @@
         ...getLocationPayload(),
         payment_type: paymentMap[paymentValue] || 'cod',
         cod_amount: paymentValue === 'cod' ? Number(document.getElementById('codAmount').value) : 0,
+        package_value: paymentValue === 'cod' ? Number(document.getElementById('codAmount').value) : 0,
+        estimated_fee: estimate?.fee ?? null,
         customer_notes: document.getElementById('custNotes').value.trim() || null
       };
 

@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { estimateDeliveryZone, formatEstimateRows } from './vd-zone-estimator.js';
 
 const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnbXp6YXZ4aHVhcmxhY252bm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Mjk4NTksImV4cCI6MjA5NDIwNTg1OX0.7-YKlwLrhUYUYbiii93ZvgX01TxVephApDNCP50Rl54';
@@ -8,64 +9,37 @@ window.supabase = supabase;
 
 // ── Config ────────────────────────────────────────────────────────
 const GOOGLE_API_KEY = 'AIzaSyArqAch6rqPSr9Q4qrijBP0__U2WI0Hy38';
-const BIZ_PRICING = { same_zone: 40, cross_zone: 50 };
-
-// Zone A areas — same zone as head office (Charlieville)
-const ZONE_A_AREAS = [
-  'balmain','bonne aventure','brechin castle','calcutta road','california','dow village',
-  'carapichaima','carlsen field','cedar hill','claxton bay','chaguanas','charlieville',
-  'chase village','couva','cunupia','edinburgh','endeavour','enterprise',
-  'felicity','felicity hall','freeport','gasparillo','jerningham junction','lange park',
-  'mc bean','mcbean','montrose','orange valley','point lisas','phoenix park','preysal',
-  'reform village','spring village','st marys village','union village','waterloo',
-  'gran couva','claxton bay','brechin castle'
-];
-
-function normaliseArea(str) {
-  return String(str || '').toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .replace(/\s+/g, ' ').trim();
-}
-
-function isZoneA(areaName) {
-  const norm = normaliseArea(areaName);
-  return ZONE_A_AREAS.some(a => norm.includes(a) || (a.includes(norm) && norm.length > 3));
-}
-
-function extractLatLngFromMapsUrl(url) {
-  try {
-    const patterns = [
-      /@(-?\d+\.\d+),(-?\d+\.\d+)/,
-      /[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/,
-      /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/,
-      /ll=(-?\d+\.\d+),(-?\d+\.\d+)/
-    ];
-    for (const p of patterns) {
-      const m = url.match(p);
-      if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
-    }
-  } catch {}
-  return null;
-}
-
-async function geocodeLatLng(lat, lng) {
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_API_KEY}&region=tt`;
-  const res = await fetch(url);
-  const data = await res.json();
-  if (data.status !== 'OK') return null;
-  for (const result of data.results) {
-    for (const comp of result.address_components) {
-      if (comp.types.includes('locality') || comp.types.includes('sublocality') ||
-          comp.types.includes('neighborhood') || comp.types.includes('administrative_area_level_3')) {
-        return comp.long_name;
-      }
-    }
-  }
-  return null;
-}
 
 let bizEstimateTimer = null;
+let latestBizEstimate = null;
+
+function currentEstimateInput() {
+  const gpsResult = el('#gpsResult');
+  return {
+    supabase,
+    googleApiKey: GOOGLE_API_KEY,
+    houseNumber: el('#houseNum')?.value.trim() || '',
+    streetName: el('#streetName')?.value.trim() || '',
+    areaName: el('#areaName')?.value.trim() || '',
+    mapsLink: el('#mapsLink')?.value.trim() || '',
+    latitude: gpsResult?.dataset.lat ? Number(gpsResult.dataset.lat) : null,
+    longitude: gpsResult?.dataset.lng ? Number(gpsResult.dataset.lng) : null
+  };
+}
+
+function hasEstimateLocation(input) {
+  return Boolean(input.areaName || input.streetName || input.mapsLink ||
+    (Number.isFinite(input.latitude) && Number.isFinite(input.longitude)));
+}
+
+function renderEstimateBreakdown(target, rows) {
+  if (!target) return;
+  target.innerHTML = rows.map(([key, value]) => `
+    <div style="display:flex; justify-content:space-between; font-size:0.82rem; padding:0.25rem 0; border-bottom:1px solid rgba(255,255,255,0.06); gap:1rem;">
+      <span style="color:rgba(255,255,255,0.5);">${escapeHtml(key)}</span>
+      <span style="color:#ffffff; font-weight:600; text-align:right;">${escapeHtml(value)}</span>
+    </div>`).join('');
+}
 
 async function updateBizEstimate() {
   const block = el('#bizEstimateBlock');
@@ -73,107 +47,43 @@ async function updateBizEstimate() {
   const paymentType = el('#paymentType')?.value || '';
   if (!paymentType) { block.style.display = 'none'; return; }
 
-  const gpsResult = el('#gpsResult');
-  const mapsLinkVal = el('#mapsLink')?.value.trim() || '';
-  const areaNameVal = el('#areaName')?.value.trim() || '';
-  const hasGps = gpsResult?.dataset.lat && gpsResult?.dataset.lng;
-  const hasLocation = hasGps || mapsLinkVal || areaNameVal;
-  if (!hasLocation) { block.style.display = 'none'; return; }
+  const estimateInput = currentEstimateInput();
+  if (!hasEstimateLocation(estimateInput)) { block.style.display = 'none'; return; }
 
   block.style.display = '';
-
-  // Show loading
-  const amountElPre = el('#bizEstimateAmount');
+  setText('#bizEstimateAmount', 'Calculating...');
+  setText('#bizEstimateRoute', 'Detecting zone...');
   const breakdownElPre = el('#bizEstimateBreakdown');
-  if (amountElPre) amountElPre.textContent = 'Calculating...';
   if (breakdownElPre) breakdownElPre.innerHTML = '';
 
   clearTimeout(bizEstimateTimer);
   bizEstimateTimer = setTimeout(async () => {
-    // Re-query elements inside timeout so they're always fresh
     const amountEl = el('#bizEstimateAmount');
     const breakdownEl = el('#bizEstimateBreakdown');
     const routeEl = el('#bizEstimateRoute');
     try {
-      let detectedArea = null;
-      let zoneA = false;
-
-      console.log('[VD Estimate] Starting calculation:', { areaNameVal, hasGps, mapsLinkVal });
-
-      if (areaNameVal.length >= 3) {
-        detectedArea = areaNameVal;
-        zoneA = isZoneA(areaNameVal);
-        console.log('[VD Estimate] Manual area match:', { detectedArea, zoneA });
-      } else if (hasGps) {
-        console.log('[VD Estimate] Geocoding GPS:', gpsResult.dataset.lat, gpsResult.dataset.lng);
-        detectedArea = await geocodeLatLng(
-          parseFloat(gpsResult.dataset.lat),
-          parseFloat(gpsResult.dataset.lng)
-        );
-        console.log('[VD Estimate] Geocode result:', detectedArea);
-        if (detectedArea) zoneA = isZoneA(detectedArea);
-      } else if (mapsLinkVal) {
-        const coords = extractLatLngFromMapsUrl(mapsLinkVal);
-        console.log('[VD Estimate] Extracted coords from Maps link:', coords);
-        if (coords) {
-          detectedArea = await geocodeLatLng(coords.lat, coords.lng);
-          console.log('[VD Estimate] Geocode result:', detectedArea);
-          if (detectedArea) zoneA = isZoneA(detectedArea);
-        }
-      }
-
-      const fee = detectedArea !== null
-        ? (zoneA ? BIZ_PRICING.same_zone : BIZ_PRICING.cross_zone)
-        : null;
-
-      console.log('[VD Estimate] Fee calculated:', fee, '| amountEl:', amountEl, '| breakdownEl:', breakdownEl);
+      const estimate = await estimateDeliveryZone(estimateInput);
+      latestBizEstimate = estimate;
 
       if (amountEl) {
-        amountEl.textContent = fee !== null
-          ? `$${fee.toFixed(2)} TTD`
-          : '$40 – $50 TTD';
+        amountEl.textContent = estimate.fee !== null
+          ? `$${Number(estimate.fee).toFixed(2)} TTD`
+          : 'Quote Required';
       }
 
-      // Add a route label below the amount
       if (routeEl) {
-        routeEl.textContent = detectedArea
-          ? `${detectedArea} → ${zoneA ? 'Zone A (Same Zone)' : 'Cross Zone'}`
-          : 'Zone to be confirmed by VirtuDrop';
+        routeEl.textContent = estimate.zoneCode
+          ? `${estimate.label} → ${estimate.zoneName} (${estimate.region})`
+          : estimate.message;
       }
 
       const pkgVal = paymentType === 'cod' ? (Number(el('#codAmount')?.value) || 0) : 0;
-      const rows = [];
-
-      if (fee !== null) {
-        rows.push(['Delivery Fee', `$${fee.toFixed(2)}`]);
-      } else {
-        rows.push(['Same Zone', '$40.00']);
-        rows.push(['Cross Zone', '$50.00']);
-      }
-
-      if (paymentType === 'cod' && pkgVal > 0) {
-        rows.push(['Package Value', `$${pkgVal.toFixed(2)}`]);
-        rows.push(['Driver Collects', fee !== null
-          ? `$${(pkgVal + fee).toFixed(2)}`
-          : `$${(pkgVal + BIZ_PRICING.same_zone).toFixed(2)} – $${(pkgVal + BIZ_PRICING.cross_zone).toFixed(2)}`
-        ]);
-      } else if (paymentType === 'pkg-online') {
-        rows.push(['Driver Collects', fee !== null ? `$${fee.toFixed(2)} (delivery fee)` : 'Delivery fee only']);
-      } else if (paymentType === 'all-online') {
-        rows.push(['Driver Collects', 'Nothing']);
-      }
-
-      if (breakdownEl) {
-        breakdownEl.innerHTML = rows.map(([k, v]) => `
-          <div style="display:flex; justify-content:space-between; font-size:0.82rem; padding:0.25rem 0; border-bottom:1px solid rgba(255,255,255,0.06);">
-            <span style="color:rgba(255,255,255,0.5);">${k}</span>
-            <span style="color:#ffffff; font-weight:600;">${v}</span>
-          </div>`).join('');
-      }
+      renderEstimateBreakdown(breakdownEl, formatEstimateRows({ estimate, paymentType, packageValue: pkgVal }));
 
     } catch (err) {
       console.error('[VD Estimate] Error:', err);
-      if (amountEl) amountEl.textContent = '$40 – $50 TTD';
+      latestBizEstimate = null;
+      if (amountEl) amountEl.textContent = 'Quote Required';
       if (routeEl) routeEl.textContent = 'Zone to be confirmed by VirtuDrop';
     }
   }, 600);
@@ -190,15 +100,6 @@ window.vdSyncBusinessAmountField = function() {
     block.style.display = '';
     if (label) label.textContent = 'Package Value (TTD)';
     el('#codAmount').placeholder = 'e.g. 350.00';
-  } else if (paymentType === 'pkg-online') {
-    block.style.display = 'none';
-  } else if (paymentType === 'all-online') {
-    block.style.display = 'none';
-  } else {
-    block.style.display = 'none';
-  }
-  updateBizEstimate();
-};
   } else if (paymentType === 'pkg-online') {
     block.style.display = 'none';
   } else if (paymentType === 'all-online') {
@@ -1163,6 +1064,7 @@ async function submitBusinessOrder(event) {
   isSubmittingBusinessOrder = true;
   if (!business) {
     window.vdNotify('Dashboard Loading', 'Your business dashboard is still loading or did not load your business account. Press Ctrl + F5, log in again, and try once more.', 'warning');
+    isSubmittingBusinessOrder = false;
     return;
   }
 
@@ -1173,6 +1075,10 @@ async function submitBusinessOrder(event) {
   const locationPayload = getLocationPayload();
   const packageDescription = el('#packageDesc')?.value.trim() || '';
   const specialNotes = el('#specialNotes')?.value.trim() || '';
+  const estimate = await estimateDeliveryZone(currentEstimateInput()).catch(error => {
+    console.warn('Business submit estimate failed:', error);
+    return latestBizEstimate;
+  });
 
   const requestData = {
     business_client_id: business.id,
@@ -1182,13 +1088,14 @@ async function submitBusinessOrder(event) {
     payment_type: paymentValue ? paymentMap[paymentValue] : '',
     cod_amount: paymentValue === 'cod' ? Number(el('#codAmount')?.value || 0) : 0,
     package_value: paymentValue === 'cod' ? Number(el('#codAmount')?.value || 0) : 0,
-    estimated_fee: BIZ_PRICING.same_zone,
+    estimated_fee: estimate?.fee ?? null,
     customer_notes: [`Package: ${packageDescription}`, specialNotes].filter(Boolean).join('\n') || null
   };
 
   const validationError = validateOrderForm(requestData, { paymentValue, packageDescription, specialNotes, phoneDigits });
   if (validationError) {
     window.vdNotify('Check This Order', validationError, 'warning');
+    isSubmittingBusinessOrder = false;
     return;
   }
 
@@ -1245,6 +1152,8 @@ window.resetOrderForm = function() {
     delete gpsResult.dataset.lat;
     delete gpsResult.dataset.lng;
   }
+  latestBizEstimate = null;
+  el('#bizEstimateBlock')?.style.setProperty('display', 'none');
   clearOrderValidation();
   el('#codAmountBlock')?.style.setProperty('display', 'none');
   const street = el('#streetName');
@@ -1289,6 +1198,7 @@ window.useCurrentLocation = function() {
       result.dataset.lat = position.coords.latitude.toFixed(6);
       result.dataset.lng = position.coords.longitude.toFixed(6);
       result.textContent = `📍 Location detected: ${result.dataset.lat}, ${result.dataset.lng}. Zone will be confirmed by VirtuDrop.`;
+      updateBizEstimate();
     },
     () => {
       result.style.background = '#fff3f3';
@@ -1391,7 +1301,7 @@ function bindUi() {
   // Wire location inputs to estimate updater — use delegation so hidden panel inputs are covered
   document.addEventListener('input', event => {
     const id = event.target?.id;
-    if (id === 'mapsLink' || id === 'areaName' || id === 'codAmount') {
+    if (id === 'mapsLink' || id === 'areaName' || id === 'streetName' || id === 'houseNum' || id === 'codAmount') {
       updateBizEstimate();
     }
   });
