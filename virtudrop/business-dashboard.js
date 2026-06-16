@@ -209,15 +209,17 @@ function formatEstimateRows({ estimate, paymentType, packageValue }) {
 
 function currentEstimateInput() {
   const gpsResult = el('#gpsResult');
+  const hasGps = gpsResult?.dataset.lat && gpsResult?.dataset.lng;
+  const useSharedLocation = activeLocTab !== 'manual';
   return {
     supabase,
     googleApiKey: GOOGLE_API_KEY,
-    houseNumber: el('#houseNum')?.value.trim() || '',
-    streetName: el('#streetName')?.value.trim() || '',
-    areaName: el('#areaName')?.value.trim() || '',
-    mapsLink: el('#mapsLink')?.value.trim() || '',
-    latitude: gpsResult?.dataset.lat ? Number(gpsResult.dataset.lat) : null,
-    longitude: gpsResult?.dataset.lng ? Number(gpsResult.dataset.lng) : null
+    houseNumber: useSharedLocation ? '' : (el('#houseNum')?.value.trim() || ''),
+    streetName: useSharedLocation ? '' : (el('#streetName')?.value.trim() || ''),
+    areaName: useSharedLocation ? '' : (el('#areaName')?.value.trim() || ''),
+    mapsLink: useSharedLocation && !hasGps ? (el('#mapsLink')?.value.trim() || '') : '',
+    latitude: useSharedLocation && hasGps ? Number(gpsResult.dataset.lat) : null,
+    longitude: useSharedLocation && hasGps ? Number(gpsResult.dataset.lng) : null
   };
 }
 
@@ -1379,6 +1381,8 @@ window.switchLocTab = function(tab, btn) {
 window.useCurrentLocation = function() {
   const result = el('#gpsResult');
   if (!result) return;
+  activeLocTab = 'share';
+  window.switchLocTab('share', document.querySelector('.loc-tab'));
   if (!navigator.geolocation) {
     result.style.display = 'block';
     result.style.background = '#fff3f3';
@@ -1406,10 +1410,14 @@ window.useCurrentLocation = function() {
       }
       updateBizEstimate();
     },
-    () => {
+    error => {
       result.style.background = '#fff3f3';
-      result.textContent = '❌ Could not access location. Please paste a Google Maps link or enter the address manually.';
-    }
+      const needsSecureOrigin = location.protocol !== 'https:' && !['localhost', '127.0.0.1'].includes(location.hostname);
+      result.textContent = needsSecureOrigin
+        ? '❌ Current location needs HTTPS in most browsers. Use the live secure site, paste a Google Maps link, or enter the address manually.'
+        : `❌ Could not access location${error?.message ? `: ${error.message}` : ''}. Allow location permission, then try again.`;
+    },
+    { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
   );
 };
 

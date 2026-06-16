@@ -444,6 +444,7 @@
 
     window.useGPS = function() {
       const el = document.getElementById('gpsResult');
+      activeLocTab = 'share';
       el.className = 'gps-result success';
       el.textContent = 'Detecting your location...';
       el.style.display = 'block';
@@ -473,11 +474,14 @@
           }
           updateEstimate();
         },
-        () => {
+        error => {
           el.className = 'gps-result error';
-          el.textContent = 'Could not access location. Please paste a Google Maps link or enter your address manually.';
+          const needsSecureOrigin = location.protocol !== 'https:' && !['localhost', '127.0.0.1'].includes(location.hostname);
+          el.textContent = needsSecureOrigin
+            ? 'Current location needs HTTPS in most browsers. Use the live secure site, paste a Google Maps link, or enter your address manually.'
+            : `Could not access location${error?.message ? `: ${error.message}` : ''}. Allow location permission, then try again.`;
         },
-        { timeout: 10000 }
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
       );
     };
 
@@ -501,15 +505,17 @@
 
     function estimateInput() {
       const gpsResult = document.getElementById('gpsResult');
+      const hasGps = gpsResult.dataset.lat && gpsResult.dataset.lng;
+      const useSharedLocation = activeLocTab !== 'manual';
       return {
         supabase,
         googleApiKey: GOOGLE_API_KEY,
-        houseNumber: document.getElementById('houseNum').value.trim(),
-        streetName: document.getElementById('streetName').value.trim(),
-        areaName: document.getElementById('areaName').value.trim(),
-        mapsLink: document.getElementById('mapsLink').value.trim(),
-        latitude: gpsResult.dataset.lat ? Number(gpsResult.dataset.lat) : null,
-        longitude: gpsResult.dataset.lng ? Number(gpsResult.dataset.lng) : null
+        houseNumber: useSharedLocation ? '' : document.getElementById('houseNum').value.trim(),
+        streetName: useSharedLocation ? '' : document.getElementById('streetName').value.trim(),
+        areaName: useSharedLocation ? '' : document.getElementById('areaName').value.trim(),
+        mapsLink: useSharedLocation && !hasGps ? document.getElementById('mapsLink').value.trim() : '',
+        latitude: useSharedLocation && hasGps ? Number(gpsResult.dataset.lat) : null,
+        longitude: useSharedLocation && hasGps ? Number(gpsResult.dataset.lng) : null
       };
     }
 
