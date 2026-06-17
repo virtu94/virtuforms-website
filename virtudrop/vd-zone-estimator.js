@@ -102,9 +102,16 @@ function loadGoogleMapsApi(googleApiKey) {
 
   googleMapsPromise = new Promise(resolve => {
     const callback = `vdGoogleMapsReady_${Date.now()}`;
-    window[callback] = () => {
+    let settled = false;
+    function finish(value) {
+      if (settled) return;
+      settled = true;
       delete window[callback];
-      resolve(Boolean(window.google?.maps?.Geocoder));
+      resolve(value);
+    }
+
+    window[callback] = () => {
+      finish(Boolean(window.google?.maps?.Geocoder));
     };
 
     const script = document.createElement('script');
@@ -112,10 +119,11 @@ function loadGoogleMapsApi(googleApiKey) {
     script.async = true;
     script.defer = true;
     script.onerror = () => {
-      delete window[callback];
-      resolve(false);
+      finish(false);
     };
     document.head.appendChild(script);
+
+    setTimeout(() => finish(false), 3000);
   });
 
   return googleMapsPromise;
@@ -154,25 +162,33 @@ function collectOsmText(data) {
 }
 
 async function reverseGeocodeWithOpenStreetMap(lat, lng) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 7000);
   try {
     const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&addressdetails=1`;
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: controller.signal });
     if (!res.ok) return '';
     return collectOsmText(await res.json());
   } catch {
     return '';
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
 async function geocodeAddressWithOpenStreetMap(address) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 7000);
   try {
     const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&countrycodes=tt&q=${encodeURIComponent(address)}`;
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: controller.signal });
     if (!res.ok) return '';
     const data = await res.json();
     return collectOsmText(Array.isArray(data) ? data[0] : data);
   } catch {
     return '';
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
