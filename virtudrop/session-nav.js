@@ -36,7 +36,8 @@ function injectStyles() {
   const style = document.createElement('style');
   style.id = 'vd-session-nav-style';
   style.textContent = `
-    .vd-account-menu { position: relative; display: inline-flex; align-items: center; margin-left: 0.35rem; flex-shrink: 0; }
+    body.vd-session-authenticated [data-nav-links] { order: 2; }
+    .vd-account-menu { position: relative; display: inline-flex; align-items: center; order: 3; margin-left: 0.75rem; flex-shrink: 0; }
     .vd-account-button {
       width: 42px; height: 42px; border-radius: 999px; border: 2px solid rgba(42,157,143,0.22);
       background: #2a9d8f; color: #fff; display: inline-flex; align-items: center; justify-content: center;
