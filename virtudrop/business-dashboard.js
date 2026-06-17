@@ -15,6 +15,7 @@ const STANDARD_FEES = { central: 40, other: 50 };
 let bizEstimateTimer = null;
 let latestBizEstimate = null;
 let zonesPromise = null;
+let googleMapsPromise = null;
 
 function normaliseZoneText(value) {
   return String(value || '')
@@ -93,15 +94,9 @@ function extractTextFromMapsUrl(url) {
   return '';
 }
 
-async function reverseGeocode(lat, lng) {
-  if (!GOOGLE_API_KEY || !Number.isFinite(lat) || !Number.isFinite(lng)) return '';
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_API_KEY}&region=tt`;
-  const res = await fetch(url);
-  const data = await res.json();
-  if (data.status !== 'OK') return '';
-
+function collectGeocoderText(results) {
   const parts = [];
-  for (const result of data.results || []) {
+  for (const result of results || []) {
     if (result.formatted_address) parts.push(result.formatted_address);
     for (const comp of result.address_components || []) {
       if (comp.long_name) parts.push(comp.long_name);
@@ -109,6 +104,64 @@ async function reverseGeocode(lat, lng) {
     }
   }
   return [...new Set(parts.filter(Boolean))].join(' ');
+}
+
+function loadGoogleMapsApi() {
+  if (window.google?.maps?.Geocoder) return Promise.resolve(true);
+  if (!GOOGLE_API_KEY) return Promise.resolve(false);
+  if (googleMapsPromise) return googleMapsPromise;
+
+  googleMapsPromise = new Promise(resolve => {
+    const callback = `vdGoogleMapsReady_${Date.now()}`;
+    window[callback] = () => {
+      delete window[callback];
+      resolve(Boolean(window.google?.maps?.Geocoder));
+    };
+
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_API_KEY)}&callback=${callback}`;
+    script.async = true;
+    script.defer = true;
+    script.onerror = () => {
+      delete window[callback];
+      resolve(false);
+    };
+    document.head.appendChild(script);
+  });
+
+  return googleMapsPromise;
+}
+
+async function geocodeWithGoogleMaps(request) {
+  const ready = await loadGoogleMapsApi();
+  if (!ready) return '';
+
+  return new Promise(resolve => {
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode(request, (results, status) => {
+      if (status === 'OK') resolve(collectGeocoderText(results));
+      else resolve('');
+    });
+  });
+}
+
+async function reverseGeocode(lat, lng) {
+  if (!GOOGLE_API_KEY || !Number.isFinite(lat) || !Number.isFinite(lng)) return '';
+  const mapsText = await geocodeWithGoogleMaps({ location: { lat, lng }, region: 'TT' });
+  if (mapsText) return mapsText;
+
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_API_KEY}&region=tt`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (data.status !== 'OK') return '';
+  return collectGeocoderText(data.results);
+}
+
+async function geocodeAddress(address) {
+  if (!address) return '';
+  const mapsText = await geocodeWithGoogleMaps({ address, region: 'TT' });
+  if (mapsText) return mapsText;
+  return address;
 }
 
 function matchZoneFromText(zones, text) {
@@ -195,10 +248,14 @@ async function estimateDeliveryZone({
     } else {
       sourceText = extractTextFromMapsUrl(mapsLink);
       sourceLabel = sourceText;
+      if (sourceText) {
+        sourceText = [sourceText, await geocodeAddress(sourceText)].filter(Boolean).join(' ');
+      }
     }
   }
 
   if (!sourceText) {
+    const shortMapsLink = /(^|\.)maps\.app\.goo\.gl$|(^|\.)goo\.gl$/i.test(new URL(mapsLink || window.location.href, window.location.origin).hostname || '');
     return {
       status: 'unknown',
       fee: null,
@@ -208,7 +265,9 @@ async function estimateDeliveryZone({
       matchedArea: '',
       sourceText: '',
       label: 'Location could not be identified',
-      message: 'Enter an area or use GPS to estimate'
+      message: shortMapsLink
+        ? 'Short Google Maps links cannot be read here. Use current location or paste a full Google Maps link.'
+        : 'Enter an area or use GPS to estimate'
     };
   }
 

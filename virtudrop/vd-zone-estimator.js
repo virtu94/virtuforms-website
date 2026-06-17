@@ -3,6 +3,7 @@ const REMOTE_ZONE_CODE = 'REMOTE';
 const STANDARD_FEES = { central: 40, other: 50 };
 
 let zonesPromise = null;
+let googleMapsPromise = null;
 
 function normalise(value) {
   return String(value || '')
@@ -82,23 +83,74 @@ function extractTextFromMapsUrl(url) {
   return '';
 }
 
-async function reverseGeocode(lat, lng, googleApiKey) {
-  if (!googleApiKey || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${googleApiKey}&region=tt`;
-  const res = await fetch(url);
-  const data = await res.json();
-  if (data.status !== 'OK') return null;
-
+function collectGeocoderText(results) {
   const parts = [];
-  for (const result of data.results || []) {
+  for (const result of results || []) {
     if (result.formatted_address) parts.push(result.formatted_address);
     for (const comp of result.address_components || []) {
       if (comp.long_name) parts.push(comp.long_name);
       if (comp.short_name) parts.push(comp.short_name);
     }
   }
-
   return [...new Set(parts.filter(Boolean))].join(' ');
+}
+
+function loadGoogleMapsApi(googleApiKey) {
+  if (window.google?.maps?.Geocoder) return Promise.resolve(true);
+  if (!googleApiKey) return Promise.resolve(false);
+  if (googleMapsPromise) return googleMapsPromise;
+
+  googleMapsPromise = new Promise(resolve => {
+    const callback = `vdGoogleMapsReady_${Date.now()}`;
+    window[callback] = () => {
+      delete window[callback];
+      resolve(Boolean(window.google?.maps?.Geocoder));
+    };
+
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(googleApiKey)}&callback=${callback}`;
+    script.async = true;
+    script.defer = true;
+    script.onerror = () => {
+      delete window[callback];
+      resolve(false);
+    };
+    document.head.appendChild(script);
+  });
+
+  return googleMapsPromise;
+}
+
+async function geocodeWithGoogleMaps(request, googleApiKey) {
+  const ready = await loadGoogleMapsApi(googleApiKey);
+  if (!ready) return '';
+
+  return new Promise(resolve => {
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode(request, (results, status) => {
+      if (status === 'OK') resolve(collectGeocoderText(results));
+      else resolve('');
+    });
+  });
+}
+
+async function reverseGeocode(lat, lng, googleApiKey) {
+  if (!googleApiKey || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  const mapsText = await geocodeWithGoogleMaps({ location: { lat, lng }, region: 'TT' }, googleApiKey);
+  if (mapsText) return mapsText;
+
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${googleApiKey}&region=tt`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (data.status !== 'OK') return null;
+  return collectGeocoderText(data.results);
+}
+
+async function geocodeAddress(address, googleApiKey) {
+  if (!address) return '';
+  const mapsText = await geocodeWithGoogleMaps({ address, region: 'TT' }, googleApiKey);
+  if (mapsText) return mapsText;
+  return address;
 }
 
 function matchZoneFromText(zones, text) {
@@ -188,10 +240,14 @@ export async function estimateDeliveryZone({
     } else {
       sourceText = extractTextFromMapsUrl(mapsLink);
       sourceLabel = sourceText;
+      if (sourceText) {
+        sourceText = [sourceText, await geocodeAddress(sourceText, googleApiKey)].filter(Boolean).join(' ');
+      }
     }
   }
 
   if (!sourceText) {
+    const shortMapsLink = /(^|\.)maps\.app\.goo\.gl$|(^|\.)goo\.gl$/i.test(new URL(mapsLink || window.location.href, window.location.origin).hostname || '');
     return {
       status: 'unknown',
       fee: null,
@@ -201,7 +257,9 @@ export async function estimateDeliveryZone({
       matchedArea: '',
       sourceText: '',
       label: 'Location could not be identified',
-      message: 'Enter an area or use GPS to estimate'
+      message: shortMapsLink
+        ? 'Short Google Maps links cannot be read here. Use current location or paste a full Google Maps link.'
+        : 'Enter an area or use GPS to estimate'
     };
   }
 
