@@ -15,7 +15,6 @@ const STANDARD_FEES = { central: 40, other: 50 };
 let bizEstimateTimer = null;
 let latestBizEstimate = null;
 let zonesPromise = null;
-let googleMapsPromise = null;
 
 function withTimeout(promise, ms, fallback) {
   let timer = null;
@@ -102,65 +101,6 @@ function extractTextFromMapsUrl(url) {
     if (placeMatch) return decodeURIComponent(placeMatch[1]).replace(/\+/g, ' ');
   } catch {}
   return '';
-}
-
-function collectGeocoderText(results) {
-  const parts = [];
-  for (const result of results || []) {
-    if (result.formatted_address) parts.push(result.formatted_address);
-    for (const comp of result.address_components || []) {
-      if (comp.long_name) parts.push(comp.long_name);
-      if (comp.short_name) parts.push(comp.short_name);
-    }
-  }
-  return [...new Set(parts.filter(Boolean))].join(' ');
-}
-
-function loadGoogleMapsApi() {
-  if (window.google?.maps?.Geocoder) return Promise.resolve(true);
-  if (!GOOGLE_API_KEY) return Promise.resolve(false);
-  if (googleMapsPromise) return googleMapsPromise;
-
-  googleMapsPromise = new Promise(resolve => {
-    const callback = `vdGoogleMapsReady_${Date.now()}`;
-    let settled = false;
-    function finish(value) {
-      if (settled) return;
-      settled = true;
-      delete window[callback];
-      resolve(value);
-    }
-
-    window[callback] = () => {
-      finish(Boolean(window.google?.maps?.Geocoder));
-    };
-
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_API_KEY)}&callback=${callback}`;
-    script.async = true;
-    script.defer = true;
-    script.onerror = () => {
-      finish(false);
-    };
-    document.head.appendChild(script);
-
-    setTimeout(() => finish(false), 3000);
-  });
-
-  return googleMapsPromise;
-}
-
-async function geocodeWithGoogleMaps(request) {
-  const ready = await loadGoogleMapsApi();
-  if (!ready) return '';
-
-  return new Promise(resolve => {
-    const geocoder = new google.maps.Geocoder();
-    geocoder.geocode(request, (results, status) => {
-      if (status === 'OK') resolve(collectGeocoderText(results));
-      else resolve('');
-    });
-  });
 }
 
 function collectOsmText(data) {
