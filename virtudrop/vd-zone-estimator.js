@@ -9,16 +9,32 @@ function normalise(value) {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\bsaint\b/g, 'st')
     .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
+function areaVariants(area) {
+  const raw = String(area || '');
+  const withoutParen = raw.replace(/\([^)]*\)/g, ' ');
+  return [...new Set([
+    raw,
+    withoutParen,
+    ...raw.split('/'),
+    ...withoutParen.split('/')
+  ].map(normalise).filter(value => value.length >= 3))];
+}
+
 function areaMatches(input, area) {
   const text = normalise(input);
-  const target = normalise(area);
-  if (!text || !target) return false;
-  return text.includes(target) || (target.includes(text) && text.length >= 4);
+  if (!text) return false;
+  return areaVariants(area).some(target => {
+    if (!target) return false;
+    if (text.includes(target)) return true;
+    const targetTokens = target.split(' ').filter(token => token.length > 2);
+    return targetTokens.length > 1 && targetTokens.every(token => text.includes(token));
+  });
 }
 
 async function loadZones(supabase) {
@@ -51,6 +67,19 @@ function extractLatLngFromMapsUrl(url) {
     }
   } catch {}
   return null;
+}
+
+function extractTextFromMapsUrl(url) {
+  try {
+    const parsed = new URL(String(url || ''), window.location.origin);
+    const query = parsed.searchParams.get('q') || parsed.searchParams.get('query');
+    if (query && !/^-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?$/.test(query)) {
+      return query.replace(/\+/g, ' ');
+    }
+    const placeMatch = parsed.pathname.match(/\/(?:place|search)\/([^/@]+)/i);
+    if (placeMatch) return decodeURIComponent(placeMatch[1]).replace(/\+/g, ' ');
+  } catch {}
+  return '';
 }
 
 async function reverseGeocode(lat, lng, googleApiKey) {
@@ -156,6 +185,9 @@ export async function estimateDeliveryZone({
     if (coords) {
       sourceText = await reverseGeocode(coords.lat, coords.lng, googleApiKey) || '';
       sourceLabel = sourceText;
+    } else {
+      sourceText = extractTextFromMapsUrl(mapsLink);
+      sourceLabel = sourceText;
     }
   }
 
@@ -185,7 +217,9 @@ export function formatEstimateRows({ estimate, paymentType, packageValue }) {
   const rows = [];
   const packageAmount = Number(packageValue || 0);
 
-  if (estimate.status === 'remote' || estimate.status === 'unknown') {
+  if (estimate.status === 'unknown') {
+    rows.push(['Delivery Fee', 'Unable to estimate']);
+  } else if (estimate.status === 'remote') {
     rows.push(['Delivery Fee', 'Quote required']);
   } else {
     rows.push(['Delivery Fee', `$${Number(estimate.fee).toFixed(2)}`]);

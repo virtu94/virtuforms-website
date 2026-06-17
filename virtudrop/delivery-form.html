@@ -615,7 +615,7 @@
             estimateAmount.textContent = `$${Number(estimate.fee).toFixed(2)} TTD`;
             estimateRoute.textContent = `${estimate.label} → ${estimate.zoneName} (${estimate.region})`;
           } else {
-            estimateAmount.textContent = 'Quote Required';
+            estimateAmount.textContent = estimate.status === 'unknown' ? 'Location Needed' : 'Quote Required';
             estimateRoute.textContent = estimate.zoneCode
               ? `${estimate.label} → ${estimate.zoneName} (${estimate.region})`
               : estimate.message;
