@@ -7,7 +7,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 window.supabase = supabase;
 
 // ── Config ────────────────────────────────────────────────────────
-const GOOGLE_API_KEY = 'AIzaSyArqAch6rqPSr9Q4qrijBP0__U2WI0Hy38';
+const GOOGLE_API_KEY = 'AIzaSyB_jE5zofsvbm0NXGFxa9HyFiLXXetG0F0';
 const CENTRAL_ZONE_CODE = 'A';
 const REMOTE_ZONE_CODE = 'REMOTE';
 const STANDARD_FEES = { central: 40, other: 50 };
@@ -214,25 +214,12 @@ async function geocodeAddressWithOpenStreetMap(address) {
 }
 
 async function reverseGeocode(lat, lng) {
-  if (!GOOGLE_API_KEY || !Number.isFinite(lat) || !Number.isFinite(lng)) return '';
-  const mapsText = await geocodeWithGoogleMaps({ location: { lat, lng }, region: 'TT' });
-  if (mapsText) return mapsText;
-
-  try {
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_API_KEY}&region=tt`;
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data.status === 'OK') return collectGeocoderText(data.results);
-  } catch {}
-
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return '';
   return reverseGeocodeWithOpenStreetMap(lat, lng);
 }
 
 async function geocodeAddress(address) {
   if (!address) return '';
-  const mapsText = await geocodeWithGoogleMaps({ address, region: 'TT' });
-  if (mapsText) return mapsText;
-
   const osmText = await geocodeAddressWithOpenStreetMap(address);
   return [address, osmText].filter(Boolean).join(' ');
 }
