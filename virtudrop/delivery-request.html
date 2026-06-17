@@ -503,6 +503,27 @@
     let estimateDebounceTimer = null;
     let latestEstimate = null;
 
+    function withEstimateTimeout(promise) {
+      let timer = null;
+      return Promise.race([
+        Promise.resolve(promise).finally(() => clearTimeout(timer)),
+        new Promise(resolve => {
+          timer = setTimeout(() => resolve({
+            status: 'unknown',
+            fee: null,
+            zoneCode: '',
+            zoneName: '',
+            region: '',
+            matchedArea: '',
+            sourceText: '',
+            label: 'Location could not be identified',
+            message: 'Location lookup timed out. Try again or enter the address manually.',
+            debug: { source: 'timeout', hasCoordinates: false, addressFound: false, zonesLoaded: false }
+          }), 16000);
+        })
+      ]);
+    }
+
     function estimateInput() {
       const gpsResult = document.getElementById('gpsResult');
       const hasGps = gpsResult.dataset.lat && gpsResult.dataset.lng;
@@ -554,7 +575,7 @@
       clearTimeout(estimateDebounceTimer);
       estimateDebounceTimer = setTimeout(async () => {
         try {
-          const estimate = await estimateDeliveryZone(input);
+          const estimate = await withEstimateTimeout(estimateDeliveryZone(input));
           latestEstimate = estimate;
 
           if (estimate.fee !== null) {

@@ -17,6 +17,16 @@ let latestBizEstimate = null;
 let zonesPromise = null;
 let googleMapsPromise = null;
 
+function withTimeout(promise, ms, fallback) {
+  let timer = null;
+  return Promise.race([
+    Promise.resolve(promise).finally(() => clearTimeout(timer)),
+    new Promise(resolve => {
+      timer = setTimeout(() => resolve(fallback), ms);
+    })
+  ]);
+}
+
 function normaliseZoneText(value) {
   return String(value || '')
     .toLowerCase()
@@ -293,29 +303,40 @@ async function estimateDeliveryZone({
   latitude = null,
   longitude = null
 }) {
-  const zones = await loadEstimateZones();
+  const debug = {
+    hasCoordinates: Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude)),
+    hasMapsLink: Boolean(mapsLink),
+    source: '',
+    addressFound: false,
+    zonesLoaded: false
+  };
   const manualText = [houseNumber, streetName, areaName].filter(Boolean).join(' ');
   let sourceText = manualText;
   let sourceLabel = areaName || streetName || '';
+  if (sourceText) debug.source = 'manual';
 
   if (!sourceText && Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude))) {
-    sourceText = await reverseGeocode(Number(latitude), Number(longitude));
+    debug.source = 'gps';
+    sourceText = await withTimeout(reverseGeocode(Number(latitude), Number(longitude)), 10000, '');
     sourceLabel = sourceText;
   }
 
   if (!sourceText && mapsLink) {
+    debug.source = 'maps-link';
     const coords = extractLatLngFromMapsUrl(mapsLink);
     if (coords) {
-      sourceText = await reverseGeocode(coords.lat, coords.lng);
+      debug.hasCoordinates = true;
+      sourceText = await withTimeout(reverseGeocode(coords.lat, coords.lng), 10000, '');
       sourceLabel = sourceText;
     } else {
       sourceText = extractTextFromMapsUrl(mapsLink);
       sourceLabel = sourceText;
       if (sourceText) {
-        sourceText = [sourceText, await geocodeAddress(sourceText)].filter(Boolean).join(' ');
+        sourceText = [sourceText, await withTimeout(geocodeAddress(sourceText), 10000, '')].filter(Boolean).join(' ');
       }
     }
   }
+  debug.addressFound = Boolean(sourceText);
 
   if (!sourceText) {
     const shortMapsLink = /(^|\.)maps\.app\.goo\.gl$|(^|\.)goo\.gl$/i.test(new URL(mapsLink || window.location.href, window.location.origin).hostname || '');
@@ -328,16 +349,35 @@ async function estimateDeliveryZone({
       matchedArea: '',
       sourceText: '',
       label: 'Location could not be identified',
+      debug,
       message: shortMapsLink
         ? 'Short Google Maps links cannot be read here. Use current location or paste a full Google Maps link.'
         : 'Enter an area or use GPS to estimate'
     };
   }
 
+  const zones = await withTimeout(loadEstimateZones(), 7000, null);
+  if (!zones) {
+    return {
+      status: 'unknown',
+      fee: null,
+      zoneCode: '',
+      zoneName: '',
+      region: '',
+      matchedArea: '',
+      sourceText,
+      label: sourceLabel || sourceText,
+      debug,
+      message: 'Address found, but zone data could not be loaded. Try again.'
+    };
+  }
+  debug.zonesLoaded = true;
+
   const match = matchZoneFromText(zones, sourceText);
   return {
     ...classifyZoneMatch(match),
     sourceText,
+    debug,
     label: match?.matchedArea || sourceLabel || sourceText
   };
 }
@@ -352,6 +392,12 @@ function formatEstimateRows({ estimate, paymentType, packageValue }) {
     rows.push(['Delivery Fee', estimate.fee !== null ? `$${Number(estimate.fee).toFixed(2)}` : 'Quote required']);
   }
   rows.push(['Zone', estimate.zoneCode ? `${estimate.zoneName} - ${estimate.region}` : estimate.message]);
+  if (estimate.status === 'unknown' && estimate.debug) {
+    rows.push(['Location Source', estimate.debug.source || 'none']);
+    rows.push(['Coordinates', estimate.debug.hasCoordinates ? 'Captured' : 'Not available']);
+    rows.push(['Address Lookup', estimate.debug.addressFound ? 'Found address text' : 'No address returned']);
+    rows.push(['Zone Data', estimate.debug.zonesLoaded ? 'Loaded' : 'Not loaded']);
+  }
 
   if (paymentType === 'cod' && packageAmount > 0) {
     rows.push(['Package Value', `$${packageAmount.toFixed(2)}`]);
@@ -416,7 +462,18 @@ async function updateBizEstimate() {
     const breakdownEl = el('#bizEstimateBreakdown');
     const routeEl = el('#bizEstimateRoute');
     try {
-      const estimate = await estimateDeliveryZone(estimateInput);
+      const estimate = await withTimeout(estimateDeliveryZone(estimateInput), 16000, {
+        status: 'unknown',
+        fee: null,
+        zoneCode: '',
+        zoneName: '',
+        region: '',
+        matchedArea: '',
+        sourceText: '',
+        label: 'Location could not be identified',
+        message: 'Location lookup timed out. Try again or enter the address manually.',
+        debug: { source: 'timeout', hasCoordinates: false, addressFound: false, zonesLoaded: false }
+      });
       latestBizEstimate = estimate;
 
       if (amountEl) {
