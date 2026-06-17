@@ -145,23 +145,70 @@ async function geocodeWithGoogleMaps(request) {
   });
 }
 
+function collectOsmText(data) {
+  if (!data) return '';
+  const address = data.address || {};
+  return [
+    data.display_name,
+    data.name,
+    address.road,
+    address.neighbourhood,
+    address.suburb,
+    address.village,
+    address.town,
+    address.city,
+    address.county,
+    address.state,
+    address.postcode,
+    address.country
+  ].filter(Boolean).join(' ');
+}
+
+async function reverseGeocodeWithOpenStreetMap(lat, lng) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&addressdetails=1`;
+    const res = await fetch(url);
+    if (!res.ok) return '';
+    return collectOsmText(await res.json());
+  } catch {
+    return '';
+  }
+}
+
+async function geocodeAddressWithOpenStreetMap(address) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&countrycodes=tt&q=${encodeURIComponent(address)}`;
+    const res = await fetch(url);
+    if (!res.ok) return '';
+    const data = await res.json();
+    return collectOsmText(Array.isArray(data) ? data[0] : data);
+  } catch {
+    return '';
+  }
+}
+
 async function reverseGeocode(lat, lng) {
   if (!GOOGLE_API_KEY || !Number.isFinite(lat) || !Number.isFinite(lng)) return '';
   const mapsText = await geocodeWithGoogleMaps({ location: { lat, lng }, region: 'TT' });
   if (mapsText) return mapsText;
 
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_API_KEY}&region=tt`;
-  const res = await fetch(url);
-  const data = await res.json();
-  if (data.status !== 'OK') return '';
-  return collectGeocoderText(data.results);
+  try {
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_API_KEY}&region=tt`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.status === 'OK') return collectGeocoderText(data.results);
+  } catch {}
+
+  return reverseGeocodeWithOpenStreetMap(lat, lng);
 }
 
 async function geocodeAddress(address) {
   if (!address) return '';
   const mapsText = await geocodeWithGoogleMaps({ address, region: 'TT' });
   if (mapsText) return mapsText;
-  return address;
+
+  const osmText = await geocodeAddressWithOpenStreetMap(address);
+  return [address, osmText].filter(Boolean).join(' ');
 }
 
 function matchZoneFromText(zones, text) {
