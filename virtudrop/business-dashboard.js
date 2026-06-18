@@ -7,7 +7,6 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 window.supabase = supabase;
 
 // ── Config ────────────────────────────────────────────────────────
-const GOOGLE_API_KEY = 'AIzaSyB_jE5zofsvbm0NXGFxa9HyFiLXXetG0F0';
 const CENTRAL_ZONE_CODE = 'A';
 const REMOTE_ZONE_CODE = 'REMOTE';
 const STANDARD_FEES = { central: 40, other: 50 };
@@ -344,7 +343,6 @@ function currentEstimateInput() {
   const useSharedLocation = activeLocTab !== 'manual';
   return {
     supabase,
-    googleApiKey: GOOGLE_API_KEY,
     houseNumber: useSharedLocation ? '' : (el('#houseNum')?.value.trim() || ''),
     streetName: useSharedLocation ? '' : (el('#streetName')?.value.trim() || ''),
     areaName: useSharedLocation ? '' : (el('#areaName')?.value.trim() || ''),

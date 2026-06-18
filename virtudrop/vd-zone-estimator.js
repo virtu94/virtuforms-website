@@ -3,7 +3,6 @@ const REMOTE_ZONE_CODE = 'REMOTE';
 const STANDARD_FEES = { central: 40, other: 50 };
 
 let zonesPromise = null;
-let googleMapsPromise = null;
 
 function withTimeout(promise, ms, fallback) {
   let timer = null;
@@ -93,65 +92,6 @@ function extractTextFromMapsUrl(url) {
   return '';
 }
 
-function collectGeocoderText(results) {
-  const parts = [];
-  for (const result of results || []) {
-    if (result.formatted_address) parts.push(result.formatted_address);
-    for (const comp of result.address_components || []) {
-      if (comp.long_name) parts.push(comp.long_name);
-      if (comp.short_name) parts.push(comp.short_name);
-    }
-  }
-  return [...new Set(parts.filter(Boolean))].join(' ');
-}
-
-function loadGoogleMapsApi(googleApiKey) {
-  if (window.google?.maps?.Geocoder) return Promise.resolve(true);
-  if (!googleApiKey) return Promise.resolve(false);
-  if (googleMapsPromise) return googleMapsPromise;
-
-  googleMapsPromise = new Promise(resolve => {
-    const callback = `vdGoogleMapsReady_${Date.now()}`;
-    let settled = false;
-    function finish(value) {
-      if (settled) return;
-      settled = true;
-      delete window[callback];
-      resolve(value);
-    }
-
-    window[callback] = () => {
-      finish(Boolean(window.google?.maps?.Geocoder));
-    };
-
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(googleApiKey)}&callback=${callback}`;
-    script.async = true;
-    script.defer = true;
-    script.onerror = () => {
-      finish(false);
-    };
-    document.head.appendChild(script);
-
-    setTimeout(() => finish(false), 3000);
-  });
-
-  return googleMapsPromise;
-}
-
-async function geocodeWithGoogleMaps(request, googleApiKey) {
-  const ready = await loadGoogleMapsApi(googleApiKey);
-  if (!ready) return '';
-
-  return new Promise(resolve => {
-    const geocoder = new google.maps.Geocoder();
-    geocoder.geocode(request, (results, status) => {
-      if (status === 'OK') resolve(collectGeocoderText(results));
-      else resolve('');
-    });
-  });
-}
-
 function collectOsmText(data) {
   if (!data) return '';
   const address = data.address || {};
@@ -202,26 +142,13 @@ async function geocodeAddressWithOpenStreetMap(address) {
   }
 }
 
-async function reverseGeocode(lat, lng, googleApiKey) {
-  if (!googleApiKey || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  const mapsText = await geocodeWithGoogleMaps({ location: { lat, lng }, region: 'TT' }, googleApiKey);
-  if (mapsText) return mapsText;
-
-  try {
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${googleApiKey}&region=tt`;
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data.status === 'OK') return collectGeocoderText(data.results);
-  } catch {}
-
+async function reverseGeocode(lat, lng) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   return reverseGeocodeWithOpenStreetMap(lat, lng);
 }
 
-async function geocodeAddress(address, googleApiKey) {
+async function geocodeAddress(address) {
   if (!address) return '';
-  const mapsText = await geocodeWithGoogleMaps({ address, region: 'TT' }, googleApiKey);
-  if (mapsText) return mapsText;
-
   const osmText = await geocodeAddressWithOpenStreetMap(address);
   return [address, osmText].filter(Boolean).join(' ');
 }
@@ -286,7 +213,6 @@ function classifyMatch(match) {
 
 export async function estimateDeliveryZone({
   supabase,
-  googleApiKey,
   houseNumber = '',
   streetName = '',
   areaName = '',
@@ -310,7 +236,7 @@ export async function estimateDeliveryZone({
   if (!sourceText && Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude))) {
     debug.source = 'gps';
     sourceText = await withTimeout(
-      reverseGeocode(Number(latitude), Number(longitude), googleApiKey),
+      reverseGeocode(Number(latitude), Number(longitude)),
       10000,
       ''
     ) || '';
@@ -323,7 +249,7 @@ export async function estimateDeliveryZone({
     if (coords) {
       debug.hasCoordinates = true;
       sourceText = await withTimeout(
-        reverseGeocode(coords.lat, coords.lng, googleApiKey),
+        reverseGeocode(coords.lat, coords.lng),
         10000,
         ''
       ) || '';
@@ -332,7 +258,7 @@ export async function estimateDeliveryZone({
       sourceText = extractTextFromMapsUrl(mapsLink);
       sourceLabel = sourceText;
       if (sourceText) {
-        sourceText = [sourceText, await withTimeout(geocodeAddress(sourceText, googleApiKey), 10000, '')].filter(Boolean).join(' ');
+        sourceText = [sourceText, await withTimeout(geocodeAddress(sourceText), 10000, '')].filter(Boolean).join(' ');
       }
     }
   }
