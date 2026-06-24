@@ -1019,7 +1019,7 @@
       <div class="panel" id="panel-driver-assign">
         <div class="section-heading">
           <h2>Driver Assignment</h2>
-          <p>Assign drivers and route dates to zone-confirmed orders.</p>
+          <p>Assign unassigned parcels or change the driver responsible for an active delivery.</p>
         </div>
 
         <div class="card">
@@ -1030,26 +1030,17 @@
                   <th>Order ID</th>
                   <th>Client</th>
                   <th>Customer</th>
-                  <th>Zone</th>
-                  <th>COD</th>
-                  <th>Assign Driver</th>
-                  <th>Route Date</th>
+                  <th>Status</th>
+                  <th>Collect</th>
+                  <th>Current Driver</th>
+                  <th>Assign / Change Driver</th>
+                  <th>Route Date / Reason</th>
                   <th>Action</th>
                 </tr>
               </thead>
               <tbody>
-                <tr><td colspan="8">Loading driver assignments...</td></tr>
+                <tr><td colspan="9">Loading driver assignments...</td></tr>
               </tbody>
-            </table>
-          </div>
-        </div>
-        <div class="card" style="margin-top:1rem;">
-          <div class="card-title">Driver-to-Driver Handoffs</div>
-          <div class="accounting-note">Assigned orders can be reassigned. If a collected parcel is physically given to another driver, it moves to that driver’s collected manifest. A reason is required and the manifest history is retained.</div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Order</th><th>Customer</th><th>Current Driver</th><th>Receiving Driver</th><th>Reason</th><th>Action</th></tr></thead>
-              <tbody id="driverTransferBody"><tr><td colspan="6">Loading assigned deliveries...</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -3284,19 +3275,38 @@
 
     function renderDriverAssign() {
       const tbody = document.querySelector('#panel-driver-assign tbody');
-      const assignable = orders.filter(o => o.zone_status === 'confirmed' && ['sorted', 'redelivery_scheduled'].includes(o.parcel_status) && !o.assigned_driver_id);
-      tbody.innerHTML = assignable.map(order => `
-        <tr>
-          <td class="td-id">${order.order_number}</td>
-          <td>${clientName(order)}</td>
-          <td><div class="td-name">${order.customer_name || '—'}</div><div class="td-sub">${order.customer_phone || ''}</div></td>
-          <td><span class="badge ${order.redelivery_status === 'scheduled' ? 'badge-pending' : 'badge-confirmed'}">${order.redelivery_status === 'scheduled' ? `Redelivery · Attempt ${Number(order.delivery_attempt_count || 0) + 1}` : 'Confirmed'}</span></td>
-          <td>${moneyFull(driverCollects(order))}${order.redelivery_fee > 0 ? `<div class="td-sub">Includes ${moneyFull(order.redelivery_fee)} redelivery</div>` : ''}</td>
-          <td><select class="filter-select driver-select" style="width:160px;">${driverOptions()}</select></td>
-          <td><input type="date" class="filter-input route-date" style="width:140px;" value="${order.scheduled_delivery_date || new Date().toISOString().slice(0, 10)}" /></td>
-          <td><button class="btn btn-primary btn-sm" onclick="assignDriver('${order.id}')">✅ Assign</button></td>
-        </tr>
-      `).join('') || '<tr><td colspan="8">No sorted, zone-confirmed parcels are waiting for driver assignment.</td></tr>';
+      const manageable = orders.filter(order => {
+        const unassigned = !order.assigned_driver_id
+          && order.zone_status === 'confirmed'
+          && ['sorted', 'redelivery_scheduled'].includes(order.parcel_status);
+        const assigned = order.assigned_driver_id
+          && ['assigned', 'handed_to_driver'].includes(order.parcel_status)
+          && !['delivered', 'cancelled', 'rejected'].includes(order.order_status);
+        return unassigned || assigned;
+      });
+      tbody.innerHTML = manageable.map(order => {
+        const isAssigned = Boolean(order.assigned_driver_id);
+        const collected = order.parcel_status === 'handed_to_driver';
+        const status = collected ? 'Collected by driver'
+          : isAssigned ? 'Assigned'
+            : order.redelivery_status === 'scheduled' ? `Redelivery · Attempt ${Number(order.delivery_attempt_count || 0) + 1}`
+              : 'Ready to assign';
+        const controls = isAssigned
+          ? `<div class="td-sub" style="margin-bottom:0.35rem;">Route: ${escapeHtml(order.scheduled_delivery_date || 'Not set')}</div><input class="filter-input transfer-reason" type="text" maxlength="180" placeholder="Reason for changing driver" style="width:210px;">`
+          : `<input type="date" class="filter-input route-date" style="width:150px;" value="${order.scheduled_delivery_date || new Date().toISOString().slice(0, 10)}">`;
+        return `
+          <tr data-driver-order-id="${order.id}">
+            <td class="td-id">${escapeHtml(order.order_number)}</td>
+            <td>${escapeHtml(clientName(order))}</td>
+            <td><div class="td-name">${escapeHtml(order.customer_name || '—')}</div><div class="td-sub">${escapeHtml(order.customer_phone || '')}</div></td>
+            <td><span class="badge ${collected ? 'badge-active' : isAssigned ? 'badge-confirmed' : 'badge-pending'}">${escapeHtml(status)}</span></td>
+            <td>${moneyFull(driverCollects(order))}${order.redelivery_fee > 0 ? `<div class="td-sub">Includes ${moneyFull(order.redelivery_fee)} redelivery</div>` : ''}</td>
+            <td>${isAssigned ? escapeHtml(driverName(order.assigned_driver_id)) : 'Unassigned'}</td>
+            <td><select class="filter-select driver-select" style="width:180px;">${isAssigned ? transferDriverOptions(order.assigned_driver_id) : driverOptions()}</select></td>
+            <td>${controls}</td>
+            <td><button class="btn btn-primary btn-sm" onclick="assignDriver('${order.id}')">${isAssigned ? 'Change Driver' : 'Assign'}</button></td>
+          </tr>`;
+      }).join('') || '<tr><td colspan="9">No parcels are currently available for driver assignment or reassignment.</td></tr>';
     }
 
     function transferDriverOptions(currentDriverId) {
@@ -3308,52 +3318,6 @@
         return `<option value="${driver.id}">${escapeHtml(label)}</option>`;
       }).join('');
     }
-
-    function renderDriverTransfers() {
-      const body = document.getElementById('driverTransferBody');
-      if (!body) return;
-      const transferable = orders.filter(order =>
-        order.assigned_driver_id
-        && ['assigned', 'handed_to_driver'].includes(order.parcel_status)
-        && !['delivered', 'cancelled', 'rejected'].includes(order.order_status)
-      );
-      body.innerHTML = transferable.map(order => `
-        <tr data-transfer-order-id="${order.id}">
-          <td><div class="td-id">${escapeHtml(order.order_number)}</div><div class="td-sub">${order.parcel_status === 'handed_to_driver' ? 'Collected by driver' : 'Assigned'}</div></td>
-          <td><div class="td-name">${escapeHtml(order.customer_name || '—')}</div><div class="td-sub">${escapeHtml(order.delivery_address || order.area_name || '')}</div></td>
-          <td>${escapeHtml(driverName(order.assigned_driver_id))}</td>
-          <td><select class="filter-select transfer-driver-select" style="width:180px;">${transferDriverOptions(order.assigned_driver_id)}</select></td>
-          <td><input class="filter-input transfer-reason" type="text" maxlength="180" placeholder="Driver handoff reason" style="width:210px;"></td>
-          <td><button class="btn btn-primary btn-sm" type="button" onclick="transferOrderDriver('${order.id}')">Transfer</button></td>
-        </tr>
-      `).join('') || '<tr><td colspan="6">No assigned or collected deliveries are available for transfer.</td></tr>';
-    }
-
-    window.transferOrderDriver = function(orderId) {
-      const order = orders.find(item => item.id === orderId);
-      const row = document.querySelector(`#driverTransferBody tr[data-transfer-order-id="${orderId}"]`);
-      if (!order || !row) return showToast('Could not find this assigned delivery.');
-      const toDriverId = row.querySelector('.transfer-driver-select')?.value || '';
-      const reason = row.querySelector('.transfer-reason')?.value.trim() || '';
-      if (!toDriverId) return showToast('Select the receiving driver.');
-      if (reason.length < 3) return showToast('Enter a reason for the driver handoff.');
-      const receivingDriver = driverName(toDriverId);
-      showModal('Transfer Driver', `Confirm that ${order.order_number} was physically handed to ${receivingDriver}?`, async () => {
-        try {
-          const { data, error } = await supabase.rpc('admin_transfer_order_driver', {
-            p_order_id: orderId,
-            p_to_driver_id: toDriverId,
-            p_reason: reason
-          });
-          if (error) throw error;
-          showToast(`${order.order_number} transferred to ${receivingDriver} on ${data?.manifest_number || 'a collected manifest'}.`);
-          await loadData();
-          showPanel('driver-assign');
-        } catch (error) {
-          window.vdNotify('Driver Transfer Failed', error.message || 'Could not transfer this delivery.', 'error');
-        }
-      });
-    };
 
     function pickupStatusBadge(status) {
       const labels = {
@@ -3570,8 +3534,7 @@
 
     function clearStaticAdminData() {
       document.querySelector('#panel-all-orders tbody').innerHTML = '<tr><td colspan="8">Loading orders...</td></tr>';
-      document.querySelector('#panel-driver-assign tbody').innerHTML = '<tr><td colspan="8">Loading driver assignments...</td></tr>';
-      document.getElementById('driverTransferBody').innerHTML = '<tr><td colspan="6">Loading assigned deliveries...</td></tr>';
+      document.querySelector('#panel-driver-assign tbody').innerHTML = '<tr><td colspan="9">Loading driver assignments...</td></tr>';
       document.getElementById('parcelCheckinBody').innerHTML = '<tr><td colspan="7">Loading parcel records...</td></tr>';
       document.getElementById('pickupManagementBody').innerHTML = '<tr><td colspan="7">Loading pickup requests...</td></tr>';
       document.getElementById('deliverySchedulingBody').innerHTML = '<tr><td colspan="7">Loading delivery schedules...</td></tr>';
@@ -3656,7 +3619,6 @@
       renderReturnManagement();
       renderZoneConfirm();
       renderDriverAssign();
-      renderDriverTransfers();
       renderAccounting();
       renderAccounts();
       applySettingsToControls();
@@ -3768,8 +3730,7 @@
 
     window.assignDriver = function(orderId) {
       const order = orders.find(o => o.id === orderId);
-      const row = [...document.querySelectorAll('#panel-driver-assign tbody tr')]
-        .find(tr => tr.querySelector('.td-id')?.textContent === order?.order_number);
+      const row = document.querySelector(`#panel-driver-assign tr[data-driver-order-id="${orderId}"]`);
 
       if (!order || !row) {
         showToast('Could not find this order. Refresh with Ctrl + F5, then try again.');
@@ -3777,13 +3738,39 @@
       }
 
       const driverId = row.querySelector('.driver-select').value;
-      const routeDate = row.querySelector('.route-date').value;
       const driverLabel = row.querySelector('.driver-select').selectedOptions[0]?.textContent || 'driver';
 
       if (!driverId) {
         showToast('Please select a driver first.');
         return;
       }
+
+      if (order.assigned_driver_id) {
+        const reason = row.querySelector('.transfer-reason')?.value.trim() || '';
+        if (reason.length < 3) return showToast('Enter a reason for changing the driver.');
+        const collected = order.parcel_status === 'handed_to_driver';
+        const confirmation = collected
+          ? `Confirm that ${order.order_number} was physically handed to ${driverLabel}?`
+          : `Change ${order.order_number} from ${driverName(order.assigned_driver_id)} to ${driverLabel}?`;
+        showModal('Change Driver', confirmation, async () => {
+          try {
+            const { data, error } = await supabase.rpc('admin_transfer_order_driver', {
+              p_order_id: orderId,
+              p_to_driver_id: driverId,
+              p_reason: reason
+            });
+            if (error) throw error;
+            showToast(`${order.order_number} changed to ${driverLabel} on ${data?.manifest_number || 'a delivery manifest'}.`);
+            await loadData();
+            showPanel('driver-assign');
+          } catch (error) {
+            window.vdNotify('Driver Change Failed', error.message || 'Could not change the assigned driver.', 'error');
+          }
+        });
+        return;
+      }
+
+      const routeDate = row.querySelector('.route-date')?.value || '';
 
       showModal('Assign Driver', `Assign ${driverLabel} to order ${order.order_number}?`, async () => {
         try {
@@ -4135,8 +4122,7 @@
       const message = escapeHtml(error.message || 'Could not load admin dashboard data.');
       showZoneMessage(message);
       document.querySelector('#panel-all-orders tbody').innerHTML = `<tr><td colspan="8">${message}</td></tr>`;
-      document.querySelector('#panel-driver-assign tbody').innerHTML = `<tr><td colspan="8">${message}</td></tr>`;
-      document.getElementById('driverTransferBody').innerHTML = `<tr><td colspan="6">${message}</td></tr>`;
+      document.querySelector('#panel-driver-assign tbody').innerHTML = `<tr><td colspan="9">${message}</td></tr>`;
       document.getElementById('parcelCheckinBody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
       document.getElementById('pickupManagementBody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
       document.getElementById('deliverySchedulingBody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
