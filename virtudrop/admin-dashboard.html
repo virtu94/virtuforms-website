@@ -2436,6 +2436,9 @@
         const deactivateButton = !isSelf && status !== 'inactive'
           ? `<button class="btn btn-ghost btn-sm" onclick="deactivateAccount('${profile.id}')">Deactivate</button>`
           : '';
+        const convertDriverButton = profile.role === 'business' && !isSelf
+          ? `<button class="btn btn-primary btn-sm" onclick="convertAccountToDriver('${profile.id}')">Convert to Driver</button>`
+          : '';
 
         return `
           <div class="account-card${lockedClass}">
@@ -2447,6 +2450,7 @@
             </div>
             <div class="acc-actions">
               ${approveButton}
+              ${convertDriverButton}
               ${unlockButton}
               ${reactivateButton}
               ${lockButton}
@@ -2457,6 +2461,31 @@
       }).join('');
     }
     window.renderAccounts = renderAccounts;
+
+    window.convertAccountToDriver = function(profileId) {
+      const profile = allProfiles.find(item => item.id === profileId);
+      if (!profile) return showToast('Could not find this account.');
+      const firstName = String(profile.first_name || '').trim();
+      const lastName = String(profile.last_name || '').trim();
+      if (firstName.length < 2 || lastName.length < 2) {
+        return window.vdNotify('Driver Not Converted', 'The account requires a first and last name before conversion.', 'error');
+      }
+      showModal('Convert to Driver', `Convert ${accountDisplayName(profile)} from a business client into an active driver? This is allowed only when the business account has no orders or linked financial records.`, async () => {
+        try {
+          const { data, error } = await supabase.rpc('admin_link_driver_profile', {
+            p_auth_user_id: profileId,
+            p_first_name: firstName,
+            p_last_name: lastName
+          });
+          if (error) throw error;
+          showToast(`${data?.name || 'Account'} converted to a driver.`);
+          await loadData();
+          showPanel('accounts');
+        } catch (error) {
+          window.vdNotify('Driver Not Converted', error.message || 'Could not convert this account.', 'error');
+        }
+      });
+    };
 
     async function setAccountStatus(profileId, status) {
       const profile = allProfiles.find(item => item.id === profileId);
