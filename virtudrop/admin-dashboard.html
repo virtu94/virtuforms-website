@@ -1043,6 +1043,16 @@
             </table>
           </div>
         </div>
+        <div class="card" style="margin-top:1rem;">
+          <div class="card-title">Driver-to-Driver Handoffs</div>
+          <div class="accounting-note">Assigned orders can be reassigned. If a collected parcel is physically given to another driver, it moves to that driver’s collected manifest. A reason is required and the manifest history is retained.</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Order</th><th>Customer</th><th>Current Driver</th><th>Receiving Driver</th><th>Reason</th><th>Action</th></tr></thead>
+              <tbody id="driverTransferBody"><tr><td colspan="6">Loading assigned deliveries...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <div class="panel" id="panel-driver-import">
@@ -3289,6 +3299,62 @@
       `).join('') || '<tr><td colspan="8">No sorted, zone-confirmed parcels are waiting for driver assignment.</td></tr>';
     }
 
+    function transferDriverOptions(currentDriverId) {
+      const available = drivers.filter(driver => driver.id !== currentDriverId);
+      if (!available.length) return '<option value="">No other active drivers</option>';
+      return '<option value="">— Receiving driver —</option>' + available.map(driver => {
+        const profile = driverProfilesById.get(driver.profile_id);
+        const label = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || driver.name || 'Driver';
+        return `<option value="${driver.id}">${escapeHtml(label)}</option>`;
+      }).join('');
+    }
+
+    function renderDriverTransfers() {
+      const body = document.getElementById('driverTransferBody');
+      if (!body) return;
+      const transferable = orders.filter(order =>
+        order.assigned_driver_id
+        && ['assigned', 'handed_to_driver'].includes(order.parcel_status)
+        && !['delivered', 'cancelled', 'rejected'].includes(order.order_status)
+      );
+      body.innerHTML = transferable.map(order => `
+        <tr data-transfer-order-id="${order.id}">
+          <td><div class="td-id">${escapeHtml(order.order_number)}</div><div class="td-sub">${order.parcel_status === 'handed_to_driver' ? 'Collected by driver' : 'Assigned'}</div></td>
+          <td><div class="td-name">${escapeHtml(order.customer_name || '—')}</div><div class="td-sub">${escapeHtml(order.delivery_address || order.area_name || '')}</div></td>
+          <td>${escapeHtml(driverName(order.assigned_driver_id))}</td>
+          <td><select class="filter-select transfer-driver-select" style="width:180px;">${transferDriverOptions(order.assigned_driver_id)}</select></td>
+          <td><input class="filter-input transfer-reason" type="text" maxlength="180" placeholder="Driver handoff reason" style="width:210px;"></td>
+          <td><button class="btn btn-primary btn-sm" type="button" onclick="transferOrderDriver('${order.id}')">Transfer</button></td>
+        </tr>
+      `).join('') || '<tr><td colspan="6">No assigned or collected deliveries are available for transfer.</td></tr>';
+    }
+
+    window.transferOrderDriver = function(orderId) {
+      const order = orders.find(item => item.id === orderId);
+      const row = document.querySelector(`#driverTransferBody tr[data-transfer-order-id="${orderId}"]`);
+      if (!order || !row) return showToast('Could not find this assigned delivery.');
+      const toDriverId = row.querySelector('.transfer-driver-select')?.value || '';
+      const reason = row.querySelector('.transfer-reason')?.value.trim() || '';
+      if (!toDriverId) return showToast('Select the receiving driver.');
+      if (reason.length < 3) return showToast('Enter a reason for the driver handoff.');
+      const receivingDriver = driverName(toDriverId);
+      showModal('Transfer Driver', `Confirm that ${order.order_number} was physically handed to ${receivingDriver}?`, async () => {
+        try {
+          const { data, error } = await supabase.rpc('admin_transfer_order_driver', {
+            p_order_id: orderId,
+            p_to_driver_id: toDriverId,
+            p_reason: reason
+          });
+          if (error) throw error;
+          showToast(`${order.order_number} transferred to ${receivingDriver} on ${data?.manifest_number || 'a collected manifest'}.`);
+          await loadData();
+          showPanel('driver-assign');
+        } catch (error) {
+          window.vdNotify('Driver Transfer Failed', error.message || 'Could not transfer this delivery.', 'error');
+        }
+      });
+    };
+
     function pickupStatusBadge(status) {
       const labels = {
         requested: 'Requested',
@@ -3505,6 +3571,7 @@
     function clearStaticAdminData() {
       document.querySelector('#panel-all-orders tbody').innerHTML = '<tr><td colspan="8">Loading orders...</td></tr>';
       document.querySelector('#panel-driver-assign tbody').innerHTML = '<tr><td colspan="8">Loading driver assignments...</td></tr>';
+      document.getElementById('driverTransferBody').innerHTML = '<tr><td colspan="6">Loading assigned deliveries...</td></tr>';
       document.getElementById('parcelCheckinBody').innerHTML = '<tr><td colspan="7">Loading parcel records...</td></tr>';
       document.getElementById('pickupManagementBody').innerHTML = '<tr><td colspan="7">Loading pickup requests...</td></tr>';
       document.getElementById('deliverySchedulingBody').innerHTML = '<tr><td colspan="7">Loading delivery schedules...</td></tr>';
@@ -3589,6 +3656,7 @@
       renderReturnManagement();
       renderZoneConfirm();
       renderDriverAssign();
+      renderDriverTransfers();
       renderAccounting();
       renderAccounts();
       applySettingsToControls();
@@ -4068,6 +4136,7 @@
       showZoneMessage(message);
       document.querySelector('#panel-all-orders tbody').innerHTML = `<tr><td colspan="8">${message}</td></tr>`;
       document.querySelector('#panel-driver-assign tbody').innerHTML = `<tr><td colspan="8">${message}</td></tr>`;
+      document.getElementById('driverTransferBody').innerHTML = `<tr><td colspan="6">${message}</td></tr>`;
       document.getElementById('parcelCheckinBody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
       document.getElementById('pickupManagementBody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
       document.getElementById('deliverySchedulingBody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
