@@ -1076,7 +1076,7 @@
           <div class="historical-form-grid">
             <div class="finance-field"><label for="driverImportCustomer">Customer Name</label><input class="filter-input" id="driverImportCustomer" type="text"></div>
             <div class="finance-field"><label for="driverImportPhone">Customer Phone</label><input class="filter-input" id="driverImportPhone" type="text" placeholder="868-000-0000"></div>
-            <div class="finance-field"><label for="driverImportItem">Item Number</label><input class="filter-input" id="driverImportItem" type="text" placeholder="Client item/reference"></div>
+            <div class="finance-field"><label for="driverImportItem">Item / Client Reference (Optional)</label><input class="filter-input" id="driverImportItem" type="text" placeholder="Leave blank to generate"></div>
             <div class="finance-field"><label for="driverImportLocation">Delivery Location</label><input class="filter-input" id="driverImportLocation" type="text" placeholder="Street, area or full address"></div>
             <div class="finance-field"><label for="driverImportPackageAmount">Package/COD Amount</label><input class="filter-input" id="driverImportPackageAmount" type="number" min="0" step="0.01" value="0.00"></div>
             <div class="finance-field"><label for="driverImportCollectAmount">Amount Driver Collects</label><input class="filter-input" id="driverImportCollectAmount" type="number" min="0" step="0.01" value="0.00"></div>
@@ -1089,7 +1089,7 @@
           <div class="card-title">CSV Batch Import</div>
           <div class="csv-drop">
             <input class="filter-input" type="file" id="driverImportFile" accept=".csv,text/csv">
-            <div class="csv-help">Required columns: customer_name, customer_phone, item_number, location, package_amount, amount_to_collect. Notes is optional.</div>
+            <div class="csv-help">Required columns: customer_name, customer_phone, location, package_amount, amount_to_collect. Item_number and notes are optional. The Business Client selected above applies to every row.</div>
             <div class="finance-actions">
               <button class="btn btn-ghost" type="button" onclick="downloadDriverImportTemplate()">Download Template</button>
               <button class="btn btn-primary" type="button" onclick="previewDriverImport()">Preview CSV</button>
@@ -3796,7 +3796,6 @@
       const issues = [];
       if (row.customer_name.length < 2) issues.push('missing customer');
       if (String(row.customer_phone).replace(/\D/g, '').length < 7) issues.push('invalid phone');
-      if (!row.item_number) issues.push('missing item number');
       if (row.location.length < 3) issues.push('missing location');
       if (!Number.isFinite(row.package_amount) || row.package_amount < 0) issues.push('invalid package amount');
       if (!Number.isFinite(row.amount_to_collect) || row.amount_to_collect < 0) issues.push('invalid collection amount');
