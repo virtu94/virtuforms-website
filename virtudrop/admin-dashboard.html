@@ -728,6 +728,9 @@
         <span class="nav-icon">🚚</span> Driver Assignment
         <span class="nav-badge alert">8</span>
       </button>
+      <button class="nav-item" data-panel="driver-import">
+        <span class="nav-icon">⇧</span> Driver Work Import
+      </button>
 
       <div class="nav-section-label">Finance</div>
       <button class="nav-item" data-panel="cod-mgmt">
@@ -1041,6 +1044,65 @@
         </div>
       </div>
 
+      <div class="panel" id="panel-driver-import">
+        <div class="section-heading">
+          <h2>Driver Work Import</h2>
+          <p>Import active deliveries, generate VirtuDrop order numbers, and place them directly in a driver portal.</p>
+        </div>
+
+        <div class="card" style="margin-bottom:1rem;">
+          <div class="card-title">Link a Driver Login</div>
+          <div class="accounting-note">Create the user in Supabase Authentication first. Paste the Auth user ID here to create and activate the matching driver profile.</div>
+          <div class="historical-form-grid">
+            <div class="finance-field"><label for="driverAuthUserId">Supabase Auth User ID</label><input class="filter-input" id="driverAuthUserId" type="text" placeholder="00000000-0000-0000-0000-000000000000"></div>
+            <div class="finance-field"><label for="driverProfileFirstName">First Name</label><input class="filter-input" id="driverProfileFirstName" type="text"></div>
+            <div class="finance-field"><label for="driverProfileLastName">Last Name</label><input class="filter-input" id="driverProfileLastName" type="text"></div>
+          </div>
+          <button class="btn btn-primary" type="button" onclick="linkDriverProfile()">Create / Activate Driver Profile</button>
+        </div>
+
+        <div class="card" style="margin-bottom:1rem;">
+          <div class="card-title">Import Assignment</div>
+          <div class="historical-form-grid">
+            <div class="finance-field"><label for="driverImportDriver">Driver</label><select class="filter-select" id="driverImportDriver"></select></div>
+            <div class="finance-field"><label for="driverImportClient">Business Client</label><select class="filter-select" id="driverImportClient"></select></div>
+            <div class="finance-field"><label for="driverImportDate">Route Date</label><input class="filter-input" id="driverImportDate" type="date"></div>
+          </div>
+          <div class="accounting-note">Package/COD amount is the value owed to the business client. Amount to collect is the total the driver receives from the customer. The difference is recorded as the delivery fee.</div>
+        </div>
+
+        <div class="card" style="margin-bottom:1rem;">
+          <div class="card-title">Add One Delivery</div>
+          <div class="historical-form-grid">
+            <div class="finance-field"><label for="driverImportCustomer">Customer Name</label><input class="filter-input" id="driverImportCustomer" type="text"></div>
+            <div class="finance-field"><label for="driverImportPhone">Customer Phone</label><input class="filter-input" id="driverImportPhone" type="text" placeholder="868-000-0000"></div>
+            <div class="finance-field"><label for="driverImportItem">Item Number</label><input class="filter-input" id="driverImportItem" type="text" placeholder="Client item/reference"></div>
+            <div class="finance-field"><label for="driverImportLocation">Delivery Location</label><input class="filter-input" id="driverImportLocation" type="text" placeholder="Street, area or full address"></div>
+            <div class="finance-field"><label for="driverImportPackageAmount">Package/COD Amount</label><input class="filter-input" id="driverImportPackageAmount" type="number" min="0" step="0.01" value="0.00"></div>
+            <div class="finance-field"><label for="driverImportCollectAmount">Amount Driver Collects</label><input class="filter-input" id="driverImportCollectAmount" type="number" min="0" step="0.01" value="0.00"></div>
+            <div class="finance-field"><label for="driverImportNotes">Notes</label><input class="filter-input" id="driverImportNotes" type="text" placeholder="Optional delivery instructions"></div>
+          </div>
+          <button class="btn btn-primary" type="button" onclick="saveManualDriverImport()">Import and Assign Delivery</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">CSV Batch Import</div>
+          <div class="csv-drop">
+            <input class="filter-input" type="file" id="driverImportFile" accept=".csv,text/csv">
+            <div class="csv-help">Required columns: customer_name, customer_phone, item_number, location, package_amount, amount_to_collect. Notes is optional.</div>
+            <div class="finance-actions">
+              <button class="btn btn-ghost" type="button" onclick="downloadDriverImportTemplate()">Download Template</button>
+              <button class="btn btn-primary" type="button" onclick="previewDriverImport()">Preview CSV</button>
+              <button class="btn btn-primary" type="button" id="confirmDriverImportBtn" onclick="confirmDriverImport()" disabled>Import Valid Rows</button>
+            </div>
+          </div>
+          <div class="table-wrap" style="margin-top:1rem;"><table>
+            <thead><tr><th>Status</th><th>Customer</th><th>Phone</th><th>Item</th><th>Location</th><th>Package/COD</th><th>Collect</th><th>Issue</th></tr></thead>
+            <tbody id="driverImportPreviewBody"><tr><td colspan="8">Upload a CSV file to preview deliveries.</td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+
       <!-- ════════ COD MANAGEMENT ════════ -->
       <div class="panel" id="panel-cod-mgmt">
         <div class="section-heading">
@@ -1049,14 +1111,14 @@
         </div>
 
         <div class="accounting-note">
-          COD totals are calculated from live orders. For Cash on Delivery, the entered amount is treated as the full amount the driver collects, and the delivery fee is deducted to calculate the client payout.
+          Reconcile every delivered customer collection against the amount assigned to the driver. Any shortage or overage is recorded as a variance and blocks remittance until resolved.
         </div>
 
         <div class="stats-grid">
           <div class="stat-card ok">
             <div class="stat-label">Received Today</div>
             <div class="stat-val" id="accCollectedToday">TTD 0</div>
-            <div class="stat-sub" id="accCollectedTodaySub">Driver cash records logged today</div>
+            <div class="stat-sub" id="accCollectedTodaySub">Collections reconciled today</div>
           </div>
           <div class="stat-card warn">
             <div class="stat-label">Pending Driver Handover</div>
@@ -1071,7 +1133,7 @@
           <div class="stat-card">
             <div class="stat-label">Client Payouts</div>
             <div class="stat-val" id="accClientPayouts">TTD 0</div>
-            <div class="stat-sub">Delivered COD orders less delivery fees</div>
+            <div class="stat-sub">Reconciled COD ready for remittance</div>
           </div>
         </div>
 
@@ -1084,16 +1146,18 @@
                   <th>Order ID</th>
                   <th>Client</th>
                   <th>Customer</th>
-                  <th>Driver Collects</th>
-                  <th>Del. Fee</th>
-                  <th>Net to Client</th>
-                  <th>Payment</th>
+                  <th>Expected</th>
+                  <th>Received</th>
+                  <th>Variance</th>
+                  <th>Customer Method</th>
+                  <th>Handover</th>
                   <th>Status</th>
                   <th>Driver</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody id="accountingRecordsBody">
-                <tr><td colspan="9">Loading accounting records...</td></tr>
+                <tr><td colspan="11">Loading accounting records...</td></tr>
               </tbody>
             </table>
           </div>
@@ -1108,7 +1172,7 @@
         </div>
 
         <div class="accounting-note">
-          This view shows what is currently ready to pay to each business client from delivered COD orders. Use the copy button to prepare a payout note while we keep the website totals tied directly to the order table.
+          Only balanced, reconciled COD orders are available for remittance. Client-paid fees marked for deduction are subtracted from gross COD before the batch is paid.
         </div>
 
         <div class="card">
@@ -1148,9 +1212,9 @@
                 <tr>
                   <th>Client</th>
                   <th>Delivered COD Orders</th>
-                  <th>Total Collected</th>
-                  <th>Delivery Fees</th>
-                  <th>Amount to Pay Client</th>
+                  <th>Gross COD</th>
+                  <th>Deductions</th>
+                  <th>Net Remittance</th>
                   <th>Status</th>
                   <th>Action</th>
                 </tr>
@@ -1160,6 +1224,13 @@
               </tbody>
             </table>
           </div>
+        </div>
+        <div class="card" style="margin-top:1rem;">
+          <div class="card-title">Remittance History</div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Batch</th><th>Client</th><th>Orders</th><th>Gross</th><th>Deductions</th><th>Net Paid</th><th>Method</th><th>Date</th><th>Action</th></tr></thead>
+            <tbody id="remittanceHistoryBody"><tr><td colspan="9">Loading remittance history...</td></tr></tbody>
+          </table></div>
         </div>
       </div>
 
@@ -1483,6 +1554,7 @@
       'returns-redelivery': 'Returns & Redelivery',
       'delivery-scheduling': 'Delivery Scheduling',
       'driver-assign': 'Driver Assignment',
+      'driver-import': 'Driver Work Import',
       'cod-mgmt': 'COD Management',
       remittance: 'Remittance',
       'historical-import': 'Historical Import',
@@ -1500,6 +1572,7 @@
     let allProfiles = [];
     let currentProfile = null;
     let csvImportRows = [];
+    let driverImportRows = [];
     let latestPayoutRows = [];
     let remittanceRecords = [];
     let driverCashRecords = [];
@@ -1640,6 +1713,12 @@
       if (histFee && !histFee.value) {
         histFee.value = Number(appSettings.default_delivery_fee || 40);
       }
+      const importDriver = document.getElementById('driverImportDriver');
+      const importClient = document.getElementById('driverImportClient');
+      const importDate = document.getElementById('driverImportDate');
+      if (importDriver) importDriver.innerHTML = driverOptions();
+      if (importClient) importClient.innerHTML = clientOptionsHtml(false);
+      if (importDate && !importDate.value) importDate.value = today;
     }
 
     function setToggle(id, enabled) {
@@ -1746,7 +1825,7 @@
     }
 
     function clientPayout(order) {
-      if (order.financial_model_version >= 2) return amount(order.client_remittance_amount);
+      if (order.financial_model_version >= 2) return amount(order.remittance_net_amount ?? order.client_remittance_amount);
       if (order.payment_type !== 'cod') return 0;
       return Math.max(amount(order.cod_amount) - amount(order.delivery_fee), 0);
     }
@@ -1908,44 +1987,6 @@
       }
     };
 
-    // ── Confirm payment received (COD/Linx) ───────────────────────
-    window.confirmPaymentReceived = async function(orderId) {
-      const order = orders.find(o => o.id === orderId);
-      if (!order) { showToast('Order not found.'); return; }
-      try {
-        const { data: adminUser } = await supabase.auth.getUser();
-        const confirmedBy = adminUser?.user?.email || 'admin';
-        const { error } = await supabase
-          .from('orders')
-          .update({
-            payment_confirmed_at: new Date().toISOString(),
-            payment_confirmed_by: confirmedBy
-          })
-          .eq('id', orderId);
-        if (error) throw error;
-
-        // Notify client
-        if (order.business_client_id) {
-          const client = businessClients.find(c => c.id === order.business_client_id);
-          if (client?.profile_id) {
-            await supabase.from('notifications').insert({
-              profile_id: client.profile_id,
-              order_id: orderId,
-              message: `Payment for order ${order.order_number} has been confirmed received by VirtuDrop.`,
-              type: 'info'
-            });
-          }
-        }
-
-        order.payment_confirmed_at = new Date().toISOString();
-        showToast(`Payment confirmed for ${order.order_number}.`);
-        renderAll();
-      } catch (err) {
-        console.error('Confirm payment error:', err);
-        window.vdNotify('Error', err.message || 'Could not confirm payment.', 'error');
-      }
-    };
-
     // ── Admin notification badge ──────────────────────────────────
     async function loadAdminNotificationBadge() {
       try {
@@ -2026,7 +2067,7 @@
       const actions = document.getElementById('overviewPendingActions');
       if (actions) {
         const locked = allProfiles.filter(profile => String(profile.status || '').toLowerCase() === 'locked').length;
-        const unpaid = latestPayoutRows.filter(row => !row.paidRecord).length;
+        const unpaid = latestPayoutRows.length;
         actions.innerHTML = [
           ['Pickup requests', activePickups, 'active', '#e9f7f5'],
           ['Schedule review', scheduleReview, 'overdue', 'var(--orange-pale)'],
@@ -2061,6 +2102,9 @@
       if (order.payment_type === 'prepaid') {
         return '<span class="badge badge-online">No Collection</span>';
       }
+      if (order.payment_status === 'reconciled') return '<span class="badge badge-paid">Reconciled</span>';
+      if (order.payment_status === 'disputed') return '<span class="badge badge-failed">Disputed</span>';
+      if (order.payment_status === 'collected_by_driver') return '<span class="badge badge-pending">Driver Holding Funds</span>';
       if (isFailed(order)) {
         return '<span class="badge badge-failed">Not Collected</span>';
       }
@@ -2078,9 +2122,10 @@
       if (!isDelivered(order) || driverCollects(order) <= 0) {
         return '<span class="badge badge-online">Not Due</span>';
       }
-      return driverCashRecordForOrder(order.id)
-        ? '<span class="badge badge-paid">Received</span>'
-        : '<span class="badge badge-unpaid">Pending</span>';
+      const record = driverCashRecordForOrder(order.id);
+      if (!record) return '<span class="badge badge-unpaid">Pending</span>';
+      if (record.status === 'balanced') return '<span class="badge badge-paid">Balanced</span>';
+      return `<span class="badge badge-failed">${escapeHtml(String(record.status || 'disputed').replaceAll('_', ' '))}</span>`;
     }
 
     function selectedRemittanceOrders() {
@@ -2114,14 +2159,14 @@
       const collectionOrders = baseOrders.filter(order => ['cod', 'delivery_only'].includes(order.payment_type));
       const today = new Date().toISOString().slice(0, 10);
       const deliveredCollectable = collectionOrders.filter(order => isDelivered(order));
-      const receivedToday = driverCashRecords.filter(record => String(record.received_at || record.created_at || '').slice(0, 10) === today);
-      const pendingCollection = deliveredCollectable.filter(order => driverCollects(order) > 0 && !driverCashRecordForOrder(order.id));
+      const receivedToday = driverCashRecords.filter(record => String(record.reconciled_at || record.received_at || record.created_at || '').slice(0, 10) === today);
+      const pendingCollection = deliveredCollectable.filter(order => driverCollects(order) > 0 && driverCashRecordForOrder(order.id)?.status !== 'balanced');
       const confirmedFeeOrders = baseOrders.filter(order => order.zone_status === 'confirmed' || ['confirmed', 'assigned', 'out_for_delivery', 'delivered'].includes(order.order_status));
 
-      const collectedTodayTotal = receivedToday.reduce((sum, record) => sum + amount(record.amount), 0);
+      const collectedTodayTotal = receivedToday.reduce((sum, record) => sum + amount(record.received_amount ?? record.amount), 0);
       const pendingTotal = pendingCollection.reduce((sum, order) => sum + driverCollects(order), 0);
-      const deliveryFeeTotal = confirmedFeeOrders.reduce((sum, order) => sum + amount(order.delivery_fee), 0);
-      const clientPayoutTotal = deliveredCollectable.reduce((sum, order) => sum + clientPayout(order), 0);
+      const deliveryFeeTotal = confirmedFeeOrders.reduce((sum, order) => sum + amount(order.delivery_fee) + amount(order.redelivery_fee) + amount(order.pickup_fee) + amount(order.return_to_client_fee), 0);
+      const clientPayoutTotal = deliveredCollectable.filter(order => order.remittance_status === 'ready').reduce((sum, order) => sum + clientPayout(order), 0);
 
       const setText = (id, value) => {
         const el = document.getElementById(id);
@@ -2129,7 +2174,7 @@
       };
 
       setText('accCollectedToday', moneyFull(collectedTodayTotal));
-      setText('accCollectedTodaySub', `${receivedToday.length} cash record${receivedToday.length === 1 ? '' : 's'} logged today`);
+      setText('accCollectedTodaySub', `${receivedToday.length} reconciliation${receivedToday.length === 1 ? '' : 's'} logged today`);
       setText('accPendingCollection', moneyFull(pendingTotal));
       setText('accPendingCollectionSub', `${pendingCollection.length} order${pendingCollection.length === 1 ? '' : 's'} awaiting collection`);
       setText('accDeliveryFees', moneyFull(deliveryFeeTotal));
@@ -2137,32 +2182,37 @@
 
       const accountingBody = document.getElementById('accountingRecordsBody');
       if (accountingBody) {
-        accountingBody.innerHTML = collectionOrders.map(order => `
+        accountingBody.innerHTML = collectionOrders.map(order => {
+          const record = driverCashRecordForOrder(order.id);
+          const expected = record ? amount(record.expected_amount) : driverCollects(order);
+          const received = record ? amount(record.received_amount ?? record.amount) : null;
+          const variance = record ? amount(record.variance_amount) : null;
+          return `
           <tr>
             <td class="td-id">${escapeHtml(order.order_number)}</td>
             <td><div class="td-name">${escapeHtml(clientName(order))}</div></td>
             <td><div class="td-name">${escapeHtml(order.customer_name || '—')}</div><div class="td-sub">${escapeHtml(order.customer_phone || '')}</div></td>
-            <td class="accounting-total">${moneyFull(driverCollects(order))}</td>
-            <td>${moneyFull(order.delivery_fee)}</td>
-            <td class="accounting-total">${moneyFull(clientPayout(order))}</td>
-            <td><span class="badge ${order.payment_type === 'delivery_only' ? 'badge-online' : 'badge-cod'}">${escapeHtml(paymentLabel(order.payment_type))}</span></td>
-            <td>${collectionStatusBadge(order)}</td>
-            <td>${escapeHtml(order.assigned_driver_id ? driverName(order.assigned_driver_id) : 'Unassigned')}</td>
+            <td class="accounting-total">${moneyFull(expected)}</td>
+            <td>${received === null ? '—' : moneyFull(received)}</td>
+            <td class="accounting-total" style="color:${variance === null || Math.abs(variance) < 0.009 ? 'var(--green)' : 'var(--red)'};">${variance === null ? '—' : moneyFull(variance)}</td>
+            <td>${escapeHtml(String(order.delivery_collection_method || 'pending').replaceAll('_', ' '))}</td>
+            <td>${record ? escapeHtml(String(record.method || '').replaceAll('_', ' ')) : '—'}</td>
             <td>${adminReceivedBadge(order)}</td>
+            <td>${escapeHtml(order.assigned_driver_id ? driverName(order.assigned_driver_id) : 'Unassigned')}</td>
             <td>
               <div class="finance-actions">
-                ${driverCashRecordForOrder(order.id)
-                  ? `<button class="btn btn-ghost btn-sm" onclick="viewDriverCashRecord('${driverCashRecordForOrder(order.id).id}')">View</button>`
-                  : isDelivered(order) && driverCollects(order) > 0
-                    ? `<button class="btn btn-primary btn-sm" onclick="openMarkDriverCashReceived('${order.id}')">Mark Received</button>`
+                ${record ? `<button class="btn btn-ghost btn-sm" onclick="viewDriverCashRecord('${record.id}')">View</button>` : ''}
+                ${isDelivered(order) && driverCollects(order) > 0
+                    ? `<button class="btn btn-primary btn-sm" onclick="openMarkDriverCashReceived('${order.id}')">${record ? 'Update' : 'Reconcile'}</button>`
                     : '&mdash;'}
               </div>
             </td>
           </tr>
-        `).join('') || '<tr><td colspan="11">No COD or delivery-fee collection orders found yet.</td></tr>';
+        `;}).join('') || '<tr><td colspan="11">No COD or delivery-fee collection orders found yet.</td></tr>';
       }
 
-      renderClientPayouts(deliveredCollectable);
+      renderClientPayouts(deliveredCollectable.filter(order => order.payment_type === 'cod' && order.remittance_status === 'ready'));
+      renderRemittanceHistory();
     }
 
     function renderClientPayouts(deliveredCollectable) {
@@ -2171,19 +2221,19 @@
 
       const byClient = new Map();
       deliveredCollectable
-        .filter(order => order.payment_type === 'cod' && clientPayout(order) > 0)
+        .filter(order => order.payment_type === 'cod')
         .forEach(order => {
           const key = order.business_client_id || 'unknown';
           const current = byClient.get(key) || {
             client: clientName(order),
             count: 0,
-            collected: 0,
-            fees: 0,
+            gross: 0,
+            deductions: 0,
             payout: 0
           };
           current.count += 1;
-          current.collected += driverCollects(order);
-          current.fees += amount(order.delivery_fee);
+          current.gross += amount(order.remittance_gross_amount ?? order.client_remittance_amount);
+          current.deductions += amount(order.remittance_deductions_amount);
           current.payout += clientPayout(order);
           current.orderIds = current.orderIds || [];
           current.orderNumbers = current.orderNumbers || [];
@@ -2193,28 +2243,41 @@
         });
 
       const rows = [...byClient.entries()].sort((a, b) => b[1].payout - a[1].payout);
-      latestPayoutRows = rows.map(([clientId, item]) => {
-        const paidRecord = findPaidRemittance(clientId, item.orderIds, item.payout);
-        return { clientId, ...item, paidRecord };
-      });
+      latestPayoutRows = rows.map(([clientId, item]) => ({ clientId, ...item }));
       payoutBody.innerHTML = latestPayoutRows.map(item => `
         <tr>
           <td><div class="td-name">${escapeHtml(item.client)}</div></td>
           <td>${item.count}</td>
-          <td>${moneyFull(item.collected)}</td>
-          <td>${moneyFull(item.fees)}</td>
+          <td>${moneyFull(item.gross)}</td>
+          <td>${moneyFull(item.deductions)}</td>
           <td class="accounting-total">${moneyFull(item.payout)}</td>
-          <td>${item.paidRecord ? '<span class="badge badge-paid">Paid</span>' : '<span class="badge badge-unpaid">Ready to Pay</span>'}</td>
+          <td><span class="badge badge-unpaid">Ready to Pay</span></td>
           <td>
             <div class="finance-actions">
               <button class="btn btn-ghost btn-sm" onclick="copyClientPayout('${item.clientId}')">Copy Summary</button>
-              ${item.paidRecord
-                ? `<button class="btn btn-ghost btn-sm" onclick="viewRemittanceRecord('${item.paidRecord.id}')">View Paid</button>`
-                : `<button class="btn btn-primary btn-sm" onclick="openMarkRemittancePaid('${item.clientId}')">Mark Paid</button>`}
+              <button class="btn btn-primary btn-sm" onclick="openMarkRemittancePaid('${item.clientId}')">Create Payment</button>
             </div>
           </td>
         </tr>
       `).join('') || '<tr><td colspan="7">No delivered COD payouts are ready yet.</td></tr>';
+    }
+
+    function renderRemittanceHistory() {
+      const body = document.getElementById('remittanceHistoryBody');
+      if (!body) return;
+      body.innerHTML = remittanceRecords.map(record => `
+        <tr>
+          <td class="td-id">${escapeHtml(record.batch_number || String(record.id).slice(0, 8))}</td>
+          <td>${escapeHtml(clientsById.get(record.business_client_id)?.business_name || 'Client')}</td>
+          <td>${escapeHtml(String((record.order_numbers || record.order_ids || []).length))}</td>
+          <td>${moneyFull(record.gross_amount ?? record.amount)}</td>
+          <td>${moneyFull(record.deductions_amount)}</td>
+          <td class="accounting-total">${moneyFull(record.net_amount ?? record.amount)}</td>
+          <td>${escapeHtml(String(record.method || '').replaceAll('_', ' '))}</td>
+          <td>${new Date(record.paid_at || record.created_at).toLocaleString('en-TT')}</td>
+          <td><button class="btn btn-ghost btn-sm" onclick="viewRemittanceRecord('${record.id}')">View</button></td>
+        </tr>
+      `).join('') || '<tr><td colspan="9">No remittance batches have been paid yet.</td></tr>';
     }
 
     window.openMarkDriverCashReceived = function(orderId) {
@@ -2224,25 +2287,29 @@
         return;
       }
 
-      document.getElementById('modalTitle').textContent = 'Mark Driver Cash Received';
+      const existing = driverCashRecordForOrder(order.id);
+      document.getElementById('modalTitle').textContent = 'Reconcile Driver Collection';
       document.getElementById('modalBody').innerHTML = `
         <strong>${escapeHtml(order.order_number)}</strong><br>
         Driver: <strong>${escapeHtml(order.assigned_driver_id ? driverName(order.assigned_driver_id) : 'Unassigned')}</strong><br>
-        Amount received: <strong>${moneyFull(driverCollects(order))}</strong>
+        Expected from driver: <strong>${moneyFull(driverCollects(order))}</strong>
         <div class="payment-modal-form">
+          <label>Amount Received by VirtuDrop
+            <input id="driverCashAmount" type="number" min="0" step="0.01" value="${Number(existing?.received_amount ?? driverCollects(order)).toFixed(2)}" />
+          </label>
           <label>Method
             <select id="driverCashMethod">
-              <option value="cash">Cash</option>
-              <option value="linx">LINX</option>
-              <option value="bank_transfer">Bank Transfer</option>
-              <option value="other">Other</option>
+              <option value="cash" ${existing?.method === 'cash' ? 'selected' : ''}>Cash</option>
+              <option value="linx" ${existing?.method === 'linx' ? 'selected' : ''}>LINX</option>
+              <option value="bank_transfer" ${existing?.method === 'bank_transfer' ? 'selected' : ''}>Bank Transfer</option>
+              <option value="other" ${existing?.method === 'other' ? 'selected' : ''}>Other</option>
             </select>
           </label>
           <label>Reference / Note
-            <input id="driverCashReference" type="text" placeholder="Receipt, handover note, or reference" />
+            <input id="driverCashReference" type="text" value="${escapeHtml(existing?.reference || '')}" placeholder="Receipt, handover note, or reference" />
           </label>
           <label>Admin Notes
-            <textarea id="driverCashNotes" placeholder="Optional admin note"></textarea>
+            <textarea id="driverCashNotes" placeholder="Required when the received amount differs">${escapeHtml(existing?.notes || '')}</textarea>
           </label>
         </div>
       `;
@@ -2257,25 +2324,22 @@
         return;
       }
 
-      const reference = document.getElementById('driverCashReference')?.value.trim();
-      const notes = document.getElementById('driverCashNotes')?.value.trim();
-      const payload = {
-        driver_id: order.assigned_driver_id || null,
-        order_id: order.id,
-        amount: driverCollects(order),
-        method: document.getElementById('driverCashMethod')?.value || 'cash',
-        received_by: currentProfile?.id || null,
-        received_at: new Date().toISOString(),
-        notes: [reference, notes].filter(Boolean).join(' | ') || null
-      };
-
-      const { error } = await supabase.from('driver_cash_records').insert(payload);
+      const receivedAmount = Number(document.getElementById('driverCashAmount')?.value || 0);
+      const reference = document.getElementById('driverCashReference')?.value.trim() || null;
+      const notes = document.getElementById('driverCashNotes')?.value.trim() || null;
+      const { error } = await supabase.rpc('admin_reconcile_order_collection', {
+        p_order_id: order.id,
+        p_received_amount: receivedAmount,
+        p_handover_method: document.getElementById('driverCashMethod')?.value || 'cash',
+        p_reference: reference,
+        p_notes: notes
+      });
       if (error) {
-        window.vdNotify('Cash Record Not Saved', error.message || 'Could not save driver cash record.', 'error');
+        window.vdNotify('Collection Not Reconciled', error.message || 'Could not reconcile the driver collection.', 'error');
         return;
       }
 
-      showToast(`Cash received for ${order.order_number}.`);
+      showToast(`Collection reconciled for ${order.order_number}.`);
       await loadData();
     }
 
@@ -2286,10 +2350,7 @@
         return;
       }
       const driver = record.driver_id ? driverName(record.driver_id) : 'Unassigned';
-      showModal(
-        'Driver Cash Record',
-        `${driver} | ${moneyFull(record.amount)} | ${record.method.replaceAll('_', ' ')} | ${record.notes || 'No notes'} | ${new Date(record.received_at || record.created_at).toLocaleString('en-TT')}`
-      );
+      showModal('Collection Reconciliation', `${driver} | Expected ${moneyFull(record.expected_amount)} | Received ${moneyFull(record.received_amount ?? record.amount)} | Variance ${moneyFull(record.variance_amount)} | ${String(record.method || '').replaceAll('_', ' ')} | ${record.reference || 'No reference'} | ${record.notes || 'No notes'} | ${new Date(record.reconciled_at || record.received_at || record.created_at).toLocaleString('en-TT')}`);
     };
 
     function accountDisplayName(profile) {
@@ -2494,13 +2555,13 @@
         ['Date Range', `${start} to ${end}`],
         ['Exported', exportedAt],
         [],
-        ['Client', 'Delivered COD Orders', 'Total Collected', 'Delivery Fees', 'Amount to Pay Client', 'Status']
+        ['Client', 'Delivered COD Orders', 'Gross COD', 'Deductions', 'Net Remittance', 'Status']
       ];
       latestPayoutRows.forEach(row => {
-        rows.push([row.client, row.count, row.collected, row.fees, row.payout, row.paidRecord ? 'Paid' : 'Ready to Pay']);
+        rows.push([row.client, row.count, row.gross, row.deductions, row.payout, 'Ready to Pay']);
       });
       rows.push([]);
-      rows.push(['Totals', latestPayoutRows.reduce((s, r) => s + r.count, 0), latestPayoutRows.reduce((s, r) => s + r.collected, 0), latestPayoutRows.reduce((s, r) => s + r.fees, 0), latestPayoutRows.reduce((s, r) => s + r.payout, 0)]);
+      rows.push(['Totals', latestPayoutRows.reduce((s, r) => s + r.count, 0), latestPayoutRows.reduce((s, r) => s + r.gross, 0), latestPayoutRows.reduce((s, r) => s + r.deductions, 0), latestPayoutRows.reduce((s, r) => s + r.payout, 0)]);
 
       if (!window.XLSX) {
         showToast('XLSX export library is still loading. Try again in a few seconds.');
@@ -2524,14 +2585,15 @@
       document.getElementById('modalTitle').textContent = 'Mark Remittance Paid';
       document.getElementById('modalBody').innerHTML = `
         <strong>${escapeHtml(row.client)}</strong><br>
-        Amount to pay: <strong>${moneyFull(row.payout)}</strong>
+        Gross COD: <strong>${moneyFull(row.gross)}</strong><br>
+        Deductions: <strong>${moneyFull(row.deductions)}</strong><br>
+        Net to pay: <strong>${moneyFull(row.payout)}</strong>
         <div class="payment-modal-form">
           <label>Method
             <select id="remitPaidMethod">
               <option value="bank_transfer">Bank Transfer</option>
-              <option value="cash">Cash</option>
-              <option value="linx">LINX</option>
-              <option value="other">Other</option>
+              <option value="office_cash_collection">Cash Collected at Office</option>
+              <option value="next_pickup_cash">Cash on Next Pickup</option>
             </select>
           </label>
           <label>Reference
@@ -2553,19 +2615,13 @@
         return;
       }
 
-      const payload = {
-        business_client_id: clientId,
-        amount: row.payout,
-        order_ids: row.orderIds,
-        method: document.getElementById('remitPaidMethod')?.value || 'bank_transfer',
-        reference: document.getElementById('remitPaidReference')?.value.trim() || null,
-        notes: document.getElementById('remitPaidNotes')?.value.trim() || null,
-        status: 'paid',
-        paid_by: currentProfile?.id || null,
-        paid_at: new Date().toISOString()
-      };
-
-      const { error } = await supabase.from('remittance_records').insert(payload);
+      const { error } = await supabase.rpc('admin_create_remittance_batch', {
+        p_business_client_id: clientId,
+        p_order_ids: row.orderIds,
+        p_method: document.getElementById('remitPaidMethod')?.value || 'bank_transfer',
+        p_reference: document.getElementById('remitPaidReference')?.value.trim() || null,
+        p_notes: document.getElementById('remitPaidNotes')?.value.trim() || null
+      });
       if (error) {
         window.vdNotify('Remittance Not Saved', error.message || 'Could not save remittance record.', 'error');
         return;
@@ -2582,25 +2638,24 @@
         return;
       }
       const client = clientsById.get(record.business_client_id)?.business_name || 'Client';
-      showModal(
-        'Saved Remittance',
-        `${client} | ${moneyFull(record.amount)} | ${record.method.replaceAll('_', ' ')} | ${record.reference || 'No reference'} | ${new Date(record.paid_at || record.created_at).toLocaleString('en-TT')}`
-      );
+      showModal('Saved Remittance', `${record.batch_number || 'Remittance'} | ${client} | Gross ${moneyFull(record.gross_amount ?? record.amount)} | Deductions ${moneyFull(record.deductions_amount)} | Net ${moneyFull(record.net_amount ?? record.amount)} | ${String(record.method || '').replaceAll('_', ' ')} | ${record.reference || 'No reference'} | ${new Date(record.paid_at || record.created_at).toLocaleString('en-TT')}`);
     };
 
     window.copyClientPayout = async function(clientId) {
-      const deliveredCollectable = orders.filter(order => isDelivered(order) && order.payment_type === 'cod' && clientPayout(order) > 0 && (order.business_client_id || 'unknown') === clientId);
+      const payoutRow = payoutRowByClient(clientId);
+      const selectedIds = new Set(payoutRow?.orderIds || []);
+      const deliveredCollectable = orders.filter(order => selectedIds.has(order.id));
       if (!deliveredCollectable.length) {
         showToast('No payout summary is available for this client.');
         return;
       }
 
       const client = clientName(deliveredCollectable[0]);
-      const collected = deliveredCollectable.reduce((sum, order) => sum + driverCollects(order), 0);
-      const fees = deliveredCollectable.reduce((sum, order) => sum + amount(order.delivery_fee), 0);
+      const collected = deliveredCollectable.reduce((sum, order) => sum + amount(order.remittance_gross_amount), 0);
+      const fees = deliveredCollectable.reduce((sum, order) => sum + amount(order.remittance_deductions_amount), 0);
       const payout = deliveredCollectable.reduce((sum, order) => sum + clientPayout(order), 0);
       const orderList = deliveredCollectable.map(order => order.order_number).join(', ');
-      const text = `VirtuDrop payout summary\nClient: ${client}\nOrders: ${orderList}\nTotal collected: ${moneyFull(collected)}\nDelivery fees: ${moneyFull(fees)}\nAmount to pay client: ${moneyFull(payout)}`;
+      const text = `VirtuDrop remittance summary\nClient: ${client}\nOrders: ${orderList}\nGross COD: ${moneyFull(collected)}\nDeductions: ${moneyFull(fees)}\nNet remittance: ${moneyFull(payout)}`;
 
       try {
         await navigator.clipboard.writeText(text);
@@ -2704,7 +2759,7 @@
         <tr>
           <td class="td-id">${order.order_number}</td>
           <td><div class="td-name">${clientName(order)}</div></td>
-          <td><div class="td-name">${order.customer_name || '—'}</div><div class="td-sub">${order.customer_phone || ''}</div>${order.delivery_outcome_notes ? `<div class="td-sub" style="color:var(--teal-dark); font-weight:700;">Outcome: ${escapeHtml(order.delivery_outcome_notes)}</div>` : order.driver_notes ? `<div class="td-sub" style="color:var(--teal-dark); font-weight:700;">Driver: ${escapeHtml(order.driver_notes)}</div>` : ''}${order.redelivery_requested_date ? `<div class="td-sub">Preferred redelivery: ${new Date(order.redelivery_requested_date + 'T12:00:00').toLocaleDateString('en-TT')}</div>` : ''}${order.rejection_reason ? `<div class="td-sub" style="color:var(--red); font-weight:700;">Rejected: ${escapeHtml(order.rejection_reason)}</div>` : ''}</td>
+          <td><div class="td-name">${order.customer_name || '—'}</div><div class="td-sub">${order.customer_phone || ''}</div>${order.external_item_number ? `<div class="td-sub">Item: ${escapeHtml(order.external_item_number)}</div>` : ''}${order.delivery_outcome_notes ? `<div class="td-sub" style="color:var(--teal-dark); font-weight:700;">Outcome: ${escapeHtml(order.delivery_outcome_notes)}</div>` : order.driver_notes ? `<div class="td-sub" style="color:var(--teal-dark); font-weight:700;">Driver: ${escapeHtml(order.driver_notes)}</div>` : ''}${order.redelivery_requested_date ? `<div class="td-sub">Preferred redelivery: ${new Date(order.redelivery_requested_date + 'T12:00:00').toLocaleDateString('en-TT')}</div>` : ''}${order.rejection_reason ? `<div class="td-sub" style="color:var(--red); font-weight:700;">Rejected: ${escapeHtml(order.rejection_reason)}</div>` : ''}</td>
           <td>${zoneLabel(order)}</td>
           <td>
             <div class="td-name">Package: ${moneyFull(order.package_value || order.cod_amount)}</div>
@@ -2720,9 +2775,9 @@
             <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
               <button class="btn btn-ghost btn-sm" onclick="openCustomerTrackingWhatsApp('${order.id}')">💬 Customer</button>
               <button class="btn btn-ghost btn-sm" onclick="whatsappClient('${order.id}')">💬 Client</button>
-              ${order.order_status === 'delivered' && (order.payment_type === 'cod' || order.payment_type === 'delivery_only') && !order.payment_confirmed_at
-                ? `<button class="btn btn-primary btn-sm" onclick="confirmPaymentReceived('${order.id}')">✅ Confirm Payment</button>`
-                : order.payment_confirmed_at ? `<span class="badge badge-paid" title="Confirmed ${new Date(order.payment_confirmed_at).toLocaleDateString('en-TT')}">💳 Paid</span>` : ''}
+              ${order.order_status === 'delivered' && (order.payment_type === 'cod' || order.payment_type === 'delivery_only') && order.payment_status !== 'reconciled'
+                ? `<button class="btn btn-primary btn-sm" onclick="openMarkDriverCashReceived('${order.id}')">Reconcile Collection</button>`
+                : order.payment_status === 'reconciled' ? '<span class="badge badge-paid">Reconciled</span>' : ''}
               ${order.parcel_status === 'awaiting_parcel'
                 ? '<button class="btn btn-warn btn-sm" onclick="showPanel(\'parcel-checkin\')">Check In Parcel</button>'
                 : order.zone_status === 'pending' || order.order_status === 'zone_pending'
@@ -3466,14 +3521,14 @@
         supabase.from('zones').select('id, code, name, region, active, zone_areas(area_name)').eq('active', true).order('code'),
         supabase
           .from('orders')
-          .select('id, order_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_business_name, pickup_street_name, pickup_area_name, pickup_address, pickup_window, pickup_instructions, pickup_assigned_driver_id, pickup_scheduled_date, pickup_scheduled_window, pickup_assigned_at, pickup_picked_up_at, pickup_arrived_hub_at, pickup_cancelled_at, pickup_cancellation_reason, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, delivery_schedule_source, delivery_schedule_status, delivery_schedule_calculated_at, delivery_schedule_override_reason, delivery_outcome, delivery_attempt_count, last_delivery_attempt_at, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, redelivery_status, redelivery_fee, redelivery_fee_payer, redelivery_fee_settlement, redelivery_scheduled_at, redelivery_notes, return_disposition, holding_type, hold_until, return_to_client_status, return_to_client_fee, return_to_client_settlement, return_to_client_requested_at, return_to_client_completed_at, return_management_notes, quote_status, price_override_reason, zone_status, order_status, assigned_driver_id, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, payment_confirmed_by, source, created_at, updated_at')
+          .select('id, order_number, external_item_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, remittance_gross_amount, remittance_deductions_amount, remittance_net_amount, remittance_paid_amount, remittance_batch_id, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_business_name, pickup_street_name, pickup_area_name, pickup_address, pickup_window, pickup_instructions, pickup_assigned_driver_id, pickup_scheduled_date, pickup_scheduled_window, pickup_assigned_at, pickup_picked_up_at, pickup_arrived_hub_at, pickup_cancelled_at, pickup_cancellation_reason, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, delivery_schedule_source, delivery_schedule_status, delivery_schedule_calculated_at, delivery_schedule_override_reason, delivery_outcome, delivery_attempt_count, last_delivery_attempt_at, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, redelivery_status, redelivery_fee, redelivery_fee_payer, redelivery_fee_settlement, redelivery_scheduled_at, redelivery_notes, return_disposition, holding_type, hold_until, return_to_client_status, return_to_client_fee, return_to_client_settlement, return_to_client_requested_at, return_to_client_completed_at, return_management_notes, quote_status, price_override_reason, zone_status, order_status, assigned_driver_id, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, payment_confirmed_by, source, created_at, updated_at')
           .order('created_at', { ascending: false }),
         supabase.from('drivers').select('id, profile_id, status'),
         supabase.from('profiles').select('id, role, first_name, last_name, status').eq('role', 'driver'),
         supabase.from('profiles').select('id, role, first_name, last_name, status'),
         supabase.from('app_settings').select('key, value'),
-        supabase.from('remittance_records').select('id, business_client_id, amount, order_ids, method, reference, notes, status, paid_by, paid_at, created_at').order('paid_at', { ascending: false }),
-        supabase.from('driver_cash_records').select('id, driver_id, order_id, amount, method, received_by, received_at, notes, created_at').order('received_at', { ascending: false }),
+        supabase.rpc('admin_list_remittance_batches'),
+        supabase.rpc('admin_list_cod_reconciliations'),
         supabase.from('delivery_service_dates').select('service_date, is_service_day, reason, updated_at').order('service_date', { ascending: true }),
         supabase.rpc('admin_list_delivery_manifests')
       ]);
@@ -3713,6 +3768,154 @@
       }
       return '';
     }
+
+    function driverImportConfiguration() {
+      return {
+        driverId: document.getElementById('driverImportDriver')?.value || '',
+        clientId: document.getElementById('driverImportClient')?.value || '',
+        routeDate: document.getElementById('driverImportDate')?.value || ''
+      };
+    }
+
+    function buildDriverImportRow(row) {
+      return {
+        customer_name: String(row.customer_name || '').trim(),
+        customer_phone: String(row.customer_phone || '').trim(),
+        item_number: String(row.item_number || '').trim(),
+        location: String(row.location || row.address || '').trim(),
+        package_amount: Number(row.package_amount || 0),
+        amount_to_collect: Number(row.amount_to_collect || 0),
+        notes: String(row.notes || '').trim() || null
+      };
+    }
+
+    function validateDriverImportRow(row) {
+      const issues = [];
+      if (row.customer_name.length < 2) issues.push('missing customer');
+      if (String(row.customer_phone).replace(/\D/g, '').length < 7) issues.push('invalid phone');
+      if (!row.item_number) issues.push('missing item number');
+      if (row.location.length < 3) issues.push('missing location');
+      if (!Number.isFinite(row.package_amount) || row.package_amount < 0) issues.push('invalid package amount');
+      if (!Number.isFinite(row.amount_to_collect) || row.amount_to_collect < 0) issues.push('invalid collection amount');
+      if (Number.isFinite(row.package_amount) && Number.isFinite(row.amount_to_collect) && row.amount_to_collect < row.package_amount) issues.push('collect is below package amount');
+      return issues;
+    }
+
+    async function importDriverRows(rows) {
+      const config = driverImportConfiguration();
+      if (!config.driverId) throw new Error('Select the driver.');
+      if (!config.clientId) throw new Error('Select the business client.');
+      if (!config.routeDate) throw new Error('Select the route date.');
+      const { data, error } = await supabase.rpc('admin_import_driver_deliveries', {
+        p_driver_id: config.driverId,
+        p_business_client_id: config.clientId,
+        p_route_date: config.routeDate,
+        p_rows: rows
+      });
+      if (error) throw error;
+      return data;
+    }
+
+    window.saveManualDriverImport = async function() {
+      const row = buildDriverImportRow({
+        customer_name: document.getElementById('driverImportCustomer')?.value,
+        customer_phone: document.getElementById('driverImportPhone')?.value,
+        item_number: document.getElementById('driverImportItem')?.value,
+        location: document.getElementById('driverImportLocation')?.value,
+        package_amount: document.getElementById('driverImportPackageAmount')?.value,
+        amount_to_collect: document.getElementById('driverImportCollectAmount')?.value,
+        notes: document.getElementById('driverImportNotes')?.value
+      });
+      const issues = validateDriverImportRow(row);
+      if (issues.length) return window.vdNotify('Delivery Not Imported', issues.join(', '), 'error');
+      try {
+        const result = await importDriverRows([row]);
+        ['driverImportCustomer', 'driverImportPhone', 'driverImportItem', 'driverImportLocation', 'driverImportNotes'].forEach(id => { const field = document.getElementById(id); if (field) field.value = ''; });
+        document.getElementById('driverImportPackageAmount').value = '0.00';
+        document.getElementById('driverImportCollectAmount').value = '0.00';
+        showToast(`${result?.orders?.[0]?.order_number || 'Delivery'} imported and assigned.`);
+        await loadData();
+        showPanel('driver-import');
+      } catch (error) {
+        window.vdNotify('Delivery Not Imported', error.message || 'Could not import this delivery.', 'error');
+      }
+    };
+
+    window.downloadDriverImportTemplate = function() {
+      const csv = 'customer_name,customer_phone,item_number,location,package_amount,amount_to_collect,notes\nCustomer Name,868-000-0000,ITEM-001,"Street, Area",300.00,340.00,Optional instructions\n';
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'virtudrop-driver-work-import-template.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    window.previewDriverImport = async function() {
+      const body = document.getElementById('driverImportPreviewBody');
+      const confirmBtn = document.getElementById('confirmDriverImportBtn');
+      try {
+        const file = document.getElementById('driverImportFile')?.files[0];
+        if (!file) throw new Error('Select a CSV file first.');
+        const parsed = parseCsv(await file.text());
+        if (!parsed.length) throw new Error('The CSV has no delivery rows.');
+        const seenItems = new Set();
+        driverImportRows = parsed.map(source => {
+          const row = buildDriverImportRow(source);
+          const issues = validateDriverImportRow(row);
+          const itemKey = row.item_number.toLowerCase();
+          if (itemKey && seenItems.has(itemKey)) issues.push('duplicate item in file');
+          if (itemKey) seenItems.add(itemKey);
+          return { row, issues };
+        });
+        body.innerHTML = driverImportRows.map(item => `<tr>
+          <td>${item.issues.length ? '<span class="badge badge-failed">Invalid</span>' : '<span class="badge badge-confirmed">Ready</span>'}</td>
+          <td>${escapeHtml(item.row.customer_name)}</td><td>${escapeHtml(item.row.customer_phone)}</td><td>${escapeHtml(item.row.item_number)}</td>
+          <td>${escapeHtml(item.row.location)}</td><td>${moneyFull(item.row.package_amount)}</td><td>${moneyFull(item.row.amount_to_collect)}</td>
+          <td>${escapeHtml(item.issues.join(', ') || '—')}</td></tr>`).join('');
+        confirmBtn.disabled = !driverImportRows.some(item => !item.issues.length);
+      } catch (error) {
+        driverImportRows = [];
+        confirmBtn.disabled = true;
+        body.innerHTML = `<tr><td colspan="8">${escapeHtml(error.message || 'Could not read this CSV.')}</td></tr>`;
+      }
+    };
+
+    window.confirmDriverImport = async function() {
+      const validRows = driverImportRows.filter(item => !item.issues.length).map(item => item.row);
+      if (!validRows.length) return showToast('No valid delivery rows are ready to import.');
+      try {
+        const result = await importDriverRows(validRows);
+        showModal('Driver Work Imported', `${result.imported_count} deliveries assigned. Manifest: ${result.manifest_number}`);
+        driverImportRows = [];
+        document.getElementById('confirmDriverImportBtn').disabled = true;
+        document.getElementById('driverImportPreviewBody').innerHTML = '<tr><td colspan="8">Import completed.</td></tr>';
+        document.getElementById('driverImportFile').value = '';
+        await loadData();
+        showPanel('driver-import');
+      } catch (error) {
+        window.vdNotify('Driver Work Not Imported', error.message || 'Could not import these deliveries.', 'error');
+      }
+    };
+
+    window.linkDriverProfile = async function() {
+      const userId = document.getElementById('driverAuthUserId')?.value.trim() || '';
+      const firstName = document.getElementById('driverProfileFirstName')?.value.trim() || '';
+      const lastName = document.getElementById('driverProfileLastName')?.value.trim() || '';
+      if (!/^[0-9a-f-]{36}$/i.test(userId)) return showToast('Enter the Supabase Auth user ID.');
+      if (firstName.length < 2 || lastName.length < 2) return showToast('Enter the driver first and last name.');
+      try {
+        const { data, error } = await supabase.rpc('admin_link_driver_profile', { p_auth_user_id: userId, p_first_name: firstName, p_last_name: lastName });
+        if (error) throw error;
+        showToast(`${data?.name || 'Driver'} profile is active.`);
+        ['driverAuthUserId', 'driverProfileFirstName', 'driverProfileLastName'].forEach(id => { document.getElementById(id).value = ''; });
+        await loadData();
+        showPanel('driver-import');
+      } catch (error) {
+        window.vdNotify('Driver Profile Not Created', error.message || 'Could not link this driver account.', 'error');
+      }
+    };
 
     function buildHistoricalOrder(row, source = 'admin_manual') {
       const clientId = row.business_client_id || clientIdFromName(row.client);

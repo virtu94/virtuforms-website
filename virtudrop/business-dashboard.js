@@ -557,6 +557,7 @@ let profile = null;
 let business = null;
 let orders = [];
 let remittanceRecords = [];
+let remittancePeriod = 'week';
 let activeLocTab = 'share';
 let isSubmittingBusinessOrder = false;
 
@@ -629,7 +630,7 @@ function collectionAmount(order) {
 }
 
 function clientPayout(order) {
-  if (order.financial_model_version >= 2) return Number(order.client_remittance_amount || 0);
+  if (order.financial_model_version >= 2) return Number(order.remittance_net_amount ?? order.client_remittance_amount ?? 0);
   if (order.payment_type !== 'cod') return 0;
   return Math.max(Number(order.cod_amount || 0) - Number(order.delivery_fee || 0), 0);
 }
@@ -891,12 +892,18 @@ window.openOrderDetails = function(orderId) {
     <div class="order-detail-grid">
       ${detailItem('Customer', escapeHtml(order.customer_name || ''))}
       ${detailItem('Phone', escapeHtml(order.customer_phone || ''))}
+      ${order.external_item_number ? detailItem('Item Number', escapeHtml(order.external_item_number)) : ''}
       ${detailItem('Payment Type', escapeHtml(payment))}
       ${detailItem('Amount to Collect', escapeHtml(money(amountToCollect)))}
       ${detailItem('Package Value', escapeHtml(money(order.package_value || order.cod_amount)))}
       ${detailItem('Delivery Fee', escapeHtml(money(order.delivery_fee)))}
       ${detailItem('Customer Total', escapeHtml(money(order.customer_amount_due)))}
       ${detailItem('Driver Collects', escapeHtml(money(order.driver_amount_to_collect)))}
+      ${detailItem('Collection Status', escapeHtml(String(order.payment_status || 'pending').replaceAll('_', ' ')))}
+      ${order.payment_type === 'cod' ? detailItem('Remittance Status', escapeHtml(String(order.remittance_status || 'pending').replaceAll('_', ' '))) : ''}
+      ${order.payment_type === 'cod' ? detailItem('Gross Remittance', escapeHtml(money(order.remittance_gross_amount ?? order.client_remittance_amount))) : ''}
+      ${order.payment_type === 'cod' ? detailItem('Fee Deductions', escapeHtml(money(order.remittance_deductions_amount))) : ''}
+      ${order.payment_type === 'cod' ? detailItem('Net Remittance', escapeHtml(money(order.remittance_net_amount ?? order.client_remittance_amount))) : ''}
       ${order.delivery_fee_payer ? detailItem('Delivery Paid By', escapeHtml(order.delivery_fee_payer === 'client' ? 'Business client' : 'Customer')) : ''}
       ${order.client_fee_settlement ? detailItem('Business Settlement', escapeHtml(order.client_fee_settlement === 'deduct_from_remittance' ? 'Deduct from remittance' : 'Pay separately')) : ''}
       ${order.pickup_required ? detailItem('Pickup', `${escapeHtml(String(order.pickup_parcel_count || 1))} parcel(s) · ${escapeHtml(money(order.pickup_fee))}`, true) : ''}
@@ -1069,7 +1076,10 @@ function renderCod() {
     const packageAmount = Number(order.package_value || order.cod_amount || 0);
     const deliveryFee = Number(order.delivery_fee || 0);
     const collected = collectionAmount(order);
-    const status = order.order_status === 'delivered' ? 'Collected' : 'Pending Collection';
+    const status = order.remittance_status === 'paid' ? 'Remitted'
+      : order.payment_status === 'reconciled' ? 'Reconciled / Ready'
+        : order.payment_status === 'disputed' ? 'Disputed'
+          : order.order_status === 'delivered' ? 'Awaiting Reconciliation' : 'Pending Collection';
     return `
       <tr>
         <td style="padding:0.9rem 1rem; font-family:'Courier New',monospace; font-size:0.85rem; color:#2a9d8f;">${escapeHtml(order.order_number)}</td>
@@ -1099,10 +1109,19 @@ function renderCod() {
 }
 
 function renderRemittance() {
-  const clientRecords = remittanceRecords.filter(record => record.business_client_id === business?.id && record.status !== 'cancelled');
+  const now = new Date();
+  const weekStart = new Date(now); weekStart.setHours(0, 0, 0, 0); weekStart.setDate(now.getDate() - now.getDay());
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const clientRecords = remittanceRecords.filter(record => {
+    if (record.business_client_id !== business?.id || record.status === 'void') return false;
+    const paid = new Date(record.paid_at || record.created_at);
+    if (remittancePeriod === 'week' && paid < weekStart) return false;
+    if (remittancePeriod === 'month' && paid < monthStart) return false;
+    return true;
+  });
   const total = clientRecords.reduce((sum, record) => sum + Number(record.amount || 0), 0);
   const bank = clientRecords.filter(record => record.method === 'bank_transfer').reduce((sum, record) => sum + Number(record.amount || 0), 0);
-  const cash = clientRecords.filter(record => record.method === 'cash').reduce((sum, record) => sum + Number(record.amount || 0), 0);
+  const cash = clientRecords.filter(record => ['cash', 'office_cash_collection', 'next_pickup_cash'].includes(record.method)).reduce((sum, record) => sum + Number(record.net_amount ?? record.amount ?? 0), 0);
   setText('#remitTotal', money(total));
   setText('#remitOnline', money(bank));
   setText('#remitCash', money(cash));
@@ -1111,13 +1130,16 @@ function renderRemittance() {
     tbody.innerHTML = clientRecords.length ? clientRecords.map(record => `
       <tr>
         <td style="padding:0.9rem 1rem; border-bottom:1px solid #f5f5f5;">${formatDate(record.paid_at || record.created_at)}</td>
-        <td style="padding:0.9rem 1rem; border-bottom:1px solid #f5f5f5; font-size:0.82rem; color:#6a6a6a;">${escapeHtml((record.order_ids || []).length ? (record.order_ids || []).join(', ') : 'Linked orders')}</td>
-        <td style="padding:0.9rem 1rem; border-bottom:1px solid #f5f5f5; text-align:right; font-weight:700; color:#2a9d8f;">${money(record.amount)}</td>
+        <td style="padding:0.9rem 1rem; border-bottom:1px solid #f5f5f5; font-family:'Courier New',monospace;">${escapeHtml(record.batch_number || 'Remittance')}</td>
+        <td style="padding:0.9rem 1rem; border-bottom:1px solid #f5f5f5; font-size:0.82rem; color:#6a6a6a;">${escapeHtml((record.order_numbers || record.order_ids || []).length ? (record.order_numbers || record.order_ids || []).join(', ') : 'Linked orders')}</td>
+        <td style="padding:0.9rem 1rem; border-bottom:1px solid #f5f5f5; text-align:right;">${money(record.gross_amount ?? record.amount)}</td>
+        <td style="padding:0.9rem 1rem; border-bottom:1px solid #f5f5f5; text-align:right; color:#e07a3a;">${money(record.deductions_amount)}</td>
+        <td style="padding:0.9rem 1rem; border-bottom:1px solid #f5f5f5; text-align:right; font-weight:700; color:#2a9d8f;">${money(record.net_amount ?? record.amount)}</td>
         <td style="padding:0.9rem 1rem; border-bottom:1px solid #f5f5f5;"><span style="padding:0.25rem 0.7rem; background:#e8f5f3; color:#2a9d8f; border-radius:10px; font-size:0.78rem; font-weight:700;">${escapeHtml(String(record.method || '').replaceAll('_', ' '))}</span></td>
         <td style="padding:0.9rem 1rem; border-bottom:1px solid #f5f5f5; font-size:0.85rem; color:#6a6a6a;">${escapeHtml(record.reference || '—')}</td>
         <td style="padding:0.9rem 1rem; border-bottom:1px solid #f5f5f5; text-align:center;"><span style="padding:0.3rem 0.8rem; background:#d4edda; color:#155724; border-radius:20px; font-size:0.78rem; font-weight:700;">${escapeHtml(record.status || 'paid')}</span></td>
       </tr>
-    `).join('') : emptyRow(6, 'No remittance records have been posted yet.');
+    `).join('') : emptyRow(9, 'No remittance records have been posted yet.');
   }
 }
 
@@ -1394,11 +1416,14 @@ function codExportRows() {
 function remittanceExportRows() {
   return filteredReportRemittances().map(record => [
     formatDate(record.paid_at || record.created_at),
-    Number(record.amount || 0),
+    record.batch_number || '',
+    Number(record.gross_amount ?? record.amount ?? 0),
+    Number(record.deductions_amount || 0),
+    Number(record.net_amount ?? record.amount ?? 0),
     String(record.method || '').replaceAll('_', ' '),
     record.reference || '',
     record.status || 'paid',
-    (record.order_ids || []).join(', ')
+    (record.order_numbers || record.order_ids || []).join(', ')
   ]);
 }
 
@@ -1407,7 +1432,7 @@ window.exportBusinessReport = function(type) {
   if (!validateReportFilters()) return;
   const orderHeaders = ['Order', 'Customer', 'Phone', 'Route', 'Payment', 'Delivery Fee', 'Collected Amount', 'Status', 'Created'];
   const codHeaders = ['Order', 'Customer', 'Payment', 'Collected Amount', 'Delivery Fee', 'Driver Collected', 'Client Payout', 'Status', 'Created'];
-  const remitHeaders = ['Date', 'Amount', 'Method', 'Reference', 'Status', 'Linked Orders'];
+  const remitHeaders = ['Date', 'Batch', 'Gross COD', 'Deductions', 'Net Paid', 'Method', 'Reference', 'Status', 'Linked Orders'];
 
   if (type === 'orders') {
     exportRowsToXlsx('Order Report', 'Orders', orderHeaders, orderExportRows());
@@ -1483,14 +1508,10 @@ async function loadBusinessData() {
   const [{ data: orderData, error: orderError }, { data: remitData, error: remitError }] = await Promise.all([
     supabase
       .from('orders')
-      .select('id, order_number, financial_model_version, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_business_name, pickup_street_name, pickup_area_name, pickup_address, pickup_window, pickup_instructions, pickup_scheduled_date, pickup_scheduled_window, pickup_picked_up_at, pickup_arrived_hub_at, pickup_cancelled_at, pickup_cancellation_reason, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, delivery_outcome, delivery_attempt_count, last_delivery_attempt_at, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, redelivery_status, redelivery_fee, redelivery_fee_payer, redelivery_fee_settlement, redelivery_scheduled_at, redelivery_notes, return_disposition, holding_type, hold_until, return_to_client_status, return_to_client_fee, return_to_client_settlement, return_to_client_requested_at, return_to_client_completed_at, return_management_notes, zone_status, order_status, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, created_at, updated_at')
+      .select('id, order_number, external_item_number, financial_model_version, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, remittance_gross_amount, remittance_deductions_amount, remittance_net_amount, remittance_paid_amount, remittance_batch_id, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_business_name, pickup_street_name, pickup_area_name, pickup_address, pickup_window, pickup_instructions, pickup_scheduled_date, pickup_scheduled_window, pickup_picked_up_at, pickup_arrived_hub_at, pickup_cancelled_at, pickup_cancellation_reason, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, delivery_outcome, delivery_attempt_count, last_delivery_attempt_at, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, redelivery_status, redelivery_fee, redelivery_fee_payer, redelivery_fee_settlement, redelivery_scheduled_at, redelivery_notes, return_disposition, holding_type, hold_until, return_to_client_status, return_to_client_fee, return_to_client_settlement, return_to_client_requested_at, return_to_client_completed_at, return_management_notes, zone_status, order_status, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, created_at, updated_at')
       .eq('business_client_id', business.id)
       .order('created_at', { ascending: false }),
-    supabase
-      .from('remittance_records')
-      .select('id, business_client_id, amount, order_ids, method, reference, notes, status, paid_at, created_at')
-      .eq('business_client_id', business.id)
-      .order('paid_at', { ascending: false })
+    supabase.rpc('business_list_my_remittances')
   ]);
 
   if (orderError) throw orderError;
@@ -1872,6 +1893,7 @@ window.shareLink = function() {
 };
 
 window.filterRemit = function(period, btn) {
+  remittancePeriod = ['week', 'month', 'all'].includes(period) ? period : 'week';
   all('.remit-filter').forEach(button => {
     button.style.background = '#fff';
     button.style.color = '#4a4a4a';
@@ -1882,6 +1904,7 @@ window.filterRemit = function(period, btn) {
     btn.style.color = '#fff';
     btn.style.borderColor = '#2a9d8f';
   }
+  renderRemittance();
 };
 
 function closeSidebar() {
