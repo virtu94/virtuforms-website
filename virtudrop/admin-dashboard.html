@@ -2939,7 +2939,8 @@
         .eq('id', orderId);
 
       if (updateResult.error) {
-        throw rpcResult.error;
+        console.error('Direct zone confirmation fallback failed:', updateResult.error);
+        throw updateResult.error;
       }
     }
 
