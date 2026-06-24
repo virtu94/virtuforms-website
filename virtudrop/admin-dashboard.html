@@ -2494,7 +2494,7 @@
           <td class="td-id">${escapeHtml(order.order_number)}</td>
           <td><div class="td-name">${escapeHtml(clientName(order))}</div><div class="td-sub">${escapeHtml(order.customer_name || '')} · ${escapeHtml(order.customer_phone || '')}</div></td>
           <td><div class="td-name">${escapeHtml(String(order.checked_in_parcel_count || order.pickup_parcel_count || 1))} parcel(s)</div><div class="td-sub">${order.parcel_weight_lbs ? `${escapeHtml(String(order.parcel_weight_lbs))} lbs · ` : ''}${escapeHtml(order.parcel_condition || 'Not checked')}</div></td>
-          <td>${order.pickup_required ? `<div class="td-name">Required · ${moneyFull(order.pickup_fee)}</div><div class="td-sub">${escapeHtml(order.pickup_address || '')}</div>` : 'Client drop-off'}</td>
+          <td>${order.pickup_required ? `<div class="td-name">Required · ${moneyFull(order.pickup_fee)}</div><div class="td-sub">${escapeHtml(order.pickup_address || [order.pickup_business_name, order.pickup_street_name, order.pickup_area_name].filter(Boolean).join(', '))}</div>` : 'Client drop-off'}</td>
           <td>${new Date(order.created_at).toLocaleDateString('en-TT')}</td>
           <td>${parcelStatusBadge(order)}</td>
           <td><div class="finance-actions">
@@ -2747,7 +2747,7 @@
                 <div style="margin-top:0.65rem; padding:0.7rem; background:#f0f9f8; border-left:3px solid var(--teal-mid); border-radius:6px; font-size:0.82rem; line-height:1.55;">
                   <strong>Pickup required:</strong> ${order.pickup_parcel_count || 1} parcel(s) · ${moneyFull(order.pickup_fee)}<br>
                   ${escapeHtml(order.pickup_contact_name || '')} · ${escapeHtml(order.pickup_contact_phone || '')}<br>
-                  ${escapeHtml(order.pickup_address || '')} · ${escapeHtml(order.pickup_window || '')}
+                  ${escapeHtml(order.pickup_address || [order.pickup_business_name, order.pickup_street_name, order.pickup_area_name].filter(Boolean).join(', '))} · ${escapeHtml(order.pickup_window || '')}
                   ${order.pickup_instructions ? `<br>${escapeHtml(order.pickup_instructions)}` : ''}
                 </div>` : ''}
               <div class="zone-card-suggest">
@@ -2844,7 +2844,7 @@
         supabase.from('zones').select('id, code, name, region, active, zone_areas(area_name)').eq('active', true).order('code'),
         supabase
           .from('orders')
-          .select('id, order_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_address, pickup_window, pickup_instructions, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, quote_status, price_override_reason, zone_status, order_status, assigned_driver_id, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, payment_confirmed_by, source, created_at, updated_at')
+          .select('id, order_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_business_name, pickup_street_name, pickup_area_name, pickup_address, pickup_window, pickup_instructions, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, quote_status, price_override_reason, zone_status, order_status, assigned_driver_id, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, payment_confirmed_by, source, created_at, updated_at')
           .order('created_at', { ascending: false }),
         supabase.from('drivers').select('id, profile_id, status'),
         supabase.from('profiles').select('id, role, first_name, last_name, status').eq('role', 'driver'),

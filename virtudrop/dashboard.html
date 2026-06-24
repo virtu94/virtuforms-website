@@ -1060,9 +1060,18 @@
                   <input class="input" id="pickupContactPhone" type="tel" placeholder="868-XXX-XXXX" />
                 </div>
                 <div class="form-group full">
-                  <label for="pickupAddress">Pickup Address</label>
-                  <input class="input" id="pickupAddress" type="text" placeholder="Full business pickup address" />
+                  <label for="pickupBusinessName">Business Name <span>(optional)</span></label>
+                  <input class="input" id="pickupBusinessName" type="text" placeholder="Business or store name" />
                 </div>
+                <div class="form-group">
+                  <label for="pickupStreetName">Pickup Street Name</label>
+                  <input class="input" id="pickupStreetName" type="text" placeholder="Street, road or building" />
+                </div>
+                <div class="form-group">
+                  <label for="pickupAreaName">Pickup Area</label>
+                  <input class="input" id="pickupAreaName" type="text" placeholder="Community or area" />
+                </div>
+                <div class="form-group full" style="font-size:0.8rem; color:#6a6a6a;">Pickup is available only in primary and extended delivery zones.</div>
                 <div class="form-group">
                   <label for="pickupWindow">Available Pickup Window</label>
                   <input class="input" id="pickupWindow" type="text" placeholder="e.g. 9:00 AM–11:00 AM" />
@@ -1717,7 +1726,7 @@
 
 <script src="vd-modal.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script type="module" src="business-dashboard.js?v=20260624-lifecycle-1"></script>
+  <script type="module" src="business-dashboard.js?v=20260624-pickup-1"></script>
 
 </body>
 </html>

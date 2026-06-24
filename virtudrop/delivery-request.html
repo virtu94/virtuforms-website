@@ -355,6 +355,34 @@
         </div>
       </div>
 
+      <div class="form-card">
+        <div class="card-label">Parcel Pickup</div>
+        <label style="display:flex; align-items:center; gap:0.65rem; cursor:pointer; font-weight:700;">
+          <input type="checkbox" id="pickupRequired" style="width:18px; height:18px; accent-color:#2a9d8f;" />
+          VirtuDrop should collect the parcel from the business
+        </label>
+        <p style="font-size:0.82rem; color:#6a6a6a; margin-top:0.45rem;">Pickup is $20 for 1–4 parcels and free for 5 or more parcels.</p>
+        <div id="pickupDetails" style="display:none; margin-top:1rem;">
+          <div class="addr-grid">
+            <div class="field"><label for="pickupContactName">Pickup Contact <span class="req">*</span></label><input class="input" id="pickupContactName" type="text" /></div>
+            <div class="field"><label for="pickupContactPhone">Pickup Phone <span class="req">*</span></label><input class="input" id="pickupContactPhone" type="tel" placeholder="868-XXX-XXXX" /></div>
+          </div>
+          <div class="field"><label for="pickupBusinessName">Business Name <span class="opt">(optional)</span></label><input class="input" id="pickupBusinessName" type="text" /></div>
+          <div class="addr-grid">
+            <div class="field"><label for="pickupStreetName">Pickup Street Name <span class="req">*</span></label><input class="input" id="pickupStreetName" type="text" placeholder="Street, road or building" /></div>
+            <div class="field"><label for="pickupAreaName">Pickup Area <span class="req">*</span></label><input class="input" id="pickupAreaName" type="text" placeholder="Community or area" /></div>
+          </div>
+          <p style="font-size:0.78rem; color:#6a6a6a; margin:-0.25rem 0 0.85rem;">Pickup is available only in primary and extended delivery zones.</p>
+          <div class="addr-grid">
+            <div class="field"><label for="pickupWindow">Available Window <span class="req">*</span></label><input class="input" id="pickupWindow" type="text" placeholder="e.g. 9 AM–11 AM" /></div>
+            <div class="field"><label for="pickupParcelCount">Number of Parcels <span class="req">*</span></label><input class="input" id="pickupParcelCount" type="number" min="1" step="1" value="1" /></div>
+          </div>
+          <div class="field" id="pickupFeeSettlementBlock"><label for="pickupFeeSettlement">Pickup Fee Settlement <span class="req">*</span></label><select class="input" id="pickupFeeSettlement"><option value="deduct_from_remittance">Deduct from remittance</option><option value="pay_separately">Pay separately</option></select></div>
+          <div class="field"><label for="pickupInstructions">Pickup Instructions <span class="opt">(optional)</span></label><textarea class="input" id="pickupInstructions"></textarea></div>
+          <span class="error-text" id="pickupErr">Complete the required pickup information.</span>
+        </div>
+      </div>
+
       <!-- 4. Delivery Fee Estimate -->
       <div class="form-card" id="estimateCard" style="display:none;">
         <div class="card-label">Delivery Fee Estimate</div>
@@ -411,8 +439,8 @@
   <script src="vd-modal.js"></script>
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-    import { estimateDeliveryZone, formatEstimateRows } from './vd-zone-estimator.js?v=20260624-financial-2';
-    import { calculateOrderMoney, financialRequestFields, validateManualAddress } from './vd-order-money.js?v=20260624-financial-2';
+    import { estimateDeliveryZone, formatEstimateRows } from './vd-zone-estimator.js?v=20260624-financial-3';
+    import { calculateOrderMoney, financialRequestFields, validateManualAddress, validatePickupLocation } from './vd-order-money.js?v=20260624-pickup-1';
 
     const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnbXp6YXZ4aHVhcmxhY252bm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Mjk4NTksImV4cCI6MjA5NDIwNTg1OX0.7-YKlwLrhUYUYbiii93ZvgX01TxVephApDNCP50Rl54';
@@ -604,7 +632,10 @@
             estimate,
             paymentType: payment,
             packageValue: pkgVal,
-            clientFeeSettlement: document.getElementById('clientFeeSettlement').value || null
+            clientFeeSettlement: document.getElementById('clientFeeSettlement').value || null,
+            pickupRequired: document.getElementById('pickupRequired').checked,
+            pickupParcelCount: Number(document.getElementById('pickupParcelCount').value || 1),
+            pickupFeeSettlement: document.getElementById('pickupFeeSettlement').value || null
           }));
 
         } catch (err) {
@@ -619,11 +650,33 @@
     // Trigger estimate update on location/value changes
     document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('mapsLink').addEventListener('input', updateEstimate);
-      document.getElementById('areaName').addEventListener('input', updateEstimate);
-      document.getElementById('streetName').addEventListener('input', updateEstimate);
+      ['areaName', 'streetName'].forEach(id => document.getElementById(id).addEventListener('input', () => {
+        const street = document.getElementById('streetName').value;
+        const area = document.getElementById('areaName').value;
+        const message = validateManualAddress(street, area);
+        const error = document.getElementById('streetErr');
+        if (street && area && message) {
+          document.getElementById('streetName').classList.add('has-error');
+          error.textContent = message;
+          error.classList.add('show');
+        } else {
+          document.getElementById('streetName').classList.remove('has-error');
+          error.classList.remove('show');
+        }
+        updateEstimate();
+      }));
       document.getElementById('houseNum').addEventListener('input', updateEstimate);
       document.getElementById('pkgValue').addEventListener('input', updateEstimate);
       document.getElementById('clientFeeSettlement').addEventListener('change', updateEstimate);
+      document.getElementById('pickupRequired').addEventListener('change', event => {
+        document.getElementById('pickupDetails').style.display = event.target.checked ? 'block' : 'none';
+        updateEstimate();
+      });
+      document.getElementById('pickupParcelCount').addEventListener('input', event => {
+        document.getElementById('pickupFeeSettlementBlock').style.display = Number(event.target.value || 1) >= 5 ? 'none' : 'block';
+        updateEstimate();
+      });
+      document.getElementById('pickupFeeSettlement').addEventListener('change', updateEstimate);
     });
 
     document.getElementById('custPhone').addEventListener('input', (e) => {
@@ -739,6 +792,23 @@
         showErr('clientFeeSettlement', 'clientFeeSettlementErr', 'Please select how the delivery fee will be settled.');
         ok = false;
       }
+      if (document.getElementById('pickupRequired').checked) {
+        const pickupCount = Number(document.getElementById('pickupParcelCount').value);
+        const pickupLocationError = validatePickupLocation(
+          document.getElementById('pickupStreetName').value,
+          document.getElementById('pickupAreaName').value
+        );
+        const pickupComplete = document.getElementById('pickupContactName').value.trim().length >= 2
+          && document.getElementById('pickupContactPhone').value.replace(/\D/g, '').length >= 7
+          && !pickupLocationError
+          && document.getElementById('pickupWindow').value.trim().length >= 3
+          && Number.isInteger(pickupCount) && pickupCount > 0;
+        if (!pickupComplete) {
+          document.getElementById('pickupErr').textContent = pickupLocationError || 'Complete the required pickup information.';
+          document.getElementById('pickupErr').classList.add('show');
+          ok = false;
+        }
+      }
 
       if (notes.length > 500) {
         showErr('custNotes', 'custNotesErr', 'Please keep notes under 500 characters.');
@@ -803,7 +873,10 @@
         paymentOption: paymentValue,
         packageValue: paymentValue === 'cod' ? Number(document.getElementById('pkgValue').value) : 0,
         deliveryFee: estimate?.fee ?? null,
-        clientFeeSettlement: document.getElementById('clientFeeSettlement').value || null
+        clientFeeSettlement: document.getElementById('clientFeeSettlement').value || null,
+        pickupRequired: document.getElementById('pickupRequired').checked,
+        pickupParcelCount: Number(document.getElementById('pickupParcelCount').value || 1),
+        pickupFeeSettlement: document.getElementById('pickupFeeSettlement').value || null
       });
 
       const requestData = {
@@ -818,6 +891,13 @@
         pricing_rate_band: estimate?.rateBand || (estimate?.status === 'remote' ? 'remote' : null),
         quote_status: estimate?.fee === null ? 'required' : 'not_required',
         ...financialRequestFields(money),
+        pickup_contact_name: money.pickupRequired ? document.getElementById('pickupContactName').value.trim() : null,
+        pickup_contact_phone: money.pickupRequired ? document.getElementById('pickupContactPhone').value.trim() : null,
+        pickup_business_name: money.pickupRequired ? document.getElementById('pickupBusinessName').value.trim() : null,
+        pickup_street_name: money.pickupRequired ? document.getElementById('pickupStreetName').value.trim() : null,
+        pickup_area_name: money.pickupRequired ? document.getElementById('pickupAreaName').value.trim() : null,
+        pickup_window: money.pickupRequired ? document.getElementById('pickupWindow').value.trim() : null,
+        pickup_instructions: money.pickupRequired ? document.getElementById('pickupInstructions').value.trim() : null,
         customer_notes: clientSelect.value === 'other'
           ? ['Business not listed by customer', notes].filter(Boolean).join(' - ')
           : (notes || null)

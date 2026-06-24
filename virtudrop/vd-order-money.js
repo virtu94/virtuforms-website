@@ -39,6 +39,15 @@ const KNOWN_DELIVERY_AREAS = new Set([
   'Carenage', 'Chaguaramas'
 ].map(normaliseAddressPart));
 
+export function validatePickupLocation(streetName, areaName) {
+  const addressError = validateManualAddress(streetName, areaName);
+  if (addressError) return addressError.replace('delivery area', 'pickup area');
+  if (!KNOWN_DELIVERY_AREAS.has(normaliseAddressPart(areaName))) {
+    return 'Pickup is only available within VirtuDrop primary and extended zones. Remote pickup is not available.';
+  }
+  return '';
+}
+
 export function validateManualAddress(streetName, areaName) {
   const street = normaliseAddressPart(streetName);
   const area = normaliseAddressPart(areaName);
@@ -65,6 +74,7 @@ export function calculateOrderMoney({
   deliveryFee = null,
   pickupRequired = false,
   pickupParcelCount = 1,
+  pickupFeeSettlement = null,
   clientFeeSettlement = null
 }) {
   const arrangement = PAYMENT_ARRANGEMENTS[paymentOption] || paymentOption || '';
@@ -90,6 +100,9 @@ export function calculateOrderMoney({
     packageValue: packageAmount,
     deliveryFee: fee,
     pickupFee,
+    pickupRequired: Boolean(pickupRequired),
+    pickupParcelCount: pickupRequired ? Math.max(Number(pickupParcelCount) || 1, 1) : null,
+    pickupFeeSettlement: pickupFee > 0 ? (pickupFeeSettlement || 'pay_separately') : null,
     customerAmountDue,
     driverAmountToCollect,
     clientAmountDue: pickupFee + (clientPaysDelivery ? (fee || 0) : 0),
@@ -108,7 +121,10 @@ export function financialRequestFields(money) {
     driver_amount_to_collect: money.driverAmountToCollect,
     client_amount_due: money.clientAmountDue,
     client_remittance_amount: money.clientRemittanceAmount,
-    pickup_fee: money.pickupFee
+    pickup_fee: money.pickupFee,
+    pickup_required: money.pickupRequired,
+    pickup_parcel_count: money.pickupParcelCount,
+    pickup_fee_settlement: money.pickupFeeSettlement
   };
 }
 

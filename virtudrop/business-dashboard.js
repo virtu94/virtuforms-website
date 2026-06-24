@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { calculateOrderMoney, financialRequestFields, moneyLabel, validateManualAddress } from './vd-order-money.js?v=20260624-financial-3';
+import { calculateOrderMoney, financialRequestFields, moneyLabel, validateManualAddress, validatePickupLocation } from './vd-order-money.js?v=20260624-pickup-1';
 
 const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnbXp6YXZ4aHVhcmxhY252bm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Mjk4NTksImV4cCI6MjA5NDIwNTg1OX0.7-YKlwLrhUYUYbiii93ZvgX01TxVephApDNCP50Rl54';
@@ -800,7 +800,7 @@ window.openOrderDetails = function(orderId) {
       ${order.client_fee_settlement ? detailItem('Business Settlement', escapeHtml(order.client_fee_settlement === 'deduct_from_remittance' ? 'Deduct from remittance' : 'Pay separately')) : ''}
       ${order.pickup_required ? detailItem('Pickup', `${escapeHtml(String(order.pickup_parcel_count || 1))} parcel(s) · ${escapeHtml(money(order.pickup_fee))}`, true) : ''}
       ${order.pickup_required ? detailItem('Pickup Contact', `${escapeHtml(order.pickup_contact_name || '')} · ${escapeHtml(order.pickup_contact_phone || '')}`, true) : ''}
-      ${order.pickup_required ? detailItem('Pickup Address / Window', `${escapeHtml(order.pickup_address || '')} · ${escapeHtml(order.pickup_window || '')}`, true) : ''}
+      ${order.pickup_required ? detailItem('Pickup Address / Window', `${escapeHtml(order.pickup_address || [order.pickup_business_name, order.pickup_street_name, order.pickup_area_name].filter(Boolean).join(', '))} · ${escapeHtml(order.pickup_window || '')}`, true) : ''}
       ${detailItem('Zone Status', escapeHtml(order.zone_status || 'pending'))}
       ${detailItem('Order Status', escapeHtml(status))}
       ${detailItem('Parcel Status', escapeHtml(parcelStatusLabel(order.parcel_status)))}
@@ -1331,7 +1331,7 @@ async function loadBusinessData() {
   const [{ data: orderData, error: orderError }, { data: remitData, error: remitError }] = await Promise.all([
     supabase
       .from('orders')
-      .select('id, order_number, financial_model_version, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_address, pickup_window, pickup_instructions, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, zone_status, order_status, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, created_at, updated_at')
+      .select('id, order_number, financial_model_version, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_business_name, pickup_street_name, pickup_area_name, pickup_address, pickup_window, pickup_instructions, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, zone_status, order_status, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, created_at, updated_at')
       .eq('business_client_id', business.id)
       .order('created_at', { ascending: false }),
     supabase
@@ -1469,9 +1469,10 @@ function validateOrderForm(payload, raw) {
   }
 
   if (raw.pickupRequired) {
+    const pickupLocationError = validatePickupLocation(raw.pickupStreetName, raw.pickupAreaName);
     if ((raw.pickupContactName || '').length < 2) issues.push('Enter the pickup contact name.');
     if ((raw.pickupPhoneDigits || '').length < 7) issues.push('Enter a valid pickup contact number.');
-    if ((raw.pickupAddress || '').length < 5) issues.push('Enter the full pickup address.');
+    if (pickupLocationError) issues.push(pickupLocationError);
     if ((raw.pickupWindow || '').length < 3) issues.push('Enter the available pickup window.');
     if (!Number.isInteger(raw.pickupParcelCount) || raw.pickupParcelCount < 1) issues.push('Enter a valid number of parcels for pickup.');
     if (raw.pickupParcelCount < 5 && !raw.pickupFeeSettlement) issues.push('Choose how the pickup fee will be paid.');
@@ -1540,7 +1541,9 @@ async function submitBusinessOrder(event) {
     ...financialRequestFields(money),
     pickup_contact_name: pickupRequired ? el('#pickupContactName')?.value.trim() : null,
     pickup_contact_phone: pickupRequired ? el('#pickupContactPhone')?.value.trim() : null,
-    pickup_address: pickupRequired ? el('#pickupAddress')?.value.trim() : null,
+    pickup_business_name: pickupRequired ? el('#pickupBusinessName')?.value.trim() : null,
+    pickup_street_name: pickupRequired ? el('#pickupStreetName')?.value.trim() : null,
+    pickup_area_name: pickupRequired ? el('#pickupAreaName')?.value.trim() : null,
     pickup_window: pickupRequired ? el('#pickupWindow')?.value.trim() : null,
     pickup_instructions: pickupRequired ? el('#pickupInstructions')?.value.trim() : null,
     customer_notes: [`Package: ${packageDescription}`, specialNotes].filter(Boolean).join('\n') || null
@@ -1557,7 +1560,8 @@ async function submitBusinessOrder(event) {
     pickupFeeSettlement,
     pickupContactName: el('#pickupContactName')?.value.trim() || '',
     pickupPhoneDigits: el('#pickupContactPhone')?.value.replace(/\D/g, '') || '',
-    pickupAddress: el('#pickupAddress')?.value.trim() || '',
+    pickupStreetName: el('#pickupStreetName')?.value.trim() || '',
+    pickupAreaName: el('#pickupAreaName')?.value.trim() || '',
     pickupWindow: el('#pickupWindow')?.value.trim() || ''
   });
   if (validationError) {
