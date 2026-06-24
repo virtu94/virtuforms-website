@@ -36,6 +36,9 @@
     delivered:         { label: 'Delivered',          icon: '✅', badge: 'delivered',   step: 3, message: 'Your package has been delivered successfully.' },
     failed:            { label: 'Failed Attempt',     icon: '❌', badge: 'failed',      step: 3, message: 'A delivery attempt was made but was unsuccessful. Please contact the seller or VirtuDrop.' },
     rescheduled:       { label: 'Rescheduled',        icon: '🔄', badge: 'rescheduled', step: 3, message: 'Your delivery has been rescheduled to the next available cycle.' },
+    no_response:       { label: 'No Response',        icon: '☎',  badge: 'failed',      step: 3, message: 'The driver could not reach you at the delivery location. Please contact the seller or VirtuDrop.' },
+    refused:           { label: 'Delivery Refused',   icon: '✕',  badge: 'failed',      step: 3, message: 'The parcel was refused at the delivery location.' },
+    reschedule_requested: { label: 'Reschedule Requested', icon: '↻', badge: 'rescheduled', step: 3, message: 'Your preferred date was recorded and VirtuDrop will arrange the next attempt.' },
   };
 
   const STEP_LABELS = ['Received', 'Driver Assigned', 'Out for Delivery', 'Delivered'];
@@ -272,7 +275,7 @@
     const earlyParcelStatus = !['assigned', 'out_for_delivery', 'delivered', 'failed', 'rescheduled'].includes(order.order_status)
       ? STATUS[order.parcel_status]
       : null;
-    const st = earlyParcelStatus || STATUS[order.order_status] || STATUS.zone_pending;
+    const st = STATUS[order.delivery_outcome] || earlyParcelStatus || STATUS[order.order_status] || STATUS.zone_pending;
     const step = st.step;
     const prog = step / 3 * 100;
 
@@ -330,6 +333,7 @@
             <span class="vd-track-detail-key">Scheduled Delivery</span>
             <span class="vd-track-detail-value accent">${order.scheduled_delivery_date ? new Date(order.scheduled_delivery_date + 'T12:00:00').toLocaleDateString('en-TT') : 'To be scheduled'}</span>
           </div>
+          ${order.redelivery_requested_date ? `<div class="vd-track-detail-row"><span class="vd-track-detail-key">Preferred Redelivery</span><span class="vd-track-detail-value accent">${new Date(order.redelivery_requested_date + 'T12:00:00').toLocaleDateString('en-TT')}</span></div>` : ''}
           <div class="vd-track-detail-row">
             <span class="vd-track-detail-key">Status</span>
             <span class="vd-track-detail-value" style="font-size:0.82rem; font-weight:400; color:rgba(255,255,255,0.65); text-align:right;">${escHtml(st.message)}</span>

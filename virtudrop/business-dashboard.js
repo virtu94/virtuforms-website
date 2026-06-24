@@ -649,6 +649,16 @@ function statusLabel(status) {
   return labels[status] || String(status || 'Pending').replaceAll('_', ' ');
 }
 
+function deliveryOutcomeLabel(order) {
+  const labels = {
+    delivered: 'Delivered',
+    no_response: 'No Response',
+    refused: 'Customer Refused',
+    reschedule_requested: 'Reschedule Requested'
+  };
+  return labels[order?.delivery_outcome] || statusLabel(order?.order_status);
+}
+
 function parcelStatusLabel(status) {
   const labels = {
     legacy_untracked: 'Legacy / Not Tracked',
@@ -657,6 +667,7 @@ function parcelStatusLabel(status) {
     sorted: 'Sorted',
     assigned: 'Assigned',
     handed_to_driver: 'Handed to Driver',
+    delivered: 'Delivered',
     returned_to_hub: 'Returned to Hub',
     held_for_client_instructions: 'Held for Instructions',
     redelivery_scheduled: 'Redelivery Scheduled',
@@ -744,9 +755,15 @@ function businessTrackingBubble(order) {
   } else if (order.order_status === 'delivered') {
     step = 3; label = 'Delivered'; message = 'The parcel was delivered successfully.';
   } else if (order.order_status === 'failed') {
-    step = 3; label = 'Failed Attempt'; message = 'The delivery attempt was unsuccessful.';
+    step = 3;
+    label = deliveryOutcomeLabel(order);
+    message = order.delivery_outcome === 'no_response'
+      ? 'The driver could not reach the customer at the delivery location.'
+      : order.delivery_outcome === 'refused'
+        ? 'The customer refused to accept the parcel.'
+        : 'The delivery attempt was unsuccessful.';
   } else if (order.order_status === 'rescheduled') {
-    step = 3; label = 'Rescheduled'; message = 'Admin is arranging the next delivery attempt.';
+    step = 3; label = deliveryOutcomeLabel(order); message = 'Admin is arranging the next delivery attempt.';
   }
   const labels = ['Received', 'Driver Assigned', 'Out for Delivery', 'Delivered'];
   const delivered = order.order_status === 'delivered';
@@ -811,7 +828,7 @@ function orderTableRow(order, includeCost = false) {
       <td>${escapeHtml(paymentLabels[order.payment_type] || 'Delivery')}</td>
       ${includeCost ? `<td>${money(order.delivery_fee)}</td>` : ''}
       <td>${formatDate(order.created_at)}</td>
-      <td><span class="status-badge ${statusClass(order.order_status)}">${escapeHtml(statusLabel(order.order_status))}</span></td>
+      <td><span class="status-badge ${statusClass(order.order_status)}">${escapeHtml(deliveryOutcomeLabel(order))}</span></td>
       ${includeCost ? `<td><button type="button" class="order-detail-link" onclick="event.stopPropagation(); openOrderDetails('${order.id}')">Track</button></td>` : ''}
     </tr>
   `;
@@ -822,7 +839,7 @@ function orderCard(order) {
     <div class="order-card order-clickable" onclick="openOrderDetails('${order.id}')">
       <div class="order-card-top">
         <span class="order-card-id">${escapeHtml(order.order_number)}</span>
-        <span class="status-badge ${statusClass(order.order_status)}">${escapeHtml(statusLabel(order.order_status))}</span>
+        <span class="status-badge ${statusClass(order.order_status)}">${escapeHtml(deliveryOutcomeLabel(order))}</span>
       </div>
       <div class="order-card-route">${escapeHtml(routeText(order))}</div>
       <div class="order-card-meta">
@@ -845,7 +862,7 @@ window.openOrderDetails = function(orderId) {
   const map = mapsLink(order);
   const notes = customerNotesParts(order);
   const payment = paymentLabels[order.payment_type] || order.payment_type || 'Delivery';
-  const status = statusLabel(order.order_status);
+  const status = deliveryOutcomeLabel(order);
   const amountToCollect = order.financial_model_version >= 2
     ? Number(order.driver_amount_to_collect || 0)
     : order.payment_type === 'prepaid'
@@ -882,6 +899,14 @@ window.openOrderDetails = function(orderId) {
       ${detailItem('Zone Status', escapeHtml(order.zone_status || 'pending'))}
       ${detailItem('Order Status', escapeHtml(status))}
       ${detailItem('Parcel Status', escapeHtml(parcelStatusLabel(order.parcel_status)))}
+      ${order.delivery_outcome ? detailItem('Latest Delivery Outcome', escapeHtml(deliveryOutcomeLabel(order))) : ''}
+      ${order.delivery_attempt_count ? detailItem('Delivery Attempts', escapeHtml(String(order.delivery_attempt_count))) : ''}
+      ${order.delivery_outcome_notes ? detailItem('Driver Outcome Notes', escapeHtml(order.delivery_outcome_notes), true) : ''}
+      ${order.redelivery_requested_date ? detailItem('Customer Preferred Redelivery', escapeHtml(formatDate(order.redelivery_requested_date))) : ''}
+      ${order.delivery_proof_confirmed_at ? detailItem('Delivery Proof', `Driver confirmed handover · ${escapeHtml(formatDateTime(order.delivery_proof_confirmed_at))}`) : ''}
+      ${order.delivery_collection_method ? detailItem('Collection', `${escapeHtml(String(order.delivery_collection_method).toUpperCase())} · ${escapeHtml(money(order.delivery_collected_amount))}`) : ''}
+      ${order.delivery_return_required ? detailItem('Parcel Return', 'Awaiting return to VirtuDrop hub') : ''}
+      ${order.delivery_returned_hub_at ? detailItem('Returned to Hub', escapeHtml(formatDateTime(order.delivery_returned_hub_at))) : ''}
       ${order.parcel_received_at ? detailItem('Parcel Received', escapeHtml(formatDateTime(order.parcel_received_at))) : ''}
       ${detailItem('Package', escapeHtml(notes.packageText || 'Not entered'), true)}
       ${order.rejection_reason ? detailItem('❌ Rejection Reason', `<span style="color:#e05555; font-weight:600;">${escapeHtml(order.rejection_reason)}</span>`, true) : ''}
@@ -1057,8 +1082,8 @@ function renderFailed() {
       <td style="padding:0.9rem 1rem;">${escapeHtml(order.customer_name)}</td>
       <td style="padding:0.9rem 1rem;">${escapeHtml(order.area_name || '—')}</td>
       <td style="padding:0.9rem 1rem;">${formatDate(order.updated_at || order.created_at)}</td>
-      <td style="padding:0.9rem 1rem; font-size:0.88rem; color:#6a6a6a;">Contact VirtuDrop to confirm next steps</td>
-      <td style="padding:0.9rem 1rem; text-align:center;"><span style="padding:0.3rem 0.8rem; background:#fde8e8; color:#8b2020; border-radius:20px; font-size:0.78rem; font-weight:700;">${escapeHtml(statusLabel(order.order_status))}</span></td>
+      <td style="padding:0.9rem 1rem; font-size:0.88rem; color:#6a6a6a;">${escapeHtml(order.delivery_outcome_notes || 'Contact VirtuDrop to confirm next steps')}${order.redelivery_requested_date ? ` · Preferred date: ${escapeHtml(formatDate(order.redelivery_requested_date))}` : ''}</td>
+      <td style="padding:0.9rem 1rem; text-align:center;"><span style="padding:0.3rem 0.8rem; background:#fde8e8; color:#8b2020; border-radius:20px; font-size:0.78rem; font-weight:700;">${escapeHtml(deliveryOutcomeLabel(order))}</span></td>
       <td style="padding:0.9rem 1rem; text-align:center;"><a href="contact.html" style="color:#2a9d8f; font-weight:700;">Contact</a></td>
     </tr>
   `).join('') : emptyRow(7, 'No failed or rescheduled deliveries.');
@@ -1409,7 +1434,7 @@ async function loadBusinessData() {
   const [{ data: orderData, error: orderError }, { data: remitData, error: remitError }] = await Promise.all([
     supabase
       .from('orders')
-      .select('id, order_number, financial_model_version, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_business_name, pickup_street_name, pickup_area_name, pickup_address, pickup_window, pickup_instructions, pickup_scheduled_date, pickup_scheduled_window, pickup_picked_up_at, pickup_arrived_hub_at, pickup_cancelled_at, pickup_cancellation_reason, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, zone_status, order_status, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, created_at, updated_at')
+      .select('id, order_number, financial_model_version, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_business_name, pickup_street_name, pickup_area_name, pickup_address, pickup_window, pickup_instructions, pickup_scheduled_date, pickup_scheduled_window, pickup_picked_up_at, pickup_arrived_hub_at, pickup_cancelled_at, pickup_cancellation_reason, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, delivery_outcome, delivery_attempt_count, last_delivery_attempt_at, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, zone_status, order_status, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, created_at, updated_at')
       .eq('business_client_id', business.id)
       .order('created_at', { ascending: false }),
     supabase

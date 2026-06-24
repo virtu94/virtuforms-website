@@ -879,7 +879,10 @@
       }
 
       if (status === 'failed' || status === 'rescheduled') {
-        return `<button class="action-btn btn-reschedule" onclick="showToast('Reschedule request will be handled by admin.')">🔄 Request Reschedule</button>`;
+        if (order.delivery_return_required) {
+          return `<button class="action-btn btn-collected" onclick="markReturnedToHub('${order.id}')">Mark Returned to Hub</button>`;
+        }
+        return '<span class="status-badge badge-queued">Parcel returned to hub</span>';
       }
 
       const common = `
@@ -893,11 +896,10 @@
       }
 
       return common + `
-        <button class="action-btn btn-whatsapp" onclick="whatsappCustomer('${phone}')">💬 WhatsApp Customer</button>
-        <button class="action-btn btn-delivered" onclick="markDelivered('${order.id}', ${collect})">✅ Mark Delivered</button>
-        <button class="action-btn btn-unavailable" onclick="markUnavailable('${order.id}')">📵 Unavailable</button>
-        <button class="action-btn btn-failed" onclick="markFailed('${order.id}')">❌ Mark Failed</button>
-        <button class="action-btn btn-reschedule" onclick="markOtherUpdate('${order.id}')">📝 Other Update</button>
+        <button class="action-btn btn-delivered" onclick="markDelivered('${order.id}', ${collect})">Mark Delivered</button>
+        <button class="action-btn btn-unavailable" onclick="markNoResponse('${order.id}')">No Response</button>
+        <button class="action-btn btn-failed" onclick="markRefused('${order.id}')">Refused</button>
+        <button class="action-btn btn-reschedule" onclick="markRescheduleRequested('${order.id}')">Reschedule Requested</button>
       `;
     }
 
@@ -952,6 +954,7 @@
                 <div class="info-label">Scheduled Delivery</div>
                 <div class="info-value">${order.scheduled_delivery_date ? new Date(order.scheduled_delivery_date + 'T12:00:00').toLocaleDateString('en-TT') : 'Not scheduled'}</div>
               </div>
+              ${order.delivery_outcome ? `<div class="info-row"><div class="info-label">Latest Outcome</div><div class="info-value">${escapeHtml(String(order.delivery_outcome).replaceAll('_', ' '))}</div></div>` : ''}
             </div>
             ${notes}
             <div class="driver-update-box">
@@ -977,7 +980,7 @@
         queued: orders.filter(o => normalizeStatus(o.order_status) === 'queued').length,
         out: orders.filter(o => normalizeStatus(o.order_status) === 'out').length,
         delivered: orders.filter(o => normalizeStatus(o.order_status) === 'delivered').length,
-        failed: orders.filter(o => normalizeStatus(o.order_status) === 'failed').length
+        failed: orders.filter(o => ['failed', 'rescheduled'].includes(normalizeStatus(o.order_status))).length
       };
       document.querySelector('.filter-tabs').innerHTML = `
         <button class="filter-tab ${activeFilter === 'all' ? 'active' : ''}" onclick="filterCards('all', this)">All (${counts.all})</button>
@@ -989,10 +992,10 @@
     }
 
     function applyFilter() {
-      const cards = document.querySelectorAll('.delivery-card');
+      const cards = document.querySelectorAll('#deliveryList .delivery-card');
       let visible = 0;
       cards.forEach(card => {
-        const show = activeFilter === 'all' || card.dataset.status === activeFilter;
+        const show = activeFilter === 'all' || card.dataset.status === activeFilter || (activeFilter === 'failed' && card.dataset.status === 'rescheduled');
         card.style.display = show ? 'block' : 'none';
         if (show) visible++;
       });
@@ -1008,8 +1011,8 @@
 
     function updateStats() {
       const delivered = orders.filter(o => normalizeStatus(o.order_status) === 'delivered').length;
-      const failed = orders.filter(o => normalizeStatus(o.order_status) === 'failed').length;
-      const remaining = orders.filter(o => !['delivered', 'failed'].includes(normalizeStatus(o.order_status))).length;
+      const failed = orders.filter(o => ['failed', 'rescheduled'].includes(normalizeStatus(o.order_status))).length;
+      const remaining = orders.filter(o => !['delivered', 'failed', 'rescheduled'].includes(normalizeStatus(o.order_status))).length;
       const cod = orders
         .filter(o => normalizeStatus(o.order_status) === 'delivered')
         .reduce((sum, o) => sum + amountToCollect(o), 0);
@@ -1070,7 +1073,7 @@
       const [ordersRes, pickupsRes, clientsRes] = await Promise.all([
         supabase
           .from('orders')
-          .select('id, order_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, cod_amount, package_value, delivery_fee, driver_amount_to_collect, pickup_required, pickup_parcel_count, pickup_fee, scheduled_delivery_date, order_status, assigned_driver_id, customer_notes, driver_notes, tracking_token, created_at')
+          .select('id, order_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, cod_amount, package_value, delivery_fee, driver_amount_to_collect, pickup_required, pickup_parcel_count, pickup_fee, scheduled_delivery_date, parcel_status, delivery_outcome, delivery_attempt_count, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, order_status, assigned_driver_id, customer_notes, driver_notes, tracking_token, created_at')
           .eq('assigned_driver_id', driver.id)
           .order('created_at', { ascending: false }),
         supabase.rpc('driver_list_my_pickups'),
@@ -1205,25 +1208,102 @@
              </div>
            </div>`
         : '';
+      const proofBox = `<label style="display:flex; gap:0.6rem; align-items:flex-start; padding:0.8rem; margin:0.8rem 0; background:#eef8f6; border-radius:8px; text-align:left;"><input type="checkbox" id="deliveryProofConfirmed" style="margin-top:0.2rem;"> <span>I confirm that I handed this parcel to the customer or authorized recipient.</span></label>`;
       openModal(
         '✅ Mark as Delivered',
         `Confirm delivery of ${order.order_number} is complete.${codText}`,
-        `${methodBox}<button class="modal-btn confirm" onclick="confirmDeliveredWithCollection('${order.id}', ${collectAmount})">✅ Confirm Delivery</button>
+        `${methodBox}${proofBox}<button class="modal-btn confirm" onclick="confirmDeliveredWithCollection('${order.id}', ${collectAmount})">Confirm Delivery</button>
          <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>`
       );
     };
 
     window.confirmDeliveredWithCollection = function(orderId, collectAmount = 0) {
-      let note = null;
+      let note = 'Driver confirmed parcel handover to customer or authorized recipient.';
+      if (!document.getElementById('deliveryProofConfirmed')?.checked) {
+        showToast('Confirm parcel handover before completing delivery.');
+        return;
+      }
+      let method = 'none';
       if (Number(collectAmount) > 0) {
-        const method = document.querySelector('input[name="collectionMethod"]:checked')?.value;
+        method = document.querySelector('input[name="collectionMethod"]:checked')?.value;
         if (!method) {
           showToast('Select Cash or LINX before confirming delivery.');
           return;
         }
         note = `Customer payment collected by driver: ${method} - ${money(collectAmount)}`;
       }
-      window.confirmStatus(orderId, 'delivered', note);
+      window.saveDeliveryOutcome(orderId, 'delivered', note, null, method, Number(collectAmount), true);
+    };
+
+    function openDeliveryException(orderId, outcome, title, defaultNote, includeDate = false) {
+      const order = findOrder(orderId);
+      if (!order) return showToast('Order not found. Refresh and try again.');
+      const noteId = `outcome-note-${orderId}`;
+      const dateId = `outcome-date-${orderId}`;
+      const dateField = includeDate ? `<label style="display:block; text-align:left; font-weight:700; margin-bottom:0.35rem;">Customer preferred date</label><input id="${dateId}" type="date" min="${new Date().toISOString().slice(0, 10)}" style="width:100%; padding:0.75rem; border:2px solid #e0e0e0; border-radius:8px; box-sizing:border-box; margin-bottom:0.75rem;">` : '';
+      openModal(
+        title,
+        `Record this outcome for ${order.order_number}. The parcel must be returned to the hub afterward.`,
+        `${dateField}<textarea id="${noteId}" style="width:100%; padding:0.75rem; border:2px solid #e0e0e0; border-radius:8px; font-family:inherit; min-height:75px; box-sizing:border-box;" placeholder="Additional details">${escapeHtml(defaultNote)}</textarea><button class="modal-btn confirm" onclick="submitDeliveryException('${orderId}', '${outcome}', '${noteId}', '${includeDate ? dateId : ''}')">Confirm Outcome</button><button class="modal-btn cancel" onclick="closeModal()">Cancel</button>`
+      );
+    }
+
+    window.markNoResponse = function(orderId) {
+      openDeliveryException(orderId, 'no_response', 'No Response', 'Customer could not be reached at the delivery location.');
+    };
+
+    window.markRefused = function(orderId) {
+      openDeliveryException(orderId, 'refused', 'Customer Refused Parcel', 'Customer refused to accept the parcel.');
+    };
+
+    window.markRescheduleRequested = function(orderId) {
+      openDeliveryException(orderId, 'reschedule_requested', 'Reschedule Requested', 'Customer requested another delivery date.', true);
+    };
+
+    window.submitDeliveryException = function(orderId, outcome, noteId, dateId) {
+      const note = document.getElementById(noteId)?.value.trim() || '';
+      const requestedDate = dateId ? document.getElementById(dateId)?.value || null : null;
+      if (outcome === 'reschedule_requested' && !requestedDate) return showToast('Enter the customer preferred date.');
+      window.saveDeliveryOutcome(orderId, outcome, note, requestedDate, null, 0, false);
+    };
+
+    window.saveDeliveryOutcome = async function(orderId, outcome, note, requestedDate, collectionMethod, amountCollected, proofConfirmed) {
+      try {
+        const { error } = await supabase.rpc('driver_record_delivery_outcome', {
+          p_order_id: orderId,
+          p_outcome: outcome,
+          p_notes: note || null,
+          p_requested_redelivery_date: requestedDate || null,
+          p_collection_method: collectionMethod || null,
+          p_amount_collected: Number(amountCollected || 0),
+          p_proof_confirmed: Boolean(proofConfirmed)
+        });
+        if (error) throw error;
+        closeModal();
+        showToast(outcome === 'delivered' ? 'Delivery completed.' : 'Delivery outcome recorded. Return the parcel to the hub.');
+        await loadDriverData();
+      } catch (error) {
+        console.error('Delivery outcome error:', error);
+        window.vdNotify('Outcome Not Saved', error.message || 'Could not record this delivery outcome.', 'error');
+      }
+    };
+
+    window.markReturnedToHub = function(orderId) {
+      const order = findOrder(orderId);
+      if (!order) return showToast('Order not found. Refresh and try again.');
+      openModal('Return Parcel to Hub', `Confirm that ${order.order_number} has been returned to the VirtuDrop hub.`, `<button class="modal-btn confirm" onclick="confirmReturnedToHub('${orderId}')">Confirm Hub Return</button><button class="modal-btn cancel" onclick="closeModal()">Cancel</button>`);
+    };
+
+    window.confirmReturnedToHub = async function(orderId) {
+      try {
+        const { error } = await supabase.rpc('driver_mark_undelivered_returned', { p_order_id: orderId });
+        if (error) throw error;
+        closeModal();
+        showToast('Parcel return recorded.');
+        await loadDriverData();
+      } catch (error) {
+        window.vdNotify('Return Not Saved', error.message || 'Could not record the hub return.', 'error');
+      }
     };
 
     window.markUnavailable = function(orderRef, maybeOrderNumber = null) {

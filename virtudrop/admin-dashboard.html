@@ -836,6 +836,7 @@
             <option value="assigned">Assigned</option>
             <option value="delivered">Delivered</option>
             <option value="failed">Failed</option>
+            <option value="rescheduled">Rescheduled</option>
             <option value="cancelled">Cancelled</option>
           </select>
           <select class="filter-select" id="orderClientFilter" onchange="renderAllOrders()">
@@ -1696,16 +1697,18 @@
     }
 
     function isFailed(order) {
-      return order.order_status === 'failed' || order.order_status === 'cancelled';
+      return ['failed', 'rescheduled', 'cancelled'].includes(order.order_status);
     }
 
     function badgeForStatus(order) {
       if (order.zone_status === 'pending' || order.order_status === 'zone_pending') {
         return '<span class="badge badge-pending">Zone Pending</span>';
       }
-      const label = (order.order_status || 'confirmed').replaceAll('_', ' ');
+      const outcomeLabels = { delivered: 'Delivered', no_response: 'No Response', refused: 'Customer Refused', reschedule_requested: 'Reschedule Requested' };
+      const label = outcomeLabels[order.delivery_outcome] || (order.order_status || 'confirmed').replaceAll('_', ' ');
       const cls = order.order_status === 'delivered' ? 'badge-delivered'
         : order.order_status === 'failed' ? 'badge-failed'
+        : order.order_status === 'rescheduled' ? 'badge-rescheduled'
         : order.order_status === 'assigned' ? 'badge-active'
         : 'badge-confirmed';
       return `<span class="badge ${cls}">${label}</span>`;
@@ -2633,7 +2636,7 @@
         <tr>
           <td class="td-id">${order.order_number}</td>
           <td><div class="td-name">${clientName(order)}</div></td>
-          <td><div class="td-name">${order.customer_name || '—'}</div><div class="td-sub">${order.customer_phone || ''}</div>${order.driver_notes ? `<div class="td-sub" style="color:var(--teal-dark); font-weight:700;">Driver: ${escapeHtml(order.driver_notes)}</div>` : ''}${order.rejection_reason ? `<div class="td-sub" style="color:var(--red); font-weight:700;">Rejected: ${escapeHtml(order.rejection_reason)}</div>` : ''}</td>
+          <td><div class="td-name">${order.customer_name || '—'}</div><div class="td-sub">${order.customer_phone || ''}</div>${order.delivery_outcome_notes ? `<div class="td-sub" style="color:var(--teal-dark); font-weight:700;">Outcome: ${escapeHtml(order.delivery_outcome_notes)}</div>` : order.driver_notes ? `<div class="td-sub" style="color:var(--teal-dark); font-weight:700;">Driver: ${escapeHtml(order.driver_notes)}</div>` : ''}${order.redelivery_requested_date ? `<div class="td-sub">Preferred redelivery: ${new Date(order.redelivery_requested_date + 'T12:00:00').toLocaleDateString('en-TT')}</div>` : ''}${order.rejection_reason ? `<div class="td-sub" style="color:var(--red); font-weight:700;">Rejected: ${escapeHtml(order.rejection_reason)}</div>` : ''}</td>
           <td>${zoneLabel(order)}</td>
           <td>
             <div class="td-name">Package: ${moneyFull(order.package_value || order.cod_amount)}</div>
@@ -2641,7 +2644,7 @@
             <div class="td-sub">Collect: ${moneyFull(driverCollects(order))}</div>
             ${order.pickup_required ? `<div class="td-sub">Pickup: ${moneyFull(order.pickup_fee)} · ${order.pickup_parcel_count || 1} parcel(s)</div>` : ''}
           </td>
-          <td>${badgeForStatus(order)}<div class="td-sub" style="margin-top:0.3rem;">Parcel: ${escapeHtml(String(order.parcel_status || 'awaiting_parcel').replaceAll('_', ' '))}</div></td>
+          <td>${badgeForStatus(order)}<div class="td-sub" style="margin-top:0.3rem;">Parcel: ${escapeHtml(String(order.parcel_status || 'awaiting_parcel').replaceAll('_', ' '))}</div>${order.delivery_attempt_count ? `<div class="td-sub">Attempt ${order.delivery_attempt_count}${order.delivery_proof_confirmed_at ? ' · Handover confirmed' : ''}</div>` : ''}${order.delivery_return_required ? '<div class="td-sub" style="color:var(--red); font-weight:700;">Awaiting hub return</div>' : order.delivery_returned_hub_at ? '<div class="td-sub" style="color:var(--green); font-weight:700;">Returned to hub</div>' : ''}</td>
           <td>${order.assigned_driver_id ? driverName(order.assigned_driver_id) : '—'}</td>
           <td>
             <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
@@ -2654,6 +2657,8 @@
                 ? '<button class="btn btn-warn btn-sm" onclick="showPanel(\'parcel-checkin\')">Check In Parcel</button>'
                 : order.zone_status === 'pending' || order.order_status === 'zone_pending'
                   ? '<button class="btn btn-warn btn-sm" onclick="showPanel(\'zone-confirm\')">Confirm Zone</button>'
+                : order.delivery_return_required ? '<span class="badge badge-unpaid">Driver returning parcel</span>'
+                : ['failed', 'rescheduled'].includes(order.order_status) ? '<span class="badge badge-pending">Exception awaiting admin</span>'
                 : order.order_status !== 'rejected' ? '<button class="btn btn-primary btn-sm" onclick="showPanel(\'driver-assign\')">Assign Driver</button>' : ''}
             </div>
           </td>
@@ -3116,7 +3121,7 @@
         supabase.from('zones').select('id, code, name, region, active, zone_areas(area_name)').eq('active', true).order('code'),
         supabase
           .from('orders')
-          .select('id, order_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_business_name, pickup_street_name, pickup_area_name, pickup_address, pickup_window, pickup_instructions, pickup_assigned_driver_id, pickup_scheduled_date, pickup_scheduled_window, pickup_assigned_at, pickup_picked_up_at, pickup_arrived_hub_at, pickup_cancelled_at, pickup_cancellation_reason, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, delivery_schedule_source, delivery_schedule_status, delivery_schedule_calculated_at, delivery_schedule_override_reason, quote_status, price_override_reason, zone_status, order_status, assigned_driver_id, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, payment_confirmed_by, source, created_at, updated_at')
+          .select('id, order_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_business_name, pickup_street_name, pickup_area_name, pickup_address, pickup_window, pickup_instructions, pickup_assigned_driver_id, pickup_scheduled_date, pickup_scheduled_window, pickup_assigned_at, pickup_picked_up_at, pickup_arrived_hub_at, pickup_cancelled_at, pickup_cancellation_reason, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, delivery_schedule_source, delivery_schedule_status, delivery_schedule_calculated_at, delivery_schedule_override_reason, delivery_outcome, delivery_attempt_count, last_delivery_attempt_at, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, quote_status, price_override_reason, zone_status, order_status, assigned_driver_id, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, payment_confirmed_by, source, created_at, updated_at')
           .order('created_at', { ascending: false }),
         supabase.from('drivers').select('id, profile_id, status'),
         supabase.from('profiles').select('id, role, first_name, last_name, status').eq('role', 'driver'),
