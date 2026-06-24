@@ -3138,8 +3138,12 @@
       if (driversRes.error) throw driversRes.error;
       if (driverProfilesRes.error) throw driverProfilesRes.error;
       if (profilesRes.error) throw profilesRes.error;
-      if (serviceDatesRes.error) throw serviceDatesRes.error;
-      serviceDateOverrides = serviceDatesRes.data || [];
+      if (serviceDatesRes.error) {
+        console.warn('Delivery service-date overrides could not load:', serviceDatesRes.error);
+        serviceDateOverrides = [];
+      } else {
+        serviceDateOverrides = serviceDatesRes.data || [];
+      }
       if (settingsRes.error) {
         console.warn('App settings could not load:', settingsRes.error);
       } else {
