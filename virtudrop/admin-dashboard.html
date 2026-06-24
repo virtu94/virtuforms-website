@@ -712,6 +712,10 @@
         <span class="nav-icon">📍</span> Zone Confirmation
         <span class="nav-badge alert">5</span>
       </button>
+      <button class="nav-item" data-panel="delivery-scheduling">
+        <span class="nav-icon">📅</span> Delivery Scheduling
+        <span class="nav-badge alert">0</span>
+      </button>
       <button class="nav-item" data-panel="driver-assign">
         <span class="nav-icon">🚚</span> Driver Assignment
         <span class="nav-badge alert">8</span>
@@ -923,6 +927,31 @@
         <div class="card" data-live-empty="true">
           <p>Loading pending zone orders...</p>
         </div>
+      </div>
+
+      <div class="panel" id="panel-delivery-scheduling">
+        <div class="section-heading">
+          <h2>Delivery Scheduling</h2>
+          <p>Review automatically calculated delivery cycles and manage exceptional service dates.</p>
+        </div>
+        <div class="card" style="margin-bottom:1rem;">
+          <div class="card-title">Service Date Override</div>
+          <div class="filter-bar" style="margin-bottom:0;">
+            <input class="filter-input" id="serviceOverrideDate" type="date" />
+            <select class="filter-select" id="serviceOverrideAvailable"><option value="false">Closed / No Deliveries</option><option value="true">Open for Deliveries</option></select>
+            <input class="filter-input" id="serviceOverrideReason" type="text" maxlength="180" placeholder="Holiday or operational reason" />
+            <button class="btn btn-primary btn-sm" type="button" onclick="saveServiceDateOverride()">Save Service Date</button>
+          </div>
+          <div id="serviceDateOverrides" style="margin-top:0.85rem; color:var(--grey); font-size:0.84rem;">No service-date overrides loaded.</div>
+        </div>
+        <div class="filter-bar">
+          <select class="filter-select" id="scheduleFilter" onchange="renderDeliveryScheduling()"><option value="active">Active Orders</option><option value="needs_review">Needs Review</option><option value="all">All Orders</option></select>
+          <input class="filter-input" id="scheduleSearch" type="search" placeholder="Search order, client or customer" oninput="renderDeliveryScheduling()" />
+        </div>
+        <div class="card"><div class="table-wrap"><table>
+          <thead><tr><th>Order</th><th>Client / Customer</th><th>Parcel</th><th>Calculated Cycle</th><th>Source</th><th>Change Schedule</th><th>Actions</th></tr></thead>
+          <tbody id="deliverySchedulingBody"><tr><td colspan="7">Loading delivery schedules...</td></tr></tbody>
+        </table></div></div>
       </div>
 
       <!-- ════════ DRIVER ASSIGNMENT ════════ -->
@@ -1225,7 +1254,7 @@
                 <h4>Daily Order Cut-Off Time</h4>
                 <p>Orders submitted after this time move to the next delivery cycle.</p>
               </div>
-              <input class="setting-input" id="settingCutoffTime" type="time" value="20:00" />
+              <input class="setting-input" id="settingCutoffTime" type="time" value="12:00" />
             </div>
             <div class="setting-row">
               <div class="setting-label">
@@ -1393,6 +1422,7 @@
       'parcel-checkin': 'Parcel Check-In',
       'pickup-management': 'Pickup Management',
       'zone-confirm': 'Zone Confirmation',
+      'delivery-scheduling': 'Delivery Scheduling',
       'driver-assign': 'Driver Assignment',
       'cod-mgmt': 'COD Management',
       remittance: 'Remittance',
@@ -1414,9 +1444,10 @@
     let latestPayoutRows = [];
     let remittanceRecords = [];
     let driverCashRecords = [];
+    let serviceDateOverrides = [];
     let appSettings = {
-      daily_cutoff_time: '20:00',
-      same_day_enabled: true,
+      daily_cutoff_time: '12:00',
+      same_day_enabled: false,
       default_delivery_fee: 40,
       pickup_fee_under_3: 20,
       registration_enabled: true,
@@ -1568,7 +1599,7 @@
         const el = document.getElementById(id);
         if (el) el.value = value ?? '';
       };
-      setValue('settingCutoffTime', appSettings.daily_cutoff_time || '20:00');
+      setValue('settingCutoffTime', appSettings.daily_cutoff_time || '12:00');
       setValue('settingDefaultFee', Number(appSettings.default_delivery_fee || 40));
       setValue('settingPickupFee', Number(appSettings.pickup_fee_under_3 || 20));
       setValue('settingWhatsapp', appSettings.whatsapp_business_number || '');
@@ -1576,12 +1607,12 @@
       setValue('settingSiteName', appSettings.site_name || 'VirtuDrop');
       setValue('settingCurrency', appSettings.currency || 'TTD');
       setValue('settingAdminName', document.querySelector('.admin-name')?.textContent || 'Admin User');
-      setToggle('settingSameDay', appSettings.same_day_enabled !== false);
+      setToggle('settingSameDay', appSettings.same_day_enabled === true);
       setToggle('settingRegistration', appSettings.registration_enabled !== false);
     };
 
     window.saveAppSettings = async function() {
-      const cutoff = document.getElementById('settingCutoffTime')?.value || '20:00';
+      const cutoff = document.getElementById('settingCutoffTime')?.value || '12:00';
       const defaultFee = Number(document.getElementById('settingDefaultFee')?.value || 0);
       const pickupFee = Number(document.getElementById('settingPickupFee')?.value || 0);
       const currency = (document.getElementById('settingCurrency')?.value || 'TTD').trim().toUpperCase();
@@ -1907,6 +1938,9 @@
       const pickupBadge = document.querySelector('[data-panel="pickup-management"] .nav-badge');
       const activePickups = orders.filter(order => order.pickup_required && ['requested', 'assigned', 'picked_up'].includes(order.pickup_status)).length;
       if (pickupBadge) pickupBadge.textContent = activePickups;
+      const scheduleReview = orders.filter(order => order.scheduled_delivery_date && order.scheduled_delivery_date < today && !['delivered', 'cancelled', 'rejected'].includes(order.order_status)).length;
+      const scheduleBadge = document.querySelector('[data-panel="delivery-scheduling"] .nav-badge');
+      if (scheduleBadge) scheduleBadge.textContent = scheduleReview;
       const zoneBadge = document.querySelector('[data-panel="zone-confirm"] .nav-badge');
       if (zoneBadge) zoneBadge.textContent = pendingZone;
       const driverBadge = document.querySelector('[data-panel="driver-assign"] .nav-badge');
@@ -1926,6 +1960,7 @@
         const unpaid = latestPayoutRows.filter(row => !row.paidRecord).length;
         actions.innerHTML = [
           ['Pickup requests', activePickups, 'active', '#e9f7f5'],
+          ['Schedule review', scheduleReview, 'overdue', 'var(--orange-pale)'],
           ['Zone confirmation', pendingZone, 'pending', 'var(--yellow-pale)'],
           ['Driver assignment', unassigned, 'unassigned', '#f0f0f0'],
           ['Locked accounts', locked, 'locked', 'var(--red-pale)'],
@@ -2820,7 +2855,7 @@
           <td><span class="badge badge-confirmed">Confirmed</span></td>
           <td>${money(order.cod_amount)}</td>
           <td><select class="filter-select driver-select" style="width:160px;">${driverOptions()}</select></td>
-          <td><input type="date" class="filter-input route-date" style="width:140px;" value="${new Date().toISOString().slice(0, 10)}" /></td>
+          <td><input type="date" class="filter-input route-date" style="width:140px;" value="${order.scheduled_delivery_date || new Date().toISOString().slice(0, 10)}" /></td>
           <td><button class="btn btn-primary btn-sm" onclick="assignDriver('${order.id}')">✅ Assign</button></td>
         </tr>
       `).join('') || '<tr><td colspan="8">No zone-confirmed orders are waiting for driver assignment.</td></tr>';
@@ -2934,6 +2969,97 @@
       });
     };
 
+    function renderServiceDateOverrides() {
+      const target = document.getElementById('serviceDateOverrides');
+      if (!target) return;
+      target.innerHTML = serviceDateOverrides.length
+        ? serviceDateOverrides.map(item => `<span class="badge ${item.is_service_day ? 'badge-confirmed' : 'badge-unpaid'}" style="margin:0 0.4rem 0.35rem 0;">${escapeHtml(item.service_date)} · ${item.is_service_day ? 'Open' : 'Closed'} · ${escapeHtml(item.reason)}</span>`).join('')
+        : 'No service-date overrides. Sundays remain closed and Monday–Saturday remain open by default.';
+    }
+
+    window.renderDeliveryScheduling = function() {
+      const body = document.getElementById('deliverySchedulingBody');
+      if (!body) return;
+      const filter = document.getElementById('scheduleFilter')?.value || 'active';
+      const search = String(document.getElementById('scheduleSearch')?.value || '').trim().toLowerCase();
+      const today = new Date().toISOString().slice(0, 10);
+      const terminal = ['delivered', 'cancelled', 'rejected'];
+      const rows = orders.filter(order => {
+        if (filter === 'active' && terminal.includes(order.order_status)) return false;
+        if (filter === 'needs_review' && !(order.scheduled_delivery_date && order.scheduled_delivery_date < today && !terminal.includes(order.order_status))) return false;
+        if (!search) return true;
+        return [order.order_number, clientName(order), order.customer_name].some(value => String(value || '').toLowerCase().includes(search));
+      }).sort((a, b) => String(a.scheduled_delivery_date || '9999').localeCompare(String(b.scheduled_delivery_date || '9999')));
+
+      body.innerHTML = rows.map(order => {
+        const overdue = order.scheduled_delivery_date && order.scheduled_delivery_date < today && !terminal.includes(order.order_status);
+        return `
+          <tr data-schedule-order-id="${order.id}">
+            <td><div class="td-id">${escapeHtml(order.order_number)}</div><div class="td-sub">Submitted ${new Date(order.created_at).toLocaleString('en-TT', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' })}</div></td>
+            <td><div class="td-name">${escapeHtml(clientName(order))}</div><div class="td-sub">${escapeHtml(order.customer_name || '')}</div></td>
+            <td><div class="td-name">${escapeHtml(String(order.parcel_status || 'awaiting_parcel').replaceAll('_', ' '))}</div><div class="td-sub">${escapeHtml(String(order.zone_status || 'pending').replaceAll('_', ' '))}</div></td>
+            <td><div class="td-name">${order.scheduled_delivery_date ? new Date(order.scheduled_delivery_date + 'T12:00:00').toLocaleDateString('en-TT') : 'Not calculated'}</div>${overdue ? '<span class="badge badge-unpaid">Needs Review</span>' : ''}</td>
+            <td><span class="badge ${order.delivery_schedule_source === 'admin' ? 'badge-pending' : 'badge-confirmed'}">${escapeHtml(order.delivery_schedule_source || 'automatic')}</span>${order.delivery_schedule_override_reason ? `<div class="td-sub">${escapeHtml(order.delivery_schedule_override_reason)}</div>` : ''}</td>
+            <td><input class="filter-input schedule-date-input" type="date" value="${order.scheduled_delivery_date || today}" style="width:155px;"><input class="filter-input schedule-reason-input" type="text" maxlength="180" placeholder="Reason if changing date" style="width:190px; margin-top:0.35rem;"></td>
+            <td><div class="finance-actions"><button class="btn btn-primary btn-sm" onclick="saveOrderSchedule('${order.id}')">Save Schedule</button><button class="btn btn-ghost btn-sm" onclick="recalculateOrderSchedule('${order.id}')">Recalculate</button></div></td>
+          </tr>`;
+      }).join('') || '<tr><td colspan="7">No orders match this schedule view.</td></tr>';
+      renderServiceDateOverrides();
+    };
+
+    window.saveOrderSchedule = function(orderId) {
+      const order = orders.find(item => item.id === orderId);
+      const row = document.querySelector(`tr[data-schedule-order-id="${orderId}"]`);
+      const date = row?.querySelector('.schedule-date-input')?.value || '';
+      const reason = row?.querySelector('.schedule-reason-input')?.value.trim() || '';
+      if (!order || !row) return showToast('Order schedule not found.');
+      if (!date) return showToast('Select a delivery date.');
+      if (date !== order.scheduled_delivery_date && reason.length < 3) return showToast('Enter a reason for changing the delivery date.');
+      showModal('Save Delivery Schedule', `Schedule ${order.order_number} for ${date}?`, async () => {
+        try {
+          const { error } = await supabase.rpc('admin_set_order_delivery_schedule', { p_order_id: orderId, p_delivery_date: date, p_reason: reason || null });
+          if (error) throw error;
+          showToast(`${order.order_number} schedule saved.`);
+          await loadData();
+        } catch (error) {
+          console.error('Schedule update error:', error);
+          window.vdNotify('Schedule Not Saved', error.message || 'Could not update the delivery schedule.', 'error');
+        }
+      });
+    };
+
+    window.recalculateOrderSchedule = function(orderId) {
+      const order = orders.find(item => item.id === orderId);
+      if (!order) return showToast('Order schedule not found.');
+      showModal('Recalculate Schedule', `Return ${order.order_number} to the automatic delivery-cycle calculation?`, async () => {
+        try {
+          const { error } = await supabase.rpc('admin_recalculate_order_delivery_schedule', { p_order_id: orderId });
+          if (error) throw error;
+          showToast(`${order.order_number} schedule recalculated.`);
+          await loadData();
+        } catch (error) {
+          window.vdNotify('Schedule Not Recalculated', error.message || 'Could not recalculate the delivery schedule.', 'error');
+        }
+      });
+    };
+
+    window.saveServiceDateOverride = async function() {
+      const date = document.getElementById('serviceOverrideDate')?.value || '';
+      const isServiceDay = document.getElementById('serviceOverrideAvailable')?.value === 'true';
+      const reason = document.getElementById('serviceOverrideReason')?.value.trim() || '';
+      if (!date) return showToast('Select a service date.');
+      if (reason.length < 3) return showToast('Enter a reason for this service-date override.');
+      try {
+        const { error } = await supabase.rpc('admin_set_delivery_service_date', { p_service_date: date, p_is_service_day: isServiceDay, p_reason: reason });
+        if (error) throw error;
+        showToast(`${date} marked ${isServiceDay ? 'open' : 'closed'} for deliveries.`);
+        document.getElementById('serviceOverrideReason').value = '';
+        await loadData();
+      } catch (error) {
+        window.vdNotify('Service Date Not Saved', error.message || 'Could not save the service-date override.', 'error');
+      }
+    };
+
     function showZoneMessage(message, showLoginButton = false) {
       const zonePanel = document.getElementById('panel-zone-confirm');
       zonePanel.querySelectorAll('.zone-card, .card[data-live-empty]').forEach(card => card.remove());
@@ -2953,6 +3079,7 @@
       document.querySelector('#panel-driver-assign tbody').innerHTML = '<tr><td colspan="8">Loading driver assignments...</td></tr>';
       document.getElementById('parcelCheckinBody').innerHTML = '<tr><td colspan="7">Loading parcel records...</td></tr>';
       document.getElementById('pickupManagementBody').innerHTML = '<tr><td colspan="7">Loading pickup requests...</td></tr>';
+      document.getElementById('deliverySchedulingBody').innerHTML = '<tr><td colspan="7">Loading delivery schedules...</td></tr>';
       document.getElementById('accountingRecordsBody').innerHTML = '<tr><td colspan="9">Loading accounting records...</td></tr>';
       document.getElementById('clientPayoutBody').innerHTML = '<tr><td colspan="7">Loading client payouts...</td></tr>';
       showZoneMessage('Loading pending zone orders...');
@@ -2984,19 +3111,20 @@
       const adminName = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || 'Admin';
       document.querySelector('.admin-name').textContent = adminName;
 
-      const [clientsRes, zonesRes, ordersRes, driversRes, driverProfilesRes, profilesRes, settingsRes, remittanceRes, driverCashRes] = await Promise.all([
+      const [clientsRes, zonesRes, ordersRes, driversRes, driverProfilesRes, profilesRes, settingsRes, remittanceRes, driverCashRes, serviceDatesRes] = await Promise.all([
         supabase.from('business_clients').select('id, business_name, slug, status, profile_id'),
         supabase.from('zones').select('id, code, name, region, active, zone_areas(area_name)').eq('active', true).order('code'),
         supabase
           .from('orders')
-          .select('id, order_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_business_name, pickup_street_name, pickup_area_name, pickup_address, pickup_window, pickup_instructions, pickup_assigned_driver_id, pickup_scheduled_date, pickup_scheduled_window, pickup_assigned_at, pickup_picked_up_at, pickup_arrived_hub_at, pickup_cancelled_at, pickup_cancellation_reason, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, quote_status, price_override_reason, zone_status, order_status, assigned_driver_id, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, payment_confirmed_by, source, created_at, updated_at')
+          .select('id, order_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_business_name, pickup_street_name, pickup_area_name, pickup_address, pickup_window, pickup_instructions, pickup_assigned_driver_id, pickup_scheduled_date, pickup_scheduled_window, pickup_assigned_at, pickup_picked_up_at, pickup_arrived_hub_at, pickup_cancelled_at, pickup_cancellation_reason, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, delivery_schedule_source, delivery_schedule_status, delivery_schedule_calculated_at, delivery_schedule_override_reason, quote_status, price_override_reason, zone_status, order_status, assigned_driver_id, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, payment_confirmed_by, source, created_at, updated_at')
           .order('created_at', { ascending: false }),
         supabase.from('drivers').select('id, profile_id, status'),
         supabase.from('profiles').select('id, role, first_name, last_name, status').eq('role', 'driver'),
         supabase.from('profiles').select('id, role, first_name, last_name, status'),
         supabase.from('app_settings').select('key, value'),
         supabase.from('remittance_records').select('id, business_client_id, amount, order_ids, method, reference, notes, status, paid_by, paid_at, created_at').order('paid_at', { ascending: false }),
-        supabase.from('driver_cash_records').select('id, driver_id, order_id, amount, method, received_by, received_at, notes, created_at').order('received_at', { ascending: false })
+        supabase.from('driver_cash_records').select('id, driver_id, order_id, amount, method, received_by, received_at, notes, created_at').order('received_at', { ascending: false }),
+        supabase.from('delivery_service_dates').select('service_date, is_service_day, reason, updated_at').order('service_date', { ascending: true })
       ]);
 
       if (clientsRes.error) throw clientsRes.error;
@@ -3005,6 +3133,8 @@
       if (driversRes.error) throw driversRes.error;
       if (driverProfilesRes.error) throw driverProfilesRes.error;
       if (profilesRes.error) throw profilesRes.error;
+      if (serviceDatesRes.error) throw serviceDatesRes.error;
+      serviceDateOverrides = serviceDatesRes.data || [];
       if (settingsRes.error) {
         console.warn('App settings could not load:', settingsRes.error);
       } else {
@@ -3037,6 +3167,7 @@
       renderAllOrders();
       renderParcelCheckin();
       renderPickupManagement();
+      renderDeliveryScheduling();
       renderZoneConfirm();
       renderDriverAssign();
       renderAccounting();
@@ -3387,6 +3518,7 @@
       document.querySelector('#panel-all-orders tbody').innerHTML = `<tr><td colspan="8">${error.message || 'Could not load orders.'}</td></tr>`;
       document.querySelector('#panel-driver-assign tbody').innerHTML = '<tr><td colspan="8">Driver assignment could not load because orders did not load.</td></tr>';
       document.getElementById('pickupManagementBody').innerHTML = '<tr><td colspan="7">Pickup management could not load because orders did not load.</td></tr>';
+      document.getElementById('deliverySchedulingBody').innerHTML = '<tr><td colspan="7">Delivery scheduling could not load because orders did not load.</td></tr>';
       showToast(error.message || 'Could not load admin dashboard data.');
     });
   </script>

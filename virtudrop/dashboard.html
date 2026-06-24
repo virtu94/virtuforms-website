@@ -459,6 +459,19 @@
       gap: 0.7rem;
       margin-top: 1rem;
     }
+    .business-track-bubble { margin-top:1.25rem; padding:1.1rem; border:1px solid #dcecea; border-radius:8px; background:#f8fbfa; }
+    .business-track-top { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+    .business-track-title { font-size:0.78rem; font-weight:800; color:#6a6a6a; text-transform:uppercase; }
+    .business-track-message { margin-top:0.35rem; color:#334a47; font-size:0.88rem; }
+    .business-track-steps { position:relative; display:grid; grid-template-columns:repeat(4,1fr); margin-top:1.25rem; }
+    .business-track-steps::before { content:''; position:absolute; top:14px; left:12.5%; right:12.5%; height:3px; background:#dce4e3; }
+    .business-track-fill { position:absolute; top:14px; left:12.5%; height:3px; background:#2a9d8f; z-index:1; }
+    .business-track-step { position:relative; z-index:2; text-align:center; min-width:0; }
+    .business-track-dot { width:30px; height:30px; margin:0 auto 0.45rem; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#fff; border:2px solid #cbd7d5; color:#7a8d8a; font-size:0.75rem; font-weight:800; }
+    .business-track-dot.done { background:#2a9d8f; border-color:#2a9d8f; color:#fff; }
+    .business-track-dot.current { border-color:#2a9d8f; color:#2a9d8f; box-shadow:0 0 0 4px rgba(42,157,143,0.12); }
+    .business-track-label { font-size:0.72rem; color:#73817f; overflow-wrap:anywhere; }
+    .business-track-label.done, .business-track-label.current { color:#0d2b28; font-weight:700; }
     .order-clickable { cursor: pointer; }
     .order-clickable:hover td { background: #f0f9f8; }
     .order-detail-link {
@@ -474,6 +487,8 @@
     @media (max-width: 640px) {
       .order-detail-grid { grid-template-columns: 1fr; }
       .order-detail-head { flex-direction: column; }
+      .business-track-bubble { padding:0.9rem 0.65rem; }
+      .business-track-label { font-size:0.64rem; }
     }
 
     /* ── Mobile bottom nav ── */
@@ -1726,7 +1741,7 @@
 
 <script src="vd-modal.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script type="module" src="business-dashboard.js?v=20260624-pickup-mgmt-1"></script>
+  <script type="module" src="business-dashboard.js?v=20260624-scheduling-1"></script>
 
 </body>
 </html>

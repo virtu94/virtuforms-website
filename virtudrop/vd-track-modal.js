@@ -327,6 +327,10 @@
             <span class="vd-track-detail-value">${date}</span>
           </div>
           <div class="vd-track-detail-row">
+            <span class="vd-track-detail-key">Scheduled Delivery</span>
+            <span class="vd-track-detail-value accent">${order.scheduled_delivery_date ? new Date(order.scheduled_delivery_date + 'T12:00:00').toLocaleDateString('en-TT') : 'To be scheduled'}</span>
+          </div>
+          <div class="vd-track-detail-row">
             <span class="vd-track-detail-key">Status</span>
             <span class="vd-track-detail-value" style="font-size:0.82rem; font-weight:400; color:rgba(255,255,255,0.65); text-align:right;">${escHtml(st.message)}</span>
           </div>

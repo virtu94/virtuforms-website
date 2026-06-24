@@ -726,6 +726,47 @@ function detailItem(label, value, full = false) {
   `;
 }
 
+function businessTrackingBubble(order) {
+  const trackedStatuses = ['assigned', 'out_for_delivery', 'delivered', 'failed', 'rescheduled'];
+  let step = 0;
+  let label = 'Request Received';
+  let message = 'The order is being prepared for delivery.';
+  if (!trackedStatuses.includes(order.order_status) && order.parcel_status === 'awaiting_parcel') {
+    label = 'Awaiting Parcel';
+    message = 'VirtuDrop has not checked in the parcel yet.';
+  } else if (!trackedStatuses.includes(order.order_status) && order.parcel_status === 'parcel_received') {
+    label = 'Package Received';
+    message = 'The parcel has been received and checked in.';
+  } else if (order.order_status === 'assigned') {
+    step = 1; label = 'Driver Assigned'; message = 'A driver has been assigned to this delivery.';
+  } else if (order.order_status === 'out_for_delivery') {
+    step = 2; label = 'Out for Delivery'; message = 'The parcel is out for delivery.';
+  } else if (order.order_status === 'delivered') {
+    step = 3; label = 'Delivered'; message = 'The parcel was delivered successfully.';
+  } else if (order.order_status === 'failed') {
+    step = 3; label = 'Failed Attempt'; message = 'The delivery attempt was unsuccessful.';
+  } else if (order.order_status === 'rescheduled') {
+    step = 3; label = 'Rescheduled'; message = 'Admin is arranging the next delivery attempt.';
+  }
+  const labels = ['Received', 'Driver Assigned', 'Out for Delivery', 'Delivered'];
+  const delivered = order.order_status === 'delivered';
+  const steps = labels.map((stepLabel, index) => {
+    const done = index < step || (delivered && index === 3);
+    const current = index === step && !delivered;
+    return `<div class="business-track-step"><div class="business-track-dot ${done ? 'done' : current ? 'current' : ''}">${done ? '✓' : index + 1}</div><div class="business-track-label ${done ? 'done' : current ? 'current' : ''}">${stepLabel}</div></div>`;
+  }).join('');
+  const width = Math.max(0, Math.min(step, 3)) / 3 * 75;
+  return `
+    <div class="business-track-bubble">
+      <div class="business-track-top">
+        <div><div class="business-track-title">Order Tracking</div><div class="business-track-message">${escapeHtml(message)}</div></div>
+        <span class="status-badge ${statusClass(order.order_status)}">${escapeHtml(label)}</span>
+      </div>
+      ${order.scheduled_delivery_date ? `<div class="business-track-message"><strong>Scheduled delivery:</strong> ${escapeHtml(formatDate(order.scheduled_delivery_date))}</div>` : ''}
+      <div class="business-track-steps"><div class="business-track-fill" style="width:${width}%"></div>${steps}</div>
+    </div>`;
+}
+
 function deliveryLink() {
   const base = window.location.origin + window.location.pathname.replace(/dashboard\.html$/, 'delivery-form.html');
   return `${base}?business=${encodeURIComponent(business?.slug || '')}`;
@@ -763,7 +804,6 @@ function emptyRow(cols, message) {
 }
 
 function orderTableRow(order, includeCost = false) {
-  const link = trackingLink(order);
   return `
     <tr class="order-clickable" onclick="openOrderDetails('${order.id}')">
       <td><strong><button type="button" class="order-detail-link" onclick="event.stopPropagation(); openOrderDetails('${order.id}')">${escapeHtml(order.order_number)}</button></strong></td>
@@ -772,13 +812,12 @@ function orderTableRow(order, includeCost = false) {
       ${includeCost ? `<td>${money(order.delivery_fee)}</td>` : ''}
       <td>${formatDate(order.created_at)}</td>
       <td><span class="status-badge ${statusClass(order.order_status)}">${escapeHtml(statusLabel(order.order_status))}</span></td>
-      ${includeCost ? `<td>${link ? `<a href="${escapeHtml(link)}" target="_blank" onclick="event.stopPropagation()" style="color:#2a9d8f; font-weight:700;">Track</a>` : '—'}</td>` : ''}
+      ${includeCost ? `<td><button type="button" class="order-detail-link" onclick="event.stopPropagation(); openOrderDetails('${order.id}')">Track</button></td>` : ''}
     </tr>
   `;
 }
 
 function orderCard(order) {
-  const link = trackingLink(order);
   return `
     <div class="order-card order-clickable" onclick="openOrderDetails('${order.id}')">
       <div class="order-card-top">
@@ -792,7 +831,7 @@ function orderCard(order) {
       </div>
       <div style="font-size:0.78rem; color:#6a6a6a; margin-top:0.35rem;">Parcel: ${escapeHtml(parcelStatusLabel(order.parcel_status))}</div>
       ${order.pickup_required ? `<div style="font-size:0.78rem; color:#2a6f68; margin-top:0.2rem;">${escapeHtml(pickupStatusLabel(order.pickup_status))}${order.pickup_scheduled_date ? ` · ${escapeHtml(formatDate(order.pickup_scheduled_date))}` : ''}</div>` : ''}
-      <div class="order-card-cost">${money(order.delivery_fee)}${link ? ` · <a href="${escapeHtml(link)}" target="_blank" onclick="event.stopPropagation()" style="color:#2a9d8f;">Track</a>` : ''} · <button type="button" class="order-detail-link" onclick="event.stopPropagation(); openOrderDetails('${order.id}')">View details</button></div>
+      <div class="order-card-cost">${money(order.delivery_fee)} · <button type="button" class="order-detail-link" onclick="event.stopPropagation(); openOrderDetails('${order.id}')">View details</button></div>
     </div>
   `;
 }
@@ -803,7 +842,6 @@ window.openOrderDetails = function(orderId) {
   const content = el('#orderDetailContent');
   if (!order || !modal || !content) return;
 
-  const link = trackingLink(order);
   const map = mapsLink(order);
   const notes = customerNotesParts(order);
   const payment = paymentLabels[order.payment_type] || order.payment_type || 'Delivery';
@@ -856,8 +894,8 @@ window.openOrderDetails = function(orderId) {
     </div>
     <div class="order-detail-actions">
       ${map ? `<a class="btn btn-primary" href="${escapeHtml(map)}" target="_blank">Open Location</a>` : ''}
-      ${link ? `<a class="btn btn-ghost" href="${escapeHtml(link)}" target="_blank">Track Order</a>` : ''}
     </div>
+    ${businessTrackingBubble(order)}
   `;
 
   modal.classList.add('active');

@@ -726,6 +726,10 @@
               <span class="detail-value">${order.created_at ? new Date(order.created_at).toLocaleDateString('en-TT') : '—'}</span>
             </div>
             <div class="detail-row">
+              <span class="detail-key">Scheduled Delivery</span>
+              <span class="detail-value accent">${order.scheduled_delivery_date ? new Date(order.scheduled_delivery_date + 'T12:00:00').toLocaleDateString('en-TT') : 'To be scheduled'}</span>
+            </div>
+            <div class="detail-row">
               <span class="detail-key">Status Message</span>
               <span class="detail-value" style="text-align:right; font-size:0.82rem; font-weight:400; color:rgba(255,255,255,0.65);">${st.message}</span>
             </div>
