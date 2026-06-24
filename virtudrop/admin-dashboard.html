@@ -947,7 +947,7 @@
           </table></div>
         </div>
         <div class="filter-bar">
-          <select class="filter-select" id="manifestStatusFilter" onchange="renderManifests()"><option value="active">Active Manifests</option><option value="draft">Draft</option><option value="ready">Ready</option><option value="collected">Collected by Driver</option><option value="all">All Manifests</option></select>
+          <select class="filter-select" id="manifestStatusFilter" onchange="renderManifests()"><option value="active">Current Manifests</option><option value="draft">Draft</option><option value="ready">Ready</option><option value="collected">Collected by Driver</option><option value="all">All Manifests</option></select>
           <input class="filter-input" id="manifestSearch" type="search" placeholder="Search manifest, driver or order" oninput="renderManifests()" />
         </div>
         <div id="manifestList"><div class="card">Loading delivery manifests...</div></div>
@@ -2918,7 +2918,7 @@
       const filter = document.getElementById('manifestStatusFilter')?.value || 'active';
       const search = String(document.getElementById('manifestSearch')?.value || '').trim().toLowerCase();
       const rows = deliveryManifests.filter(manifest => {
-        if (filter === 'active' && !['draft', 'ready'].includes(manifest.status)) return false;
+        if (filter === 'active' && !['draft', 'ready', 'collected'].includes(manifest.status)) return false;
         if (!['active', 'all'].includes(filter) && manifest.status !== filter) return false;
         if (!search) return true;
         return [manifest.manifest_number, manifest.driver_name, ...(manifest.orders || []).map(order => order.order_number)]
@@ -2934,7 +2934,9 @@
             ${(manifest.orders || []).map(order => `<tr><td>${order.route_sequence}</td><td>${escapeHtml(order.zone_code ? `Zone ${order.zone_code}` : '—')}</td><td class="td-id">${escapeHtml(order.order_number)}</td><td><div class="td-name">${escapeHtml(order.customer_name || '')}</div><div class="td-sub">${escapeHtml(order.customer_phone || '')}</div></td><td>${escapeHtml(order.delivery_address || order.area_name || '')}</td><td>${escapeHtml(String(order.parcel_count || 1))}</td><td>${moneyFull(order.amount_to_collect)}</td>${manifest.status === 'draft' ? `<td><button class="btn btn-ghost btn-sm" onclick="removeManifestOrder('${manifest.id}', '${order.id}')">Remove</button></td>` : ''}</tr>`).join('') || `<tr><td colspan="${manifest.status === 'draft' ? 8 : 7}">No parcels on this manifest.</td></tr>`}
           </tbody></table></div>
           ${manifest.handed_to_driver_at ? `<div class="td-sub" style="margin-top:0.75rem;">Handover confirmed ${new Date(manifest.handed_to_driver_at).toLocaleString('en-TT')}</div>` : ''}
-        </div>`).join('') || '<div class="card">No manifests match this view.</div>';
+        </div>`).join('') || (deliveryManifests.length
+          ? '<div class="card">No manifests match the selected status or search.</div>'
+          : '<div class="card"><strong>No manifests have been created yet.</strong><div class="td-sub" style="margin-top:0.5rem;">Sort a received parcel, then assign it to a driver. Existing assignments require database migration 20260624_010_manifest_backfill.sql.</div></div>');
     };
 
     window.setManifestStatus = function(manifestId, status) {
@@ -3417,6 +3419,7 @@
       });
 
       if (rpcResult.error) throw rpcResult.error;
+      return rpcResult.data;
     }
 
     window.assignDriver = function(orderId) {
@@ -3440,9 +3443,10 @@
 
       showModal('Assign Driver', `Assign ${driverLabel} to order ${order.order_number}?`, async () => {
         try {
-          await saveDriverAssignment(orderId, driverId, routeDate);
-          showToast(`✅ ${order.order_number} assigned to ${driverLabel}.`);
+          const assignment = await saveDriverAssignment(orderId, driverId, routeDate);
+          showToast(`${order.order_number} assigned to ${driverLabel} on ${assignment?.manifest_number || 'a delivery manifest'}.`);
           await loadData();
+          showPanel('sorting-manifests');
         } catch (error) {
           console.error('Driver assignment error:', error);
           window.vdNotify('Driver Assignment Failed', error.message || 'Driver assignment failed. Check the console for details.', 'error');
