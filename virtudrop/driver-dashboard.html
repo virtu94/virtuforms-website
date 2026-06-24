@@ -125,6 +125,9 @@
     }
     .filter-tab.active { background: var(--teal-dark); border-color: var(--teal-dark); color: var(--white); }
     .filter-tab:not(.active):hover { border-color: var(--teal-mid); color: var(--teal-mid); }
+    .work-tabs { display:flex; gap:0.6rem; padding:1rem 1.5rem 0; }
+    .work-tab { border:1px solid var(--grey-mid); background:var(--white); color:var(--grey); border-radius:6px; padding:0.6rem 1rem; font-weight:700; cursor:pointer; }
+    .work-tab.active { background:var(--teal-mid); border-color:var(--teal-mid); color:var(--white); }
 
     /* ── Delivery list ── */
     .delivery-list { padding: 1rem 1.5rem 6rem; display: flex; flex-direction: column; gap: 1rem; }
@@ -573,29 +576,44 @@
     <div class="day-strip-date" id="todayDate"></div>
   </div>
 
-  <!-- ── Filter tabs ── -->
-  <div class="filter-tabs">
-    <button class="filter-tab active" onclick="filterCards('all', this)">All (0)</button>
-    <button class="filter-tab" onclick="filterCards('queued', this)">Queued (0)</button>
-    <button class="filter-tab" onclick="filterCards('out', this)">Out for Delivery (0)</button>
-    <button class="filter-tab" onclick="filterCards('delivered', this)">Delivered (0)</button>
-    <button class="filter-tab" onclick="filterCards('failed', this)">Failed (0)</button>
+  <div class="work-tabs">
+    <button class="work-tab active" id="deliveryWorkTab" type="button" onclick="switchWorkView('deliveries')">Deliveries</button>
+    <button class="work-tab" id="pickupWorkTab" type="button" onclick="switchWorkView('pickups')">Pickups (0)</button>
   </div>
 
-  <!-- ── Delivery list ── -->
-  <div class="delivery-list" id="deliveryList">
-    <div class="delivery-card">
-      <div class="card-header">
-        <div>Loading assigned orders...</div>
+  <div id="deliveryWorkView">
+    <!-- ── Filter tabs ── -->
+    <div class="filter-tabs">
+      <button class="filter-tab active" onclick="filterCards('all', this)">All (0)</button>
+      <button class="filter-tab" onclick="filterCards('queued', this)">Queued (0)</button>
+      <button class="filter-tab" onclick="filterCards('out', this)">Out for Delivery (0)</button>
+      <button class="filter-tab" onclick="filterCards('delivered', this)">Delivered (0)</button>
+      <button class="filter-tab" onclick="filterCards('failed', this)">Failed (0)</button>
+    </div>
+
+    <!-- ── Delivery list ── -->
+    <div class="delivery-list" id="deliveryList">
+      <div class="delivery-card">
+        <div class="card-header"><div>Loading assigned orders...</div></div>
       </div>
+    </div>
+
+    <div class="empty-state" id="emptyState">
+      <span class="empty-icon">📭</span>
+      <h3>No deliveries in this category</h3>
+      <p>Check another filter or contact admin if an assignment is missing.</p>
     </div>
   </div>
 
-  <!-- ── Empty state ── -->
-  <div class="empty-state" id="emptyState">
-    <span class="empty-icon">📭</span>
-    <h3>No deliveries in this category</h3>
-    <p>All caught up! Check another filter or contact admin if you're missing assignments.</p>
+  <div id="pickupWorkView" style="display:none;">
+    <div class="delivery-list" id="pickupList">
+      <div class="delivery-card"><div class="card-header"><div>Loading assigned pickups...</div></div></div>
+    </div>
+    <div class="empty-state" id="pickupEmptyState">
+      <span class="empty-icon">📦</span>
+      <h3>No assigned pickups</h3>
+      <p>New pickup work will appear here after admin assigns it.</p>
+    </div>
   </div>
 
   <!-- ── Bottom bar ── -->
@@ -662,8 +680,10 @@
     let currentDriver = null;
     let currentProfile = null;
     let orders = [];
+    let pickups = [];
     let clientsById = new Map();
     let activeFilter = 'all';
+    let activeWorkView = 'deliveries';
 
     document.getElementById('todayDate').textContent =
       new Date().toLocaleDateString('en-TT', { weekday:'long', day:'numeric', month:'short', year:'numeric' });
@@ -676,6 +696,12 @@
       toastTimer = setTimeout(() => t.style.display = 'none', 3500);
     }
     window.showToast = showToast;
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+      })[char]);
+    }
 
     function openModal(title, body, actions) {
       document.getElementById('modalTitle').textContent = title;
@@ -751,6 +777,98 @@
       return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((order.delivery_address || '') + ', Trinidad')}`;
     }
 
+    function pickupMapsTarget(pickup) {
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((pickup.pickup_address || '') + ', Trinidad')}`;
+    }
+
+    window.switchWorkView = function(view) {
+      activeWorkView = view === 'pickups' ? 'pickups' : 'deliveries';
+      document.getElementById('deliveryWorkView').style.display = activeWorkView === 'deliveries' ? '' : 'none';
+      document.getElementById('pickupWorkView').style.display = activeWorkView === 'pickups' ? '' : 'none';
+      document.getElementById('deliveryWorkTab').classList.toggle('active', activeWorkView === 'deliveries');
+      document.getElementById('pickupWorkTab').classList.toggle('active', activeWorkView === 'pickups');
+      document.getElementById('driverUpdateAdminBtn').style.display = activeWorkView === 'deliveries' ? '' : 'none';
+    };
+
+    function pickupStatusBadge(status) {
+      if (status === 'picked_up') return '<span class="status-badge badge-out">Picked Up</span>';
+      if (status === 'arrived_at_hub') return '<span class="status-badge badge-delivered">Arrived at Hub</span>';
+      return '<span class="status-badge badge-queued">Assigned Pickup</span>';
+    }
+
+    function renderPickupActions(pickup) {
+      const phone = phoneForLink(pickup.pickup_contact_phone);
+      const maps = pickupMapsTarget(pickup);
+      const contactActions = `
+        <button class="action-btn btn-maps" onclick="openMaps('${maps.replaceAll("'", "\\'")}')">Open in Maps</button>
+        <button class="action-btn btn-call" onclick="callCustomer('${phone}')">Call Contact</button>
+        <button class="action-btn btn-whatsapp" onclick="whatsappCustomer('${phone}')">WhatsApp Contact</button>
+      `;
+      if (pickup.pickup_status === 'assigned') {
+        return contactActions + `<button class="action-btn btn-collected" onclick="confirmPickupStatus('${pickup.id}', 'picked_up')">Mark Picked Up</button>`;
+      }
+      if (pickup.pickup_status === 'picked_up') {
+        return contactActions + `<button class="action-btn btn-delivered" onclick="confirmPickupStatus('${pickup.id}', 'arrived_at_hub')">Mark Arrived at Hub</button>`;
+      }
+      return '<span class="status-badge badge-delivered">Ready for hub check-in</span>';
+    }
+
+    function renderPickups() {
+      const list = document.getElementById('pickupList');
+      const empty = document.getElementById('pickupEmptyState');
+      const activeCount = pickups.filter(pickup => ['assigned', 'picked_up'].includes(pickup.pickup_status)).length;
+      document.getElementById('pickupWorkTab').textContent = `Pickups (${activeCount})`;
+      list.innerHTML = pickups.map(pickup => {
+        const scheduledDate = pickup.pickup_scheduled_date
+          ? new Date(pickup.pickup_scheduled_date + 'T12:00:00').toLocaleDateString('en-TT')
+          : 'Date pending';
+        return `
+          <div class="delivery-card${pickup.pickup_status === 'picked_up' ? ' status-out' : pickup.pickup_status === 'arrived_at_hub' ? ' status-delivered' : ''}">
+            <div class="card-header">
+              <div class="card-order"><div class="order-num">${escapeHtml(pickup.order_number)}</div><div class="client-tag">${escapeHtml(pickup.business_name)}</div></div>
+              ${pickupStatusBadge(pickup.pickup_status)}
+            </div>
+            <div class="customer-info">
+              <div class="info-row"><div class="info-label">Pickup Contact</div><div class="info-value">${escapeHtml(pickup.pickup_contact_name || 'Not entered')}</div></div>
+              <div class="info-row"><div class="info-label">Phone</div><div class="info-value">${escapeHtml(pickup.pickup_contact_phone || 'Not entered')}</div></div>
+              <div class="info-row" style="grid-column:1/-1;"><div class="info-label">Pickup Address</div><div class="info-value address">${escapeHtml(pickup.pickup_address || 'Address missing')}</div></div>
+              <div class="info-row"><div class="info-label">Scheduled</div><div class="info-value">${escapeHtml(scheduledDate)}</div></div>
+              <div class="info-row"><div class="info-label">Window</div><div class="info-value">${escapeHtml(pickup.pickup_scheduled_window || pickup.pickup_window || 'Not entered')}</div></div>
+              <div class="info-row"><div class="info-label">Parcels</div><div class="info-value">${escapeHtml(String(pickup.pickup_parcel_count || 1))}</div></div>
+              <div class="info-row"><div class="info-label">Pickup Fee</div><div class="info-value">${escapeHtml(money(pickup.pickup_fee))}</div></div>
+            </div>
+            ${pickup.pickup_instructions ? `<div class="delivery-notes">${escapeHtml(pickup.pickup_instructions)}</div>` : ''}
+            <div class="card-actions">${renderPickupActions(pickup)}</div>
+          </div>
+        `;
+      }).join('');
+      empty.classList.toggle('show', pickups.length === 0);
+    }
+
+    window.confirmPickupStatus = function(orderId, nextStatus) {
+      const pickup = pickups.find(item => item.id === orderId);
+      if (!pickup) return showToast('Pickup not found. Refresh and try again.');
+      const label = nextStatus === 'picked_up' ? 'mark this parcel picked up' : 'mark this parcel arrived at the hub';
+      openModal('Confirm Pickup Update', `Are you ready to ${label}?`, `<button class="modal-btn primary" onclick="savePickupStatus('${orderId}', '${nextStatus}')">Confirm</button><button class="modal-btn" onclick="closeModal()">Cancel</button>`);
+    };
+
+    window.savePickupStatus = async function(orderId, nextStatus) {
+      try {
+        const { error } = await supabase.rpc('driver_update_order_pickup', {
+          p_order_id: orderId,
+          p_pickup_status: nextStatus
+        });
+        if (error) throw error;
+        closeModal();
+        showToast(nextStatus === 'picked_up' ? 'Pickup marked collected.' : 'Pickup marked arrived at hub.');
+        await loadDriverData();
+        switchWorkView('pickups');
+      } catch (error) {
+        console.error('Pickup status update error:', error);
+        window.vdNotify('Pickup Update Failed', error.message || 'Could not update this pickup.', 'error');
+      }
+    };
+
     function renderActions(order, status) {
       const collect = amountToCollect(order);
       const phone = phoneForLink(order.customer_phone);
@@ -815,12 +933,20 @@
                 <div class="info-value address">${order.delivery_address || order.area_name || 'Location pending'}</div>
               </div>
               <div class="info-row">
+                <div class="info-label">Package Value</div>
+                <div class="info-value">${money(order.package_value || order.cod_amount || 0)}</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">Delivery Fee</div>
+                <div class="info-value">${money(order.delivery_fee || 0)}</div>
+              </div>
+              <div class="info-row">
                 <div class="info-label">To Collect</div>
                 <div class="info-value ${collectClass}">${collectLabel}</div>
               </div>
               <div class="info-row">
-                <div class="info-label">Payment Type</div>
-                <div class="info-value">${paymentLabel(order.payment_type)}</div>
+                <div class="info-label">Delivery Paid By</div>
+                <div class="info-value">${order.delivery_fee_payer === 'client' ? 'Business client' : 'Customer'}</div>
               </div>
             </div>
             ${notes}
@@ -937,21 +1063,26 @@
       const accountName = document.getElementById('driverAccountName');
       if (accountName) accountName.textContent = fullName;
 
-      const [ordersRes, clientsRes] = await Promise.all([
+      const [ordersRes, pickupsRes, clientsRes] = await Promise.all([
         supabase
           .from('orders')
-          .select('id, order_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, cod_amount, package_value, delivery_fee, driver_amount_to_collect, order_status, assigned_driver_id, customer_notes, driver_notes, tracking_token, created_at')
+          .select('id, order_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, cod_amount, package_value, delivery_fee, driver_amount_to_collect, pickup_required, pickup_parcel_count, pickup_fee, order_status, assigned_driver_id, customer_notes, driver_notes, tracking_token, created_at')
           .eq('assigned_driver_id', driver.id)
           .order('created_at', { ascending: false }),
+        supabase.rpc('driver_list_my_pickups'),
         supabase.from('business_clients').select('id, business_name')
       ]);
 
       if (ordersRes.error) throw ordersRes.error;
+      if (pickupsRes.error) throw pickupsRes.error;
       if (clientsRes.error) throw clientsRes.error;
 
       clientsById = new Map((clientsRes.data || []).map(client => [client.id, client]));
       orders = ordersRes.data || [];
+      pickups = Array.isArray(pickupsRes.data) ? pickupsRes.data : [];
       renderOrders();
+      renderPickups();
+      switchWorkView(activeWorkView);
       loadDriverNotificationBadge();
     }
 

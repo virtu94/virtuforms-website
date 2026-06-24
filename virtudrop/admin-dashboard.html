@@ -704,6 +704,10 @@
         <span class="nav-icon">📦</span> Parcel Check-In
         <span class="nav-badge alert">0</span>
       </button>
+      <button class="nav-item" data-panel="pickup-management">
+        <span class="nav-icon">🚐</span> Pickup Management
+        <span class="nav-badge alert">0</span>
+      </button>
       <button class="nav-item" data-panel="zone-confirm">
         <span class="nav-icon">📍</span> Zone Confirmation
         <span class="nav-badge alert">5</span>
@@ -877,6 +881,33 @@
             <table>
               <thead><tr><th>Order</th><th>Client / Customer</th><th>Parcel</th><th>Pickup</th><th>Submitted</th><th>Status</th><th>Actions</th></tr></thead>
               <tbody id="parcelCheckinBody"><tr><td colspan="7">Loading parcel records...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" id="panel-pickup-management">
+        <div class="section-heading">
+          <h2>Pickup Management</h2>
+          <p>Schedule business pickups, assign drivers, and monitor parcels returning to the hub.</p>
+        </div>
+        <div class="filter-bar">
+          <select class="filter-select" id="pickupQueueFilter" onchange="renderPickupManagement()">
+            <option value="active">Active Pickups</option>
+            <option value="requested">Requested</option>
+            <option value="assigned">Assigned</option>
+            <option value="picked_up">Picked Up</option>
+            <option value="arrived_at_hub">Arrived at Hub</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="all">All Pickups</option>
+          </select>
+          <input class="filter-input" id="pickupQueueSearch" type="search" placeholder="Search order, client or pickup area" oninput="renderPickupManagement()" />
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Order / Client</th><th>Pickup Location</th><th>Parcels / Fee</th><th>Requested</th><th>Status</th><th>Driver / Schedule</th><th>Actions</th></tr></thead>
+              <tbody id="pickupManagementBody"><tr><td colspan="7">Loading pickup requests...</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -1360,6 +1391,7 @@
       overview: 'Overview',
       'all-orders': 'All Orders',
       'parcel-checkin': 'Parcel Check-In',
+      'pickup-management': 'Pickup Management',
       'zone-confirm': 'Zone Confirmation',
       'driver-assign': 'Driver Assignment',
       'cod-mgmt': 'COD Management',
@@ -1872,6 +1904,9 @@
       if (allBadge) allBadge.textContent = orders.length;
       const checkinBadge = document.querySelector('[data-panel="parcel-checkin"] .nav-badge');
       if (checkinBadge) checkinBadge.textContent = orders.filter(order => order.parcel_status === 'awaiting_parcel').length;
+      const pickupBadge = document.querySelector('[data-panel="pickup-management"] .nav-badge');
+      const activePickups = orders.filter(order => order.pickup_required && ['requested', 'assigned', 'picked_up'].includes(order.pickup_status)).length;
+      if (pickupBadge) pickupBadge.textContent = activePickups;
       const zoneBadge = document.querySelector('[data-panel="zone-confirm"] .nav-badge');
       if (zoneBadge) zoneBadge.textContent = pendingZone;
       const driverBadge = document.querySelector('[data-panel="driver-assign"] .nav-badge');
@@ -1890,6 +1925,7 @@
         const locked = allProfiles.filter(profile => String(profile.status || '').toLowerCase() === 'locked').length;
         const unpaid = latestPayoutRows.filter(row => !row.paidRecord).length;
         actions.innerHTML = [
+          ['Pickup requests', activePickups, 'active', '#e9f7f5'],
           ['Zone confirmation', pendingZone, 'pending', 'var(--yellow-pale)'],
           ['Driver assignment', unassigned, 'unassigned', '#f0f0f0'],
           ['Locked accounts', locked, 'locked', 'var(--red-pale)'],
@@ -2790,6 +2826,114 @@
       `).join('') || '<tr><td colspan="8">No zone-confirmed orders are waiting for driver assignment.</td></tr>';
     }
 
+    function pickupStatusBadge(status) {
+      const labels = {
+        requested: 'Requested',
+        assigned: 'Assigned',
+        picked_up: 'Picked Up',
+        arrived_at_hub: 'Arrived at Hub',
+        cancelled: 'Cancelled'
+      };
+      const badgeClass = status === 'arrived_at_hub' ? 'badge-confirmed'
+        : status === 'cancelled' ? 'badge-unpaid'
+          : 'badge-pending';
+      return `<span class="badge ${badgeClass}">${escapeHtml(labels[status] || 'Requested')}</span>`;
+    }
+
+    window.renderPickupManagement = function() {
+      const body = document.getElementById('pickupManagementBody');
+      if (!body) return;
+      const filter = document.getElementById('pickupQueueFilter')?.value || 'active';
+      const search = String(document.getElementById('pickupQueueSearch')?.value || '').trim().toLowerCase();
+      const activeStatuses = ['requested', 'assigned', 'picked_up'];
+      const pickupOrders = orders.filter(order => {
+        if (!order.pickup_required) return false;
+        if (filter === 'active' && !activeStatuses.includes(order.pickup_status)) return false;
+        if (!['active', 'all'].includes(filter) && order.pickup_status !== filter) return false;
+        if (!search) return true;
+        return [order.order_number, clientName(order), order.pickup_address, order.pickup_area_name]
+          .some(value => String(value || '').toLowerCase().includes(search));
+      });
+      const today = new Date().toISOString().slice(0, 10);
+
+      body.innerHTML = pickupOrders.map(order => {
+        const canManage = ['requested', 'assigned'].includes(order.pickup_status);
+        const assignedDriver = order.pickup_assigned_driver_id ? driverName(order.pickup_assigned_driver_id) : 'Unassigned';
+        const address = order.pickup_address || [order.pickup_business_name, order.pickup_street_name, order.pickup_area_name].filter(Boolean).join(', ');
+        return `
+          <tr data-pickup-order-id="${order.id}">
+            <td><div class="td-id">${escapeHtml(order.order_number)}</div><div class="td-name">${escapeHtml(clientName(order))}</div><div class="td-sub">${escapeHtml(order.pickup_contact_name || '')} · ${escapeHtml(order.pickup_contact_phone || '')}</div></td>
+            <td><div class="td-name">${escapeHtml(address || 'Address missing')}</div>${order.pickup_instructions ? `<div class="td-sub">${escapeHtml(order.pickup_instructions)}</div>` : ''}</td>
+            <td><div class="td-name">${escapeHtml(String(order.pickup_parcel_count || 1))} parcel(s)</div><div class="td-sub">${moneyFull(order.pickup_fee)}</div></td>
+            <td><div class="td-name">${escapeHtml(order.pickup_window || 'No window entered')}</div><div class="td-sub">Submitted ${new Date(order.created_at).toLocaleDateString('en-TT')}</div></td>
+            <td>${pickupStatusBadge(order.pickup_status)}${order.pickup_cancellation_reason ? `<div class="td-sub">${escapeHtml(order.pickup_cancellation_reason)}</div>` : ''}</td>
+            <td>
+              <div class="td-name">${escapeHtml(assignedDriver)}</div>
+              <div class="td-sub">${order.pickup_scheduled_date ? new Date(order.pickup_scheduled_date + 'T12:00:00').toLocaleDateString('en-TT') : 'Not scheduled'} · ${escapeHtml(order.pickup_scheduled_window || order.pickup_window || '')}</div>
+              ${canManage ? `<select class="filter-select pickup-driver-select" style="width:160px; margin-top:0.45rem;">${driverOptions()}</select><input class="filter-input pickup-date" type="date" min="${today}" value="${order.pickup_scheduled_date || today}" style="width:160px; margin-top:0.35rem;"><input class="filter-input pickup-window-input" type="text" value="${escapeHtml(order.pickup_scheduled_window || order.pickup_window || '')}" placeholder="Pickup window" style="width:160px; margin-top:0.35rem;">` : ''}
+            </td>
+            <td>${canManage ? `<div class="finance-actions"><button class="btn btn-primary btn-sm" onclick="assignPickup('${order.id}')">${order.pickup_status === 'assigned' ? 'Reassign' : 'Assign'}</button><input class="filter-input pickup-cancel-reason" type="text" maxlength="180" placeholder="Cancellation reason" style="width:170px;"><button class="btn btn-ghost btn-sm" onclick="cancelPickup('${order.id}')">Cancel</button></div>` : order.pickup_status === 'arrived_at_hub' && order.parcel_status === 'awaiting_parcel' ? `<button class="btn btn-primary btn-sm" onclick="showPanel('parcel-checkin')">Check In Parcel</button>` : '—'}</td>
+          </tr>
+        `;
+      }).join('') || '<tr><td colspan="7">No pickup requests match this view.</td></tr>';
+
+      pickupOrders.forEach(order => {
+        if (!order.pickup_assigned_driver_id) return;
+        const row = body.querySelector(`tr[data-pickup-order-id="${order.id}"]`);
+        const select = row?.querySelector('.pickup-driver-select');
+        if (select) select.value = order.pickup_assigned_driver_id;
+      });
+    };
+
+    window.assignPickup = function(orderId) {
+      const order = orders.find(item => item.id === orderId);
+      const row = document.querySelector(`tr[data-pickup-order-id="${orderId}"]`);
+      const driverId = row?.querySelector('.pickup-driver-select')?.value || '';
+      const pickupDate = row?.querySelector('.pickup-date')?.value || '';
+      const pickupWindow = row?.querySelector('.pickup-window-input')?.value.trim() || '';
+      const driverLabel = row?.querySelector('.pickup-driver-select')?.selectedOptions[0]?.textContent || 'driver';
+      if (!order || !row) return showToast('Pickup request not found. Refresh and try again.');
+      if (!driverId) return showToast('Select a pickup driver.');
+      if (!pickupDate) return showToast('Select a pickup date.');
+
+      showModal('Assign Pickup', `Assign ${driverLabel} to collect ${order.order_number} on ${pickupDate}?`, async () => {
+        try {
+          const { error } = await supabase.rpc('admin_assign_order_pickup', {
+            p_order_id: orderId,
+            p_driver_id: driverId,
+            p_pickup_date: pickupDate,
+            p_pickup_window: pickupWindow || null
+          });
+          if (error) throw error;
+          showToast(`${order.order_number} pickup assigned to ${driverLabel}.`);
+          await loadData();
+        } catch (error) {
+          console.error('Pickup assignment error:', error);
+          window.vdNotify('Pickup Assignment Failed', error.message || 'Could not assign this pickup.', 'error');
+        }
+      });
+    };
+
+    window.cancelPickup = function(orderId) {
+      const order = orders.find(item => item.id === orderId);
+      const row = document.querySelector(`tr[data-pickup-order-id="${orderId}"]`);
+      const reason = row?.querySelector('.pickup-cancel-reason')?.value.trim() || '';
+      if (!order || !row) return showToast('Pickup request not found. Refresh and try again.');
+      if (reason.length < 3) return showToast('Enter a cancellation reason.');
+
+      showModal('Cancel Pickup', `Cancel the pickup for ${order.order_number}?`, async () => {
+        try {
+          const { error } = await supabase.rpc('admin_cancel_order_pickup', { p_order_id: orderId, p_reason: reason });
+          if (error) throw error;
+          showToast(`${order.order_number} pickup cancelled.`);
+          await loadData();
+        } catch (error) {
+          console.error('Pickup cancellation error:', error);
+          window.vdNotify('Pickup Cancellation Failed', error.message || 'Could not cancel this pickup.', 'error');
+        }
+      });
+    };
+
     function showZoneMessage(message, showLoginButton = false) {
       const zonePanel = document.getElementById('panel-zone-confirm');
       zonePanel.querySelectorAll('.zone-card, .card[data-live-empty]').forEach(card => card.remove());
@@ -2808,6 +2952,7 @@
       document.querySelector('#panel-all-orders tbody').innerHTML = '<tr><td colspan="8">Loading orders...</td></tr>';
       document.querySelector('#panel-driver-assign tbody').innerHTML = '<tr><td colspan="8">Loading driver assignments...</td></tr>';
       document.getElementById('parcelCheckinBody').innerHTML = '<tr><td colspan="7">Loading parcel records...</td></tr>';
+      document.getElementById('pickupManagementBody').innerHTML = '<tr><td colspan="7">Loading pickup requests...</td></tr>';
       document.getElementById('accountingRecordsBody').innerHTML = '<tr><td colspan="9">Loading accounting records...</td></tr>';
       document.getElementById('clientPayoutBody').innerHTML = '<tr><td colspan="7">Loading client payouts...</td></tr>';
       showZoneMessage('Loading pending zone orders...');
@@ -2844,7 +2989,7 @@
         supabase.from('zones').select('id, code, name, region, active, zone_areas(area_name)').eq('active', true).order('code'),
         supabase
           .from('orders')
-          .select('id, order_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_business_name, pickup_street_name, pickup_area_name, pickup_address, pickup_window, pickup_instructions, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, quote_status, price_override_reason, zone_status, order_status, assigned_driver_id, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, payment_confirmed_by, source, created_at, updated_at')
+          .select('id, order_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_business_name, pickup_street_name, pickup_area_name, pickup_address, pickup_window, pickup_instructions, pickup_assigned_driver_id, pickup_scheduled_date, pickup_scheduled_window, pickup_assigned_at, pickup_picked_up_at, pickup_arrived_hub_at, pickup_cancelled_at, pickup_cancellation_reason, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, quote_status, price_override_reason, zone_status, order_status, assigned_driver_id, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, payment_confirmed_by, source, created_at, updated_at')
           .order('created_at', { ascending: false }),
         supabase.from('drivers').select('id, profile_id, status'),
         supabase.from('profiles').select('id, role, first_name, last_name, status').eq('role', 'driver'),
@@ -2891,6 +3036,7 @@
       syncAccountingControls();
       renderAllOrders();
       renderParcelCheckin();
+      renderPickupManagement();
       renderZoneConfirm();
       renderDriverAssign();
       renderAccounting();
@@ -3240,6 +3386,7 @@
       showZoneMessage(error.message || 'Could not load admin dashboard data. Check the browser console for details.');
       document.querySelector('#panel-all-orders tbody').innerHTML = `<tr><td colspan="8">${error.message || 'Could not load orders.'}</td></tr>`;
       document.querySelector('#panel-driver-assign tbody').innerHTML = '<tr><td colspan="8">Driver assignment could not load because orders did not load.</td></tr>';
+      document.getElementById('pickupManagementBody').innerHTML = '<tr><td colspan="7">Pickup management could not load because orders did not load.</td></tr>';
       showToast(error.message || 'Could not load admin dashboard data.');
     });
   </script>

@@ -603,7 +603,8 @@ function money(value) {
 
 function formatDate(value) {
   if (!value) return '—';
-  return new Date(value).toLocaleDateString('en-TT', { year: 'numeric', month: 'short', day: 'numeric' });
+  const dateValue = /^\d{4}-\d{2}-\d{2}$/.test(String(value)) ? `${value}T12:00:00` : value;
+  return new Date(dateValue).toLocaleDateString('en-TT', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 function formatDateTime(value) {
@@ -662,6 +663,17 @@ function parcelStatusLabel(status) {
     returned_to_client: 'Returned to Client'
   };
   return labels[status] || String(status || 'Awaiting Parcel').replaceAll('_', ' ');
+}
+
+function pickupStatusLabel(status) {
+  const labels = {
+    requested: 'Pickup Requested',
+    assigned: 'Pickup Scheduled',
+    picked_up: 'Picked Up',
+    arrived_at_hub: 'Arrived at VirtuDrop Hub',
+    cancelled: 'Pickup Cancelled'
+  };
+  return labels[status] || 'Pickup Requested';
 }
 
 function statusClass(status) {
@@ -779,6 +791,7 @@ function orderCard(order) {
         <span>${formatDate(order.created_at)}</span>
       </div>
       <div style="font-size:0.78rem; color:#6a6a6a; margin-top:0.35rem;">Parcel: ${escapeHtml(parcelStatusLabel(order.parcel_status))}</div>
+      ${order.pickup_required ? `<div style="font-size:0.78rem; color:#2a6f68; margin-top:0.2rem;">${escapeHtml(pickupStatusLabel(order.pickup_status))}${order.pickup_scheduled_date ? ` · ${escapeHtml(formatDate(order.pickup_scheduled_date))}` : ''}</div>` : ''}
       <div class="order-card-cost">${money(order.delivery_fee)}${link ? ` · <a href="${escapeHtml(link)}" target="_blank" onclick="event.stopPropagation()" style="color:#2a9d8f;">Track</a>` : ''} · <button type="button" class="order-detail-link" onclick="event.stopPropagation(); openOrderDetails('${order.id}')">View details</button></div>
     </div>
   `;
@@ -825,6 +838,9 @@ window.openOrderDetails = function(orderId) {
       ${order.pickup_required ? detailItem('Pickup', `${escapeHtml(String(order.pickup_parcel_count || 1))} parcel(s) · ${escapeHtml(money(order.pickup_fee))}`, true) : ''}
       ${order.pickup_required ? detailItem('Pickup Contact', `${escapeHtml(order.pickup_contact_name || '')} · ${escapeHtml(order.pickup_contact_phone || '')}`, true) : ''}
       ${order.pickup_required ? detailItem('Pickup Address / Window', `${escapeHtml(order.pickup_address || [order.pickup_business_name, order.pickup_street_name, order.pickup_area_name].filter(Boolean).join(', '))} · ${escapeHtml(order.pickup_window || '')}`, true) : ''}
+      ${order.pickup_required ? detailItem('Pickup Status', escapeHtml(pickupStatusLabel(order.pickup_status))) : ''}
+      ${order.pickup_required && order.pickup_scheduled_date ? detailItem('Scheduled Pickup', `${escapeHtml(formatDate(order.pickup_scheduled_date))} · ${escapeHtml(order.pickup_scheduled_window || order.pickup_window || '')}`) : ''}
+      ${order.pickup_cancellation_reason ? detailItem('Pickup Cancellation', escapeHtml(order.pickup_cancellation_reason), true) : ''}
       ${detailItem('Zone Status', escapeHtml(order.zone_status || 'pending'))}
       ${detailItem('Order Status', escapeHtml(status))}
       ${detailItem('Parcel Status', escapeHtml(parcelStatusLabel(order.parcel_status)))}
@@ -1355,7 +1371,7 @@ async function loadBusinessData() {
   const [{ data: orderData, error: orderError }, { data: remitData, error: remitError }] = await Promise.all([
     supabase
       .from('orders')
-      .select('id, order_number, financial_model_version, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_business_name, pickup_street_name, pickup_area_name, pickup_address, pickup_window, pickup_instructions, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, zone_status, order_status, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, created_at, updated_at')
+      .select('id, order_number, financial_model_version, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_business_name, pickup_street_name, pickup_area_name, pickup_address, pickup_window, pickup_instructions, pickup_scheduled_date, pickup_scheduled_window, pickup_picked_up_at, pickup_arrived_hub_at, pickup_cancelled_at, pickup_cancellation_reason, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, zone_status, order_status, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, created_at, updated_at')
       .eq('business_client_id', business.id)
       .order('created_at', { ascending: false }),
     supabase
