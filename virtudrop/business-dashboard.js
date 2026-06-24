@@ -510,6 +510,30 @@ window.vdSyncBusinessAmountField = function() {
       `;
     }
 
+    function showDashboardLoadError(message = 'Your dashboard data could not be loaded. Reload the page after the database update is complete.') {
+      document.body.style.margin = '0';
+      document.body.style.display = 'block';
+      document.body.style.minHeight = '100vh';
+      document.body.style.background = '#f4f8f7';
+      document.body.innerHTML = `
+        <div style="min-height:100vh; display:flex; align-items:center; justify-content:center; background:#f4f8f7; padding:1.5rem; font-family:Inter, Arial, sans-serif;">
+          <div style="width:min(480px,100%); background:#fff; border-radius:8px; box-shadow:0 12px 35px rgba(13,43,40,0.14); padding:2rem; text-align:center; border-top:4px solid #c94b4b;">
+            <h1 style="margin:0 0 0.8rem; color:#0d2b28; font-size:1.55rem;">Dashboard unavailable</h1>
+            <p style="margin:0 0 1.4rem; color:#4a4a4a; line-height:1.6;">${escapeHtml(message)}</p>
+            <div style="display:flex; justify-content:center; gap:0.75rem; flex-wrap:wrap;">
+              <button id="dashboardReloadBtn" type="button" style="border:0; border-radius:8px; background:#2a9d8f; color:#fff; padding:0.8rem 1.3rem; font-weight:700; cursor:pointer;">Reload</button>
+              <button id="dashboardErrorLogoutBtn" type="button" style="border:1px solid #cbdad8; border-radius:8px; background:#fff; color:#0d2b28; padding:0.8rem 1.3rem; font-weight:700; cursor:pointer;">Log Out</button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.getElementById('dashboardReloadBtn')?.addEventListener('click', () => window.location.reload());
+      document.getElementById('dashboardErrorLogoutBtn')?.addEventListener('click', async () => {
+        await supabase.auth.signOut();
+        window.location.href = 'auth.html';
+      });
+    }
+
     async function hasActiveSession() {
       const { data } = await supabase.auth.getSession();
       if (!data.session) {
@@ -1585,7 +1609,12 @@ async function submitBusinessOrder(event) {
     el('#successModal').classList.add('active');
     el('#orderForm').reset();
     window.resetOrderForm();
-    await loadBusinessData();
+    try {
+      await loadBusinessData();
+    } catch (refreshError) {
+      console.error('Business dashboard refresh error after submission:', refreshError);
+      showDashboardLoadError('The order was submitted, but the dashboard could not refresh. Do not submit the same order again. Reload after the database update is complete.');
+    }
   } catch (error) {
     console.error('Business order submit error:', error);
     window.vdNotify('Order Not Submitted', `Sorry, this order could not be submitted. ${error?.message || 'Please try again or contact VirtuDrop.'}`, 'error');
@@ -1885,5 +1914,5 @@ window.markNotifRead = async function(notifId) {
 bindUi();
 loadBusinessData().catch(error => {
   console.error('Business dashboard load error:', error);
-  window.vdNotify('Dashboard Not Loaded', 'Could not load your business dashboard. Please log in again or contact VirtuDrop.', 'error');
+  showDashboardLoadError();
 });
