@@ -14,6 +14,31 @@ export function normaliseAddressPart(value) {
     .trim();
 }
 
+const KNOWN_DELIVERY_AREAS = new Set([
+  'Chaguanas', 'Endeavour', 'Enterprise', 'Edinburgh 500', 'Edinburgh Gardens', 'Montrose',
+  'Lange Park', 'Charlieville', 'Felicity', 'Felicity Hall', 'Cunupia', 'Freeport',
+  'Calcutta Road', 'Calcutta Settlement', 'Orange Valley', 'Carlsen Field', 'Mc Bean',
+  'Jerningham Junction', 'Chase Village', 'Waterloo', 'Carapichaima', 'St Marys Village',
+  'Reform Village', 'Gasparillo', 'Bonne Aventure', 'Claxton Bay', 'Cedar Hill', 'Couva',
+  'Point Lisas', 'Phoenix Park', 'Preysal', 'Gran Couva', 'Balmain', 'California', 'Dow Village',
+  'Brechin Castle', 'Union Village', 'Spring Village', 'Macaulay', 'San Fernando', 'Marabella',
+  'Tarouba', 'Maraj Lands', 'Vistabella', 'Pleasantville', 'Cocoyea', 'Gulf View', 'La Romain',
+  'Palmiste', 'Rambert', 'Duncan Village', 'Penal', 'Debe', 'Barrackpore', 'Woodland',
+  'New Grant', 'Tableland', 'Princes Town', 'Corinth', 'Golconda', 'Mon Repos', 'St Madeleine',
+  'Hermitage', 'Fifth Company', 'Sixth Company', 'Piparo', 'Brasso Caparo', 'Williamsville',
+  'Brothers Road', 'Brothers Settlement', 'Indian Walk', 'Valsayn', 'Curepe', 'St Augustine',
+  'Tunapuna', 'Tacarigua', 'El Dorado', 'Trincity', 'Five Rivers', 'Arouca', "D'Abadie",
+  'Maloney', 'Mausica', 'Piarco', 'Oropuna', 'Wallerfield', "O'Meara", 'Cumuto',
+  'Sangre Grande', 'Sangre Grande Proper', 'Guaico', 'Valencia', 'Arima', 'Aranguez',
+  'Carapo', 'La Horquetta', 'Malabar', 'Santa Rosa', 'Lopinot', 'Guanapo', 'Heights of Guanapo',
+  'Caroni', 'St Helena', 'Kelly Village', 'Bamboo Village', 'El Socorro', 'Barataria',
+  'San Juan', 'Champs Fleurs', 'Petit Bourg', 'Mt Lambert', 'Macoya', 'Port of Spain',
+  'Woodbrook', 'St James', 'St Clair', 'Belmont', 'Laventille', 'Morvant', 'Cascade', 'Maraval',
+  'Moka', 'Lady Chancellor', 'Diego Martin', 'Petit Valley', 'Glencoe', 'Westmoorings',
+  'Blue Range', 'Blue Basin', 'Boissiere', 'Federation Park', "St Ann's", 'Santa Cruz',
+  'Carenage', 'Chaguaramas'
+].map(normaliseAddressPart));
+
 export function validateManualAddress(streetName, areaName) {
   const street = normaliseAddressPart(streetName);
   const area = normaliseAddressPart(areaName);
@@ -22,7 +47,13 @@ export function validateManualAddress(streetName, areaName) {
 
   if (street.length < 3) return 'Enter the actual street, road, building or landmark.';
   if (area.length < 2) return 'Enter the delivery area or community.';
-  if (invalidStreetValues.has(street) || street === area || streetWithoutSuffix === area) {
+  if (
+    invalidStreetValues.has(street) ||
+    street === area ||
+    streetWithoutSuffix === area ||
+    KNOWN_DELIVERY_AREAS.has(street) ||
+    KNOWN_DELIVERY_AREAS.has(streetWithoutSuffix)
+  ) {
     return 'Enter the actual street, road, building or landmark. The area name cannot be used as the street name.';
   }
   return '';

@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { calculateOrderMoney, financialRequestFields, moneyLabel, validateManualAddress } from './vd-order-money.js?v=20260623-financial-1';
+import { calculateOrderMoney, financialRequestFields, moneyLabel, validateManualAddress } from './vd-order-money.js?v=20260624-financial-2';
 
 const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnbXp6YXZ4aHVhcmxhY252bm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Mjk4NTksImV4cCI6MjA5NDIwNTg1OX0.7-YKlwLrhUYUYbiii93ZvgX01TxVephApDNCP50Rl54';
@@ -11,6 +11,7 @@ window.supabase = supabase;
 const REMOTE_ZONE_CODE = 'REMOTE';
 const COVERED_ZONE_CODES = new Set(['A', 'B', 'C', 'D']);
 const STANDARD_FEES = { standard: 40, extended: 50 };
+const EXTENDED_AREA_NAMES = new Set(['wallerfield', 'valencia', 'guaico', 'sangre grande', 'sangre grande proper', 'preysal', 'gran couva', 'carenage', 'chaguaramas']);
 
 let bizEstimateTimer = null;
 let latestBizEstimate = null;
@@ -39,11 +40,14 @@ function normaliseZoneText(value) {
 function zoneAreaVariants(area) {
   const raw = String(area || '');
   const withoutParen = raw.replace(/\([^)]*\)/g, ' ');
+  const withoutQualifier = withoutParen.replace(/\b(proper|north side|south side)\b/gi, ' ');
   return [...new Set([
     raw,
     withoutParen,
+    withoutQualifier,
     ...raw.split('/'),
-    ...withoutParen.split('/')
+    ...withoutParen.split('/'),
+    ...withoutQualifier.split('/')
   ].map(normaliseZoneText).filter(value => value.length >= 3))];
 }
 
@@ -195,7 +199,7 @@ function classifyZoneMatch(match) {
 
   const code = String(match.zone.code || '').toUpperCase();
   const matchedAreaName = match.matchedArea?.area_name || '';
-  const rateBand = match.matchedArea?.rate_band || 'standard';
+  const rateBand = match.matchedArea?.rate_band || (EXTENDED_AREA_NAMES.has(normaliseZoneText(matchedAreaName)) ? 'extended' : 'standard');
   if (code === REMOTE_ZONE_CODE || rateBand === 'remote' || !COVERED_ZONE_CODES.has(code)) {
     return {
       status: 'remote',
@@ -236,6 +240,23 @@ async function estimateDeliveryZone({
     zonesLoaded: false
   };
   const manualText = [houseNumber, streetName, areaName].filter(Boolean).join(' ');
+  if (streetName || areaName) {
+    const addressError = validateManualAddress(streetName, areaName);
+    if (addressError) {
+      return {
+        status: 'unknown',
+        fee: null,
+        zoneCode: '',
+        zoneName: '',
+        region: '',
+        matchedArea: '',
+        sourceText: manualText,
+        label: 'Valid street required',
+        debug: { ...debug, source: 'manual', addressFound: false },
+        message: addressError
+      };
+    }
+  }
   let sourceText = manualText;
   let sourceLabel = areaName || streetName || '';
   if (sourceText) debug.source = 'manual';

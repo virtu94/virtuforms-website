@@ -1,8 +1,9 @@
-import { calculateOrderMoney, moneyLabel } from './vd-order-money.js?v=20260623-financial-1';
+import { calculateOrderMoney, moneyLabel, validateManualAddress } from './vd-order-money.js?v=20260624-financial-2';
 
 const REMOTE_ZONE_CODE = 'REMOTE';
 const COVERED_ZONE_CODES = new Set(['A', 'B', 'C', 'D']);
 const STANDARD_FEES = { standard: 40, extended: 50 };
+const EXTENDED_AREA_NAMES = new Set(['wallerfield', 'valencia', 'guaico', 'sangre grande', 'sangre grande proper', 'preysal', 'gran couva', 'carenage', 'chaguaramas']);
 
 let zonesPromise = null;
 
@@ -30,11 +31,14 @@ function normalise(value) {
 function areaVariants(area) {
   const raw = String(area || '');
   const withoutParen = raw.replace(/\([^)]*\)/g, ' ');
+  const withoutQualifier = withoutParen.replace(/\b(proper|north side|south side)\b/gi, ' ');
   return [...new Set([
     raw,
     withoutParen,
+    withoutQualifier,
     ...raw.split('/'),
-    ...withoutParen.split('/')
+    ...withoutParen.split('/'),
+    ...withoutQualifier.split('/')
   ].map(normalise).filter(value => value.length >= 3))];
 }
 
@@ -187,7 +191,7 @@ function classifyMatch(match) {
 
   const code = String(match.zone.code || '').toUpperCase();
   const matchedAreaName = match.matchedArea?.area_name || '';
-  const rateBand = match.matchedArea?.rate_band || 'standard';
+  const rateBand = match.matchedArea?.rate_band || (EXTENDED_AREA_NAMES.has(normalise(matchedAreaName)) ? 'extended' : 'standard');
   if (code === REMOTE_ZONE_CODE || rateBand === 'remote' || !COVERED_ZONE_CODES.has(code)) {
     return {
       status: 'remote',
@@ -229,6 +233,24 @@ export async function estimateDeliveryZone({
     zonesLoaded: false
   };
   const manualText = [houseNumber, streetName, areaName].filter(Boolean).join(' ');
+
+  if (streetName || areaName) {
+    const addressError = validateManualAddress(streetName, areaName);
+    if (addressError) {
+      return {
+        status: 'unknown',
+        fee: null,
+        zoneCode: '',
+        zoneName: '',
+        region: '',
+        matchedArea: '',
+        sourceText: manualText,
+        label: 'Valid street required',
+        debug: { ...debug, source: 'manual', addressFound: false },
+        message: addressError
+      };
+    }
+  }
 
   let sourceText = manualText;
   let sourceLabel = areaName || streetName || '';
