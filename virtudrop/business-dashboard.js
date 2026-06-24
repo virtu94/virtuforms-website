@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { calculateOrderMoney, financialRequestFields, moneyLabel, validateManualAddress } from './vd-order-money.js?v=20260624-financial-2';
+import { calculateOrderMoney, financialRequestFields, moneyLabel, validateManualAddress } from './vd-order-money.js?v=20260624-financial-3';
 
 const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnbXp6YXZ4aHVhcmxhY252bm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Mjk4NTksImV4cCI6MjA5NDIwNTg1OX0.7-YKlwLrhUYUYbiii93ZvgX01TxVephApDNCP50Rl54';
@@ -331,7 +331,18 @@ async function estimateDeliveryZone({
 function formatEstimateRows({ estimate, paymentType, packageValue }) {
   const rows = [];
   const settlement = el('#clientFeeSettlement')?.value || null;
-  const money = calculateOrderMoney({ paymentOption: paymentType, packageValue, deliveryFee: estimate.fee, clientFeeSettlement: settlement });
+  const pickupRequired = Boolean(el('#pickupRequired')?.checked);
+  const pickupParcelCount = Number(el('#pickupParcelCount')?.value || 1);
+  const pickupFeeSettlement = el('#pickupFeeSettlement')?.value || null;
+  const money = calculateOrderMoney({
+    paymentOption: paymentType,
+    packageValue,
+    deliveryFee: estimate.fee,
+    clientFeeSettlement: settlement,
+    pickupRequired,
+    pickupParcelCount,
+    pickupFeeSettlement
+  });
 
   if (estimate.status === 'unknown') {
     rows.push(['Delivery Fee', 'Unable to estimate']);
@@ -357,6 +368,10 @@ function formatEstimateRows({ estimate, paymentType, packageValue }) {
     rows.push(['Customer Pays Driver', '$0.00']);
     rows.push(['Business Owes VirtuDrop', moneyLabel(estimate.fee)]);
     rows.push(['Settlement', settlement === 'deduct_from_remittance' ? 'Deduct from remittance' : 'Pay separately']);
+  }
+  if (pickupRequired) {
+    rows.push(['Pickup', money.pickupFee > 0 ? moneyLabel(money.pickupFee) : 'Free (5+ parcels)']);
+    if (money.pickupFee > 0) rows.push(['Pickup Settlement', pickupFeeSettlement === 'deduct_from_remittance' ? 'Deduct from remittance' : 'Pay separately']);
   }
 
   return rows;
@@ -609,6 +624,22 @@ function statusLabel(status) {
   return labels[status] || String(status || 'Pending').replaceAll('_', ' ');
 }
 
+function parcelStatusLabel(status) {
+  const labels = {
+    legacy_untracked: 'Legacy / Not Tracked',
+    awaiting_parcel: 'Awaiting Parcel',
+    parcel_received: 'Parcel Received',
+    sorted: 'Sorted',
+    assigned: 'Assigned',
+    handed_to_driver: 'Handed to Driver',
+    returned_to_hub: 'Returned to Hub',
+    held_for_client_instructions: 'Held for Instructions',
+    redelivery_scheduled: 'Redelivery Scheduled',
+    returned_to_client: 'Returned to Client'
+  };
+  return labels[status] || String(status || 'Awaiting Parcel').replaceAll('_', ' ');
+}
+
 function statusClass(status) {
   if (status === 'delivered') return 'delivered';
   if (status === 'out_for_delivery') return 'out';
@@ -723,6 +754,7 @@ function orderCard(order) {
         <span>${escapeHtml(paymentLabels[order.payment_type] || 'Delivery')}</span>
         <span>${formatDate(order.created_at)}</span>
       </div>
+      <div style="font-size:0.78rem; color:#6a6a6a; margin-top:0.35rem;">Parcel: ${escapeHtml(parcelStatusLabel(order.parcel_status))}</div>
       <div class="order-card-cost">${money(order.delivery_fee)}${link ? ` · <a href="${escapeHtml(link)}" target="_blank" onclick="event.stopPropagation()" style="color:#2a9d8f;">Track</a>` : ''} · <button type="button" class="order-detail-link" onclick="event.stopPropagation(); openOrderDetails('${order.id}')">View details</button></div>
     </div>
   `;
@@ -762,10 +794,17 @@ window.openOrderDetails = function(orderId) {
       ${detailItem('Amount to Collect', escapeHtml(money(amountToCollect)))}
       ${detailItem('Package Value', escapeHtml(money(order.package_value || order.cod_amount)))}
       ${detailItem('Delivery Fee', escapeHtml(money(order.delivery_fee)))}
+      ${detailItem('Customer Total', escapeHtml(money(order.customer_amount_due)))}
+      ${detailItem('Driver Collects', escapeHtml(money(order.driver_amount_to_collect)))}
       ${order.delivery_fee_payer ? detailItem('Delivery Paid By', escapeHtml(order.delivery_fee_payer === 'client' ? 'Business client' : 'Customer')) : ''}
       ${order.client_fee_settlement ? detailItem('Business Settlement', escapeHtml(order.client_fee_settlement === 'deduct_from_remittance' ? 'Deduct from remittance' : 'Pay separately')) : ''}
+      ${order.pickup_required ? detailItem('Pickup', `${escapeHtml(String(order.pickup_parcel_count || 1))} parcel(s) · ${escapeHtml(money(order.pickup_fee))}`, true) : ''}
+      ${order.pickup_required ? detailItem('Pickup Contact', `${escapeHtml(order.pickup_contact_name || '')} · ${escapeHtml(order.pickup_contact_phone || '')}`, true) : ''}
+      ${order.pickup_required ? detailItem('Pickup Address / Window', `${escapeHtml(order.pickup_address || '')} · ${escapeHtml(order.pickup_window || '')}`, true) : ''}
       ${detailItem('Zone Status', escapeHtml(order.zone_status || 'pending'))}
       ${detailItem('Order Status', escapeHtml(status))}
+      ${detailItem('Parcel Status', escapeHtml(parcelStatusLabel(order.parcel_status)))}
+      ${order.parcel_received_at ? detailItem('Parcel Received', escapeHtml(formatDateTime(order.parcel_received_at))) : ''}
       ${detailItem('Package', escapeHtml(notes.packageText || 'Not entered'), true)}
       ${order.rejection_reason ? detailItem('❌ Rejection Reason', `<span style="color:#e05555; font-weight:600;">${escapeHtml(order.rejection_reason)}</span>`, true) : ''}
       ${detailItem('Delivery Address', escapeHtml(order.delivery_address || 'Location pending'), true)}
@@ -1292,7 +1331,7 @@ async function loadBusinessData() {
   const [{ data: orderData, error: orderError }, { data: remitData, error: remitError }] = await Promise.all([
     supabase
       .from('orders')
-      .select('id, order_number, financial_model_version, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, zone_status, order_status, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, created_at, updated_at')
+      .select('id, order_number, financial_model_version, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_address, pickup_window, pickup_instructions, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, zone_status, order_status, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, created_at, updated_at')
       .eq('business_client_id', business.id)
       .order('created_at', { ascending: false }),
     supabase
@@ -1429,6 +1468,15 @@ function validateOrderForm(payload, raw) {
     issues.push('Choose whether the delivery fee will be deducted from remittance or paid separately.');
   }
 
+  if (raw.pickupRequired) {
+    if ((raw.pickupContactName || '').length < 2) issues.push('Enter the pickup contact name.');
+    if ((raw.pickupPhoneDigits || '').length < 7) issues.push('Enter a valid pickup contact number.');
+    if ((raw.pickupAddress || '').length < 5) issues.push('Enter the full pickup address.');
+    if ((raw.pickupWindow || '').length < 3) issues.push('Enter the available pickup window.');
+    if (!Number.isInteger(raw.pickupParcelCount) || raw.pickupParcelCount < 1) issues.push('Enter a valid number of parcels for pickup.');
+    if (raw.pickupParcelCount < 5 && !raw.pickupFeeSettlement) issues.push('Choose how the pickup fee will be paid.');
+  }
+
   if ((raw.specialNotes || '').length > 500) {
     markOrderInvalid('#specialNotes');
     issues.push('Keep special instructions under 500 characters.');
@@ -1461,6 +1509,9 @@ async function submitBusinessOrder(event) {
   const packageDescription = el('#packageDesc')?.value.trim() || '';
   const specialNotes = el('#specialNotes')?.value.trim() || '';
   const clientFeeSettlement = el('#clientFeeSettlement')?.value || null;
+  const pickupRequired = Boolean(el('#pickupRequired')?.checked);
+  const pickupParcelCount = Number(el('#pickupParcelCount')?.value || 1);
+  const pickupFeeSettlement = el('#pickupFeeSettlement')?.value || null;
   const estimate = await estimateDeliveryZone(currentEstimateInput()).catch(error => {
     console.warn('Business submit estimate failed:', error);
     return latestBizEstimate;
@@ -1470,7 +1521,10 @@ async function submitBusinessOrder(event) {
     paymentOption: paymentValue,
     packageValue: paymentValue === 'cod' ? Number(el('#codAmount')?.value || 0) : 0,
     deliveryFee: estimate?.fee ?? null,
-    clientFeeSettlement
+    clientFeeSettlement,
+    pickupRequired,
+    pickupParcelCount,
+    pickupFeeSettlement
   });
   const requestData = {
     business_client_id: business.id,
@@ -1484,10 +1538,28 @@ async function submitBusinessOrder(event) {
     pricing_rate_band: estimate?.rateBand || (estimate?.status === 'remote' ? 'remote' : null),
     quote_status: estimate?.fee === null ? 'required' : 'not_required',
     ...financialRequestFields(money),
+    pickup_contact_name: pickupRequired ? el('#pickupContactName')?.value.trim() : null,
+    pickup_contact_phone: pickupRequired ? el('#pickupContactPhone')?.value.trim() : null,
+    pickup_address: pickupRequired ? el('#pickupAddress')?.value.trim() : null,
+    pickup_window: pickupRequired ? el('#pickupWindow')?.value.trim() : null,
+    pickup_instructions: pickupRequired ? el('#pickupInstructions')?.value.trim() : null,
     customer_notes: [`Package: ${packageDescription}`, specialNotes].filter(Boolean).join('\n') || null
   };
 
-  const validationError = validateOrderForm(requestData, { paymentValue, packageDescription, specialNotes, phoneDigits, clientFeeSettlement });
+  const validationError = validateOrderForm(requestData, {
+    paymentValue,
+    packageDescription,
+    specialNotes,
+    phoneDigits,
+    clientFeeSettlement,
+    pickupRequired,
+    pickupParcelCount,
+    pickupFeeSettlement,
+    pickupContactName: el('#pickupContactName')?.value.trim() || '',
+    pickupPhoneDigits: el('#pickupContactPhone')?.value.replace(/\D/g, '') || '',
+    pickupAddress: el('#pickupAddress')?.value.trim() || '',
+    pickupWindow: el('#pickupWindow')?.value.trim() || ''
+  });
   if (validationError) {
     window.vdNotify('Check This Order', validationError, 'warning');
     isSubmittingBusinessOrder = false;
@@ -1551,6 +1623,7 @@ window.resetOrderForm = function() {
   el('#bizEstimateBlock')?.style.setProperty('display', 'none');
   clearOrderValidation();
   el('#codAmountBlock')?.style.setProperty('display', 'none');
+  el('#pickupDetails')?.style.setProperty('display', 'none');
   const street = el('#streetName');
   const area = el('#areaName');
   if (street) street.required = false;
@@ -1696,6 +1769,17 @@ function bindUi() {
 
   el('#paymentType')?.addEventListener('change', syncAmountField);
   el('#clientFeeSettlement')?.addEventListener('change', updateBizEstimate);
+  el('#pickupRequired')?.addEventListener('change', event => {
+    const enabled = event.target.checked;
+    if (el('#pickupDetails')) el('#pickupDetails').style.display = enabled ? '' : 'none';
+    updateBizEstimate();
+  });
+  el('#pickupParcelCount')?.addEventListener('input', () => {
+    const count = Number(el('#pickupParcelCount')?.value || 1);
+    if (el('#pickupFeeSettlementBlock')) el('#pickupFeeSettlementBlock').style.display = count >= 5 ? 'none' : '';
+    updateBizEstimate();
+  });
+  el('#pickupFeeSettlement')?.addEventListener('change', updateBizEstimate);
   syncAmountField();
 
   const darkToggle = el('#darkModeToggle');
@@ -1717,6 +1801,15 @@ function bindUi() {
   document.addEventListener('input', event => {
     const id = event.target?.id;
     if (id === 'mapsLink' || id === 'areaName' || id === 'streetName' || id === 'houseNum' || id === 'codAmount') {
+      if (id === 'streetName' || id === 'areaName') {
+        const message = validateManualAddress(el('#streetName')?.value, el('#areaName')?.value);
+        const error = el('#streetNameErr');
+        if (error) {
+          error.textContent = message;
+          error.style.display = message && el('#streetName')?.value && el('#areaName')?.value ? 'block' : 'none';
+        }
+        el('#streetName')?.classList.toggle('has-error', Boolean(message && el('#streetName')?.value && el('#areaName')?.value));
+      }
       updateBizEstimate();
     }
   });

@@ -700,6 +700,10 @@
         <span class="nav-icon">📋</span> All Orders
         <span class="nav-badge info">34</span>
       </button>
+      <button class="nav-item" data-panel="parcel-checkin">
+        <span class="nav-icon">📦</span> Parcel Check-In
+        <span class="nav-badge alert">0</span>
+      </button>
       <button class="nav-item" data-panel="zone-confirm">
         <span class="nav-icon">📍</span> Zone Confirmation
         <span class="nav-badge alert">5</span>
@@ -850,6 +854,29 @@
               <tbody>
                 <tr><td colspan="8">Loading orders...</td></tr>
               </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" id="panel-parcel-checkin">
+        <div class="section-heading">
+          <h2>Parcel Check-In</h2>
+          <p>Confirm physical receipt before notifying the customer or preparing the parcel for delivery.</p>
+        </div>
+        <div class="filter-bar">
+          <select class="filter-select" id="parcelCheckinFilter" onchange="renderParcelCheckin()">
+            <option value="awaiting">Awaiting Parcel</option>
+            <option value="received">Recently Received</option>
+            <option value="all">All Check-In Records</option>
+          </select>
+          <input class="filter-input" id="parcelCheckinSearch" type="search" placeholder="Search order, client or customer" oninput="renderParcelCheckin()" />
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Order</th><th>Client / Customer</th><th>Parcel</th><th>Pickup</th><th>Submitted</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="parcelCheckinBody"><tr><td colspan="7">Loading parcel records...</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -1332,6 +1359,7 @@
     const pageTitles = {
       overview: 'Overview',
       'all-orders': 'All Orders',
+      'parcel-checkin': 'Parcel Check-In',
       'zone-confirm': 'Zone Confirmation',
       'driver-assign': 'Driver Assignment',
       'cod-mgmt': 'COD Management',
@@ -1408,6 +1436,7 @@
     function showModal(title, body, cb) {
       document.getElementById('modalTitle').textContent = title;
       document.getElementById('modalBody').textContent = body;
+      document.getElementById('modalConfirm').textContent = 'Confirm';
       document.getElementById('modal').classList.add('show');
       modalCb = cb;
     }
@@ -1831,13 +1860,18 @@
     }
 
     function updateBadgesAndStats() {
-      const pendingZone = orders.filter(o => o.zone_status === 'pending' || o.order_status === 'zone_pending').length;
+      const pendingZone = orders.filter(o =>
+        (o.zone_status === 'pending' || o.order_status === 'zone_pending')
+        && ['parcel_received', 'legacy_untracked'].includes(o.parcel_status)
+      ).length;
       const unassigned = orders.filter(o => o.zone_status === 'confirmed' && !o.assigned_driver_id).length;
       const today = new Date().toISOString().slice(0, 10);
       const todayOrders = orders.filter(o => (o.created_at || '').slice(0, 10) === today).length;
 
       const allBadge = document.querySelector('[data-panel="all-orders"] .nav-badge');
       if (allBadge) allBadge.textContent = orders.length;
+      const checkinBadge = document.querySelector('[data-panel="parcel-checkin"] .nav-badge');
+      if (checkinBadge) checkinBadge.textContent = orders.filter(order => order.parcel_status === 'awaiting_parcel').length;
       const zoneBadge = document.querySelector('[data-panel="zone-confirm"] .nav-badge');
       if (zoneBadge) zoneBadge.textContent = pendingZone;
       const driverBadge = document.querySelector('[data-panel="driver-assign"] .nav-badge');
@@ -2434,6 +2468,94 @@
       }
     };
 
+    function parcelStatusBadge(order) {
+      if (order.parcel_status === 'parcel_received') return '<span class="badge badge-confirmed">Received</span>';
+      if (order.parcel_status === 'awaiting_parcel') return '<span class="badge badge-pending">Awaiting Parcel</span>';
+      if (order.parcel_status === 'legacy_untracked') return '<span class="badge badge-unpaid">Legacy</span>';
+      return `<span class="badge badge-active">${escapeHtml(String(order.parcel_status || 'Awaiting Parcel').replaceAll('_', ' '))}</span>`;
+    }
+
+    window.renderParcelCheckin = function() {
+      const body = document.getElementById('parcelCheckinBody');
+      if (!body) return;
+      const filter = document.getElementById('parcelCheckinFilter')?.value || 'awaiting';
+      const search = String(document.getElementById('parcelCheckinSearch')?.value || '').trim().toLowerCase();
+      const rows = orders.filter(order => {
+        if (filter === 'awaiting' && order.parcel_status !== 'awaiting_parcel') return false;
+        if (filter === 'received' && order.parcel_status !== 'parcel_received') return false;
+        if (filter === 'all' && order.parcel_status === 'legacy_untracked') return false;
+        if (!search) return true;
+        return [order.order_number, clientName(order), order.customer_name, order.customer_phone]
+          .some(value => String(value || '').toLowerCase().includes(search));
+      });
+
+      body.innerHTML = rows.map(order => `
+        <tr>
+          <td class="td-id">${escapeHtml(order.order_number)}</td>
+          <td><div class="td-name">${escapeHtml(clientName(order))}</div><div class="td-sub">${escapeHtml(order.customer_name || '')} · ${escapeHtml(order.customer_phone || '')}</div></td>
+          <td><div class="td-name">${escapeHtml(String(order.checked_in_parcel_count || order.pickup_parcel_count || 1))} parcel(s)</div><div class="td-sub">${order.parcel_weight_lbs ? `${escapeHtml(String(order.parcel_weight_lbs))} lbs · ` : ''}${escapeHtml(order.parcel_condition || 'Not checked')}</div></td>
+          <td>${order.pickup_required ? `<div class="td-name">Required · ${moneyFull(order.pickup_fee)}</div><div class="td-sub">${escapeHtml(order.pickup_address || '')}</div>` : 'Client drop-off'}</td>
+          <td>${new Date(order.created_at).toLocaleDateString('en-TT')}</td>
+          <td>${parcelStatusBadge(order)}</td>
+          <td><div class="finance-actions">
+            ${order.parcel_status === 'awaiting_parcel' ? `<button class="btn btn-primary btn-sm" onclick="openParcelCheckin('${order.id}')">Mark Received</button>` : ''}
+            ${order.parcel_status === 'parcel_received' ? `<button class="btn btn-ghost btn-sm" onclick="openParcelReceivedWhatsApp('${order.id}')">WhatsApp Customer</button>` : ''}
+          </div></td>
+        </tr>
+      `).join('') || '<tr><td colspan="7">No parcel records match this view.</td></tr>';
+    };
+
+    window.openParcelCheckin = function(orderId) {
+      const order = orders.find(item => item.id === orderId);
+      if (!order) return showToast('Order not found.');
+      document.getElementById('modalTitle').textContent = `Receive ${order.order_number}`;
+      document.getElementById('modalBody').innerHTML = `
+        <div class="payment-modal-form" style="text-align:left;">
+          <label>Parcel Count<input id="checkinParcelCount" type="number" min="1" step="1" value="${Number(order.pickup_parcel_count || 1)}" /></label>
+          <label>Weight in lbs (optional)<input id="checkinWeight" type="number" min="0.01" max="40" step="0.01" /></label>
+          <label>Condition<select id="checkinCondition"><option value="good">Good</option><option value="damaged">Damaged</option><option value="needs_review">Needs Review</option></select></label>
+          <label>Check-In Notes<textarea id="checkinNotes" placeholder="Condition, packaging, value verification or other notes"></textarea></label>
+        </div>`;
+      document.getElementById('modalConfirm').textContent = 'Mark Received';
+      document.getElementById('modal').classList.add('show');
+      modalCb = async () => saveParcelCheckin(orderId);
+    };
+
+    async function saveParcelCheckin(orderId) {
+      const parcelCount = Number(document.getElementById('checkinParcelCount')?.value || 0);
+      const weightValue = document.getElementById('checkinWeight')?.value;
+      const { error } = await supabase.rpc('admin_mark_parcel_received', {
+        p_order_id: orderId,
+        p_parcel_count: parcelCount,
+        p_weight_lbs: weightValue ? Number(weightValue) : null,
+        p_condition: document.getElementById('checkinCondition')?.value || 'good',
+        p_notes: document.getElementById('checkinNotes')?.value.trim() || null
+      });
+      if (error) {
+        window.vdNotify('Parcel Not Received', error.message || 'Could not check in this parcel.', 'error');
+        return;
+      }
+      showToast('Parcel marked as received.');
+      await loadData();
+    }
+
+    window.openParcelReceivedWhatsApp = async function(orderId) {
+      const order = orders.find(item => item.id === orderId);
+      if (!order) return showToast('Order not found.');
+      const phone = phoneForWhatsApp(order.customer_phone);
+      if (!phone) return showToast('Customer phone number is missing.');
+      const link = trackingLink(order);
+      const firstName = String(order.customer_name || 'Customer').trim().split(/\s+/)[0];
+      const message = `Good day, ${firstName}.\n\nYour package from ${clientName(order)} has been received by VirtuDrop.\n\nYour order number is: ${order.order_number}.\n\nYour package is scheduled for delivery within 1–2 business days. Our driver will contact you prior to delivery. Kindly ensure someone is available to receive.\n\nTrack your order: ${link}\n\nQuestions? Contact us at 470-3704 / 797-3543.\n\nVirtuDrop\nDelivering convenience.`;
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener');
+      const { error } = await supabase.from('message_actions').insert({
+        order_id: order.id,
+        action_type: 'parcel_received_whatsapp_opened',
+        opened_by: currentProfile?.id || null
+      });
+      if (error) console.warn('WhatsApp action could not be logged:', error);
+    };
+
     function renderAllOrders() {
       const tbody = document.querySelector('#panel-all-orders tbody');
       tbody.innerHTML = orders.map(order => `
@@ -2442,8 +2564,13 @@
           <td><div class="td-name">${clientName(order)}</div></td>
           <td><div class="td-name">${order.customer_name || '—'}</div><div class="td-sub">${order.customer_phone || ''}</div>${order.driver_notes ? `<div class="td-sub" style="color:var(--teal-dark); font-weight:700;">Driver: ${escapeHtml(order.driver_notes)}</div>` : ''}${order.rejection_reason ? `<div class="td-sub" style="color:var(--red); font-weight:700;">Rejected: ${escapeHtml(order.rejection_reason)}</div>` : ''}</td>
           <td>${zoneLabel(order)}</td>
-          <td>${money(order.cod_amount)}</td>
-          <td>${badgeForStatus(order)}</td>
+          <td>
+            <div class="td-name">Package: ${moneyFull(order.package_value || order.cod_amount)}</div>
+            <div class="td-sub">Delivery: ${moneyFull(order.delivery_fee)}</div>
+            <div class="td-sub">Collect: ${moneyFull(driverCollects(order))}</div>
+            ${order.pickup_required ? `<div class="td-sub">Pickup: ${moneyFull(order.pickup_fee)} · ${order.pickup_parcel_count || 1} parcel(s)</div>` : ''}
+          </td>
+          <td>${badgeForStatus(order)}<div class="td-sub" style="margin-top:0.3rem;">Parcel: ${escapeHtml(String(order.parcel_status || 'awaiting_parcel').replaceAll('_', ' '))}</div></td>
           <td>${order.assigned_driver_id ? driverName(order.assigned_driver_id) : '—'}</td>
           <td>
             <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
@@ -2452,8 +2579,10 @@
               ${order.order_status === 'delivered' && (order.payment_type === 'cod' || order.payment_type === 'delivery_only') && !order.payment_confirmed_at
                 ? `<button class="btn btn-primary btn-sm" onclick="confirmPaymentReceived('${order.id}')">✅ Confirm Payment</button>`
                 : order.payment_confirmed_at ? `<span class="badge badge-paid" title="Confirmed ${new Date(order.payment_confirmed_at).toLocaleDateString('en-TT')}">💳 Paid</span>` : ''}
-              ${order.zone_status === 'pending' || order.order_status === 'zone_pending'
-                ? '<button class="btn btn-warn btn-sm" onclick="showPanel(\'zone-confirm\')">Confirm Zone</button>'
+              ${order.parcel_status === 'awaiting_parcel'
+                ? '<button class="btn btn-warn btn-sm" onclick="showPanel(\'parcel-checkin\')">Check In Parcel</button>'
+                : order.zone_status === 'pending' || order.order_status === 'zone_pending'
+                  ? '<button class="btn btn-warn btn-sm" onclick="showPanel(\'zone-confirm\')">Confirm Zone</button>'
                 : order.order_status !== 'rejected' ? '<button class="btn btn-primary btn-sm" onclick="showPanel(\'driver-assign\')">Assign Driver</button>' : ''}
             </div>
           </td>
@@ -2568,7 +2697,10 @@
     function renderZoneConfirm() {
       const panel = document.getElementById('panel-zone-confirm');
       panel.querySelectorAll('.zone-card').forEach(card => card.remove());
-      const pending = orders.filter(o => o.zone_status === 'pending' || o.order_status === 'zone_pending');
+      const pending = orders.filter(o =>
+        (o.zone_status === 'pending' || o.order_status === 'zone_pending')
+        && ['parcel_received', 'legacy_untracked'].includes(o.parcel_status)
+      );
 
       if (!pending.length) {
         panel.insertAdjacentHTML('beforeend', '<div class="card" data-live-empty="true"><p>No orders are waiting for zone confirmation.</p></div>');
@@ -2587,15 +2719,15 @@
           ? `GPS: ${order.latitude}, ${order.longitude}`
           : 'No GPS data - verify manually';
         const address = order.delivery_address || order.area_name || 'Location pending';
-        const suggestedFee = order.estimated_fee === null || order.estimated_fee === undefined
-          ? Number(appSettings.default_delivery_fee || 40)
-          : Number(order.estimated_fee);
+        const savedEstimate = Number(order.estimated_fee);
+        const rateDefault = order.pricing_rate_band === 'extended' ? 50 : Number(appSettings.default_delivery_fee || 40) || 40;
+        const suggestedFee = Number.isFinite(savedEstimate) && savedEstimate > 0 ? savedEstimate : rateDefault;
         const rateLabel = order.pricing_rate_band === 'extended' ? 'Extended $50'
           : order.pricing_rate_band === 'remote' ? 'Remote quote'
             : 'Standard $40';
 
         panel.insertAdjacentHTML('beforeend', `
-          <div class="zone-card" data-order-id="${order.id}">
+          <div class="zone-card" data-order-id="${order.id}" data-baseline-fee="${suggestedFee.toFixed(2)}" data-rate-band="${order.pricing_rate_band || 'standard'}">
             <div>
               <div style="display:flex; gap:0.8rem; align-items:center; margin-bottom:0.4rem;">
                 <div class="zone-card-order">${order.order_number}</div>
@@ -2605,6 +2737,19 @@
               <div class="zone-card-client">${clientName(order)} &middot; Customer: ${order.customer_name || '—'} &middot; ${order.customer_phone || ''}</div>
               <div class="zone-card-address">📍 ${address}</div>
               <div class="zone-card-coords">${coords}</div>
+              <div style="margin-top:0.55rem; display:flex; gap:0.8rem; flex-wrap:wrap; font-size:0.8rem; color:var(--grey);">
+                <span><strong>Package:</strong> ${moneyFull(order.package_value || order.cod_amount)}</span>
+                <span><strong>Estimated delivery:</strong> ${order.estimated_fee > 0 ? moneyFull(order.estimated_fee) : rateLabel}</span>
+                <span><strong>Expected collection:</strong> ${moneyFull(order.driver_amount_to_collect)}</span>
+                <span><strong>Delivery payer:</strong> ${order.delivery_fee_payer === 'client' ? 'Business client' : 'Customer'}</span>
+              </div>
+              ${order.pickup_required ? `
+                <div style="margin-top:0.65rem; padding:0.7rem; background:#f0f9f8; border-left:3px solid var(--teal-mid); border-radius:6px; font-size:0.82rem; line-height:1.55;">
+                  <strong>Pickup required:</strong> ${order.pickup_parcel_count || 1} parcel(s) · ${moneyFull(order.pickup_fee)}<br>
+                  ${escapeHtml(order.pickup_contact_name || '')} · ${escapeHtml(order.pickup_contact_phone || '')}<br>
+                  ${escapeHtml(order.pickup_address || '')} · ${escapeHtml(order.pickup_window || '')}
+                  ${order.pickup_instructions ? `<br>${escapeHtml(order.pickup_instructions)}` : ''}
+                </div>` : ''}
               <div class="zone-card-suggest">
                 <span style="font-size:0.78rem; color:var(--grey);">Admin confirms:</span>
                 ${maps}
@@ -2662,6 +2807,7 @@
     function clearStaticAdminData() {
       document.querySelector('#panel-all-orders tbody').innerHTML = '<tr><td colspan="8">Loading orders...</td></tr>';
       document.querySelector('#panel-driver-assign tbody').innerHTML = '<tr><td colspan="8">Loading driver assignments...</td></tr>';
+      document.getElementById('parcelCheckinBody').innerHTML = '<tr><td colspan="7">Loading parcel records...</td></tr>';
       document.getElementById('accountingRecordsBody').innerHTML = '<tr><td colspan="9">Loading accounting records...</td></tr>';
       document.getElementById('clientPayoutBody').innerHTML = '<tr><td colspan="7">Loading client payouts...</td></tr>';
       showZoneMessage('Loading pending zone orders...');
@@ -2698,7 +2844,7 @@
         supabase.from('zones').select('id, code, name, region, active, zone_areas(area_name)').eq('active', true).order('code'),
         supabase
           .from('orders')
-          .select('id, order_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, quote_status, price_override_reason, zone_status, order_status, assigned_driver_id, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, payment_confirmed_by, source, created_at, updated_at')
+          .select('id, order_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_address, pickup_window, pickup_instructions, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, quote_status, price_override_reason, zone_status, order_status, assigned_driver_id, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, payment_confirmed_by, source, created_at, updated_at')
           .order('created_at', { ascending: false }),
         supabase.from('drivers').select('id, profile_id, status'),
         supabase.from('profiles').select('id, role, first_name, last_name, status').eq('role', 'driver'),
@@ -2744,6 +2890,7 @@
 
       syncAccountingControls();
       renderAllOrders();
+      renderParcelCheckin();
       renderZoneConfirm();
       renderDriverAssign();
       renderAccounting();
@@ -2813,8 +2960,9 @@
       const overrideReason = card.querySelector('.override-reason-input')?.value.trim() || '';
       const zoneId = zoneSelect.value;
       const zone = zones.find(z => z.id === zoneId);
-      const estimatedFee = order.estimated_fee === null || order.estimated_fee === undefined ? null : Number(order.estimated_fee);
-      const isOverride = estimatedFee === null || Math.abs(fee - estimatedFee) > 0.009;
+      const baselineFee = Number(card.dataset.baselineFee || 40);
+      const isRemoteQuote = card.dataset.rateBand === 'remote';
+      const isOverride = Math.abs(fee - baselineFee) > 0.009;
 
       if (!zone) {
         showToast('Please select a zone first.');
@@ -2824,15 +2972,15 @@
         showToast('Enter a valid final delivery fee.');
         return;
       }
-      if (isOverride && !overrideReason) {
-        showToast('Enter a reason for the custom price or remote quote.');
+      if ((isOverride || isRemoteQuote) && !overrideReason) {
+        showToast(isRemoteQuote ? 'Enter a reason for the remote quote.' : 'Enter a reason for changing the standard fee.');
         card.querySelector('.override-reason-input')?.focus();
         return;
       }
 
       showModal('Confirm Zone', `Set ${order.order_number} to ${zone.name} with delivery fee TTD ${fee}?`, async () => {
         try {
-          await saveZoneConfirmation(orderId, zoneId, fee, overrideReason, isOverride);
+          await saveZoneConfirmation(orderId, zoneId, fee, overrideReason, isOverride || isRemoteQuote);
           showToast(`✅ ${order.order_number} zone confirmed.`);
           await loadData();
         } catch (error) {

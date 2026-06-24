@@ -1043,6 +1043,48 @@
               </select>
             </div>
             <div class="form-group full">
+              <label style="display:flex; align-items:center; gap:0.65rem; cursor:pointer;">
+                <input type="checkbox" id="pickupRequired" style="width:18px; height:18px; accent-color:#2a9d8f;" />
+                Pickup required from the business location
+              </label>
+              <div style="font-size:0.8rem; color:#6a6a6a;">Pickup is $20 for 1–4 parcels and free for 5 or more parcels.</div>
+            </div>
+            <div class="form-group full" id="pickupDetails" style="display:none;">
+              <div class="form-grid" style="padding:1rem; background:#f8fbfa; border:1px solid #dcecea; border-radius:8px;">
+                <div class="form-group">
+                  <label for="pickupContactName">Pickup Contact</label>
+                  <input class="input" id="pickupContactName" type="text" placeholder="Contact name" />
+                </div>
+                <div class="form-group">
+                  <label for="pickupContactPhone">Pickup Phone</label>
+                  <input class="input" id="pickupContactPhone" type="tel" placeholder="868-XXX-XXXX" />
+                </div>
+                <div class="form-group full">
+                  <label for="pickupAddress">Pickup Address</label>
+                  <input class="input" id="pickupAddress" type="text" placeholder="Full business pickup address" />
+                </div>
+                <div class="form-group">
+                  <label for="pickupWindow">Available Pickup Window</label>
+                  <input class="input" id="pickupWindow" type="text" placeholder="e.g. 9:00 AM–11:00 AM" />
+                </div>
+                <div class="form-group">
+                  <label for="pickupParcelCount">Number of Parcels</label>
+                  <input class="input" id="pickupParcelCount" type="number" min="1" step="1" value="1" />
+                </div>
+                <div class="form-group" id="pickupFeeSettlementBlock">
+                  <label for="pickupFeeSettlement">How will the pickup fee be paid?</label>
+                  <select class="input" id="pickupFeeSettlement">
+                    <option value="deduct_from_remittance">Deduct from remittance</option>
+                    <option value="pay_separately">Pay separately</option>
+                  </select>
+                </div>
+                <div class="form-group full">
+                  <label for="pickupInstructions">Pickup Instructions <span>(optional)</span></label>
+                  <textarea class="input" id="pickupInstructions" placeholder="Parking, entrance, parcel handling or contact instructions"></textarea>
+                </div>
+              </div>
+            </div>
+            <div class="form-group full">
               <label>Customer Delivery Location <span>(required)</span></label>
               <div style="display:flex; gap:0; background:#f0f9f8; border-radius:10px; padding:4px; margin-bottom:1rem;">
                 <button type="button" class="loc-tab active" onclick="switchLocTab('share', this)" style="flex:1; padding:0.65rem 1rem; border-radius:8px; border:none; font-family:'Inter',sans-serif; font-size:0.88rem; font-weight:600; cursor:pointer; transition:all 0.25s; background:#0d2b28; color:#ffffff;">📍 Share Location</button>
@@ -1068,6 +1110,7 @@
                     <label style="font-size:0.85rem; font-weight:600; color:#1a1a1a; margin-bottom:0.3rem; display:block;">Street Name <span style="color:#e05555;">*</span></label>
                     <input class="input" type="text" id="streetName" placeholder="e.g. Bamboo Drive" />
                     <div style="font-size:0.76rem; color:#6a6a6a; margin-top:0.3rem;">Enter the actual street, road, building or landmark, not the area name.</div>
+                    <div id="streetNameErr" style="display:none; font-size:0.78rem; color:#e05555; font-weight:600;"></div>
                   </div>
                 </div>
                 <div>
@@ -1674,7 +1717,7 @@
 
 <script src="vd-modal.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script type="module" src="business-dashboard.js?v=20260624-financial-2"></script>
+  <script type="module" src="business-dashboard.js?v=20260624-lifecycle-1"></script>
 
 </body>
 </html>

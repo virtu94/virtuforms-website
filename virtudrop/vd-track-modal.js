@@ -27,6 +27,8 @@
 
   /* ── Status definitions (mirrors track.html) ─────────────────── */
   const STATUS = {
+    awaiting_parcel:   { label: 'Awaiting Parcel',   icon: '📋', badge: 'received',    step: 0, message: 'The delivery request was submitted, but VirtuDrop has not checked in the parcel yet.' },
+    parcel_received:   { label: 'Package Received',  icon: '📦', badge: 'received',    step: 0, message: 'VirtuDrop has received and checked in your package for processing.' },
     zone_pending:      { label: 'Request Received',  icon: '📋', badge: 'received',    step: 0, message: 'Your order has been received and is waiting for zone confirmation.' },
     confirmed:         { label: 'Confirmed',          icon: '✅', badge: 'received',    step: 0, message: 'Your delivery has been confirmed and is waiting for driver assignment.' },
     assigned:          { label: 'Driver Assigned',    icon: '📦', badge: 'collected',   step: 1, message: 'A driver has been assigned to your order.' },
@@ -267,7 +269,10 @@
 
   /* ── Build the status card HTML ──────────────────────────────── */
   function buildCardHTML(order) {
-    const st = STATUS[order.order_status] || STATUS.zone_pending;
+    const earlyParcelStatus = !['assigned', 'out_for_delivery', 'delivered', 'failed', 'rescheduled'].includes(order.order_status)
+      ? STATUS[order.parcel_status]
+      : null;
+    const st = earlyParcelStatus || STATUS[order.order_status] || STATUS.zone_pending;
     const step = st.step;
     const prog = step / 3 * 100;
 
@@ -410,7 +415,7 @@
       }
 
       try {
-        const { data, error } = await sb.rpc('public_track_order', {
+        const { data, error } = await sb.rpc('public_track_order_v2', {
           p_order_number:   orderNumber || null,
           p_customer_phone: phone       || null,
           p_tracking_token: null,
@@ -476,7 +481,7 @@
     }
 
     try {
-      const { data, error } = await sb.rpc('public_track_order', {
+      const { data, error } = await sb.rpc('public_track_order_v2', {
         p_order_number:    orderNumber  || null,
         p_customer_phone:  null,
         p_tracking_token:  trackingToken || null,
