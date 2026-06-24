@@ -729,7 +729,7 @@
         <span class="nav-badge alert">8</span>
       </button>
       <button class="nav-item" data-panel="driver-import">
-        <span class="nav-icon">⇧</span> Driver Work Import
+        <span class="nav-icon">⇧</span> Active Delivery Import
       </button>
 
       <div class="nav-section-label">Finance</div>
@@ -786,7 +786,7 @@
         </div>
 
         <div style="display:flex; justify-content:flex-end; gap:0.65rem; flex-wrap:wrap; margin-bottom:1rem;">
-          <button class="btn btn-primary" type="button" onclick="showPanel('driver-import')">Open Driver Work Import</button>
+          <button class="btn btn-primary" type="button" onclick="showPanel('driver-import')">Open Active Delivery Import</button>
           <button class="btn btn-primary" type="button" onclick="showPanel('sorting-manifests')">Open Sorting &amp; Manifests</button>
         </div>
 
@@ -1047,8 +1047,8 @@
 
       <div class="panel" id="panel-driver-import">
         <div class="section-heading">
-          <h2>Driver Work Import</h2>
-          <p>Import active deliveries, generate VirtuDrop order numbers, and place them directly in a driver portal.</p>
+          <h2>Active Delivery Import</h2>
+          <p>Import deliveries to be completed, confirm their fees, and assign them through the normal delivery workflow.</p>
         </div>
 
         <div class="card" style="margin-bottom:1rem;">
@@ -1063,13 +1063,12 @@
         </div>
 
         <div class="card" style="margin-bottom:1rem;">
-          <div class="card-title">Import Assignment</div>
+          <div class="card-title">Import Settings</div>
           <div class="historical-form-grid">
-            <div class="finance-field"><label for="driverImportDriver">Driver</label><select class="filter-select" id="driverImportDriver"></select></div>
             <div class="finance-field"><label for="driverImportClient">Business Client</label><select class="filter-select" id="driverImportClient"></select></div>
-            <div class="finance-field"><label for="driverImportDate">Route Date</label><input class="filter-input" id="driverImportDate" type="date"></div>
+            <div class="finance-field"><label for="activeImportReceived">Parcel Status</label><label style="display:flex;align-items:center;gap:0.6rem;min-height:42px;"><input id="activeImportReceived" type="checkbox"> Parcels already received at VirtuDrop</label></div>
           </div>
-          <div class="accounting-note">Package/COD amount is the value owed to the business client. Amount to collect is the total the driver receives from the customer. The difference is recorded as the delivery fee.</div>
+          <div class="accounting-note">Package/COD amount is owed to the business client. Amount to collect is the expected total from the customer. Their difference becomes the estimated delivery fee, which must be confirmed or amended in Zone Confirmation.</div>
         </div>
 
         <div class="card" style="margin-bottom:1rem;">
@@ -1083,7 +1082,7 @@
             <div class="finance-field"><label for="driverImportCollectAmount">Amount Driver Collects</label><input class="filter-input" id="driverImportCollectAmount" type="number" min="0" step="0.01" value="0.00"></div>
             <div class="finance-field"><label for="driverImportNotes">Notes</label><input class="filter-input" id="driverImportNotes" type="text" placeholder="Optional delivery instructions"></div>
           </div>
-          <button class="btn btn-primary" type="button" onclick="saveManualDriverImport()">Import and Assign Delivery</button>
+          <button class="btn btn-primary" type="button" onclick="saveManualDriverImport()">Import Active Delivery</button>
         </div>
 
         <div class="card">
@@ -1094,7 +1093,7 @@
             <div class="finance-actions">
               <button class="btn btn-ghost" type="button" onclick="downloadDriverImportTemplate()">Download Template</button>
               <button class="btn btn-primary" type="button" onclick="previewDriverImport()">Preview CSV</button>
-              <button class="btn btn-primary" type="button" id="confirmDriverImportBtn" onclick="confirmDriverImport()" disabled>Import Valid Rows</button>
+              <button class="btn btn-primary" type="button" id="confirmDriverImportBtn" onclick="confirmDriverImport()" disabled>Import Active Deliveries</button>
             </div>
           </div>
           <div class="table-wrap" style="margin-top:1rem;"><table>
@@ -1555,7 +1554,7 @@
       'returns-redelivery': 'Returns & Redelivery',
       'delivery-scheduling': 'Delivery Scheduling',
       'driver-assign': 'Driver Assignment',
-      'driver-import': 'Driver Work Import',
+      'driver-import': 'Active Delivery Import',
       'cod-mgmt': 'COD Management',
       remittance: 'Remittance',
       'historical-import': 'Historical Import',
@@ -1714,12 +1713,8 @@
       if (histFee && !histFee.value) {
         histFee.value = Number(appSettings.default_delivery_fee || 40);
       }
-      const importDriver = document.getElementById('driverImportDriver');
       const importClient = document.getElementById('driverImportClient');
-      const importDate = document.getElementById('driverImportDate');
-      if (importDriver) importDriver.innerHTML = driverOptions();
       if (importClient) importClient.innerHTML = clientOptionsHtml(false);
-      if (importDate && !importDate.value) importDate.value = today;
     }
 
     function setToggle(id, enabled) {
@@ -3780,9 +3775,8 @@
 
     function driverImportConfiguration() {
       return {
-        driverId: document.getElementById('driverImportDriver')?.value || '',
         clientId: document.getElementById('driverImportClient')?.value || '',
-        routeDate: document.getElementById('driverImportDate')?.value || ''
+        parcelsReceived: Boolean(document.getElementById('activeImportReceived')?.checked)
       };
     }
 
@@ -3812,13 +3806,10 @@
 
     async function importDriverRows(rows) {
       const config = driverImportConfiguration();
-      if (!config.driverId) throw new Error('Select the driver.');
       if (!config.clientId) throw new Error('Select the business client.');
-      if (!config.routeDate) throw new Error('Select the route date.');
-      const { data, error } = await supabase.rpc('admin_import_driver_deliveries', {
-        p_driver_id: config.driverId,
+      const { data, error } = await supabase.rpc('admin_import_pending_deliveries', {
         p_business_client_id: config.clientId,
-        p_route_date: config.routeDate,
+        p_parcels_received: config.parcelsReceived,
         p_rows: rows
       });
       if (error) throw error;
@@ -3842,9 +3833,9 @@
         ['driverImportCustomer', 'driverImportPhone', 'driverImportItem', 'driverImportLocation', 'driverImportNotes'].forEach(id => { const field = document.getElementById(id); if (field) field.value = ''; });
         document.getElementById('driverImportPackageAmount').value = '0.00';
         document.getElementById('driverImportCollectAmount').value = '0.00';
-        showToast(`${result?.orders?.[0]?.order_number || 'Delivery'} imported and assigned.`);
+        showToast(`${result?.orders?.[0]?.order_number || 'Delivery'} imported. Confirm its delivery fee before driver assignment.`);
         await loadData();
-        showPanel('driver-import');
+        showPanel(result?.next_step === 'zone_confirmation' ? 'zone-confirm' : 'parcel-checkin');
       } catch (error) {
         window.vdNotify('Delivery Not Imported', error.message || 'Could not import this delivery.', 'error');
       }
@@ -3856,7 +3847,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'virtudrop-driver-work-import-template.csv';
+      a.download = 'virtudrop-active-delivery-import-template.csv';
       a.click();
       URL.revokeObjectURL(url);
     };
@@ -3896,15 +3887,15 @@
       if (!validRows.length) return showToast('No valid delivery rows are ready to import.');
       try {
         const result = await importDriverRows(validRows);
-        showModal('Driver Work Imported', `${result.imported_count} deliveries assigned. Manifest: ${result.manifest_number}`);
+        showToast(`${result.imported_count} active deliveries imported.`);
         driverImportRows = [];
         document.getElementById('confirmDriverImportBtn').disabled = true;
-        document.getElementById('driverImportPreviewBody').innerHTML = '<tr><td colspan="8">Import completed.</td></tr>';
+        document.getElementById('driverImportPreviewBody').innerHTML = '<tr><td colspan="8">Import completed. Continue through parcel check-in, fee confirmation, sorting, and driver assignment.</td></tr>';
         document.getElementById('driverImportFile').value = '';
         await loadData();
-        showPanel('driver-import');
+        showPanel(result?.next_step === 'zone_confirmation' ? 'zone-confirm' : 'parcel-checkin');
       } catch (error) {
-        window.vdNotify('Driver Work Not Imported', error.message || 'Could not import these deliveries.', 'error');
+        window.vdNotify('Active Deliveries Not Imported', error.message || 'Could not import these deliveries.', 'error');
       }
     };
 
