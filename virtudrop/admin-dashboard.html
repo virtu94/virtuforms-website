@@ -716,6 +716,10 @@
         <span class="nav-icon">🗂</span> Sorting &amp; Manifests
         <span class="nav-badge alert">0</span>
       </button>
+      <button class="nav-item" data-panel="returns-redelivery">
+        <span class="nav-icon">↩</span> Returns &amp; Redelivery
+        <span class="nav-badge alert">0</span>
+      </button>
       <button class="nav-item" data-panel="delivery-scheduling">
         <span class="nav-icon">📅</span> Delivery Scheduling
         <span class="nav-badge alert">0</span>
@@ -955,6 +959,31 @@
           <input class="filter-input" id="manifestSearch" type="search" placeholder="Search manifest, driver or order" oninput="renderManifests()" />
         </div>
         <div id="manifestList"><div class="card">Loading delivery manifests...</div></div>
+      </div>
+
+      <div class="panel" id="panel-returns-redelivery">
+        <div class="section-heading">
+          <h2>Returns &amp; Redelivery</h2>
+          <p>Resolve undelivered parcels after the driver returns them to the hub.</p>
+        </div>
+        <div class="filter-bar">
+          <select class="filter-select" id="returnManagementFilter" onchange="renderReturnManagement()">
+            <option value="active">Action Required</option>
+            <option value="awaiting_return">Awaiting Driver Return</option>
+            <option value="returned">Returned to Hub</option>
+            <option value="held">Held Parcels</option>
+            <option value="scheduled">Redelivery Scheduled</option>
+            <option value="client_return">Return to Client</option>
+            <option value="all">All Return Records</option>
+          </select>
+          <input class="filter-input" id="returnManagementSearch" type="search" placeholder="Search order, client or customer" oninput="renderReturnManagement()" />
+        </div>
+        <div class="card">
+          <div class="table-wrap"><table>
+            <thead><tr><th>Order</th><th>Client / Customer</th><th>Outcome</th><th>Parcel</th><th>Fees / Payer</th><th>Schedule / Hold</th><th>Actions</th></tr></thead>
+            <tbody id="returnManagementBody"><tr><td colspan="7">Loading returned parcels...</td></tr></tbody>
+          </table></div>
+        </div>
       </div>
 
       <div class="panel" id="panel-delivery-scheduling">
@@ -1451,6 +1480,7 @@
       'pickup-management': 'Pickup Management',
       'zone-confirm': 'Zone Confirmation',
       'sorting-manifests': 'Sorting & Manifests',
+      'returns-redelivery': 'Returns & Redelivery',
       'delivery-scheduling': 'Delivery Scheduling',
       'driver-assign': 'Driver Assignment',
       'cod-mgmt': 'COD Management',
@@ -1959,7 +1989,7 @@
         (o.zone_status === 'pending' || o.order_status === 'zone_pending')
         && ['parcel_received', 'legacy_untracked'].includes(o.parcel_status)
       ).length;
-      const unassigned = orders.filter(o => o.zone_status === 'confirmed' && o.parcel_status === 'sorted' && !o.assigned_driver_id).length;
+      const unassigned = orders.filter(o => o.zone_status === 'confirmed' && ['sorted', 'redelivery_scheduled'].includes(o.parcel_status) && !o.assigned_driver_id).length;
       const today = new Date().toISOString().slice(0, 10);
       const todayOrders = orders.filter(o => (o.created_at || '').slice(0, 10) === today).length;
 
@@ -1977,6 +2007,9 @@
       const draftManifestCount = deliveryManifests.filter(manifest => manifest.status === 'draft').length;
       const manifestBadge = document.querySelector('[data-panel="sorting-manifests"] .nav-badge');
       if (manifestBadge) manifestBadge.textContent = sortingCount + draftManifestCount;
+      const returnActionCount = orders.filter(order => returnRecordMatches(order, 'active')).length;
+      const returnBadge = document.querySelector('[data-panel="returns-redelivery"] .nav-badge');
+      if (returnBadge) returnBadge.textContent = returnActionCount;
       const zoneBadge = document.querySelector('[data-panel="zone-confirm"] .nav-badge');
       if (zoneBadge) zoneBadge.textContent = pendingZone;
       const driverBadge = document.querySelector('[data-panel="driver-assign"] .nav-badge');
@@ -1998,6 +2031,7 @@
           ['Pickup requests', activePickups, 'active', '#e9f7f5'],
           ['Schedule review', scheduleReview, 'overdue', 'var(--orange-pale)'],
           ['Sorting / manifests', sortingCount + draftManifestCount, 'pending', '#eef4fb'],
+          ['Returns / redelivery', returnActionCount, 'pending', 'var(--orange-pale)'],
           ['Zone confirmation', pendingZone, 'pending', 'var(--yellow-pale)'],
           ['Driver assignment', unassigned, 'unassigned', '#f0f0f0'],
           ['Locked accounts', locked, 'locked', 'var(--red-pale)'],
@@ -2675,6 +2709,8 @@
           <td>
             <div class="td-name">Package: ${moneyFull(order.package_value || order.cod_amount)}</div>
             <div class="td-sub">Delivery: ${moneyFull(order.delivery_fee)}</div>
+            ${order.redelivery_fee > 0 ? `<div class="td-sub">Redelivery: ${moneyFull(order.redelivery_fee)} · ${escapeHtml(order.redelivery_fee_payer || 'payer pending')}</div>` : ''}
+            ${order.return_to_client_fee > 0 ? `<div class="td-sub">Client return: ${moneyFull(order.return_to_client_fee)}</div>` : ''}
             <div class="td-sub">Collect: ${moneyFull(driverCollects(order))}</div>
             ${order.pickup_required ? `<div class="td-sub">Pickup: ${moneyFull(order.pickup_fee)} · ${order.pickup_parcel_count || 1} parcel(s)</div>` : ''}
           </td>
@@ -2694,8 +2730,8 @@
                 : order.parcel_status === 'parcel_received'
                   ? '<button class="btn btn-warn btn-sm" onclick="showPanel(\'sorting-manifests\')">Sort Parcel</button>'
                 : order.delivery_return_required ? '<span class="badge badge-unpaid">Driver returning parcel</span>'
-                : ['failed', 'rescheduled'].includes(order.order_status) ? '<span class="badge badge-pending">Exception awaiting admin</span>'
-                : order.parcel_status === 'sorted' && !order.assigned_driver_id ? '<button class="btn btn-primary btn-sm" onclick="showPanel(\'driver-assign\')">Assign Driver</button>'
+                : ['failed', 'rescheduled'].includes(order.order_status) || ['returned_to_hub', 'held_for_client_instructions'].includes(order.parcel_status) ? '<button class="btn btn-warn btn-sm" onclick="showPanel(\'returns-redelivery\')">Manage Return</button>'
+                : ['sorted', 'redelivery_scheduled'].includes(order.parcel_status) && !order.assigned_driver_id ? '<button class="btn btn-primary btn-sm" onclick="showPanel(\'driver-assign\')">Assign Driver</button>'
                 : order.assigned_driver_id && ['assigned', 'handed_to_driver'].includes(order.parcel_status) ? '<button class="btn btn-ghost btn-sm" onclick="showPanel(\'sorting-manifests\')">View Manifest</button>'
                 : ''}
             </div>
@@ -2980,16 +3016,192 @@
       popup.document.close();
     };
 
+    function returnRecordMatches(order, filter) {
+      const hasReturnRecord = order.delivery_return_required
+        || ['returned_to_hub', 'held_for_client_instructions', 'redelivery_scheduled', 'returned_to_client'].includes(order.parcel_status)
+        || Boolean(order.redelivery_status || order.return_to_client_status);
+      if (!hasReturnRecord) return false;
+      if (filter === 'all') return true;
+      if (filter === 'awaiting_return') return order.delivery_return_required;
+      if (filter === 'returned') return order.parcel_status === 'returned_to_hub' && order.return_disposition === 'awaiting_admin';
+      if (filter === 'held') return order.parcel_status === 'held_for_client_instructions' && order.return_disposition === 'hold';
+      if (filter === 'scheduled') return order.redelivery_status === 'scheduled';
+      if (filter === 'client_return') return Boolean(order.return_to_client_status);
+      return order.delivery_return_required
+        || order.return_disposition === 'awaiting_admin'
+        || order.return_disposition === 'hold'
+        || order.redelivery_status === 'scheduled'
+        || order.return_to_client_status === 'ready';
+    }
+
+    function returnActionButtons(order) {
+      if (order.delivery_return_required) return `<div class="finance-actions"><span class="badge badge-unpaid">Driver must return parcel</span><button class="btn btn-primary btn-sm" onclick="confirmHubReturn('${order.id}')">Confirm Hub Receipt</button></div>`;
+      if (order.return_to_client_status === 'ready') {
+        return `<button class="btn btn-primary btn-sm" onclick="completeClientReturn('${order.id}')">Confirm Returned to Client</button>`;
+      }
+      if (order.redelivery_status === 'scheduled') {
+        return order.assigned_driver_id
+          ? '<span class="badge badge-active">Assigned for redelivery</span>'
+          : `<button class="btn btn-primary btn-sm" onclick="showPanel('driver-assign')">Assign Driver</button>`;
+      }
+      if (['returned_to_hub', 'held_for_client_instructions'].includes(order.parcel_status)) {
+        return `<div class="finance-actions">
+          <button class="btn btn-primary btn-sm" onclick="openRedeliverySchedule('${order.id}')">Schedule Redelivery</button>
+          <button class="btn btn-ghost btn-sm" onclick="holdReturnedOrder('${order.id}', false)">Hold 14 Days</button>
+          <button class="btn btn-ghost btn-sm" onclick="holdReturnedOrder('${order.id}', true)">Hold as Stock</button>
+          <button class="btn btn-warn btn-sm" onclick="prepareClientReturn('${order.id}')">Return to Client</button>
+        </div>`;
+      }
+      return '<span class="badge badge-confirmed">Completed</span>';
+    }
+
+    window.renderReturnManagement = function() {
+      const body = document.getElementById('returnManagementBody');
+      if (!body) return;
+      const filter = document.getElementById('returnManagementFilter')?.value || 'active';
+      const search = String(document.getElementById('returnManagementSearch')?.value || '').trim().toLowerCase();
+      const rows = orders.filter(order => {
+        if (!returnRecordMatches(order, filter)) return false;
+        if (!search) return true;
+        return [order.order_number, clientName(order), order.customer_name, order.customer_phone]
+          .some(value => String(value || '').toLowerCase().includes(search));
+      });
+      const outcomeLabels = { no_response: 'No Response', refused: 'Refused', reschedule_requested: 'Reschedule Requested' };
+      body.innerHTML = rows.map(order => {
+        const payer = order.redelivery_fee_payer === 'client' ? 'Business client' : order.redelivery_fee_payer === 'customer' ? 'Customer' : 'Not selected';
+        const schedule = order.redelivery_status === 'scheduled' && order.scheduled_delivery_date
+          ? `Redelivery: ${new Date(order.scheduled_delivery_date + 'T12:00:00').toLocaleDateString('en-TT')}`
+          : order.holding_type === 'extra_stock' ? 'Held as extra stock'
+            : order.hold_until ? `Hold until ${new Date(order.hold_until + 'T12:00:00').toLocaleDateString('en-TT')}`
+              : order.return_to_client_status === 'ready' ? 'Ready for client collection/return' : 'Awaiting admin decision';
+        return `<tr>
+          <td><div class="td-id">${escapeHtml(order.order_number)}</div><div class="td-sub">Attempt ${escapeHtml(String(order.delivery_attempt_count || 1))}</div></td>
+          <td><div class="td-name">${escapeHtml(clientName(order))}</div><div class="td-sub">${escapeHtml(order.customer_name || '')} · ${escapeHtml(order.customer_phone || '')}</div></td>
+          <td><span class="badge badge-pending">${escapeHtml(outcomeLabels[order.delivery_outcome] || order.delivery_outcome || 'Undelivered')}</span>${order.delivery_outcome_notes ? `<div class="td-sub">${escapeHtml(order.delivery_outcome_notes)}</div>` : ''}</td>
+          <td><div class="td-name">${escapeHtml(String(order.parcel_status || '').replaceAll('_', ' '))}</div><div class="td-sub">${order.delivery_returned_hub_at ? `Hub return ${new Date(order.delivery_returned_hub_at).toLocaleString('en-TT')}` : 'Not returned yet'}</div></td>
+          <td><div class="td-name">Redelivery: ${moneyFull(order.redelivery_fee)}</div><div class="td-sub">Payer: ${escapeHtml(payer)}</div>${order.return_to_client_fee > 0 ? `<div class="td-sub">Client return: ${moneyFull(order.return_to_client_fee)}</div>` : ''}</td>
+          <td><div class="td-name">${escapeHtml(schedule)}</div>${order.return_management_notes ? `<div class="td-sub">${escapeHtml(order.return_management_notes)}</div>` : ''}</td>
+          <td>${returnActionButtons(order)}</td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="7">No returned parcels match this view.</td></tr>';
+    };
+
+    window.syncRedeliverySettlement = function() {
+      const payer = document.getElementById('redeliveryPayer')?.value;
+      const settlement = document.getElementById('redeliverySettlementWrap');
+      if (settlement) settlement.style.display = payer === 'client' ? '' : 'none';
+    };
+
+    window.confirmHubReturn = function(orderId) {
+      const order = orders.find(item => item.id === orderId);
+      if (!order) return showToast('Undelivered order not found.');
+      showModal('Confirm Hub Receipt', `Confirm that ${order.order_number} was physically returned to the VirtuDrop hub?`, async () => {
+        try {
+          const { error } = await supabase.rpc('admin_confirm_undelivered_returned', { p_order_id: orderId });
+          if (error) throw error;
+          showToast(`${order.order_number} received back at the hub.`);
+          await loadData();
+        } catch (error) {
+          window.vdNotify('Hub Return Not Confirmed', error.message || 'Could not confirm this parcel return.', 'error');
+        }
+      });
+    };
+
+    window.openRedeliverySchedule = function(orderId) {
+      const order = orders.find(item => item.id === orderId);
+      if (!order) return showToast('Returned order not found.');
+      const preferred = order.redelivery_requested_date || order.scheduled_delivery_date || new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+      showModal(`Schedule Redelivery ${order.order_number}`, '', async () => {
+        const date = document.getElementById('redeliveryDate')?.value || '';
+        const fee = Number(document.getElementById('redeliveryFee')?.value || 0);
+        const payer = document.getElementById('redeliveryPayer')?.value || '';
+        const settlement = payer === 'client' ? document.getElementById('redeliverySettlement')?.value || '' : null;
+        const notes = document.getElementById('redeliveryNotes')?.value.trim() || null;
+        try {
+          const { error } = await supabase.rpc('admin_schedule_order_redelivery', {
+            p_order_id: orderId, p_delivery_date: date, p_fee: fee, p_payer: payer, p_settlement: settlement, p_notes: notes
+          });
+          if (error) throw error;
+          showToast(`${order.order_number} scheduled for redelivery.`);
+          await loadData();
+        } catch (error) {
+          window.vdNotify('Redelivery Not Scheduled', error.message || 'Could not schedule redelivery.', 'error');
+        }
+      });
+      document.getElementById('modalBody').innerHTML = `<div class="payment-modal-form" style="text-align:left;">
+        <label>Redelivery Date<input id="redeliveryDate" type="date" min="${new Date().toISOString().slice(0, 10)}" value="${escapeHtml(preferred)}"></label>
+        <label>Second-Attempt Fee<input id="redeliveryFee" type="number" min="0" step="0.01" value="${Number(order.delivery_fee || 40).toFixed(2)}"></label>
+        <label>Who Pays?<select id="redeliveryPayer" onchange="syncRedeliverySettlement()"><option value="customer" ${order.redelivery_fee_payer === 'customer' ? 'selected' : ''}>Customer</option><option value="client" ${order.redelivery_fee_payer === 'client' ? 'selected' : ''}>Business Client</option></select></label>
+        <label id="redeliverySettlementWrap">Client Settlement<select id="redeliverySettlement"><option value="deduct_from_remittance" ${order.redelivery_fee_settlement === 'deduct_from_remittance' ? 'selected' : ''}>Deduct from remittance</option><option value="pay_separately" ${order.redelivery_fee_settlement === 'pay_separately' ? 'selected' : ''}>Pay separately</option></select></label>
+        <label>Admin Notes<textarea id="redeliveryNotes" placeholder="Reason, customer arrangement or delivery instructions">${escapeHtml(order.redelivery_notes || '')}</textarea></label>
+      </div>`;
+      syncRedeliverySettlement();
+    };
+
+    window.holdReturnedOrder = function(orderId, extraStock) {
+      const order = orders.find(item => item.id === orderId);
+      if (!order) return showToast('Returned order not found.');
+      showModal(extraStock ? 'Hold as Extra Stock' : 'Hold Returned Parcel', extraStock
+        ? `Keep ${order.order_number} at VirtuDrop as client-approved extra stock without the standard 14-day deadline?`
+        : `Hold ${order.order_number} for 14 days while awaiting client instructions?`, async () => {
+        try {
+          const { error } = await supabase.rpc('admin_hold_returned_order', { p_order_id: orderId, p_extra_stock: extraStock, p_notes: null });
+          if (error) throw error;
+          showToast(`${order.order_number} placed on hold.`);
+          await loadData();
+        } catch (error) {
+          window.vdNotify('Parcel Not Held', error.message || 'Could not update this parcel.', 'error');
+        }
+      });
+    };
+
+    window.prepareClientReturn = function(orderId) {
+      const order = orders.find(item => item.id === orderId);
+      if (!order) return showToast('Returned order not found.');
+      showModal(`Return ${order.order_number} to Client`, '', async () => {
+        const settlement = document.getElementById('clientReturnSettlement')?.value || '';
+        const notes = document.getElementById('clientReturnNotes')?.value.trim() || null;
+        try {
+          const { error } = await supabase.rpc('admin_prepare_order_return_to_client', { p_order_id: orderId, p_settlement: settlement, p_notes: notes });
+          if (error) throw error;
+          showToast(`${order.order_number} prepared for return to the client.`);
+          await loadData();
+        } catch (error) {
+          window.vdNotify('Client Return Not Prepared', error.message || 'Could not prepare this return.', 'error');
+        }
+      });
+      document.getElementById('modalBody').innerHTML = `<div class="payment-modal-form" style="text-align:left;">
+        <p>The client return fee is <strong>TTD 20.00</strong>.</p>
+        <label>Fee Settlement<select id="clientReturnSettlement"><option value="deduct_from_remittance">Deduct from remittance</option><option value="pay_separately">Pay separately</option></select></label>
+        <label>Return Notes<textarea id="clientReturnNotes" placeholder="Collection arrangement or next-pickup instructions"></textarea></label>
+      </div>`;
+    };
+
+    window.completeClientReturn = function(orderId) {
+      const order = orders.find(item => item.id === orderId);
+      if (!order) return showToast('Returned order not found.');
+      showModal('Confirm Client Return', `Confirm that ${order.order_number} was physically returned to the business client?`, async () => {
+        try {
+          const { error } = await supabase.rpc('admin_complete_order_return_to_client', { p_order_id: orderId });
+          if (error) throw error;
+          showToast(`${order.order_number} returned to the client.`);
+          await loadData();
+        } catch (error) {
+          window.vdNotify('Client Return Not Completed', error.message || 'Could not complete this return.', 'error');
+        }
+      });
+    };
+
     function renderDriverAssign() {
       const tbody = document.querySelector('#panel-driver-assign tbody');
-      const assignable = orders.filter(o => o.zone_status === 'confirmed' && o.parcel_status === 'sorted' && !o.assigned_driver_id);
+      const assignable = orders.filter(o => o.zone_status === 'confirmed' && ['sorted', 'redelivery_scheduled'].includes(o.parcel_status) && !o.assigned_driver_id);
       tbody.innerHTML = assignable.map(order => `
         <tr>
           <td class="td-id">${order.order_number}</td>
           <td>${clientName(order)}</td>
           <td><div class="td-name">${order.customer_name || '—'}</div><div class="td-sub">${order.customer_phone || ''}</div></td>
-          <td><span class="badge badge-confirmed">Confirmed</span></td>
-          <td>${money(order.cod_amount)}</td>
+          <td><span class="badge ${order.redelivery_status === 'scheduled' ? 'badge-pending' : 'badge-confirmed'}">${order.redelivery_status === 'scheduled' ? `Redelivery · Attempt ${Number(order.delivery_attempt_count || 0) + 1}` : 'Confirmed'}</span></td>
+          <td>${moneyFull(driverCollects(order))}${order.redelivery_fee > 0 ? `<div class="td-sub">Includes ${moneyFull(order.redelivery_fee)} redelivery</div>` : ''}</td>
           <td><select class="filter-select driver-select" style="width:160px;">${driverOptions()}</select></td>
           <td><input type="date" class="filter-input route-date" style="width:140px;" value="${order.scheduled_delivery_date || new Date().toISOString().slice(0, 10)}" /></td>
           <td><button class="btn btn-primary btn-sm" onclick="assignDriver('${order.id}')">✅ Assign</button></td>
@@ -3254,7 +3466,7 @@
         supabase.from('zones').select('id, code, name, region, active, zone_areas(area_name)').eq('active', true).order('code'),
         supabase
           .from('orders')
-          .select('id, order_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_business_name, pickup_street_name, pickup_area_name, pickup_address, pickup_window, pickup_instructions, pickup_assigned_driver_id, pickup_scheduled_date, pickup_scheduled_window, pickup_assigned_at, pickup_picked_up_at, pickup_arrived_hub_at, pickup_cancelled_at, pickup_cancellation_reason, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, delivery_schedule_source, delivery_schedule_status, delivery_schedule_calculated_at, delivery_schedule_override_reason, delivery_outcome, delivery_attempt_count, last_delivery_attempt_at, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, quote_status, price_override_reason, zone_status, order_status, assigned_driver_id, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, payment_confirmed_by, source, created_at, updated_at')
+          .select('id, order_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_business_name, pickup_street_name, pickup_area_name, pickup_address, pickup_window, pickup_instructions, pickup_assigned_driver_id, pickup_scheduled_date, pickup_scheduled_window, pickup_assigned_at, pickup_picked_up_at, pickup_arrived_hub_at, pickup_cancelled_at, pickup_cancellation_reason, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, delivery_schedule_source, delivery_schedule_status, delivery_schedule_calculated_at, delivery_schedule_override_reason, delivery_outcome, delivery_attempt_count, last_delivery_attempt_at, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, redelivery_status, redelivery_fee, redelivery_fee_payer, redelivery_fee_settlement, redelivery_scheduled_at, redelivery_notes, return_disposition, holding_type, hold_until, return_to_client_status, return_to_client_fee, return_to_client_settlement, return_to_client_requested_at, return_to_client_completed_at, return_management_notes, quote_status, price_override_reason, zone_status, order_status, assigned_driver_id, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, payment_confirmed_by, source, created_at, updated_at')
           .order('created_at', { ascending: false }),
         supabase.from('drivers').select('id, profile_id, status'),
         supabase.from('profiles').select('id, role, first_name, last_name, status').eq('role', 'driver'),
@@ -3315,6 +3527,7 @@
       renderDeliveryScheduling();
       renderSortingQueue();
       renderManifests();
+      renderReturnManagement();
       renderZoneConfirm();
       renderDriverAssign();
       renderAccounting();

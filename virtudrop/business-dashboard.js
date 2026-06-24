@@ -748,6 +748,15 @@ function businessTrackingBubble(order) {
   } else if (!trackedStatuses.includes(order.order_status) && order.parcel_status === 'parcel_received') {
     label = 'Package Received';
     message = 'The parcel has been received and checked in.';
+  } else if (order.redelivery_status === 'scheduled') {
+    step = 1; label = 'Redelivery Scheduled'; message = 'VirtuDrop has scheduled another delivery attempt.';
+  } else if (order.parcel_status === 'returned_to_hub') {
+    step = 1; label = 'Returned to Hub'; message = 'The undelivered parcel is back at VirtuDrop and awaiting instructions.';
+  } else if (order.parcel_status === 'held_for_client_instructions') {
+    step = 1; label = order.return_to_client_status === 'ready' ? 'Return to Client Ready' : 'Held for Instructions';
+    message = order.return_to_client_status === 'ready' ? 'The parcel is ready to be returned to the business client.' : 'VirtuDrop is holding the parcel while the next action is confirmed.';
+  } else if (order.parcel_status === 'returned_to_client') {
+    step = 3; label = 'Returned to Client'; message = 'The parcel was returned to the business client.';
   } else if (order.order_status === 'assigned') {
     step = 1; label = 'Driver Assigned'; message = 'A driver has been assigned to this delivery.';
   } else if (order.order_status === 'out_for_delivery') {
@@ -903,6 +912,12 @@ window.openOrderDetails = function(orderId) {
       ${order.delivery_attempt_count ? detailItem('Delivery Attempts', escapeHtml(String(order.delivery_attempt_count))) : ''}
       ${order.delivery_outcome_notes ? detailItem('Driver Outcome Notes', escapeHtml(order.delivery_outcome_notes), true) : ''}
       ${order.redelivery_requested_date ? detailItem('Customer Preferred Redelivery', escapeHtml(formatDate(order.redelivery_requested_date))) : ''}
+      ${order.redelivery_status ? detailItem('Redelivery Status', escapeHtml(String(order.redelivery_status).replaceAll('_', ' '))) : ''}
+      ${order.redelivery_fee > 0 ? detailItem('Redelivery Fee', `${escapeHtml(money(order.redelivery_fee))} · ${escapeHtml(order.redelivery_fee_payer === 'client' ? 'Business client pays' : order.redelivery_fee_payer === 'customer' ? 'Customer pays' : 'Payer pending')}`) : ''}
+      ${order.redelivery_fee_settlement ? detailItem('Redelivery Settlement', escapeHtml(order.redelivery_fee_settlement === 'deduct_from_remittance' ? 'Deduct from remittance' : 'Pay separately')) : ''}
+      ${order.holding_type ? detailItem('Holding Arrangement', escapeHtml(order.holding_type === 'extra_stock' ? 'Approved extra stock' : `Standard hold${order.hold_until ? ` until ${formatDate(order.hold_until)}` : ''}`)) : ''}
+      ${order.return_to_client_status ? detailItem('Return to Client', `${escapeHtml(String(order.return_to_client_status).replaceAll('_', ' '))} · ${escapeHtml(money(order.return_to_client_fee))}`) : ''}
+      ${order.return_management_notes ? detailItem('Return Notes', escapeHtml(order.return_management_notes), true) : ''}
       ${order.delivery_proof_confirmed_at ? detailItem('Delivery Proof', `Driver confirmed handover · ${escapeHtml(formatDateTime(order.delivery_proof_confirmed_at))}`) : ''}
       ${order.delivery_collection_method ? detailItem('Collection', `${escapeHtml(String(order.delivery_collection_method).toUpperCase())} · ${escapeHtml(money(order.delivery_collected_amount))}`) : ''}
       ${order.delivery_return_required ? detailItem('Parcel Return', 'Awaiting return to VirtuDrop hub') : ''}
@@ -920,10 +935,44 @@ window.openOrderDetails = function(orderId) {
     <div class="order-detail-actions">
       ${map ? `<a class="btn btn-primary" href="${escapeHtml(map)}" target="_blank">Open Location</a>` : ''}
     </div>
+    ${['returned_to_hub', 'held_for_client_instructions'].includes(order.parcel_status) && order.return_to_client_status !== 'ready' && order.redelivery_status !== 'scheduled' ? `
+      <div class="business-track-bubble" style="margin-top:1rem;">
+        <div class="business-track-title">Redelivery Payment</div>
+        <div class="business-track-message">State who will pay if VirtuDrop schedules another delivery attempt.</div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:0.75rem; margin-top:0.85rem;">
+          <label>Fee Payer<select id="businessRedeliveryPayer" class="input" onchange="syncBusinessRedeliverySettlement()"><option value="customer" ${order.redelivery_fee_payer === 'customer' ? 'selected' : ''}>Customer</option><option value="client" ${order.redelivery_fee_payer === 'client' ? 'selected' : ''}>Business Client</option></select></label>
+          <label id="businessRedeliverySettlementWrap">Client Settlement<select id="businessRedeliverySettlement" class="input"><option value="deduct_from_remittance" ${order.redelivery_fee_settlement === 'deduct_from_remittance' ? 'selected' : ''}>Deduct from remittance</option><option value="pay_separately" ${order.redelivery_fee_settlement === 'pay_separately' ? 'selected' : ''}>Pay separately</option></select></label>
+        </div>
+        <button type="button" class="btn btn-primary" style="margin-top:0.85rem;" onclick="saveBusinessRedeliveryPayment('${order.id}')">Save Payment Choice</button>
+      </div>` : ''}
     ${businessTrackingBubble(order)}
   `;
 
   modal.classList.add('active');
+  syncBusinessRedeliverySettlement();
+};
+
+window.syncBusinessRedeliverySettlement = function() {
+  const wrap = el('#businessRedeliverySettlementWrap');
+  if (wrap) wrap.style.display = el('#businessRedeliveryPayer')?.value === 'client' ? '' : 'none';
+};
+
+window.saveBusinessRedeliveryPayment = async function(orderId) {
+  const payer = el('#businessRedeliveryPayer')?.value || '';
+  const settlement = payer === 'client' ? el('#businessRedeliverySettlement')?.value || '' : null;
+  try {
+    const { error } = await supabase.rpc('business_set_redelivery_payment', {
+      p_order_id: orderId,
+      p_payer: payer,
+      p_settlement: settlement
+    });
+    if (error) throw error;
+    await loadData();
+    openOrderDetails(orderId);
+    if (typeof showToast === 'function') showToast('Redelivery payment choice saved.');
+  } catch (error) {
+    window.vdNotify('Payment Choice Not Saved', error.message || 'Could not save the redelivery payment choice.', 'error');
+  }
 };
 
 window.closeOrderDetails = function() {
@@ -1434,7 +1483,7 @@ async function loadBusinessData() {
   const [{ data: orderData, error: orderError }, { data: remitData, error: remitError }] = await Promise.all([
     supabase
       .from('orders')
-      .select('id, order_number, financial_model_version, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_business_name, pickup_street_name, pickup_area_name, pickup_address, pickup_window, pickup_instructions, pickup_scheduled_date, pickup_scheduled_window, pickup_picked_up_at, pickup_arrived_hub_at, pickup_cancelled_at, pickup_cancellation_reason, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, delivery_outcome, delivery_attempt_count, last_delivery_attempt_at, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, zone_status, order_status, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, created_at, updated_at')
+      .select('id, order_number, financial_model_version, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_business_name, pickup_street_name, pickup_area_name, pickup_address, pickup_window, pickup_instructions, pickup_scheduled_date, pickup_scheduled_window, pickup_picked_up_at, pickup_arrived_hub_at, pickup_cancelled_at, pickup_cancellation_reason, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, delivery_outcome, delivery_attempt_count, last_delivery_attempt_at, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, redelivery_status, redelivery_fee, redelivery_fee_payer, redelivery_fee_settlement, redelivery_scheduled_at, redelivery_notes, return_disposition, holding_type, hold_until, return_to_client_status, return_to_client_fee, return_to_client_settlement, return_to_client_requested_at, return_to_client_completed_at, return_management_notes, zone_status, order_status, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, created_at, updated_at')
       .eq('business_client_id', business.id)
       .order('created_at', { ascending: false }),
     supabase

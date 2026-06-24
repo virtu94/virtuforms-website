@@ -918,7 +918,10 @@
         const status = normalizeStatus(order.order_status);
         const manifest = manifestForOrder(order.id);
         const collect = amountToCollect(order);
-        const notes = order.customer_notes ? `<div class="delivery-notes">📝 ${order.customer_notes}</div>` : '';
+        const notes = [order.redelivery_status === 'scheduled' ? `Redelivery attempt${order.redelivery_notes ? `: ${order.redelivery_notes}` : ''}` : '', order.customer_notes || '']
+          .filter(Boolean)
+          .map(note => `<div class="delivery-notes">${escapeHtml(note)}</div>`)
+          .join('');
         const collectClass = collect > 0 ? 'cod' : 'no-cod';
         const collectLabel = collect > 0 ? money(collect) : `${money(collect)} — ${paymentLabel(order.payment_type).toLowerCase()}`;
 
@@ -953,6 +956,7 @@
                 <div class="info-label">Delivery Fee</div>
                 <div class="info-value">${money(order.delivery_fee || 0)}</div>
               </div>
+              ${Number(order.redelivery_fee || 0) > 0 ? `<div class="info-row"><div class="info-label">Redelivery Fee</div><div class="info-value">${money(order.redelivery_fee)} · ${escapeHtml(order.redelivery_fee_payer === 'client' ? 'client pays' : 'customer pays')}</div></div>` : ''}
               <div class="info-row">
                 <div class="info-label">To Collect</div>
                 <div class="info-value ${collectClass}">${collectLabel}</div>
@@ -1084,7 +1088,7 @@
       const [ordersRes, pickupsRes, manifestsRes, clientsRes] = await Promise.all([
         supabase
           .from('orders')
-          .select('id, order_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, cod_amount, package_value, delivery_fee, driver_amount_to_collect, pickup_required, pickup_parcel_count, pickup_fee, scheduled_delivery_date, parcel_status, delivery_outcome, delivery_attempt_count, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, order_status, assigned_driver_id, customer_notes, driver_notes, tracking_token, created_at')
+          .select('id, order_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, cod_amount, package_value, delivery_fee, driver_amount_to_collect, pickup_required, pickup_parcel_count, pickup_fee, scheduled_delivery_date, parcel_status, delivery_outcome, delivery_attempt_count, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, redelivery_status, redelivery_fee, redelivery_fee_payer, redelivery_notes, order_status, assigned_driver_id, customer_notes, driver_notes, tracking_token, created_at')
           .eq('assigned_driver_id', driver.id)
           .order('created_at', { ascending: false }),
         supabase.rpc('driver_list_my_pickups'),

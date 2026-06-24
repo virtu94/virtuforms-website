@@ -650,6 +650,10 @@
     const STATUS = {
       awaiting_parcel: { label: 'Awaiting Parcel', icon: '📋', badge: 'received', step: 0, message: 'The delivery request was submitted, but VirtuDrop has not checked in the parcel yet.' },
       parcel_received: { label: 'Package Received', icon: '📦', badge: 'received', step: 0, message: 'VirtuDrop has received and checked in your package for processing.' },
+      returned_to_hub: { label: 'Returned to Hub', icon: '↩', badge: 'rescheduled', step: 1, message: 'The parcel is back at VirtuDrop while the next action is arranged.' },
+      held_for_client_instructions: { label: 'Held for Instructions', icon: '⏳', badge: 'rescheduled', step: 1, message: 'VirtuDrop is securely holding the parcel while awaiting instructions from the seller.' },
+      redelivery_scheduled: { label: 'Redelivery Scheduled', icon: '↻', badge: 'rescheduled', step: 1, message: 'Another delivery attempt has been scheduled. The driver will contact you before delivery.' },
+      returned_to_client: { label: 'Returned to Seller', icon: '↩', badge: 'failed', step: 3, message: 'The parcel has been returned to the seller.' },
       zone_pending: { label: 'Request Received', icon: '📋', badge: 'received', step: 0, message: 'Your order has been received and is waiting for zone confirmation.' },
       confirmed: { label: 'Confirmed', icon: '✅', badge: 'received', step: 0, message: 'Your delivery has been confirmed and is waiting for driver assignment.' },
       assigned: { label: 'Driver Assigned', icon: '📦', badge: 'collected', step: 1, message: 'A driver has been assigned to your order.' },
@@ -665,6 +669,9 @@
     const STEP_LABELS = ['Received', 'Driver Assigned', 'Out for Delivery', 'Delivered'];
 
     function statusFor(order) {
+      if (['returned_to_hub', 'held_for_client_instructions', 'redelivery_scheduled', 'returned_to_client'].includes(order.parcel_status)) {
+        return STATUS[order.parcel_status];
+      }
       if (order.delivery_outcome && STATUS[order.delivery_outcome]) return STATUS[order.delivery_outcome];
       if (!['assigned', 'out_for_delivery', 'delivered', 'failed', 'rescheduled'].includes(order.order_status)) {
         if (order.parcel_status === 'awaiting_parcel') return STATUS.awaiting_parcel;
