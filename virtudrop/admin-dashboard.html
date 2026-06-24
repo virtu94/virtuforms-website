@@ -3515,8 +3515,10 @@
       document.getElementById('deliverySchedulingBody').innerHTML = '<tr><td colspan="7">Loading delivery schedules...</td></tr>';
       document.getElementById('sortingQueueBody').innerHTML = '<tr><td colspan="6">Loading sorting queue...</td></tr>';
       document.getElementById('manifestList').innerHTML = '<div class="card">Loading delivery manifests...</div>';
-      document.getElementById('accountingRecordsBody').innerHTML = '<tr><td colspan="9">Loading accounting records...</td></tr>';
+      document.getElementById('accountingRecordsBody').innerHTML = '<tr><td colspan="11">Loading accounting records...</td></tr>';
       document.getElementById('clientPayoutBody').innerHTML = '<tr><td colspan="7">Loading client payouts...</td></tr>';
+      document.getElementById('returnManagementBody').innerHTML = '<tr><td colspan="7">Loading returned parcels...</td></tr>';
+      document.getElementById('remittanceHistoryBody').innerHTML = '<tr><td colspan="9">Loading remittance history...</td></tr>';
       showZoneMessage('Loading pending zone orders...');
     }
 
@@ -3528,59 +3530,36 @@
         return;
       }
 
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData?.user?.id;
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('role, first_name, last_name, status')
-        .eq('id', userId)
-        .single();
-
-      if (profileError || profile?.role !== 'admin' || profile?.status !== 'active') {
-        showZoneMessage('Admin access is required for this dashboard. Log in with an active admin profile.', true);
-        showToast('Admin access is required for this dashboard.');
-        return;
-      }
-
-      currentProfile = { ...profile, id: userId };
-      const adminName = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || 'Admin';
-      document.querySelector('.admin-name').textContent = adminName;
-
-      const [clientsRes, zonesRes, ordersRes, driversRes, driverProfilesRes, profilesRes, settingsRes, remittanceRes, driverCashRes, serviceDatesRes, manifestsRes] = await Promise.all([
-        supabase.from('business_clients').select('id, business_name, slug, status, profile_id'),
-        supabase.from('zones').select('id, code, name, region, active, zone_areas(area_name)').eq('active', true).order('code'),
-        supabase
-          .from('orders')
-          .select('id, order_number, external_item_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, remittance_gross_amount, remittance_deductions_amount, remittance_net_amount, remittance_paid_amount, remittance_batch_id, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_business_name, pickup_street_name, pickup_area_name, pickup_address, pickup_window, pickup_instructions, pickup_assigned_driver_id, pickup_scheduled_date, pickup_scheduled_window, pickup_assigned_at, pickup_picked_up_at, pickup_arrived_hub_at, pickup_cancelled_at, pickup_cancellation_reason, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, delivery_schedule_source, delivery_schedule_status, delivery_schedule_calculated_at, delivery_schedule_override_reason, delivery_outcome, delivery_attempt_count, last_delivery_attempt_at, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, redelivery_status, redelivery_fee, redelivery_fee_payer, redelivery_fee_settlement, redelivery_scheduled_at, redelivery_notes, return_disposition, holding_type, hold_until, return_to_client_status, return_to_client_fee, return_to_client_settlement, return_to_client_requested_at, return_to_client_completed_at, return_management_notes, quote_status, price_override_reason, zone_status, order_status, assigned_driver_id, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, payment_confirmed_by, source, created_at, updated_at')
-          .order('created_at', { ascending: false }),
-        supabase.from('drivers').select('id, profile_id, status'),
-        supabase.from('profiles').select('id, role, first_name, last_name, status').eq('role', 'driver'),
-        supabase.from('profiles').select('id, role, first_name, last_name, status'),
-        supabase.from('app_settings').select('key, value'),
+      const [bootstrapRes, remittanceRes, driverCashRes, manifestsRes] = await Promise.all([
+        supabase.rpc('admin_dashboard_bootstrap'),
         supabase.rpc('admin_list_remittance_batches'),
         supabase.rpc('admin_list_cod_reconciliations'),
-        supabase.from('delivery_service_dates').select('service_date, is_service_day, reason, updated_at').order('service_date', { ascending: true }),
         supabase.rpc('admin_list_delivery_manifests')
       ]);
 
-      if (clientsRes.error) throw clientsRes.error;
-      if (zonesRes.error) throw zonesRes.error;
-      if (ordersRes.error) throw ordersRes.error;
-      if (driversRes.error) throw driversRes.error;
-      if (driverProfilesRes.error) throw driverProfilesRes.error;
-      if (profilesRes.error) throw profilesRes.error;
-      if (manifestsRes.error) throw manifestsRes.error;
-      deliveryManifests = Array.isArray(manifestsRes.data) ? manifestsRes.data : [];
-      if (serviceDatesRes.error) {
-        console.warn('Delivery service-date overrides could not load:', serviceDatesRes.error);
-        serviceDateOverrides = [];
+      if (bootstrapRes.error) throw bootstrapRes.error;
+      const snapshot = bootstrapRes.data || {};
+      const profile = snapshot.profile;
+      if (profile?.role !== 'admin' || profile?.status !== 'active') throw new Error('Active admin access is required.');
+
+      currentProfile = profile;
+      const adminName = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || 'Admin';
+      document.querySelector('.admin-name').textContent = adminName;
+
+      const clientRows = Array.isArray(snapshot.business_clients) ? snapshot.business_clients : [];
+      const zoneRows = Array.isArray(snapshot.zones) ? snapshot.zones : [];
+      const orderRows = Array.isArray(snapshot.orders) ? snapshot.orders : [];
+      const driverRows = Array.isArray(snapshot.drivers) ? snapshot.drivers : [];
+      const profileRows = Array.isArray(snapshot.profiles) ? snapshot.profiles : [];
+      const settingsRows = Array.isArray(snapshot.app_settings) ? snapshot.app_settings : [];
+      serviceDateOverrides = Array.isArray(snapshot.delivery_service_dates) ? snapshot.delivery_service_dates : [];
+      appSettings = { ...appSettings, ...Object.fromEntries(settingsRows.map(row => [row.key, row.value])) };
+
+      if (manifestsRes.error) {
+        console.warn('Delivery manifests could not load:', manifestsRes.error);
+        deliveryManifests = [];
       } else {
-        serviceDateOverrides = serviceDatesRes.data || [];
-      }
-      if (settingsRes.error) {
-        console.warn('App settings could not load:', settingsRes.error);
-      } else {
-        appSettings = { ...appSettings, ...Object.fromEntries((settingsRes.data || []).map(row => [row.key, row.value])) };
+        deliveryManifests = Array.isArray(manifestsRes.data) ? manifestsRes.data : [];
       }
       if (remittanceRes.error) {
         console.warn('Remittance records could not load:', remittanceRes.error);
@@ -3595,12 +3574,12 @@
         driverCashRecords = driverCashRes.data || [];
       }
 
-      clientsById = new Map((clientsRes.data || []).map(client => [client.id, client]));
-      zones = zonesRes.data || [];
-      orders = ordersRes.data || [];
-      allProfiles = profilesRes.data || [];
-      driverProfilesById = new Map((driverProfilesRes.data || []).map(profile => [profile.id, profile]));
-      drivers = (driversRes.data || []).filter(driver => {
+      clientsById = new Map(clientRows.map(client => [client.id, client]));
+      zones = zoneRows;
+      orders = orderRows;
+      allProfiles = profileRows;
+      driverProfilesById = new Map(profileRows.filter(item => item.role === 'driver').map(item => [item.id, item]));
+      drivers = driverRows.filter(driver => {
         const profile = driverProfilesById.get(driver.profile_id);
         return driver.status === 'active' && profile?.status === 'active';
       });
@@ -4095,13 +4074,23 @@
 
     loadData().catch(error => {
       console.error('Admin dashboard load error:', error);
-      showZoneMessage(error.message || 'Could not load admin dashboard data. Check the browser console for details.');
-      document.querySelector('#panel-all-orders tbody').innerHTML = `<tr><td colspan="8">${error.message || 'Could not load orders.'}</td></tr>`;
-      document.querySelector('#panel-driver-assign tbody').innerHTML = '<tr><td colspan="8">Driver assignment could not load because orders did not load.</td></tr>';
-      document.getElementById('pickupManagementBody').innerHTML = '<tr><td colspan="7">Pickup management could not load because orders did not load.</td></tr>';
-      document.getElementById('deliverySchedulingBody').innerHTML = '<tr><td colspan="7">Delivery scheduling could not load because orders did not load.</td></tr>';
-      document.getElementById('sortingQueueBody').innerHTML = '<tr><td colspan="6">Sorting could not load because orders did not load.</td></tr>';
-      document.getElementById('manifestList').innerHTML = '<div class="card">Manifests could not load because orders did not load.</div>';
+      const message = escapeHtml(error.message || 'Could not load admin dashboard data.');
+      showZoneMessage(message);
+      document.querySelector('#panel-all-orders tbody').innerHTML = `<tr><td colspan="8">${message}</td></tr>`;
+      document.querySelector('#panel-driver-assign tbody').innerHTML = `<tr><td colspan="8">${message}</td></tr>`;
+      document.getElementById('parcelCheckinBody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
+      document.getElementById('pickupManagementBody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
+      document.getElementById('deliverySchedulingBody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
+      document.getElementById('sortingQueueBody').innerHTML = `<tr><td colspan="6">${message}</td></tr>`;
+      document.getElementById('returnManagementBody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
+      document.getElementById('accountingRecordsBody').innerHTML = `<tr><td colspan="11">${message}</td></tr>`;
+      document.getElementById('clientPayoutBody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
+      document.getElementById('remittanceHistoryBody').innerHTML = `<tr><td colspan="9">${message}</td></tr>`;
+      document.getElementById('manifestList').innerHTML = `<div class="card">${message}</div>`;
+      document.getElementById('overviewPendingActions').innerHTML = `<div style="padding:0.65rem 0;color:var(--grey);">${message}</div>`;
+      document.getElementById('overviewRecentOrders').innerHTML = `<div style="padding:0.65rem 0;color:var(--grey);">${message}</div>`;
+      document.getElementById('accountsPendingStrip').querySelector('h4').textContent = 'Accounts could not load';
+      document.getElementById('accountsGrid').innerHTML = `<div class="account-card"><div class="acc-info"><div class="acc-name">Dashboard data unavailable</div><div class="acc-meta">${message}</div></div></div>`;
       showToast(error.message || 'Could not load admin dashboard data.');
     });
   </script>
