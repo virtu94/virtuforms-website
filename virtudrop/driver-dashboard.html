@@ -718,6 +718,9 @@
     }
 
     function amountToCollect(order) {
+      if (order.financial_model_version >= 2 && order.driver_amount_to_collect !== null) {
+        return Number(order.driver_amount_to_collect || 0);
+      }
       if (order.payment_type === 'prepaid') return 0;
       if (order.payment_type === 'delivery_only') return Number(order.delivery_fee || 0);
       return Number(order.cod_amount || 0);
@@ -937,7 +940,7 @@
       const [ordersRes, clientsRes] = await Promise.all([
         supabase
           .from('orders')
-          .select('id, order_number, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, cod_amount, delivery_fee, order_status, assigned_driver_id, customer_notes, driver_notes, tracking_token, created_at')
+          .select('id, order_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, cod_amount, package_value, delivery_fee, driver_amount_to_collect, order_status, assigned_driver_id, customer_notes, driver_notes, tracking_token, created_at')
           .eq('assigned_driver_id', driver.id)
           .order('created_at', { ascending: false }),
         supabase.from('business_clients').select('id, business_name')

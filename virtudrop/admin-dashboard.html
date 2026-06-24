@@ -1585,12 +1585,16 @@
     };
 
     function driverCollects(order) {
+      if (order.financial_model_version >= 2 && order.driver_amount_to_collect !== null) {
+        return amount(order.driver_amount_to_collect);
+      }
       if (order.payment_type === 'prepaid') return 0;
       if (order.payment_type === 'delivery_only') return amount(order.delivery_fee);
       return amount(order.cod_amount);
     }
 
     function clientPayout(order) {
+      if (order.financial_model_version >= 2) return amount(order.client_remittance_amount);
       if (order.payment_type !== 'cod') return 0;
       return Math.max(amount(order.cod_amount) - amount(order.delivery_fee), 0);
     }
@@ -2583,6 +2587,12 @@
           ? `GPS: ${order.latitude}, ${order.longitude}`
           : 'No GPS data - verify manually';
         const address = order.delivery_address || order.area_name || 'Location pending';
+        const suggestedFee = order.estimated_fee === null || order.estimated_fee === undefined
+          ? Number(appSettings.default_delivery_fee || 40)
+          : Number(order.estimated_fee);
+        const rateLabel = order.pricing_rate_band === 'extended' ? 'Extended $50'
+          : order.pricing_rate_band === 'remote' ? 'Remote quote'
+            : 'Standard $40';
 
         panel.insertAdjacentHTML('beforeend', `
           <div class="zone-card" data-order-id="${order.id}">
@@ -2590,6 +2600,7 @@
               <div style="display:flex; gap:0.8rem; align-items:center; margin-bottom:0.4rem;">
                 <div class="zone-card-order">${order.order_number}</div>
                 <span class="badge badge-pending">Pending</span>
+                <span class="badge badge-confirmed">${rateLabel}</span>
               </div>
               <div class="zone-card-client">${clientName(order)} &middot; Customer: ${order.customer_name || '—'} &middot; ${order.customer_phone || ''}</div>
               <div class="zone-card-address">📍 ${address}</div>
@@ -2604,7 +2615,8 @@
             </div>
             <div class="zone-card-actions">
               <select class="zone-select">${zoneOptions()}</select>
-              <input class="zone-select fee-input" type="number" min="0" step="1" value="${Number(appSettings.default_delivery_fee || 40)}" title="Delivery fee" />
+              <input class="zone-select fee-input" type="number" min="0" step="0.01" value="${suggestedFee.toFixed(2)}" title="Final delivery fee" />
+              <input class="zone-select override-reason-input" type="text" maxlength="180" placeholder="Override/quote reason" title="Required when changing the estimate or quoting a remote order" />
               <button class="btn btn-primary btn-sm" onclick="confirmZone('${order.id}')">✅ Confirm Zone</button>
               <button class="btn btn-warn btn-sm" onclick="rejectOrder('${order.id}')">❌ Reject</button>
               <button class="btn btn-ghost btn-sm" onclick="openCustomerTrackingWhatsApp('${order.id}')">💬 WhatsApp Customer</button>
@@ -2686,7 +2698,7 @@
         supabase.from('zones').select('id, code, name, region, active, zone_areas(area_name)').eq('active', true).order('code'),
         supabase
           .from('orders')
-          .select('id, order_number, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, cod_amount, delivery_fee, zone_status, order_status, assigned_driver_id, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, package_value, estimated_fee, payment_confirmed_at, payment_confirmed_by, source, created_at, updated_at')
+          .select('id, order_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, quote_status, price_override_reason, zone_status, order_status, assigned_driver_id, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, payment_confirmed_by, source, created_at, updated_at')
           .order('created_at', { ascending: false }),
         supabase.from('drivers').select('id, profile_id, status'),
         supabase.from('profiles').select('id, role, first_name, last_name, status').eq('role', 'driver'),
@@ -2741,14 +2753,28 @@
       loadAdminNotificationBadge();
     }
 
-    async function saveZoneConfirmation(orderId, zoneId, fee) {
+    async function saveZoneConfirmation(orderId, zoneId, fee, overrideReason, isOverride) {
       const rpcResult = await supabase.rpc('admin_confirm_order_zone', {
         p_order_id: orderId,
         p_zone_id: zoneId,
         p_delivery_fee: fee
       });
 
-      if (!rpcResult.error) return;
+      if (!rpcResult.error) {
+        if (isOverride) {
+          const overrideResult = await supabase
+            .from('orders')
+            .update({
+              pricing_rate_band: 'override',
+              price_override_reason: overrideReason,
+              price_overridden_at: new Date().toISOString(),
+              price_overridden_by: currentProfile?.id || null
+            })
+            .eq('id', orderId);
+          if (overrideResult.error) throw overrideResult.error;
+        }
+        return;
+      }
 
       console.warn('RPC zone confirmation failed, trying direct admin update:', rpcResult.error);
 
@@ -2757,7 +2783,11 @@
         .update({
           zone_status: 'confirmed',
           order_status: 'confirmed',
-          delivery_fee: fee
+          delivery_fee: fee,
+          pricing_rate_band: isOverride ? 'override' : undefined,
+          price_override_reason: isOverride ? overrideReason : null,
+          price_overridden_at: isOverride ? new Date().toISOString() : null,
+          price_overridden_by: isOverride ? (currentProfile?.id || null) : null
         })
         .eq('id', orderId);
 
@@ -2780,17 +2810,29 @@
       }
       const zoneSelect = card.querySelector('.zone-select');
       const fee = Number(card.querySelector('.fee-input').value || 0);
+      const overrideReason = card.querySelector('.override-reason-input')?.value.trim() || '';
       const zoneId = zoneSelect.value;
       const zone = zones.find(z => z.id === zoneId);
+      const estimatedFee = order.estimated_fee === null || order.estimated_fee === undefined ? null : Number(order.estimated_fee);
+      const isOverride = estimatedFee === null || Math.abs(fee - estimatedFee) > 0.009;
 
       if (!zone) {
         showToast('Please select a zone first.');
         return;
       }
+      if (!Number.isFinite(fee) || fee < 0) {
+        showToast('Enter a valid final delivery fee.');
+        return;
+      }
+      if (isOverride && !overrideReason) {
+        showToast('Enter a reason for the custom price or remote quote.');
+        card.querySelector('.override-reason-input')?.focus();
+        return;
+      }
 
       showModal('Confirm Zone', `Set ${order.order_number} to ${zone.name} with delivery fee TTD ${fee}?`, async () => {
         try {
-          await saveZoneConfirmation(orderId, zoneId, fee);
+          await saveZoneConfirmation(orderId, zoneId, fee, overrideReason, isOverride);
           showToast(`✅ ${order.order_number} zone confirmed.`);
           await loadData();
         } catch (error) {

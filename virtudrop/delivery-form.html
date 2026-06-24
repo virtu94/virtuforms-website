@@ -319,6 +319,7 @@
             <div class="field" style="margin-bottom:0;">
               <label for="streetName">Street Name <span class="req">*</span></label>
               <input class="input" type="text" id="streetName" placeholder="e.g. Bamboo Drive" />
+              <span style="font-size:0.8rem; color:#6a6a6a; margin-top:0.2rem;">Enter the actual street, road, building or landmark, not the area name.</span>
               <span class="error-text" id="streetErr">Please enter your street name.</span>
             </div>
           </div>
@@ -357,8 +358,8 @@
           <label class="payment-option" onclick="selectPayment(this, 'all-online')">
             <input type="radio" name="payment" value="all-online" />
             <div class="payment-option-text">
-              <h4>✅ Everything Paid Online</h4>
-              <p>I have already paid the seller for both the item and the delivery fee. The driver collects nothing.</p>
+              <h4>✅ Business Pays Delivery</h4>
+              <p>I have paid the seller for the item. The business will settle the delivery fee with VirtuDrop, so the driver collects nothing.</p>
             </div>
           </label>
         </div>
@@ -370,6 +371,17 @@
             <input class="input" type="number" id="codAmount" placeholder="e.g. 350.00" min="0" step="0.01" />
             <span style="font-size:0.8rem; color:#6a6a6a; margin-top:0.2rem;">Enter the package price. The delivery fee estimate will be added below.</span>
             <span class="error-text" id="codAmountErr">Please enter the amount to collect.</span>
+          </div>
+        </div>
+        <div class="cod-amount" id="clientFeeSettlementBlock">
+          <div class="field">
+            <label for="clientFeeSettlement">How should the business settle delivery? <span class="req">*</span></label>
+            <select class="input" id="clientFeeSettlement">
+              <option value="">— Select —</option>
+              <option value="deduct_from_remittance">Deduct from remittance</option>
+              <option value="pay_separately">Pay separately</option>
+            </select>
+            <span class="error-text" id="clientFeeSettlementErr">Please select how the delivery fee will be settled.</span>
           </div>
         </div>
       </div>
@@ -435,7 +447,8 @@
   <script src="vd-modal.js"></script>
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-    import { estimateDeliveryZone, formatEstimateRows } from './vd-zone-estimator.js?v=20260617-security-1';
+    import { estimateDeliveryZone, formatEstimateRows } from './vd-zone-estimator.js?v=20260623-financial-1';
+    import { calculateOrderMoney, financialRequestFields, validateManualAddress } from './vd-order-money.js?v=20260623-financial-1';
 
     const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnbXp6YXZ4aHVhcmxhY252bm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Mjk4NTksImV4cCI6MjA5NDIwNTg1OX0.7-YKlwLrhUYUYbiii93ZvgX01TxVephApDNCP50Rl54';
@@ -574,6 +587,8 @@
       const radio = label.querySelector('input[type="radio"]');
       if (radio) radio.checked = true;
       document.getElementById('codAmountBlock').classList.toggle('show', value === 'cod');
+      document.getElementById('clientFeeSettlementBlock').classList.toggle('show', value === 'all-online');
+      if (value !== 'all-online') document.getElementById('clientFeeSettlement').value = '';
       document.getElementById('paymentErr').classList.remove('show');
       updateEstimate();
     };
@@ -641,7 +656,12 @@
           }
 
           const packageValue = payment === 'cod' ? (Number(document.getElementById('codAmount').value) || 0) : 0;
-          renderRows(estimateBreakdown, formatEstimateRows({ estimate, paymentType: payment, packageValue }));
+          renderRows(estimateBreakdown, formatEstimateRows({
+            estimate,
+            paymentType: payment,
+            packageValue,
+            clientFeeSettlement: document.getElementById('clientFeeSettlement').value || null
+          }));
         } catch (error) {
           console.warn('Estimate error:', error);
           latestEstimate = null;
@@ -660,6 +680,7 @@
     ['mapsLink', 'houseNum', 'streetName', 'areaName', 'codAmount'].forEach(id => {
       document.getElementById(id)?.addEventListener('input', updateEstimate);
     });
+    document.getElementById('clientFeeSettlement')?.addEventListener('change', updateEstimate);
 
     function clearErrors() {
       document.querySelectorAll('.error-text').forEach(e => e.classList.remove('show'));
@@ -733,6 +754,11 @@
           showErr('areaName', 'areaErr', 'Please enter your area or community.');
           ok = false;
         }
+        const addressError = validateManualAddress(streetName, areaName);
+        if (addressError) {
+          showErr('streetName', 'streetErr', addressError);
+          ok = false;
+        }
       } else {
         const hasGps = gpsResult.dataset.lat && gpsResult.dataset.lng;
         if (!hasGps && !mapsLink) {
@@ -751,6 +777,10 @@
 
       if (payment?.value === 'cod' && (!Number.isFinite(codAmount) || codAmount <= 0)) {
         showErr('codAmount', 'codAmountErr', 'Please enter the amount the driver should collect.');
+        ok = false;
+      }
+      if (payment?.value === 'all-online' && !document.getElementById('clientFeeSettlement').value) {
+        showErr('clientFeeSettlement', 'clientFeeSettlementErr', 'Please select how the delivery fee will be settled.');
         ok = false;
       }
 
@@ -809,20 +839,29 @@
         console.warn('Submit estimate failed:', error);
         return latestEstimate;
       });
+      const money = calculateOrderMoney({
+        paymentOption: paymentValue,
+        packageValue: paymentValue === 'cod' ? Number(document.getElementById('codAmount').value) : 0,
+        deliveryFee: estimate?.fee ?? null,
+        clientFeeSettlement: document.getElementById('clientFeeSettlement').value || null
+      });
       const requestData = {
         business_client_id: businessClient.id,
         customer_name: document.getElementById('custName').value.trim(),
         customer_phone: '868-' + document.getElementById('custPhone').value.replace(/\D/g, ''),
         ...getLocationPayload(),
         payment_type: paymentMap[paymentValue] || 'cod',
-        cod_amount: paymentValue === 'cod' ? Number(document.getElementById('codAmount').value) : 0,
-        package_value: paymentValue === 'cod' ? Number(document.getElementById('codAmount').value) : 0,
+        cod_amount: money.packageValue,
+        package_value: money.packageValue,
         estimated_fee: estimate?.fee ?? null,
+        pricing_rate_band: estimate?.rateBand || (estimate?.status === 'remote' ? 'remote' : null),
+        quote_status: estimate?.fee === null ? 'required' : 'not_required',
+        ...financialRequestFields(money),
         customer_notes: document.getElementById('custNotes').value.trim() || null
       };
 
       try {
-        const { data, error } = await supabase.rpc('submit_delivery_request', { request_data: requestData });
+        const { data, error } = await supabase.rpc('submit_delivery_request_v2', { request_data: requestData });
         if (error) throw error;
         const result = Array.isArray(data) ? data[0] : data;
         const orderNumber = result?.order_number || 'Submitted';

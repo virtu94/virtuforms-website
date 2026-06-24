@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { calculateOrderMoney, financialRequestFields, moneyLabel, validateManualAddress } from './vd-order-money.js?v=20260623-financial-1';
 
 const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnbXp6YXZ4aHVhcmxhY252bm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Mjk4NTksImV4cCI6MjA5NDIwNTg1OX0.7-YKlwLrhUYUYbiii93ZvgX01TxVephApDNCP50Rl54';
@@ -7,9 +8,9 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 window.supabase = supabase;
 
 // ── Config ────────────────────────────────────────────────────────
-const CENTRAL_ZONE_CODE = 'A';
 const REMOTE_ZONE_CODE = 'REMOTE';
-const STANDARD_FEES = { central: 40, other: 50 };
+const COVERED_ZONE_CODES = new Set(['A', 'B', 'C', 'D']);
+const STANDARD_FEES = { standard: 40, extended: 50 };
 
 let bizEstimateTimer = null;
 let latestBizEstimate = null;
@@ -59,15 +60,22 @@ function areaMatches(input, area) {
 
 async function loadEstimateZones() {
   if (!zonesPromise) {
-    zonesPromise = supabase
-      .from('zones')
-      .select('id, code, name, region, active, zone_areas(area_name)')
-      .eq('active', true)
-      .order('code')
-      .then(({ data, error }) => {
-        if (error) throw error;
-        return data || [];
-      });
+    zonesPromise = (async () => {
+      let result = await supabase
+        .from('zones')
+        .select('id, code, name, region, active, zone_areas(area_name, rate_band)')
+        .eq('active', true)
+        .order('code');
+      if (result.error) {
+        result = await supabase
+          .from('zones')
+          .select('id, code, name, region, active, zone_areas(area_name)')
+          .eq('active', true)
+          .order('code');
+      }
+      if (result.error) throw result.error;
+      return result.data || [];
+    })();
   }
   return zonesPromise;
 }
@@ -167,7 +175,7 @@ function matchZoneFromText(zones, text) {
   for (const zone of zones) {
     const areas = zone.zone_areas || [];
     const matchedArea = areas.find(area => areaMatches(text, area.area_name));
-    if (matchedArea) return { zone, matchedArea: matchedArea.area_name };
+    if (matchedArea) return { zone, matchedArea };
   }
   return null;
 }
@@ -186,38 +194,29 @@ function classifyZoneMatch(match) {
   }
 
   const code = String(match.zone.code || '').toUpperCase();
-  if (code === REMOTE_ZONE_CODE) {
+  const matchedAreaName = match.matchedArea?.area_name || '';
+  const rateBand = match.matchedArea?.rate_band || 'standard';
+  if (code === REMOTE_ZONE_CODE || rateBand === 'remote' || !COVERED_ZONE_CODES.has(code)) {
     return {
       status: 'remote',
       fee: null,
       zoneCode: code,
       zoneName: match.zone.name || 'Remote / Special Route',
       region: match.zone.region || 'Manual Review',
-      matchedArea: match.matchedArea || '',
+      matchedArea: matchedAreaName,
       message: 'Remote / special route - quote required'
     };
   }
 
-  if (code === CENTRAL_ZONE_CODE) {
-    return {
-      status: 'central',
-      fee: STANDARD_FEES.central,
-      zoneCode: code,
-      zoneName: match.zone.name || 'Zone A',
-      region: match.zone.region || 'Central Region',
-      matchedArea: match.matchedArea || '',
-      message: 'Central Region'
-    };
-  }
-
   return {
-    status: 'listed_non_central',
-    fee: STANDARD_FEES.other,
+    status: rateBand === 'extended' ? 'extended' : 'standard',
+    fee: STANDARD_FEES[rateBand] || STANDARD_FEES.standard,
     zoneCode: code,
     zoneName: match.zone.name || `Zone ${code}`,
     region: match.zone.region || 'Listed Zone',
-    matchedArea: match.matchedArea || '',
-    message: match.zone.region || 'Listed delivery zone'
+    matchedArea: matchedAreaName,
+    rateBand,
+    message: rateBand === 'extended' ? 'Extended delivery area' : (match.zone.region || 'Standard delivery area')
   };
 }
 
@@ -304,13 +303,14 @@ async function estimateDeliveryZone({
     ...classifyZoneMatch(match),
     sourceText,
     debug,
-    label: match?.matchedArea || sourceLabel || sourceText
+    label: match?.matchedArea?.area_name || sourceLabel || sourceText
   };
 }
 
 function formatEstimateRows({ estimate, paymentType, packageValue }) {
   const rows = [];
-  const packageAmount = Number(packageValue || 0);
+  const settlement = el('#clientFeeSettlement')?.value || null;
+  const money = calculateOrderMoney({ paymentOption: paymentType, packageValue, deliveryFee: estimate.fee, clientFeeSettlement: settlement });
 
   if (estimate.status === 'unknown') {
     rows.push(['Delivery Fee', 'Unable to estimate']);
@@ -325,13 +325,17 @@ function formatEstimateRows({ estimate, paymentType, packageValue }) {
     rows.push(['Zone Data', estimate.debug.zonesLoaded ? 'Loaded' : 'Not loaded']);
   }
 
-  if (paymentType === 'cod' && packageAmount > 0) {
-    rows.push(['Package Value', `$${packageAmount.toFixed(2)}`]);
-    rows.push(['Driver Collects', estimate.fee !== null ? `$${(packageAmount + estimate.fee).toFixed(2)}` : 'To be quoted']);
+  if (paymentType === 'cod' && money.packageValue > 0) {
+    rows.push(['Package Value', moneyLabel(money.packageValue)]);
+    rows.push(['Customer Pays', moneyLabel(money.customerAmountDue)]);
+    rows.push(['Driver Collects', moneyLabel(money.driverAmountToCollect)]);
   } else if (paymentType === 'pkg-online') {
-    rows.push(['Driver Collects', estimate.fee !== null ? `$${Number(estimate.fee).toFixed(2)} (delivery fee)` : 'To be quoted']);
+    rows.push(['Customer Pays', moneyLabel(money.customerAmountDue)]);
+    rows.push(['Driver Collects', moneyLabel(money.driverAmountToCollect)]);
   } else if (paymentType === 'all-online') {
-    rows.push(['Driver Collects', 'Nothing']);
+    rows.push(['Customer Pays Driver', '$0.00']);
+    rows.push(['Business Owes VirtuDrop', moneyLabel(estimate.fee)]);
+    rows.push(['Settlement', settlement === 'deduct_from_remittance' ? 'Deduct from remittance' : 'Pay separately']);
   }
 
   return rows;
@@ -431,6 +435,8 @@ window.vdSyncBusinessAmountField = function() {
   const paymentType = el('#paymentType')?.value || '';
   const block = el('#codAmountBlock');
   const label = el('#codAmountLabel');
+  const settlementBlock = el('#clientFeeSettlementBlock');
+  const settlement = el('#clientFeeSettlement');
   if (!block) return;
   if (paymentType === 'cod') {
     block.style.display = '';
@@ -442,6 +448,11 @@ window.vdSyncBusinessAmountField = function() {
     block.style.display = 'none';
   } else {
     block.style.display = 'none';
+  }
+  if (settlementBlock) settlementBlock.style.display = paymentType === 'all-online' ? '' : 'none';
+  if (settlement) {
+    settlement.required = paymentType === 'all-online';
+    if (paymentType !== 'all-online') settlement.value = '';
   }
   updateBizEstimate();
 };
@@ -548,12 +559,16 @@ function localDate(value) {
 }
 
 function collectionAmount(order) {
+  if (order.financial_model_version >= 2 && order.driver_amount_to_collect !== null) {
+    return Number(order.driver_amount_to_collect || 0);
+  }
   if (order.payment_type === 'prepaid') return 0;
   if (order.payment_type === 'delivery_only') return Number(order.delivery_fee || 0);
   return Number(order.cod_amount || 0);
 }
 
 function clientPayout(order) {
+  if (order.financial_model_version >= 2) return Number(order.client_remittance_amount || 0);
   if (order.payment_type !== 'cod') return 0;
   return Math.max(Number(order.cod_amount || 0) - Number(order.delivery_fee || 0), 0);
 }
@@ -703,11 +718,13 @@ window.openOrderDetails = function(orderId) {
   const notes = customerNotesParts(order);
   const payment = paymentLabels[order.payment_type] || order.payment_type || 'Delivery';
   const status = statusLabel(order.order_status);
-  const amountToCollect = order.payment_type === 'prepaid'
-    ? 0
-    : order.payment_type === 'delivery_only'
-      ? Number(order.delivery_fee || 0)
-      : Number(order.cod_amount || 0) + Number(order.delivery_fee || 0);
+  const amountToCollect = order.financial_model_version >= 2
+    ? Number(order.driver_amount_to_collect || 0)
+    : order.payment_type === 'prepaid'
+      ? 0
+      : order.payment_type === 'delivery_only'
+        ? Number(order.delivery_fee || 0)
+        : Number(order.cod_amount || 0) + Number(order.delivery_fee || 0);
 
   content.innerHTML = `
     <div class="order-detail-head">
@@ -722,12 +739,13 @@ window.openOrderDetails = function(orderId) {
       ${detailItem('Phone', escapeHtml(order.customer_phone || ''))}
       ${detailItem('Payment Type', escapeHtml(payment))}
       ${detailItem('Amount to Collect', escapeHtml(money(amountToCollect)))}
-      ${detailItem('COD Amount', escapeHtml(money(order.cod_amount)))}
+      ${detailItem('Package Value', escapeHtml(money(order.package_value || order.cod_amount)))}
       ${detailItem('Delivery Fee', escapeHtml(money(order.delivery_fee)))}
+      ${order.delivery_fee_payer ? detailItem('Delivery Paid By', escapeHtml(order.delivery_fee_payer === 'client' ? 'Business client' : 'Customer')) : ''}
+      ${order.client_fee_settlement ? detailItem('Business Settlement', escapeHtml(order.client_fee_settlement === 'deduct_from_remittance' ? 'Deduct from remittance' : 'Pay separately')) : ''}
       ${detailItem('Zone Status', escapeHtml(order.zone_status || 'pending'))}
       ${detailItem('Order Status', escapeHtml(status))}
       ${detailItem('Package', escapeHtml(notes.packageText || 'Not entered'), true)}
-      ${order.package_value > 0 ? detailItem('Package Value', escapeHtml(money(order.package_value))) : ''}
       ${order.rejection_reason ? detailItem('❌ Rejection Reason', `<span style="color:#e05555; font-weight:600;">${escapeHtml(order.rejection_reason)}</span>`, true) : ''}
       ${detailItem('Delivery Address', escapeHtml(order.delivery_address || 'Location pending'), true)}
       ${detailItem('House / Apt', escapeHtml(order.house_number || ''))}
@@ -836,9 +854,9 @@ function renderHistory() {
 function renderCod() {
   const codOrders = orders.filter(order => ['cod', 'delivery_only'].includes(order.payment_type));
   const rows = codOrders.map(order => {
-    const packageAmount = Number(order.cod_amount || 0);
+    const packageAmount = Number(order.package_value || order.cod_amount || 0);
     const deliveryFee = Number(order.delivery_fee || 0);
-    const collected = order.payment_type === 'cod' ? packageAmount + deliveryFee : deliveryFee;
+    const collected = collectionAmount(order);
     const status = order.order_status === 'delivered' ? 'Collected' : 'Pending Collection';
     return `
       <tr>
@@ -857,8 +875,8 @@ function renderCod() {
 
   const month = new Date().toISOString().slice(0, 7);
   const monthCod = codOrders.filter(order => String(order.created_at || '').slice(0, 7) === month);
-  const total = monthCod.reduce((sum, order) => sum + (order.payment_type === 'cod' ? Number(order.cod_amount || 0) + Number(order.delivery_fee || 0) : Number(order.delivery_fee || 0)), 0);
-  const pending = monthCod.filter(order => order.order_status !== 'delivered').reduce((sum, order) => sum + (order.payment_type === 'cod' ? Number(order.cod_amount || 0) + Number(order.delivery_fee || 0) : Number(order.delivery_fee || 0)), 0);
+  const total = monthCod.reduce((sum, order) => sum + collectionAmount(order), 0);
+  const pending = monthCod.filter(order => order.order_status !== 'delivered').reduce((sum, order) => sum + collectionAmount(order), 0);
   const summary = el('#panel-cod-records .card > div:last-child');
   if (summary) {
     summary.innerHTML = `
@@ -1253,7 +1271,7 @@ async function loadBusinessData() {
   const [{ data: orderData, error: orderError }, { data: remitData, error: remitError }] = await Promise.all([
     supabase
       .from('orders')
-      .select('id, order_number, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, payment_type, cod_amount, delivery_fee, zone_status, order_status, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, package_value, estimated_fee, payment_confirmed_at, created_at, updated_at')
+      .select('id, order_number, financial_model_version, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, zone_status, order_status, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, created_at, updated_at')
       .eq('business_client_id', business.id)
       .order('created_at', { ascending: false }),
     supabase
@@ -1363,6 +1381,11 @@ function validateOrderForm(payload, raw) {
       markOrderInvalid('#areaName');
       issues.push('Enter the delivery area.');
     }
+    const addressError = validateManualAddress(payload.street_name, payload.area_name);
+    if (addressError) {
+      markOrderInvalid('#streetName');
+      issues.push(addressError);
+    }
   }
 
   if (activeLocTab === 'share') {
@@ -1378,6 +1401,11 @@ function validateOrderForm(payload, raw) {
   if (raw.paymentValue === 'cod' && (!Number.isFinite(Number(payload.cod_amount)) || Number(payload.cod_amount) <= 0)) {
     markOrderInvalid('#codAmount');
     issues.push('Enter the COD amount the driver should collect.');
+  }
+
+  if (raw.paymentValue === 'all-online' && !raw.clientFeeSettlement) {
+    markOrderInvalid('#clientFeeSettlement');
+    issues.push('Choose whether the delivery fee will be deducted from remittance or paid separately.');
   }
 
   if ((raw.specialNotes || '').length > 500) {
@@ -1411,24 +1439,34 @@ async function submitBusinessOrder(event) {
   const locationPayload = getLocationPayload();
   const packageDescription = el('#packageDesc')?.value.trim() || '';
   const specialNotes = el('#specialNotes')?.value.trim() || '';
+  const clientFeeSettlement = el('#clientFeeSettlement')?.value || null;
   const estimate = await estimateDeliveryZone(currentEstimateInput()).catch(error => {
     console.warn('Business submit estimate failed:', error);
     return latestBizEstimate;
   });
 
+  const money = calculateOrderMoney({
+    paymentOption: paymentValue,
+    packageValue: paymentValue === 'cod' ? Number(el('#codAmount')?.value || 0) : 0,
+    deliveryFee: estimate?.fee ?? null,
+    clientFeeSettlement
+  });
   const requestData = {
     business_client_id: business.id,
     customer_name: el('#recipientName')?.value.trim() || '',
     customer_phone: '868-' + phoneDigits,
     ...locationPayload,
     payment_type: paymentValue ? paymentMap[paymentValue] : '',
-    cod_amount: paymentValue === 'cod' ? Number(el('#codAmount')?.value || 0) : 0,
-    package_value: paymentValue === 'cod' ? Number(el('#codAmount')?.value || 0) : 0,
+    cod_amount: money.packageValue,
+    package_value: money.packageValue,
     estimated_fee: estimate?.fee ?? null,
+    pricing_rate_band: estimate?.rateBand || (estimate?.status === 'remote' ? 'remote' : null),
+    quote_status: estimate?.fee === null ? 'required' : 'not_required',
+    ...financialRequestFields(money),
     customer_notes: [`Package: ${packageDescription}`, specialNotes].filter(Boolean).join('\n') || null
   };
 
-  const validationError = validateOrderForm(requestData, { paymentValue, packageDescription, specialNotes, phoneDigits });
+  const validationError = validateOrderForm(requestData, { paymentValue, packageDescription, specialNotes, phoneDigits, clientFeeSettlement });
   if (validationError) {
     window.vdNotify('Check This Order', validationError, 'warning');
     isSubmittingBusinessOrder = false;
@@ -1441,7 +1479,7 @@ async function submitBusinessOrder(event) {
   }
 
   try {
-    const { data, error } = await supabase.rpc('submit_delivery_request', { request_data: requestData });
+    const { data, error } = await supabase.rpc('submit_delivery_request_v2', { request_data: requestData });
     if (error) throw error;
     const result = Array.isArray(data) ? data[0] : data;
     el('#successModal .modal-icon').textContent = '✅';
@@ -1619,22 +1657,24 @@ function bindUi() {
     const paymentValue = el('#paymentType')?.value || '';
     const block = el('#codAmountBlock');
     const amount = el('#codAmount');
-    const label = block?.querySelector('label');
+    const settlementBlock = el('#clientFeeSettlementBlock');
+    const settlement = el('#clientFeeSettlement');
     if (!block || !amount) return;
 
-    block.style.display = paymentValue === 'all-online' ? 'none' : 'flex';
-    amount.disabled = paymentValue === 'all-online';
+    block.style.display = paymentValue === 'cod' ? 'flex' : 'none';
+    amount.disabled = paymentValue !== 'cod';
     amount.required = paymentValue === 'cod';
-    if (paymentValue === 'all-online') amount.value = '';
-    if (label) {
-      label.textContent = paymentValue === 'pkg-online'
-        ? 'Delivery Fee to Collect (TTD)'
-        : 'Amount to Collect (TTD)';
+    if (paymentValue !== 'cod') amount.value = '';
+    if (settlementBlock) settlementBlock.style.display = paymentValue === 'all-online' ? 'flex' : 'none';
+    if (settlement) {
+      settlement.required = paymentValue === 'all-online';
+      if (paymentValue !== 'all-online') settlement.value = '';
     }
-    amount.placeholder = paymentValue === 'pkg-online' ? 'e.g. 40.00' : 'e.g. 350.00';
+    updateBizEstimate();
   }
 
   el('#paymentType')?.addEventListener('change', syncAmountField);
+  el('#clientFeeSettlement')?.addEventListener('change', updateBizEstimate);
   syncAmountField();
 
   const darkToggle = el('#darkModeToggle');

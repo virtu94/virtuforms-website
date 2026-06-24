@@ -1027,12 +1027,20 @@
                 <option value="">— Select —</option>
                 <option value="cod">COD/Linx — Customer pays at door</option>
                 <option value="pkg-online">Package paid online, collect delivery fee</option>
-                <option value="all-online">Both paid online — collect nothing</option>
+                <option value="all-online">Package paid online — business pays delivery</option>
               </select>
             </div>
             <div class="form-group" id="codAmountBlock">
               <label for="codAmount" id="codAmountLabel">Package Value (TTD)</label>
               <input class="input" type="number" id="codAmount" placeholder="e.g. 350.00" min="0" step="0.01" />
+            </div>
+            <div class="form-group" id="clientFeeSettlementBlock" style="display:none;">
+              <label for="clientFeeSettlement">How will the business pay delivery?</label>
+              <select class="input" id="clientFeeSettlement">
+                <option value="">— Select —</option>
+                <option value="deduct_from_remittance">Deduct from remittance</option>
+                <option value="pay_separately">Pay separately</option>
+              </select>
             </div>
             <div class="form-group full">
               <label>Customer Delivery Location <span>(required)</span></label>
@@ -1059,6 +1067,7 @@
                   <div>
                     <label style="font-size:0.85rem; font-weight:600; color:#1a1a1a; margin-bottom:0.3rem; display:block;">Street Name <span style="color:#e05555;">*</span></label>
                     <input class="input" type="text" id="streetName" placeholder="e.g. Bamboo Drive" />
+                    <div style="font-size:0.76rem; color:#6a6a6a; margin-top:0.3rem;">Enter the actual street, road, building or landmark, not the area name.</div>
                   </div>
                 </div>
                 <div>
@@ -1569,6 +1578,8 @@
     var payment = document.getElementById('paymentType');
     var block = document.getElementById('codAmountBlock');
     var amount = document.getElementById('codAmount');
+    var settlementBlock = document.getElementById('clientFeeSettlementBlock');
+    var settlement = document.getElementById('clientFeeSettlement');
     if (!payment || !block || !amount) return;
 
     var isAllOnline = payment.value === 'all-online';
@@ -1576,6 +1587,11 @@
     amount.disabled = isAllOnline;
     amount.required = payment.value === 'cod';
     if (isAllOnline) amount.value = '';
+    if (settlementBlock) settlementBlock.style.display = isAllOnline ? 'flex' : 'none';
+    if (settlement) {
+      settlement.required = isAllOnline;
+      if (!isAllOnline) settlement.value = '';
+    }
 
     var label = block.querySelector('label');
     if (label) {
@@ -1658,7 +1674,7 @@
 
 <script src="vd-modal.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script type="module" src="business-dashboard.js?v=20260617-security-1"></script>
+  <script type="module" src="business-dashboard.js?v=20260623-financial-1"></script>
 
 </body>
 </html>

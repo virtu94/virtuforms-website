@@ -1,6 +1,8 @@
-const CENTRAL_ZONE_CODE = 'A';
+import { calculateOrderMoney, moneyLabel } from './vd-order-money.js?v=20260623-financial-1';
+
 const REMOTE_ZONE_CODE = 'REMOTE';
-const STANDARD_FEES = { central: 40, other: 50 };
+const COVERED_ZONE_CODES = new Set(['A', 'B', 'C', 'D']);
+const STANDARD_FEES = { standard: 40, extended: 50 };
 
 let zonesPromise = null;
 
@@ -49,15 +51,23 @@ function areaMatches(input, area) {
 
 async function loadZones(supabase) {
   if (!zonesPromise) {
-    zonesPromise = supabase
-      .from('zones')
-      .select('id, code, name, region, active, zone_areas(area_name)')
-      .eq('active', true)
-      .order('code')
-      .then(({ data, error }) => {
-        if (error) throw error;
-        return data || [];
-      });
+    zonesPromise = (async () => {
+      let result = await supabase
+        .from('zones')
+        .select('id, code, name, region, active, zone_areas(area_name, rate_band)')
+        .eq('active', true)
+        .order('code');
+
+      if (result.error) {
+        result = await supabase
+          .from('zones')
+          .select('id, code, name, region, active, zone_areas(area_name)')
+          .eq('active', true)
+          .order('code');
+      }
+      if (result.error) throw result.error;
+      return result.data || [];
+    })();
   }
   return zonesPromise;
 }
@@ -157,7 +167,7 @@ function matchZoneFromText(zones, text) {
   for (const zone of zones) {
     const areas = zone.zone_areas || [];
     const matchedArea = areas.find(area => areaMatches(text, area.area_name));
-    if (matchedArea) return { zone, matchedArea: matchedArea.area_name };
+    if (matchedArea) return { zone, matchedArea };
   }
   return null;
 }
@@ -176,38 +186,29 @@ function classifyMatch(match) {
   }
 
   const code = String(match.zone.code || '').toUpperCase();
-  if (code === REMOTE_ZONE_CODE) {
+  const matchedAreaName = match.matchedArea?.area_name || '';
+  const rateBand = match.matchedArea?.rate_band || 'standard';
+  if (code === REMOTE_ZONE_CODE || rateBand === 'remote' || !COVERED_ZONE_CODES.has(code)) {
     return {
       status: 'remote',
       fee: null,
       zoneCode: code,
       zoneName: match.zone.name || 'Remote / Special Route',
       region: match.zone.region || 'Manual Review',
-      matchedArea: match.matchedArea || '',
+      matchedArea: matchedAreaName,
       message: 'Remote / special route - quote required'
     };
   }
 
-  if (code === CENTRAL_ZONE_CODE) {
-    return {
-      status: 'central',
-      fee: STANDARD_FEES.central,
-      zoneCode: code,
-      zoneName: match.zone.name || 'Zone A',
-      region: match.zone.region || 'Central Region',
-      matchedArea: match.matchedArea || '',
-      message: 'Central Region'
-    };
-  }
-
   return {
-    status: 'listed_non_central',
-    fee: STANDARD_FEES.other,
+    status: rateBand === 'extended' ? 'extended' : 'standard',
+    fee: STANDARD_FEES[rateBand] || STANDARD_FEES.standard,
     zoneCode: code,
     zoneName: match.zone.name || `Zone ${code}`,
     region: match.zone.region || 'Listed Zone',
-    matchedArea: match.matchedArea || '',
-    message: match.zone.region || 'Listed delivery zone'
+    matchedArea: matchedAreaName,
+    rateBand,
+    message: rateBand === 'extended' ? 'Extended delivery area' : (match.zone.region || 'Standard delivery area')
   };
 }
 
@@ -304,13 +305,18 @@ export async function estimateDeliveryZone({
     ...classifyMatch(match),
     sourceText,
     debug,
-    label: match?.matchedArea || sourceLabel || sourceText
+    label: match?.matchedArea?.area_name || sourceLabel || sourceText
   };
 }
 
-export function formatEstimateRows({ estimate, paymentType, packageValue }) {
+export function formatEstimateRows({ estimate, paymentType, packageValue, clientFeeSettlement = null }) {
   const rows = [];
-  const packageAmount = Number(packageValue || 0);
+  const money = calculateOrderMoney({
+    paymentOption: paymentType,
+    packageValue,
+    deliveryFee: estimate.fee,
+    clientFeeSettlement
+  });
 
   if (estimate.status === 'unknown') {
     rows.push(['Delivery Fee', 'Unable to estimate']);
@@ -328,13 +334,17 @@ export function formatEstimateRows({ estimate, paymentType, packageValue }) {
     rows.push(['Zone Data', estimate.debug.zonesLoaded ? 'Loaded' : 'Not loaded']);
   }
 
-  if (paymentType === 'cod' && packageAmount > 0) {
-    rows.push(['Package Value', `$${packageAmount.toFixed(2)}`]);
-    rows.push(['Driver Collects', estimate.fee !== null ? `$${(packageAmount + estimate.fee).toFixed(2)}` : 'To be quoted']);
+  if (paymentType === 'cod' && money.packageValue > 0) {
+    rows.push(['Package Value', moneyLabel(money.packageValue)]);
+    rows.push(['Customer Pays', moneyLabel(money.customerAmountDue)]);
+    rows.push(['Driver Collects', moneyLabel(money.driverAmountToCollect)]);
   } else if (paymentType === 'pkg-online') {
-    rows.push(['Driver Collects', estimate.fee !== null ? `$${Number(estimate.fee).toFixed(2)} (delivery fee)` : 'To be quoted']);
+    rows.push(['Customer Pays', moneyLabel(money.customerAmountDue)]);
+    rows.push(['Driver Collects', moneyLabel(money.driverAmountToCollect)]);
   } else if (paymentType === 'all-online') {
-    rows.push(['Driver Collects', 'Nothing']);
+    rows.push(['Customer Pays Driver', '$0.00']);
+    rows.push(['Business Owes VirtuDrop', moneyLabel(estimate.fee)]);
+    rows.push(['Settlement', clientFeeSettlement === 'deduct_from_remittance' ? 'Deduct from remittance' : 'Pay separately']);
   }
 
   return rows;
