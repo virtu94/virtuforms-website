@@ -712,6 +712,10 @@
         <span class="nav-icon">📍</span> Zone Confirmation
         <span class="nav-badge alert">5</span>
       </button>
+      <button class="nav-item" data-panel="sorting-manifests">
+        <span class="nav-icon">🗂</span> Sorting &amp; Manifests
+        <span class="nav-badge alert">0</span>
+      </button>
       <button class="nav-item" data-panel="delivery-scheduling">
         <span class="nav-icon">📅</span> Delivery Scheduling
         <span class="nav-badge alert">0</span>
@@ -928,6 +932,25 @@
         <div class="card" data-live-empty="true">
           <p>Loading pending zone orders...</p>
         </div>
+      </div>
+
+      <div class="panel" id="panel-sorting-manifests">
+        <div class="section-heading">
+          <h2>Sorting &amp; Manifests</h2>
+          <p>Sort received parcels by confirmed zone, prepare driver manifests, and record evening handover.</p>
+        </div>
+        <div class="card" style="margin-bottom:1rem;">
+          <div class="card-title">Parcels Ready for Sorting</div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Order</th><th>Client / Customer</th><th>Delivery Area</th><th>Parcels</th><th>Zone</th><th>Action</th></tr></thead>
+            <tbody id="sortingQueueBody"><tr><td colspan="6">Loading sorting queue...</td></tr></tbody>
+          </table></div>
+        </div>
+        <div class="filter-bar">
+          <select class="filter-select" id="manifestStatusFilter" onchange="renderManifests()"><option value="active">Active Manifests</option><option value="draft">Draft</option><option value="ready">Ready</option><option value="collected">Collected by Driver</option><option value="all">All Manifests</option></select>
+          <input class="filter-input" id="manifestSearch" type="search" placeholder="Search manifest, driver or order" oninput="renderManifests()" />
+        </div>
+        <div id="manifestList"><div class="card">Loading delivery manifests...</div></div>
       </div>
 
       <div class="panel" id="panel-delivery-scheduling">
@@ -1423,6 +1446,7 @@
       'parcel-checkin': 'Parcel Check-In',
       'pickup-management': 'Pickup Management',
       'zone-confirm': 'Zone Confirmation',
+      'sorting-manifests': 'Sorting & Manifests',
       'delivery-scheduling': 'Delivery Scheduling',
       'driver-assign': 'Driver Assignment',
       'cod-mgmt': 'COD Management',
@@ -1446,6 +1470,7 @@
     let remittanceRecords = [];
     let driverCashRecords = [];
     let serviceDateOverrides = [];
+    let deliveryManifests = [];
     let appSettings = {
       daily_cutoff_time: '12:00',
       same_day_enabled: false,
@@ -1930,7 +1955,7 @@
         (o.zone_status === 'pending' || o.order_status === 'zone_pending')
         && ['parcel_received', 'legacy_untracked'].includes(o.parcel_status)
       ).length;
-      const unassigned = orders.filter(o => o.zone_status === 'confirmed' && !o.assigned_driver_id).length;
+      const unassigned = orders.filter(o => o.zone_status === 'confirmed' && o.parcel_status === 'sorted' && !o.assigned_driver_id).length;
       const today = new Date().toISOString().slice(0, 10);
       const todayOrders = orders.filter(o => (o.created_at || '').slice(0, 10) === today).length;
 
@@ -1944,6 +1969,10 @@
       const scheduleReview = orders.filter(order => order.scheduled_delivery_date && order.scheduled_delivery_date < today && !['delivered', 'cancelled', 'rejected'].includes(order.order_status)).length;
       const scheduleBadge = document.querySelector('[data-panel="delivery-scheduling"] .nav-badge');
       if (scheduleBadge) scheduleBadge.textContent = scheduleReview;
+      const sortingCount = orders.filter(order => order.parcel_status === 'parcel_received' && order.zone_status === 'confirmed').length;
+      const draftManifestCount = deliveryManifests.filter(manifest => manifest.status === 'draft').length;
+      const manifestBadge = document.querySelector('[data-panel="sorting-manifests"] .nav-badge');
+      if (manifestBadge) manifestBadge.textContent = sortingCount + draftManifestCount;
       const zoneBadge = document.querySelector('[data-panel="zone-confirm"] .nav-badge');
       if (zoneBadge) zoneBadge.textContent = pendingZone;
       const driverBadge = document.querySelector('[data-panel="driver-assign"] .nav-badge');
@@ -1964,6 +1993,7 @@
         actions.innerHTML = [
           ['Pickup requests', activePickups, 'active', '#e9f7f5'],
           ['Schedule review', scheduleReview, 'overdue', 'var(--orange-pale)'],
+          ['Sorting / manifests', sortingCount + draftManifestCount, 'pending', '#eef4fb'],
           ['Zone confirmation', pendingZone, 'pending', 'var(--yellow-pale)'],
           ['Driver assignment', unassigned, 'unassigned', '#f0f0f0'],
           ['Locked accounts', locked, 'locked', 'var(--red-pale)'],
@@ -2657,9 +2687,13 @@
                 ? '<button class="btn btn-warn btn-sm" onclick="showPanel(\'parcel-checkin\')">Check In Parcel</button>'
                 : order.zone_status === 'pending' || order.order_status === 'zone_pending'
                   ? '<button class="btn btn-warn btn-sm" onclick="showPanel(\'zone-confirm\')">Confirm Zone</button>'
+                : order.parcel_status === 'parcel_received'
+                  ? '<button class="btn btn-warn btn-sm" onclick="showPanel(\'sorting-manifests\')">Sort Parcel</button>'
                 : order.delivery_return_required ? '<span class="badge badge-unpaid">Driver returning parcel</span>'
                 : ['failed', 'rescheduled'].includes(order.order_status) ? '<span class="badge badge-pending">Exception awaiting admin</span>'
-                : order.order_status !== 'rejected' ? '<button class="btn btn-primary btn-sm" onclick="showPanel(\'driver-assign\')">Assign Driver</button>' : ''}
+                : order.parcel_status === 'sorted' && !order.assigned_driver_id ? '<button class="btn btn-primary btn-sm" onclick="showPanel(\'driver-assign\')">Assign Driver</button>'
+                : order.assigned_driver_id && ['assigned', 'handed_to_driver'].includes(order.parcel_status) ? '<button class="btn btn-ghost btn-sm" onclick="showPanel(\'sorting-manifests\')">View Manifest</button>'
+                : ''}
             </div>
           </td>
         </tr>
@@ -2849,9 +2883,100 @@
       applyZoneSuggestions();
     }
 
+    function manifestStatusBadge(status) {
+      const labels = { draft: 'Draft', ready: 'Ready for Collection', collected: 'Collected by Driver', closed: 'Closed' };
+      const cls = status === 'collected' || status === 'closed' ? 'badge-confirmed' : status === 'ready' ? 'badge-active' : 'badge-pending';
+      return `<span class="badge ${cls}">${escapeHtml(labels[status] || status)}</span>`;
+    }
+
+    window.renderSortingQueue = function() {
+      const body = document.getElementById('sortingQueueBody');
+      if (!body) return;
+      const sortable = orders.filter(order => order.parcel_status === 'parcel_received' && order.zone_status === 'confirmed');
+      body.innerHTML = sortable.map(order => {
+        const zone = zones.find(item => item.id === order.zone_id);
+        return `<tr><td class="td-id">${escapeHtml(order.order_number)}</td><td><div class="td-name">${escapeHtml(clientName(order))}</div><div class="td-sub">${escapeHtml(order.customer_name || '')}</div></td><td>${escapeHtml(order.delivery_address || order.area_name || 'Location pending')}</td><td>${escapeHtml(String(order.checked_in_parcel_count || 1))}</td><td><span class="badge badge-confirmed">${escapeHtml(zone?.code ? `Zone ${zone.code}` : order.pricing_rate_band || 'Confirmed')}</span></td><td><button class="btn btn-primary btn-sm" onclick="markOrderSorted('${order.id}')">Mark Sorted</button></td></tr>`;
+      }).join('') || '<tr><td colspan="6">No received, zone-confirmed parcels are waiting to be sorted.</td></tr>';
+    };
+
+    window.markOrderSorted = async function(orderId) {
+      const order = orders.find(item => item.id === orderId);
+      if (!order) return showToast('Order not found.');
+      try {
+        const { error } = await supabase.rpc('admin_mark_order_sorted', { p_order_id: orderId });
+        if (error) throw error;
+        showToast(`${order.order_number} marked sorted.`);
+        await loadData();
+      } catch (error) {
+        window.vdNotify('Parcel Not Sorted', error.message || 'Could not update this parcel.', 'error');
+      }
+    };
+
+    window.renderManifests = function() {
+      const list = document.getElementById('manifestList');
+      if (!list) return;
+      const filter = document.getElementById('manifestStatusFilter')?.value || 'active';
+      const search = String(document.getElementById('manifestSearch')?.value || '').trim().toLowerCase();
+      const rows = deliveryManifests.filter(manifest => {
+        if (filter === 'active' && !['draft', 'ready'].includes(manifest.status)) return false;
+        if (!['active', 'all'].includes(filter) && manifest.status !== filter) return false;
+        if (!search) return true;
+        return [manifest.manifest_number, manifest.driver_name, ...(manifest.orders || []).map(order => order.order_number)]
+          .some(value => String(value || '').toLowerCase().includes(search));
+      });
+      list.innerHTML = rows.map(manifest => `
+        <div class="card" style="margin-bottom:1rem;" data-manifest-id="${manifest.id}">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap; margin-bottom:1rem;">
+            <div><div class="td-id" style="font-size:1rem;">${escapeHtml(manifest.manifest_number)}</div><div class="td-name">${escapeHtml(manifest.driver_name || 'Driver')} · ${new Date(manifest.route_date + 'T12:00:00').toLocaleDateString('en-TT')}</div><div class="td-sub">${(manifest.orders || []).length} parcel order(s)</div></div>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">${manifestStatusBadge(manifest.status)}<button class="btn btn-ghost btn-sm" onclick="printManifest('${manifest.id}')">Print</button>${manifest.status === 'draft' ? `<button class="btn btn-primary btn-sm" onclick="setManifestStatus('${manifest.id}', 'ready')">Mark Ready</button>` : ''}${manifest.status === 'ready' ? `<button class="btn btn-primary btn-sm" onclick="setManifestStatus('${manifest.id}', 'collected')">Confirm Driver Collection</button>` : ''}</div>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Sequence</th><th>Zone</th><th>Order</th><th>Customer</th><th>Address</th><th>Parcels</th><th>Collect</th>${manifest.status === 'draft' ? '<th>Action</th>' : ''}</tr></thead><tbody>
+            ${(manifest.orders || []).map(order => `<tr><td>${order.route_sequence}</td><td>${escapeHtml(order.zone_code ? `Zone ${order.zone_code}` : '—')}</td><td class="td-id">${escapeHtml(order.order_number)}</td><td><div class="td-name">${escapeHtml(order.customer_name || '')}</div><div class="td-sub">${escapeHtml(order.customer_phone || '')}</div></td><td>${escapeHtml(order.delivery_address || order.area_name || '')}</td><td>${escapeHtml(String(order.parcel_count || 1))}</td><td>${moneyFull(order.amount_to_collect)}</td>${manifest.status === 'draft' ? `<td><button class="btn btn-ghost btn-sm" onclick="removeManifestOrder('${manifest.id}', '${order.id}')">Remove</button></td>` : ''}</tr>`).join('') || `<tr><td colspan="${manifest.status === 'draft' ? 8 : 7}">No parcels on this manifest.</td></tr>`}
+          </tbody></table></div>
+          ${manifest.handed_to_driver_at ? `<div class="td-sub" style="margin-top:0.75rem;">Handover confirmed ${new Date(manifest.handed_to_driver_at).toLocaleString('en-TT')}</div>` : ''}
+        </div>`).join('') || '<div class="card">No manifests match this view.</div>';
+    };
+
+    window.setManifestStatus = function(manifestId, status) {
+      const manifest = deliveryManifests.find(item => item.id === manifestId);
+      if (!manifest) return showToast('Manifest not found.');
+      const action = status === 'ready' ? 'mark this manifest ready for driver collection' : 'confirm that the driver physically collected every listed parcel';
+      showModal('Update Manifest', `Do you want to ${action}?`, async () => {
+        try {
+          const { error } = await supabase.rpc('admin_set_manifest_status', { p_manifest_id: manifestId, p_status: status });
+          if (error) throw error;
+          showToast(`${manifest.manifest_number} updated.`);
+          await loadData();
+        } catch (error) {
+          window.vdNotify('Manifest Not Updated', error.message || 'Could not update this manifest.', 'error');
+        }
+      });
+    };
+
+    window.removeManifestOrder = async function(manifestId, orderId) {
+      try {
+        const { error } = await supabase.rpc('admin_remove_order_from_manifest', { p_manifest_id: manifestId, p_order_id: orderId });
+        if (error) throw error;
+        showToast('Parcel removed from the draft manifest.');
+        await loadData();
+      } catch (error) {
+        window.vdNotify('Parcel Not Removed', error.message || 'Could not remove this parcel.', 'error');
+      }
+    };
+
+    window.printManifest = function(manifestId) {
+      const manifest = deliveryManifests.find(item => item.id === manifestId);
+      if (!manifest) return showToast('Manifest not found.');
+      const rows = (manifest.orders || []).map(order => `<tr><td>${order.route_sequence}</td><td>${escapeHtml(order.zone_code || '')}</td><td>${escapeHtml(order.order_number)}</td><td>${escapeHtml(order.customer_name || '')}</td><td>${escapeHtml(order.customer_phone || '')}</td><td>${escapeHtml(order.delivery_address || order.area_name || '')}</td><td>${moneyFull(order.amount_to_collect)}</td></tr>`).join('');
+      const popup = window.open('', '_blank', 'width=1000,height=760');
+      if (!popup) return showToast('Allow popups to print the manifest.');
+      popup.document.write(`<!doctype html><html><head><title>${escapeHtml(manifest.manifest_number)}</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#172b28}h1{margin-bottom:4px}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #bbb;padding:8px;text-align:left;font-size:12px}th{background:#edf5f4}.sign{margin-top:45px;display:flex;justify-content:space-between}.line{width:42%;border-top:1px solid #333;padding-top:6px}</style></head><body><h1>VirtuDrop Delivery Manifest</h1><div><strong>${escapeHtml(manifest.manifest_number)}</strong></div><div>Driver: ${escapeHtml(manifest.driver_name || '')}</div><div>Route date: ${escapeHtml(manifest.route_date)}</div><table><thead><tr><th>#</th><th>Zone</th><th>Order</th><th>Customer</th><th>Phone</th><th>Address</th><th>Collect</th></tr></thead><tbody>${rows}</tbody></table><div class="sign"><div class="line">Admin handover</div><div class="line">Driver received</div></div><script>window.onload=()=>window.print();<\/script></body></html>`);
+      popup.document.close();
+    };
+
     function renderDriverAssign() {
       const tbody = document.querySelector('#panel-driver-assign tbody');
-      const assignable = orders.filter(o => o.zone_status === 'confirmed' && !o.assigned_driver_id);
+      const assignable = orders.filter(o => o.zone_status === 'confirmed' && o.parcel_status === 'sorted' && !o.assigned_driver_id);
       tbody.innerHTML = assignable.map(order => `
         <tr>
           <td class="td-id">${order.order_number}</td>
@@ -2863,7 +2988,7 @@
           <td><input type="date" class="filter-input route-date" style="width:140px;" value="${order.scheduled_delivery_date || new Date().toISOString().slice(0, 10)}" /></td>
           <td><button class="btn btn-primary btn-sm" onclick="assignDriver('${order.id}')">✅ Assign</button></td>
         </tr>
-      `).join('') || '<tr><td colspan="8">No zone-confirmed orders are waiting for driver assignment.</td></tr>';
+      `).join('') || '<tr><td colspan="8">No sorted, zone-confirmed parcels are waiting for driver assignment.</td></tr>';
     }
 
     function pickupStatusBadge(status) {
@@ -3085,6 +3210,8 @@
       document.getElementById('parcelCheckinBody').innerHTML = '<tr><td colspan="7">Loading parcel records...</td></tr>';
       document.getElementById('pickupManagementBody').innerHTML = '<tr><td colspan="7">Loading pickup requests...</td></tr>';
       document.getElementById('deliverySchedulingBody').innerHTML = '<tr><td colspan="7">Loading delivery schedules...</td></tr>';
+      document.getElementById('sortingQueueBody').innerHTML = '<tr><td colspan="6">Loading sorting queue...</td></tr>';
+      document.getElementById('manifestList').innerHTML = '<div class="card">Loading delivery manifests...</div>';
       document.getElementById('accountingRecordsBody').innerHTML = '<tr><td colspan="9">Loading accounting records...</td></tr>';
       document.getElementById('clientPayoutBody').innerHTML = '<tr><td colspan="7">Loading client payouts...</td></tr>';
       showZoneMessage('Loading pending zone orders...');
@@ -3116,7 +3243,7 @@
       const adminName = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || 'Admin';
       document.querySelector('.admin-name').textContent = adminName;
 
-      const [clientsRes, zonesRes, ordersRes, driversRes, driverProfilesRes, profilesRes, settingsRes, remittanceRes, driverCashRes, serviceDatesRes] = await Promise.all([
+      const [clientsRes, zonesRes, ordersRes, driversRes, driverProfilesRes, profilesRes, settingsRes, remittanceRes, driverCashRes, serviceDatesRes, manifestsRes] = await Promise.all([
         supabase.from('business_clients').select('id, business_name, slug, status, profile_id'),
         supabase.from('zones').select('id, code, name, region, active, zone_areas(area_name)').eq('active', true).order('code'),
         supabase
@@ -3129,7 +3256,8 @@
         supabase.from('app_settings').select('key, value'),
         supabase.from('remittance_records').select('id, business_client_id, amount, order_ids, method, reference, notes, status, paid_by, paid_at, created_at').order('paid_at', { ascending: false }),
         supabase.from('driver_cash_records').select('id, driver_id, order_id, amount, method, received_by, received_at, notes, created_at').order('received_at', { ascending: false }),
-        supabase.from('delivery_service_dates').select('service_date, is_service_day, reason, updated_at').order('service_date', { ascending: true })
+        supabase.from('delivery_service_dates').select('service_date, is_service_day, reason, updated_at').order('service_date', { ascending: true }),
+        supabase.rpc('admin_list_delivery_manifests')
       ]);
 
       if (clientsRes.error) throw clientsRes.error;
@@ -3138,6 +3266,8 @@
       if (driversRes.error) throw driversRes.error;
       if (driverProfilesRes.error) throw driverProfilesRes.error;
       if (profilesRes.error) throw profilesRes.error;
+      if (manifestsRes.error) throw manifestsRes.error;
+      deliveryManifests = Array.isArray(manifestsRes.data) ? manifestsRes.data : [];
       if (serviceDatesRes.error) {
         console.warn('Delivery service-date overrides could not load:', serviceDatesRes.error);
         serviceDateOverrides = [];
@@ -3177,6 +3307,8 @@
       renderParcelCheckin();
       renderPickupManagement();
       renderDeliveryScheduling();
+      renderSortingQueue();
+      renderManifests();
       renderZoneConfirm();
       renderDriverAssign();
       renderAccounting();
@@ -3278,27 +3410,13 @@
     };
 
     async function saveDriverAssignment(orderId, driverId, routeDate) {
-      const rpcResult = await supabase.rpc('admin_assign_order_driver', {
+      const rpcResult = await supabase.rpc('admin_assign_order_to_manifest', {
         p_order_id: orderId,
         p_driver_id: driverId,
         p_route_date: routeDate || null
       });
 
-      if (!rpcResult.error) return;
-
-      console.warn('RPC driver assignment failed, trying direct admin update:', rpcResult.error);
-
-      const updateResult = await supabase
-        .from('orders')
-        .update({
-          assigned_driver_id: driverId,
-          order_status: 'assigned'
-        })
-        .eq('id', orderId);
-
-      if (updateResult.error) {
-        throw rpcResult.error;
-      }
+      if (rpcResult.error) throw rpcResult.error;
     }
 
     window.assignDriver = function(orderId) {
@@ -3528,6 +3646,8 @@
       document.querySelector('#panel-driver-assign tbody').innerHTML = '<tr><td colspan="8">Driver assignment could not load because orders did not load.</td></tr>';
       document.getElementById('pickupManagementBody').innerHTML = '<tr><td colspan="7">Pickup management could not load because orders did not load.</td></tr>';
       document.getElementById('deliverySchedulingBody').innerHTML = '<tr><td colspan="7">Delivery scheduling could not load because orders did not load.</td></tr>';
+      document.getElementById('sortingQueueBody').innerHTML = '<tr><td colspan="6">Sorting could not load because orders did not load.</td></tr>';
+      document.getElementById('manifestList').innerHTML = '<div class="card">Manifests could not load because orders did not load.</div>';
       showToast(error.message || 'Could not load admin dashboard data.');
     });
   </script>

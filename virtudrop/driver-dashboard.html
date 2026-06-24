@@ -681,6 +681,7 @@
     let currentProfile = null;
     let orders = [];
     let pickups = [];
+    let driverManifests = [];
     let clientsById = new Map();
     let activeFilter = 'all';
     let activeWorkView = 'deliveries';
@@ -775,6 +776,10 @@
       if (order.maps_link) return order.maps_link;
       if (order.latitude && order.longitude) return `https://www.google.com/maps/search/?api=1&query=${order.latitude},${order.longitude}`;
       return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((order.delivery_address || '') + ', Trinidad')}`;
+    }
+
+    function manifestForOrder(orderId) {
+      return driverManifests.find(manifest => (manifest.order_ids || []).includes(orderId)) || null;
     }
 
     function pickupMapsTarget(pickup) {
@@ -892,6 +897,10 @@
       `;
 
       if (status === 'queued') {
+        const manifest = manifestForOrder(order.id);
+        if (manifest && manifest.status !== 'collected') {
+          return `<span class="status-badge ${manifest.status === 'ready' ? 'badge-out' : 'badge-queued'}">Manifest ${manifest.status === 'ready' ? 'ready - awaiting handover' : 'being prepared'}</span>`;
+        }
         return common + `<button class="action-btn btn-collected" onclick="markCollected('${order.id}')">📦 Mark Collected</button>`;
       }
 
@@ -907,6 +916,7 @@
       const list = document.getElementById('deliveryList');
       list.innerHTML = orders.map(order => {
         const status = normalizeStatus(order.order_status);
+        const manifest = manifestForOrder(order.id);
         const collect = amountToCollect(order);
         const notes = order.customer_notes ? `<div class="delivery-notes">📝 ${order.customer_notes}</div>` : '';
         const collectClass = collect > 0 ? 'cod' : 'no-cod';
@@ -922,6 +932,7 @@
               ${statusBadge(status)}
             </div>
             <div class="customer-info">
+              ${manifest ? `<div class="info-row" style="grid-column:1/-1;"><div class="info-label">Manifest</div><div class="info-value">${escapeHtml(manifest.manifest_number)} · ${escapeHtml(String(manifest.status).replaceAll('_', ' '))}</div></div>` : ''}
               <div class="info-row">
                 <div class="info-label">Customer</div>
                 <div class="info-value">${order.customer_name || '—'}</div>
@@ -1070,23 +1081,26 @@
       const accountName = document.getElementById('driverAccountName');
       if (accountName) accountName.textContent = fullName;
 
-      const [ordersRes, pickupsRes, clientsRes] = await Promise.all([
+      const [ordersRes, pickupsRes, manifestsRes, clientsRes] = await Promise.all([
         supabase
           .from('orders')
           .select('id, order_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, cod_amount, package_value, delivery_fee, driver_amount_to_collect, pickup_required, pickup_parcel_count, pickup_fee, scheduled_delivery_date, parcel_status, delivery_outcome, delivery_attempt_count, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, order_status, assigned_driver_id, customer_notes, driver_notes, tracking_token, created_at')
           .eq('assigned_driver_id', driver.id)
           .order('created_at', { ascending: false }),
         supabase.rpc('driver_list_my_pickups'),
+        supabase.rpc('driver_list_my_delivery_manifests'),
         supabase.from('business_clients').select('id, business_name')
       ]);
 
       if (ordersRes.error) throw ordersRes.error;
       if (pickupsRes.error) throw pickupsRes.error;
+      if (manifestsRes.error) throw manifestsRes.error;
       if (clientsRes.error) throw clientsRes.error;
 
       clientsById = new Map((clientsRes.data || []).map(client => [client.id, client]));
       orders = ordersRes.data || [];
       pickups = Array.isArray(pickupsRes.data) ? pickupsRes.data : [];
+      driverManifests = Array.isArray(manifestsRes.data) ? manifestsRes.data : [];
       renderOrders();
       renderPickups();
       switchWorkView(activeWorkView);
