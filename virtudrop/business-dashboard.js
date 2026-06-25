@@ -831,6 +831,9 @@ function emptyRow(cols, message) {
 }
 
 function orderTableRow(order, includeCost = false) {
+  const editButton = canBusinessEditOrder(order)
+    ? `<button type="button" class="order-detail-link" onclick="event.stopPropagation(); openBusinessOrderEdit('${order.id}')">Edit</button>`
+    : '';
   return `
     <tr class="order-clickable" onclick="openOrderDetails('${order.id}')">
       <td><strong><button type="button" class="order-detail-link" onclick="event.stopPropagation(); openOrderDetails('${order.id}')">${escapeHtml(order.order_number)}</button></strong></td>
@@ -839,7 +842,10 @@ function orderTableRow(order, includeCost = false) {
       ${includeCost ? `<td>${money(order.delivery_fee)}</td>` : ''}
       <td>${formatDate(order.created_at)}</td>
       <td><span class="status-badge ${statusClass(order.order_status)}">${escapeHtml(deliveryOutcomeLabel(order))}</span></td>
-      ${includeCost ? `<td><button type="button" class="order-detail-link" onclick="event.stopPropagation(); openOrderDetails('${order.id}')">Track</button></td>` : ''}
+      <td>
+        <button type="button" class="order-detail-link" onclick="event.stopPropagation(); openOrderDetails('${order.id}')">Details</button>
+        ${editButton ? ` · ${editButton}` : ''}
+      </td>
     </tr>
   `;
 }
@@ -858,7 +864,10 @@ function orderCard(order) {
       </div>
       <div style="font-size:0.78rem; color:#6a6a6a; margin-top:0.35rem;">Parcel: ${escapeHtml(parcelStatusLabel(order.parcel_status))}</div>
       ${order.pickup_required ? `<div style="font-size:0.78rem; color:#2a6f68; margin-top:0.2rem;">${escapeHtml(pickupStatusLabel(order.pickup_status))}${order.pickup_scheduled_date ? ` · ${escapeHtml(formatDate(order.pickup_scheduled_date))}` : ''}</div>` : ''}
-      <div class="order-card-cost">${money(order.delivery_fee)} · <button type="button" class="order-detail-link" onclick="event.stopPropagation(); openOrderDetails('${order.id}')">View details</button></div>
+      <div class="order-card-cost">
+        ${money(order.delivery_fee)} · <button type="button" class="order-detail-link" onclick="event.stopPropagation(); openOrderDetails('${order.id}')">View details</button>
+        ${canBusinessEditOrder(order) ? ` · <button type="button" class="order-detail-link" onclick="event.stopPropagation(); openBusinessOrderEdit('${order.id}')">Edit</button>` : ''}
+      </div>
     </div>
   `;
 }
@@ -1039,8 +1048,9 @@ function validateBusinessEditPayload(payload, paymentOption) {
 
 window.openBusinessOrderEdit = function(orderId) {
   const order = orders.find(item => item.id === orderId);
+  const modal = el('#orderDetailModal');
   const content = el('#orderDetailContent');
-  if (!order || !content) return;
+  if (!order || !modal || !content) return;
   if (!canBusinessEditOrder(order)) {
     window.vdNotify('Order Cannot Be Edited', 'Contact VirtuDrop to amend this order because it is already in driver handover or completed.', 'warning');
     return;
@@ -1088,6 +1098,7 @@ window.openBusinessOrderEdit = function(orderId) {
       <button type="button" class="btn btn-ghost" onclick="openOrderDetails('${order.id}')">Cancel</button>
     </div>
   `;
+  modal.classList.add('active');
   syncBusinessEditPayment();
   syncBusinessEditPickup();
 };
@@ -1219,7 +1230,7 @@ function renderActive() {
   const active = orders.filter(order => activeStatuses.includes(order.order_status));
   setText('#panel-active .section-sub', `${active.length} delivery${active.length === 1 ? '' : 'ies'} currently in progress.`);
   const tbody = el('#panel-active table tbody');
-  if (tbody) tbody.innerHTML = active.length ? active.map(order => orderTableRow(order)).join('') : emptyRow(5, 'No active deliveries right now.');
+  if (tbody) tbody.innerHTML = active.length ? active.map(order => orderTableRow(order)).join('') : emptyRow(6, 'No active deliveries right now.');
   const cards = el('#panel-active .order-cards');
   if (cards) cards.innerHTML = active.length ? active.map(orderCard).join('') : '<p style="color:#6a6a6a;">No active deliveries right now.</p>';
   const badge = el('[data-panel="active"] .nav-badge');
