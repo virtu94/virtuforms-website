@@ -2785,10 +2785,15 @@
         <tr>
           <td class="td-id">
             <div>${escapeHtml(order.order_number)}</div>
-            <button class="btn btn-primary btn-sm" style="margin-top:0.45rem;" onclick="openAdminOrderEdit('${order.id}')">Edit Order</button>
+            <div style="display:flex; gap:0.35rem; flex-wrap:wrap; margin-top:0.45rem;">
+              <button class="btn btn-primary btn-sm" onclick="openAdminOrderEdit('${order.id}')">Edit Order</button>
+              ${order.order_status === 'cancelled'
+                ? '<span class="badge badge-unpaid">Cancelled</span>'
+                : `<button class="btn btn-danger btn-sm" onclick="openAdminOrderCancel('${order.id}')">Cancel Order</button>`}
+            </div>
           </td>
           <td><div class="td-name">${clientName(order)}</div></td>
-          <td><div class="td-name">${order.customer_name || '—'}</div><div class="td-sub">${order.customer_phone || ''}</div>${order.external_item_number ? `<div class="td-sub">Item: ${escapeHtml(order.external_item_number)}</div>` : ''}${order.delivery_outcome_notes ? `<div class="td-sub" style="color:var(--teal-dark); font-weight:700;">Outcome: ${escapeHtml(order.delivery_outcome_notes)}</div>` : order.driver_notes ? `<div class="td-sub" style="color:var(--teal-dark); font-weight:700;">Driver: ${escapeHtml(order.driver_notes)}</div>` : ''}${order.redelivery_requested_date ? `<div class="td-sub">Preferred redelivery: ${new Date(order.redelivery_requested_date + 'T12:00:00').toLocaleDateString('en-TT')}</div>` : ''}${order.rejection_reason ? `<div class="td-sub" style="color:var(--red); font-weight:700;">Rejected: ${escapeHtml(order.rejection_reason)}</div>` : ''}</td>
+          <td><div class="td-name">${order.customer_name || '—'}</div><div class="td-sub">${order.customer_phone || ''}</div>${order.external_item_number ? `<div class="td-sub">Item: ${escapeHtml(order.external_item_number)}</div>` : ''}${order.delivery_outcome_notes ? `<div class="td-sub" style="color:var(--teal-dark); font-weight:700;">Outcome: ${escapeHtml(order.delivery_outcome_notes)}</div>` : order.driver_notes ? `<div class="td-sub" style="color:var(--teal-dark); font-weight:700;">Driver: ${escapeHtml(order.driver_notes)}</div>` : ''}${order.redelivery_requested_date ? `<div class="td-sub">Preferred redelivery: ${new Date(order.redelivery_requested_date + 'T12:00:00').toLocaleDateString('en-TT')}</div>` : ''}${order.rejection_reason ? `<div class="td-sub" style="color:var(--red); font-weight:700;">${order.order_status === 'cancelled' ? 'Cancelled' : 'Rejected'}: ${escapeHtml(order.rejection_reason)}</div>` : ''}</td>
           <td>${zoneLabel(order)}</td>
           <td>
             <div class="td-name">Package: ${moneyFull(order.package_value || order.cod_amount)}</div>
@@ -2808,7 +2813,9 @@
               ${order.order_status === 'delivered' && (order.payment_type === 'cod' || order.payment_type === 'delivery_only') && order.payment_status !== 'reconciled'
                 ? `<button class="btn btn-primary btn-sm" onclick="openMarkDriverCashReceived('${order.id}')">Reconcile Collection</button>`
                 : order.payment_status === 'reconciled' ? '<span class="badge badge-paid">Reconciled</span>' : ''}
-              ${order.parcel_status === 'awaiting_parcel'
+              ${order.order_status === 'cancelled'
+                ? '<span class="badge badge-unpaid">Cancelled</span>'
+                : order.parcel_status === 'awaiting_parcel'
                 ? '<button class="btn btn-warn btn-sm" onclick="showPanel(\'parcel-checkin\')">Check In Parcel</button>'
                 : order.zone_status === 'pending' || order.order_status === 'zone_pending'
                   ? '<button class="btn btn-warn btn-sm" onclick="showPanel(\'zone-confirm\')">Confirm Zone</button>'
@@ -2942,6 +2949,45 @@
         await loadData();
       } catch (error) {
         window.vdNotify('Order Not Updated', error.message || 'Could not update this order.', 'error');
+      }
+    }
+
+    window.openAdminOrderCancel = function(orderId) {
+      const order = orders.find(item => item.id === orderId);
+      if (!order) return showToast('Order not found.');
+      if (order.order_status === 'cancelled') return showToast('This order is already cancelled.');
+      document.getElementById('modalTitle').textContent = `Cancel ${order.order_number}`;
+      document.getElementById('modalBody').innerHTML = `
+        <div class="payment-modal-form" style="text-align:left;">
+          <p style="margin:0 0 0.7rem; color:var(--grey);">
+            This will remove the order from the driver dashboard and show the order as cancelled in the client portal.
+          </p>
+          <label>Cancellation Reason<textarea id="adminCancelReason" placeholder="Enter why this order is being cancelled"></textarea></label>
+        </div>`;
+      document.getElementById('modalConfirm').textContent = 'Cancel Order';
+      document.getElementById('modal').classList.add('show');
+      modalCb = async () => {
+        const reason = document.getElementById('adminCancelReason')?.value?.trim() || '';
+        if (reason.length < 3) {
+          window.vdNotify('Order Not Cancelled', 'Enter a cancellation reason.', 'warning');
+          return;
+        }
+        if (!window.confirm(`Cancel ${order.order_number}? This will remove it from any assigned driver.`)) return;
+        await cancelAdminOrder(orderId, reason);
+      };
+    };
+
+    async function cancelAdminOrder(orderId, reason) {
+      try {
+        const { error } = await supabase.rpc('admin_cancel_order', {
+          p_order_id: orderId,
+          p_reason: reason
+        });
+        if (error) throw error;
+        showToast('Order cancelled.');
+        await loadData();
+      } catch (error) {
+        window.vdNotify('Order Not Cancelled', error.message || 'Could not cancel this order.', 'error');
       }
     }
 
