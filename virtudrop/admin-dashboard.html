@@ -511,7 +511,7 @@
     .modal-overlay.show { display: flex; }
     .modal {
       background: var(--white); border-radius: 16px; padding: 2rem;
-      max-width: 420px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+      max-width: 720px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
       animation: fadeIn 0.3s ease;
     }
     .modal h3 { font-size: 1.1rem; font-weight: 700; color: var(--black); margin-bottom: 0.6rem; }
@@ -1495,7 +1495,7 @@
   <div class="modal-overlay" id="modal">
     <div class="modal">
       <h3 id="modalTitle">Confirm Action</h3>
-      <p id="modalBody">Are you sure?</p>
+      <div id="modalBody">Are you sure?</div>
       <div class="modal-actions">
         <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
         <button class="btn btn-primary" id="modalConfirm">Confirm</button>
@@ -1906,7 +1906,7 @@
     window.whatsappClient = function(orderId) {
       const order = orders.find(o => o.id === orderId);
       if (!order) { showToast('Order not found.'); return; }
-      const client = businessClients.find(c => c.id === order.business_client_id);
+      const client = clientsById.get(order.business_client_id);
       const rawPhone = client?.phone || '';
       const phone = phoneForWhatsApp(rawPhone);
       if (!phone) { showToast('This client does not have a phone number on file.'); return; }
@@ -1967,7 +1967,7 @@
         // Create notification for the client
         const order = orders.find(o => o.id === orderId);
         if (order?.business_client_id) {
-          const client = businessClients.find(c => c.id === order.business_client_id);
+          const client = clientsById.get(order.business_client_id);
           if (client?.profile_id) {
             await supabase.from('notifications').insert({
               profile_id: client.profile_id,
@@ -2924,9 +2924,11 @@
     window.openAdminOrderEdit = function(orderId) {
       const order = orders.find(item => item.id === orderId);
       if (!order) return showToast('Order not found.');
-      const clientOptions = businessClients
-        .map(client => `<option value="${escapeHtml(client.id)}" ${client.id === order.business_client_id ? 'selected' : ''}>${escapeHtml(client.business_name || client.slug || client.id)}</option>`)
+      const clientOptions = [...clientsById.entries()]
+        .sort((a, b) => String(a[1].business_name || '').localeCompare(String(b[1].business_name || '')))
+        .map(([id, client]) => `<option value="${escapeHtml(id)}" ${id === order.business_client_id ? 'selected' : ''}>${escapeHtml(client.business_name || client.slug || id)}</option>`)
         .join('');
+      if (!clientOptions) return window.vdNotify('Order Edit Not Available', 'Business clients are not loaded yet. Refresh the dashboard and try again.', 'warning');
       document.getElementById('modalTitle').textContent = `Edit ${order.order_number}`;
       document.getElementById('modalBody').innerHTML = `
         <div class="payment-modal-form" style="text-align:left;">
