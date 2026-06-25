@@ -941,6 +941,7 @@ window.openOrderDetails = function(orderId) {
     </div>
     <div class="order-detail-actions">
       ${map ? `<a class="btn btn-primary" href="${escapeHtml(map)}" target="_blank">Open Location</a>` : ''}
+      ${canBusinessEditOrder(order) ? `<button type="button" class="btn btn-ghost" onclick="openBusinessOrderEdit('${order.id}')">Edit Order</button>` : ''}
     </div>
     ${['returned_to_hub', 'held_for_client_instructions'].includes(order.parcel_status) && order.return_to_client_status !== 'ready' && order.redelivery_status !== 'scheduled' ? `
       <div class="business-track-bubble" style="margin-top:1rem;">
@@ -959,6 +960,169 @@ window.openOrderDetails = function(orderId) {
   syncBusinessRedeliverySettlement();
 };
 
+function canBusinessEditOrder(order) {
+  return order
+    && !['delivered', 'cancelled', 'rejected'].includes(order.order_status)
+    && !['handed_to_driver', 'returned_to_client'].includes(order.parcel_status);
+}
+
+function businessPaymentOption(order) {
+  if (order.payment_arrangement === 'client_pays_delivery' || order.payment_type === 'prepaid') return 'all-online';
+  if (order.payment_arrangement === 'delivery_only_customer_pays' || order.payment_type === 'delivery_only') return 'pkg-online';
+  return 'cod';
+}
+
+function businessEditPayloadFromForm(orderId) {
+  const paymentOption = el('#editPaymentType')?.value || '';
+  const packageValue = paymentOption === 'cod' ? Number(el('#editPackageValue')?.value || 0) : 0;
+  const pickupRequired = el('#editPickupRequired')?.value === 'yes';
+  const pickupParcelCount = Number(el('#editPickupParcelCount')?.value || 1);
+  const pickupFee = pickupRequired && pickupParcelCount < 5 ? 20 : 0;
+  const clientPaysDelivery = paymentOption === 'all-online';
+  const customerNotes = [
+    `Package: ${el('#editPackageDesc')?.value.trim() || ''}`,
+    el('#editSpecialNotes')?.value.trim() || ''
+  ].filter(Boolean).join('\n');
+  return {
+    customer_name: el('#editCustomerName')?.value.trim() || '',
+    customer_phone: '868-' + String(el('#editCustomerPhone')?.value || '').replace(/\D/g, '').slice(-7),
+    house_number: el('#editHouseNumber')?.value.trim() || null,
+    street_name: el('#editStreetName')?.value.trim() || null,
+    area_name: el('#editAreaName')?.value.trim() || null,
+    maps_link: el('#editMapsLink')?.value.trim() || null,
+    latitude: el('#editLatitude')?.value || null,
+    longitude: el('#editLongitude')?.value || null,
+    payment_type: paymentMap[paymentOption] || '',
+    payment_arrangement: paymentOption === 'all-online' ? 'client_pays_delivery' : paymentOption === 'pkg-online' ? 'delivery_only_customer_pays' : 'cod_customer_pays',
+    delivery_fee_payer: clientPaysDelivery ? 'client' : 'customer',
+    client_fee_settlement: clientPaysDelivery ? (el('#editClientFeeSettlement')?.value || 'pay_separately') : null,
+    package_value: packageValue,
+    estimated_fee: el('#editEstimatedFee')?.value || null,
+    pricing_rate_band: el('#editPricingRateBand')?.value || null,
+    quote_status: el('#editEstimatedFee')?.value ? 'not_required' : 'required',
+    pickup_required: pickupRequired,
+    pickup_parcel_count: pickupRequired ? pickupParcelCount : null,
+    pickup_fee: pickupFee,
+    pickup_fee_settlement: pickupFee > 0 ? (el('#editPickupFeeSettlement')?.value || 'pay_separately') : null,
+    pickup_contact_name: pickupRequired ? el('#editPickupContactName')?.value.trim() || null : null,
+    pickup_contact_phone: pickupRequired ? el('#editPickupContactPhone')?.value.trim() || null : null,
+    pickup_business_name: pickupRequired ? el('#editPickupBusinessName')?.value.trim() || null : null,
+    pickup_street_name: pickupRequired ? el('#editPickupStreetName')?.value.trim() || null : null,
+    pickup_area_name: pickupRequired ? el('#editPickupAreaName')?.value.trim() || null : null,
+    pickup_window: pickupRequired ? el('#editPickupWindow')?.value.trim() || null : null,
+    pickup_instructions: pickupRequired ? el('#editPickupInstructions')?.value.trim() || null : null,
+    customer_notes: customerNotes
+  };
+}
+
+function validateBusinessEditPayload(payload, paymentOption) {
+  const phoneDigits = String(payload.customer_phone || '').replace(/\D/g, '');
+  if ((payload.customer_name || '').length < 2) return 'Enter the customer name.';
+  if (phoneDigits.length < 7) return 'Enter a valid customer phone number.';
+  if (!paymentOption) return 'Select the payment type.';
+  if (paymentOption === 'cod' && Number(payload.package_value || 0) <= 0) return 'Enter the COD package amount.';
+  if (!payload.maps_link && !payload.latitude) {
+    const addressError = validateManualAddress(payload.street_name, payload.area_name);
+    if (addressError) return addressError;
+  }
+  const packageLine = String(payload.customer_notes || '').match(/^Package:\s*(.*)$/m)?.[1] || '';
+  if (packageLine.trim().length < 2) return 'Enter the package description.';
+  if (payload.pickup_required) {
+    const pickupError = validatePickupLocation(payload.pickup_street_name, payload.pickup_area_name);
+    if (pickupError) return pickupError;
+    if (String(payload.pickup_contact_name || '').length < 2) return 'Enter the pickup contact name.';
+    if (String(payload.pickup_contact_phone || '').replace(/\D/g, '').length < 7) return 'Enter a valid pickup phone number.';
+    if (String(payload.pickup_window || '').length < 3) return 'Enter the pickup window.';
+  }
+  return '';
+}
+
+window.openBusinessOrderEdit = function(orderId) {
+  const order = orders.find(item => item.id === orderId);
+  const content = el('#orderDetailContent');
+  if (!order || !content) return;
+  if (!canBusinessEditOrder(order)) {
+    window.vdNotify('Order Cannot Be Edited', 'Contact VirtuDrop to amend this order because it is already in driver handover or completed.', 'warning');
+    return;
+  }
+  const notes = customerNotesParts(order);
+  const paymentOption = businessPaymentOption(order);
+  content.innerHTML = `
+    <div class="order-detail-head">
+      <div><div class="order-detail-title">Edit ${escapeHtml(order.order_number)}</div><div class="order-detail-sub">Changes will return unassigned orders to zone review.</div></div>
+      <span class="status-badge ${statusClass(order.order_status)}">${escapeHtml(statusLabel(order.order_status))}</span>
+    </div>
+    <div class="order-detail-grid">
+      <label class="order-detail-item"><div class="order-detail-label">Customer Name</div><input class="input" id="editCustomerName" value="${escapeHtml(order.customer_name || '')}"></label>
+      <label class="order-detail-item"><div class="order-detail-label">Customer Phone</div><input class="input" id="editCustomerPhone" value="${escapeHtml(String(order.customer_phone || '').replace(/^868-?/, ''))}"></label>
+      <label class="order-detail-item full"><div class="order-detail-label">Package Description</div><textarea class="input" id="editPackageDesc">${escapeHtml(notes.packageText || order.external_item_number || '')}</textarea></label>
+      <label class="order-detail-item"><div class="order-detail-label">Payment Type</div><select class="input" id="editPaymentType" onchange="syncBusinessEditPayment()"><option value="cod" ${paymentOption === 'cod' ? 'selected' : ''}>Customer pays package + delivery</option><option value="pkg-online" ${paymentOption === 'pkg-online' ? 'selected' : ''}>Customer pays delivery only</option><option value="all-online" ${paymentOption === 'all-online' ? 'selected' : ''}>Business pays delivery</option></select></label>
+      <label class="order-detail-item"><div class="order-detail-label">Package/COD Amount</div><input class="input" id="editPackageValue" type="number" min="0" step="0.01" value="${Number(order.package_value || order.cod_amount || 0).toFixed(2)}"></label>
+      <label class="order-detail-item" id="editClientFeeWrap"><div class="order-detail-label">Client Settlement</div><select class="input" id="editClientFeeSettlement"><option value="pay_separately" ${order.client_fee_settlement === 'pay_separately' ? 'selected' : ''}>Pay separately</option><option value="deduct_from_remittance" ${order.client_fee_settlement === 'deduct_from_remittance' ? 'selected' : ''}>Deduct from remittance</option></select></label>
+      <label class="order-detail-item"><div class="order-detail-label">Estimated Fee</div><input class="input" id="editEstimatedFee" type="number" min="0" step="0.01" value="${order.estimated_fee ?? ''}"></label>
+      <label class="order-detail-item"><div class="order-detail-label">Rate Band</div><select class="input" id="editPricingRateBand"><option value="">Pending</option><option value="standard" ${order.pricing_rate_band === 'standard' ? 'selected' : ''}>Standard</option><option value="extended" ${order.pricing_rate_band === 'extended' ? 'selected' : ''}>Extended</option><option value="remote" ${order.pricing_rate_band === 'remote' ? 'selected' : ''}>Remote / Quote</option></select></label>
+      <label class="order-detail-item"><div class="order-detail-label">House / Apt</div><input class="input" id="editHouseNumber" value="${escapeHtml(order.house_number || '')}"></label>
+      <label class="order-detail-item"><div class="order-detail-label">Street / Building</div><input class="input" id="editStreetName" value="${escapeHtml(order.street_name || '')}"></label>
+      <label class="order-detail-item"><div class="order-detail-label">Area</div><input class="input" id="editAreaName" value="${escapeHtml(order.area_name || '')}"></label>
+      <label class="order-detail-item full"><div class="order-detail-label">Google Maps Pin / Link</div><input class="input" id="editMapsLink" value="${escapeHtml(order.maps_link || '')}"></label>
+      <label class="order-detail-item"><div class="order-detail-label">Latitude</div><input class="input" id="editLatitude" type="number" step="any" value="${order.latitude ?? ''}"></label>
+      <label class="order-detail-item"><div class="order-detail-label">Longitude</div><input class="input" id="editLongitude" type="number" step="any" value="${order.longitude ?? ''}"></label>
+      <label class="order-detail-item full"><div class="order-detail-label">Notes</div><textarea class="input" id="editSpecialNotes">${escapeHtml(notes.extraNotes || '')}</textarea></label>
+      <label class="order-detail-item"><div class="order-detail-label">Pickup Required</div><select class="input" id="editPickupRequired" onchange="syncBusinessEditPickup()"><option value="">No</option><option value="yes" ${order.pickup_required ? 'selected' : ''}>Yes</option></select></label>
+      <label class="order-detail-item"><div class="order-detail-label">Pickup Parcels</div><input class="input" id="editPickupParcelCount" type="number" min="1" step="1" value="${Number(order.pickup_parcel_count || 1)}"></label>
+      <div class="order-detail-item full" id="editPickupWrap">
+        <div class="order-detail-grid">
+          <label class="order-detail-item"><div class="order-detail-label">Pickup Contact</div><input class="input" id="editPickupContactName" value="${escapeHtml(order.pickup_contact_name || '')}"></label>
+          <label class="order-detail-item"><div class="order-detail-label">Pickup Phone</div><input class="input" id="editPickupContactPhone" value="${escapeHtml(order.pickup_contact_phone || '')}"></label>
+          <label class="order-detail-item"><div class="order-detail-label">Business Name</div><input class="input" id="editPickupBusinessName" value="${escapeHtml(order.pickup_business_name || '')}"></label>
+          <label class="order-detail-item"><div class="order-detail-label">Pickup Street</div><input class="input" id="editPickupStreetName" value="${escapeHtml(order.pickup_street_name || '')}"></label>
+          <label class="order-detail-item"><div class="order-detail-label">Pickup Area</div><input class="input" id="editPickupAreaName" value="${escapeHtml(order.pickup_area_name || '')}"></label>
+          <label class="order-detail-item"><div class="order-detail-label">Pickup Window</div><input class="input" id="editPickupWindow" value="${escapeHtml(order.pickup_window || '')}"></label>
+          <label class="order-detail-item"><div class="order-detail-label">Pickup Fee Settlement</div><select class="input" id="editPickupFeeSettlement"><option value="pay_separately" ${order.pickup_fee_settlement === 'pay_separately' ? 'selected' : ''}>Pay separately</option><option value="deduct_from_remittance" ${order.pickup_fee_settlement === 'deduct_from_remittance' ? 'selected' : ''}>Deduct from remittance</option></select></label>
+          <label class="order-detail-item full"><div class="order-detail-label">Pickup Instructions</div><textarea class="input" id="editPickupInstructions">${escapeHtml(order.pickup_instructions || '')}</textarea></label>
+        </div>
+      </div>
+    </div>
+    <div class="order-detail-actions">
+      <button type="button" class="btn btn-primary" onclick="saveBusinessOrderEdit('${order.id}')">Save Changes</button>
+      <button type="button" class="btn btn-ghost" onclick="openOrderDetails('${order.id}')">Cancel</button>
+    </div>
+  `;
+  syncBusinessEditPayment();
+  syncBusinessEditPickup();
+};
+
+window.syncBusinessEditPayment = function() {
+  const option = el('#editPaymentType')?.value || '';
+  if (el('#editPackageValue')) el('#editPackageValue').disabled = option !== 'cod';
+  if (el('#editClientFeeWrap')) el('#editClientFeeWrap').style.display = option === 'all-online' ? '' : 'none';
+};
+
+window.syncBusinessEditPickup = function() {
+  const enabled = el('#editPickupRequired')?.value === 'yes';
+  if (el('#editPickupWrap')) el('#editPickupWrap').style.display = enabled ? '' : 'none';
+};
+
+window.saveBusinessOrderEdit = async function(orderId) {
+  const paymentOption = el('#editPaymentType')?.value || '';
+  const payload = businessEditPayloadFromForm(orderId);
+  payload.pickup_required = el('#editPickupRequired')?.value === 'yes';
+  const issue = validateBusinessEditPayload(payload, paymentOption);
+  if (issue) return window.vdNotify('Order Not Updated', issue, 'warning');
+  try {
+    const { error } = await supabase.rpc('business_update_order_request', {
+      p_order_id: orderId,
+      p_request_data: payload
+    });
+    if (error) throw error;
+    await loadBusinessData();
+    openOrderDetails(orderId);
+    showToast('Order updated.');
+  } catch (error) {
+    window.vdNotify('Order Not Updated', error.message || 'Could not update this order.', 'error');
+  }
+};
+
 window.syncBusinessRedeliverySettlement = function() {
   const wrap = el('#businessRedeliverySettlementWrap');
   if (wrap) wrap.style.display = el('#businessRedeliveryPayer')?.value === 'client' ? '' : 'none';
@@ -974,7 +1138,7 @@ window.saveBusinessRedeliveryPayment = async function(orderId) {
       p_settlement: settlement
     });
     if (error) throw error;
-    await loadData();
+    await loadBusinessData();
     openOrderDetails(orderId);
     if (typeof showToast === 'function') showToast('Redelivery payment choice saved.');
   } catch (error) {
