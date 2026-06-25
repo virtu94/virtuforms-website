@@ -861,15 +861,6 @@
           <input class="filter-input" id="orderSearchInput" type="search" placeholder="Search order, customer, phone" oninput="renderAllOrders()" />
         </div>
 
-        <div class="card" style="margin-bottom:1rem;">
-          <div class="card-title">Edit Order</div>
-          <div class="accounting-note" style="margin-bottom:0.8rem;">Admin dashboard version: order-edit-2</div>
-          <div class="filter-bar" style="margin-bottom:0;">
-            <select class="filter-select" id="quickEditOrderSelect" style="min-width:280px;"></select>
-            <button class="btn btn-primary" type="button" onclick="openQuickAdminOrderEdit()">Edit Selected Order</button>
-          </div>
-        </div>
-
         <div class="card">
           <div class="table-wrap">
             <table>
@@ -2790,7 +2781,6 @@
 
     function renderAllOrders() {
       const tbody = document.querySelector('#panel-all-orders tbody');
-      renderQuickOrderEditSelect();
       tbody.innerHTML = orders.map(order => `
         <tr>
           <td class="td-id">
@@ -2835,22 +2825,6 @@
       `).join('') || '<tr><td colspan="8">No orders found.</td></tr>';
     }
 
-    function renderQuickOrderEditSelect() {
-      const select = document.getElementById('quickEditOrderSelect');
-      if (!select) return;
-      const currentValue = select.value;
-      select.innerHTML = orders.length
-        ? orders.map(order => `<option value="${escapeHtml(order.id)}">${escapeHtml(order.order_number)} - ${escapeHtml(clientName(order))} - ${escapeHtml(order.customer_name || 'Customer')}</option>`).join('')
-        : '<option value="">No orders loaded</option>';
-      if (currentValue && orders.some(order => order.id === currentValue)) select.value = currentValue;
-    }
-
-    window.openQuickAdminOrderEdit = function() {
-      const orderId = document.getElementById('quickEditOrderSelect')?.value || '';
-      if (!orderId) return showToast('Select an order to edit.');
-      openAdminOrderEdit(orderId);
-    };
-
     function adminPaymentArrangement(order) {
       if (order.payment_arrangement === 'client_pays_delivery') return 'client_pays_delivery';
       if (order.payment_arrangement === 'delivery_only_customer_pays') return 'delivery_only_customer_pays';
@@ -2864,12 +2838,11 @@
       return options.map(([value, label]) => `<option value="${escapeHtml(value)}" ${String(selected || '') === String(value) ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('');
     }
 
-    function adminOrderEditPayload() {
-      const arrangement = document.getElementById('adminEditPaymentArrangement')?.value || 'cod_customer_pays';
-      const paymentType = arrangement === 'client_pays_delivery' ? 'prepaid' : arrangement === 'delivery_only_customer_pays' ? 'delivery_only' : 'cod';
-      const clientPays = arrangement === 'client_pays_delivery';
+    function adminOrderEditPayload(order) {
+      const arrangement = adminPaymentArrangement(order);
+      const paymentType = order.payment_type || (arrangement === 'client_pays_delivery' ? 'prepaid' : arrangement === 'delivery_only_customer_pays' ? 'delivery_only' : 'cod');
       return {
-        business_client_id: document.getElementById('adminEditClient')?.value || null,
+        business_client_id: order.business_client_id || null,
         customer_name: document.getElementById('adminEditCustomerName')?.value.trim() || '',
         customer_phone: document.getElementById('adminEditCustomerPhone')?.value.trim() || '',
         external_item_number: document.getElementById('adminEditItemNumber')?.value.trim() || null,
@@ -2877,36 +2850,36 @@
         street_name: document.getElementById('adminEditStreet')?.value.trim() || null,
         area_name: document.getElementById('adminEditArea')?.value.trim() || null,
         maps_link: document.getElementById('adminEditMapsLink')?.value.trim() || null,
-        latitude: document.getElementById('adminEditLatitude')?.value || null,
-        longitude: document.getElementById('adminEditLongitude')?.value || null,
+        latitude: order.latitude ?? null,
+        longitude: order.longitude ?? null,
         payment_type: paymentType,
         payment_arrangement: arrangement,
-        delivery_fee_payer: clientPays ? 'client' : 'customer',
-        client_fee_settlement: clientPays ? document.getElementById('adminEditClientSettlement')?.value || 'pay_separately' : null,
+        delivery_fee_payer: order.delivery_fee_payer || (arrangement === 'client_pays_delivery' ? 'client' : 'customer'),
+        client_fee_settlement: order.client_fee_settlement || null,
         package_value: document.getElementById('adminEditPackageValue')?.value || 0,
-        estimated_fee: document.getElementById('adminEditEstimatedFee')?.value || null,
+        estimated_fee: order.estimated_fee ?? null,
         delivery_fee: document.getElementById('adminEditDeliveryFee')?.value || null,
-        pricing_rate_band: document.getElementById('adminEditRateBand')?.value || null,
-        quote_status: document.getElementById('adminEditQuoteStatus')?.value || 'not_required',
-        pickup_required: document.getElementById('adminEditPickupRequired')?.value === 'true',
-        pickup_parcel_count: document.getElementById('adminEditPickupParcels')?.value || null,
-        pickup_fee_settlement: document.getElementById('adminEditPickupSettlement')?.value || null,
-        pickup_contact_name: document.getElementById('adminEditPickupContact')?.value.trim() || null,
-        pickup_contact_phone: document.getElementById('adminEditPickupPhone')?.value.trim() || null,
-        pickup_business_name: document.getElementById('adminEditPickupBusiness')?.value.trim() || null,
-        pickup_street_name: document.getElementById('adminEditPickupStreet')?.value.trim() || null,
-        pickup_area_name: document.getElementById('adminEditPickupArea')?.value.trim() || null,
-        pickup_window: document.getElementById('adminEditPickupWindow')?.value.trim() || null,
-        pickup_instructions: document.getElementById('adminEditPickupInstructions')?.value.trim() || null,
+        pricing_rate_band: order.pricing_rate_band || null,
+        quote_status: order.quote_status || 'not_required',
+        pickup_required: Boolean(order.pickup_required),
+        pickup_parcel_count: order.pickup_parcel_count || null,
+        pickup_fee_settlement: order.pickup_fee_settlement || null,
+        pickup_contact_name: order.pickup_contact_name || null,
+        pickup_contact_phone: order.pickup_contact_phone || null,
+        pickup_business_name: order.pickup_business_name || null,
+        pickup_street_name: order.pickup_street_name || null,
+        pickup_area_name: order.pickup_area_name || null,
+        pickup_window: order.pickup_window || null,
+        pickup_instructions: order.pickup_instructions || null,
         customer_notes: document.getElementById('adminEditCustomerNotes')?.value.trim() || null,
-        driver_notes: document.getElementById('adminEditDriverNotes')?.value.trim() || null,
+        driver_notes: order.driver_notes || null,
         admin_note: document.getElementById('adminEditAdminNote')?.value.trim() || null,
-        zone_status: document.getElementById('adminEditZoneStatus')?.value || null,
-        order_status: document.getElementById('adminEditOrderStatus')?.value || null,
-        parcel_status: document.getElementById('adminEditParcelStatus')?.value || null,
-        payment_status: document.getElementById('adminEditPaymentStatus')?.value || null,
-        remittance_status: document.getElementById('adminEditRemittanceStatus')?.value || null,
-        scheduled_delivery_date: document.getElementById('adminEditScheduleDate')?.value || null
+        zone_status: order.zone_status || null,
+        order_status: order.order_status || null,
+        parcel_status: order.parcel_status || null,
+        payment_status: order.payment_status || null,
+        remittance_status: order.remittance_status || null,
+        scheduled_delivery_date: order.scheduled_delivery_date || null
       };
     }
 
@@ -2924,84 +2897,33 @@
     window.openAdminOrderEdit = function(orderId) {
       const order = orders.find(item => item.id === orderId);
       if (!order) return showToast('Order not found.');
-      const clientOptions = [...clientsById.entries()]
-        .sort((a, b) => String(a[1].business_name || '').localeCompare(String(b[1].business_name || '')))
-        .map(([id, client]) => `<option value="${escapeHtml(id)}" ${id === order.business_client_id ? 'selected' : ''}>${escapeHtml(client.business_name || client.slug || id)}</option>`)
-        .join('');
-      if (!clientOptions) return window.vdNotify('Order Edit Not Available', 'Business clients are not loaded yet. Refresh the dashboard and try again.', 'warning');
       document.getElementById('modalTitle').textContent = `Edit ${order.order_number}`;
       document.getElementById('modalBody').innerHTML = `
         <div class="payment-modal-form" style="text-align:left;">
-          <label>Business Client<select id="adminEditClient">${clientOptions}</select></label>
           <label>Customer Name<input id="adminEditCustomerName" value="${escapeHtml(order.customer_name || '')}"></label>
           <label>Customer Phone<input id="adminEditCustomerPhone" value="${escapeHtml(order.customer_phone || '')}"></label>
           <label>Item / Reference<input id="adminEditItemNumber" value="${escapeHtml(order.external_item_number || '')}"></label>
-          <label>Payment Arrangement<select id="adminEditPaymentArrangement" onchange="syncAdminOrderEditForm()">${adminEditSelect([
-            ['cod_customer_pays', 'Customer pays package + delivery'],
-            ['delivery_only_customer_pays', 'Customer pays delivery only'],
-            ['client_pays_delivery', 'Business client pays delivery']
-          ], adminPaymentArrangement(order))}</select></label>
-          <label id="adminEditClientSettlementWrap">Client Settlement<select id="adminEditClientSettlement">${adminEditSelect([
-            ['pay_separately', 'Pay separately'],
-            ['deduct_from_remittance', 'Deduct from remittance']
-          ], order.client_fee_settlement || 'pay_separately')}</select></label>
           <label>Package / COD Amount<input id="adminEditPackageValue" type="number" min="0" step="0.01" value="${Number(order.package_value || order.cod_amount || 0).toFixed(2)}"></label>
-          <label>Estimated Fee<input id="adminEditEstimatedFee" type="number" min="0" step="0.01" value="${order.estimated_fee ?? ''}"></label>
           <label>Confirmed Delivery Fee<input id="adminEditDeliveryFee" type="number" min="0" step="0.01" value="${order.delivery_fee ?? ''}"></label>
-          <label>Rate Band<select id="adminEditRateBand">${adminEditSelect([
-            ['', 'Not set'], ['standard', 'Standard'], ['extended', 'Extended'], ['remote', 'Remote'], ['override', 'Override']
-          ], order.pricing_rate_band || '')}</select></label>
-          <label>Quote Status<select id="adminEditQuoteStatus">${adminEditSelect([
-            ['not_required', 'Not required'], ['required', 'Required'], ['offered', 'Offered'], ['accepted', 'Accepted'], ['declined', 'Declined']
-          ], order.quote_status || 'not_required')}</select></label>
           <label>House / Apt<input id="adminEditHouse" value="${escapeHtml(order.house_number || '')}"></label>
           <label>Street / Building<input id="adminEditStreet" value="${escapeHtml(order.street_name || '')}"></label>
           <label>Area<input id="adminEditArea" value="${escapeHtml(order.area_name || '')}"></label>
           <label>Google Pin / Maps Link<input id="adminEditMapsLink" value="${escapeHtml(order.maps_link || '')}"></label>
-          <label>Latitude<input id="adminEditLatitude" type="number" step="any" value="${order.latitude ?? ''}"></label>
-          <label>Longitude<input id="adminEditLongitude" type="number" step="any" value="${order.longitude ?? ''}"></label>
-          <label>Scheduled Delivery Date<input id="adminEditScheduleDate" type="date" value="${escapeHtml(order.scheduled_delivery_date || '')}"></label>
-          <label>Zone Status<select id="adminEditZoneStatus">${adminEditSelect([
-            ['pending', 'Pending'], ['confirmed', 'Confirmed'], ['rejected', 'Rejected']
-          ], order.zone_status || 'pending')}</select></label>
-          <label>Order Status<select id="adminEditOrderStatus">${adminEditSelect([
-            ['zone_pending', 'Zone Pending'], ['pending', 'Pending'], ['confirmed', 'Confirmed'], ['assigned', 'Assigned'], ['out_for_delivery', 'Out for delivery'], ['delivered', 'Delivered'], ['failed', 'Failed'], ['rescheduled', 'Rescheduled'], ['cancelled', 'Cancelled'], ['rejected', 'Rejected']
-          ], order.order_status || 'pending')}</select></label>
-          <label>Parcel Status<select id="adminEditParcelStatus">${adminEditSelect([
-            ['awaiting_parcel', 'Awaiting parcel'], ['parcel_received', 'Parcel received'], ['sorted', 'Sorted'], ['assigned', 'Assigned'], ['handed_to_driver', 'Handed to driver'], ['returned_to_hub', 'Returned to hub'], ['held_for_client_instructions', 'Held'], ['redelivery_scheduled', 'Redelivery scheduled'], ['returned_to_client', 'Returned to client']
-          ], order.parcel_status || 'awaiting_parcel')}</select></label>
-          <label>Payment Status<select id="adminEditPaymentStatus">${adminEditSelect([
-            ['pending', 'Pending'], ['partially_collected', 'Partially collected'], ['collected_by_driver', 'Collected by driver'], ['received_by_virtudrop', 'Received by VirtuDrop'], ['reconciled', 'Reconciled'], ['disputed', 'Disputed'], ['not_applicable', 'Not applicable']
-          ], order.payment_status || 'pending')}</select></label>
-          <label>Remittance Status<select id="adminEditRemittanceStatus">${adminEditSelect([
-            ['not_applicable', 'Not applicable'], ['pending', 'Pending'], ['ready', 'Ready'], ['paid', 'Paid'], ['held', 'Held'], ['disputed', 'Disputed']
-          ], order.remittance_status || 'not_applicable')}</select></label>
-          <label>Pickup Required<select id="adminEditPickupRequired" onchange="syncAdminOrderEditForm()"><option value="false" ${!order.pickup_required ? 'selected' : ''}>No</option><option value="true" ${order.pickup_required ? 'selected' : ''}>Yes</option></select></label>
-          <div id="adminEditPickupBlock" style="display:grid; gap:0.8rem;">
-            <label>Pickup Parcels<input id="adminEditPickupParcels" type="number" min="1" step="1" value="${Number(order.pickup_parcel_count || 1)}"></label>
-            <label>Pickup Fee Settlement<select id="adminEditPickupSettlement">${adminEditSelect([
-              ['pay_separately', 'Pay separately'], ['deduct_from_remittance', 'Deduct from remittance']
-            ], order.pickup_fee_settlement || 'pay_separately')}</select></label>
-            <label>Pickup Contact<input id="adminEditPickupContact" value="${escapeHtml(order.pickup_contact_name || '')}"></label>
-            <label>Pickup Phone<input id="adminEditPickupPhone" value="${escapeHtml(order.pickup_contact_phone || '')}"></label>
-            <label>Pickup Business Name<input id="adminEditPickupBusiness" value="${escapeHtml(order.pickup_business_name || '')}"></label>
-            <label>Pickup Street<input id="adminEditPickupStreet" value="${escapeHtml(order.pickup_street_name || '')}"></label>
-            <label>Pickup Area<input id="adminEditPickupArea" value="${escapeHtml(order.pickup_area_name || '')}"></label>
-            <label>Pickup Window<input id="adminEditPickupWindow" value="${escapeHtml(order.pickup_window || '')}"></label>
-            <label>Pickup Instructions<textarea id="adminEditPickupInstructions">${escapeHtml(order.pickup_instructions || '')}</textarea></label>
-          </div>
           <label>Customer Notes<textarea id="adminEditCustomerNotes">${escapeHtml(order.customer_notes || '')}</textarea></label>
-          <label>Driver Notes<textarea id="adminEditDriverNotes">${escapeHtml(order.driver_notes || '')}</textarea></label>
-          <label>Additional Admin Note<textarea id="adminEditAdminNote" placeholder="This appends to existing admin notes"></textarea></label>
+          <label>Admin Note<textarea id="adminEditAdminNote" placeholder="Reason for this edit"></textarea></label>
         </div>`;
       document.getElementById('modalConfirm').textContent = 'Save Changes';
       document.getElementById('modal').classList.add('show');
-      syncAdminOrderEditForm();
-      modalCb = async () => saveAdminOrderEdit(orderId);
+      modalCb = async () => {
+        if (!window.confirm(`Save changes to ${order.order_number}?`)) return;
+        await saveAdminOrderEdit(orderId);
+      };
     };
 
     async function saveAdminOrderEdit(orderId) {
-      const payload = adminOrderEditPayload();
+      const order = orders.find(item => item.id === orderId);
+      if (!order) return showToast('Order not found.');
+      const payload = adminOrderEditPayload(order);
       if (!payload.customer_name || payload.customer_name.length < 2) {
         window.vdNotify('Order Not Updated', 'Enter the customer name.', 'warning');
         return;
