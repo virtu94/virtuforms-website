@@ -2783,7 +2783,10 @@
       const tbody = document.querySelector('#panel-all-orders tbody');
       tbody.innerHTML = orders.map(order => `
         <tr>
-          <td class="td-id">${order.order_number}</td>
+          <td class="td-id">
+            <div>${escapeHtml(order.order_number)}</div>
+            <button class="btn btn-primary btn-sm" style="margin-top:0.45rem;" onclick="openAdminOrderEdit('${order.id}')">Edit Order</button>
+          </td>
           <td><div class="td-name">${clientName(order)}</div></td>
           <td><div class="td-name">${order.customer_name || '—'}</div><div class="td-sub">${order.customer_phone || ''}</div>${order.external_item_number ? `<div class="td-sub">Item: ${escapeHtml(order.external_item_number)}</div>` : ''}${order.delivery_outcome_notes ? `<div class="td-sub" style="color:var(--teal-dark); font-weight:700;">Outcome: ${escapeHtml(order.delivery_outcome_notes)}</div>` : order.driver_notes ? `<div class="td-sub" style="color:var(--teal-dark); font-weight:700;">Driver: ${escapeHtml(order.driver_notes)}</div>` : ''}${order.redelivery_requested_date ? `<div class="td-sub">Preferred redelivery: ${new Date(order.redelivery_requested_date + 'T12:00:00').toLocaleDateString('en-TT')}</div>` : ''}${order.rejection_reason ? `<div class="td-sub" style="color:var(--red); font-weight:700;">Rejected: ${escapeHtml(order.rejection_reason)}</div>` : ''}</td>
           <td>${zoneLabel(order)}</td>
