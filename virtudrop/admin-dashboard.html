@@ -1077,7 +1077,7 @@
           <div class="historical-form-grid">
             <div class="finance-field"><label for="driverImportCustomer">Customer Name</label><input class="filter-input" id="driverImportCustomer" type="text"></div>
             <div class="finance-field"><label for="driverImportPhone">Customer Phone</label><input class="filter-input" id="driverImportPhone" type="text" placeholder="868-000-0000"></div>
-            <div class="finance-field"><label for="driverImportItem">Item / Client Reference (Optional)</label><input class="filter-input" id="driverImportItem" type="text" placeholder="Leave blank to generate"></div>
+            <div class="finance-field"><label for="driverImportItem">Item / Description (Optional)</label><input class="filter-input" id="driverImportItem" type="text" placeholder="Product, item, or client reference"></div>
             <div class="finance-field"><label for="driverImportLocation">Delivery Location</label><input class="filter-input" id="driverImportLocation" type="text" placeholder="Street, area or full address"></div>
             <div class="finance-field"><label for="driverImportPackageAmount">Package/COD Amount</label><input class="filter-input" id="driverImportPackageAmount" type="number" min="0" step="0.01" value="0.00"></div>
             <div class="finance-field"><label for="driverImportCollectAmount">Amount Driver Collects</label><input class="filter-input" id="driverImportCollectAmount" type="number" min="0" step="0.01" value="0.00"></div>
@@ -1090,7 +1090,7 @@
           <div class="card-title">CSV Batch Import</div>
           <div class="csv-drop">
             <input class="filter-input" type="file" id="driverImportFile" accept=".csv,text/csv">
-            <div class="csv-help">Required columns: customer_name, customer_phone, location, package_amount, amount_to_collect. Item_number and notes are optional. The Business Client selected above applies to every row.</div>
+            <div class="csv-help">Required columns: customer_name, customer_phone, location, package_amount, amount_to_collect. Item_number and notes are optional. Repeated item descriptions are allowed. The Business Client selected above applies to every row.</div>
             <div class="finance-actions">
               <button class="btn btn-ghost" type="button" onclick="downloadDriverImportTemplate()">Download Template</button>
               <button class="btn btn-primary" type="button" onclick="previewDriverImport()">Preview CSV</button>
@@ -3914,13 +3914,9 @@
         if (!file) throw new Error('Select a CSV file first.');
         const parsed = parseCsv(await file.text());
         if (!parsed.length) throw new Error('The CSV has no delivery rows.');
-        const seenItems = new Set();
         driverImportRows = parsed.map(source => {
           const row = buildDriverImportRow(source);
           const issues = validateDriverImportRow(row);
-          const itemKey = row.item_number.toLowerCase();
-          if (itemKey && seenItems.has(itemKey)) issues.push('duplicate item in file');
-          if (itemKey) seenItems.add(itemKey);
           return { row, issues };
         });
         body.innerHTML = driverImportRows.map(item => `<tr>
