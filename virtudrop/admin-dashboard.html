@@ -2808,6 +2808,7 @@
           <td>
             <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
               <button class="btn btn-primary btn-sm" onclick="openAdminOrderEdit('${order.id}')">Edit</button>
+              ${order.order_status === 'cancelled' ? '' : `<button class="btn btn-danger btn-sm" onclick="openAdminOrderCancel('${order.id}')">Cancel Order</button>`}
               <button class="btn btn-ghost btn-sm" onclick="openCustomerTrackingWhatsApp('${order.id}')">💬 Customer</button>
               <button class="btn btn-ghost btn-sm" onclick="whatsappClient('${order.id}')">💬 Client</button>
               ${order.order_status === 'delivered' && (order.payment_type === 'cod' || order.payment_type === 'delivery_only') && order.payment_status !== 'reconciled'
