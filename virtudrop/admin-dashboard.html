@@ -215,6 +215,41 @@
       font-weight: 800;
       color: var(--black);
     }
+    .bulk-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.7rem;
+      padding: 0.9rem 1rem;
+      margin: 0 0 1rem;
+      border: 1px solid #b7e4df;
+      border-radius: 10px;
+      background: var(--teal-pale);
+    }
+    .bulk-toolbar label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-weight: 700;
+      color: var(--teal-dark);
+    }
+    .bulk-toolbar .filter-select { min-width: 220px; }
+    .bulk-count {
+      font-size: 0.78rem;
+      color: var(--grey);
+      font-weight: 700;
+    }
+    .bulk-order-check {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+    .bulk-order-check input {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--teal-mid);
+      flex-shrink: 0;
+    }
     .order-row-actions {
       display: flex;
       gap: 0.35rem;
@@ -881,6 +916,22 @@
             <option value="">All Clients</option>
           </select>
           <input class="filter-input" id="orderSearchInput" type="search" placeholder="Search order, customer, phone, item" oninput="renderAllOrders()" />
+        </div>
+
+        <div class="bulk-toolbar" id="allOrdersBulkToolbar">
+          <label><input id="allOrdersSelectAll" type="checkbox" onchange="toggleAllOrdersVisibleBulk(this.checked)"> Select all visible</label>
+          <select class="filter-select" id="allOrdersBulkAction">
+            <option value="">Choose bulk action</option>
+            <option value="cancel">Cancel selected</option>
+            <option value="mark_delivered">Mark selected as delivered</option>
+            <option value="clear_driver">Remove selected from driver</option>
+            <option value="recalc_schedule">Recalculate delivery schedule</option>
+            <option value="print_labels">Print selected labels</option>
+            <option value="export_selected">Export selected orders</option>
+          </select>
+          <button class="btn btn-primary btn-sm" type="button" onclick="runAllOrdersBulkAction()">Apply</button>
+          <button class="btn btn-ghost btn-sm" type="button" onclick="clearAllOrdersBulkSelection()">Clear</button>
+          <span class="bulk-count" id="allOrdersBulkCount">0 selected</span>
         </div>
 
         <div class="card">
@@ -1739,6 +1790,8 @@
     let editingAccountingTransactionId = null;
     let serviceDateOverrides = [];
     let deliveryManifests = [];
+    let allOrdersBulkSelection = new Set();
+    let allOrdersVisibleIds = [];
     let appSettings = {
       daily_cutoff_time: '12:00',
       same_day_enabled: false,
@@ -3500,6 +3553,142 @@
       if (error) console.warn('WhatsApp action could not be logged:', error);
     };
 
+    function visibleAllOrderSelection() {
+      const visible = new Set(allOrdersVisibleIds);
+      return [...allOrdersBulkSelection].filter(orderId => visible.has(orderId));
+    }
+
+    function updateAllOrdersBulkControls() {
+      const selectedVisible = visibleAllOrderSelection();
+      const count = document.getElementById('allOrdersBulkCount');
+      const selectAll = document.getElementById('allOrdersSelectAll');
+      if (count) count.textContent = `${selectedVisible.length} selected`;
+      if (selectAll) {
+        selectAll.checked = allOrdersVisibleIds.length > 0 && selectedVisible.length === allOrdersVisibleIds.length;
+        selectAll.indeterminate = selectedVisible.length > 0 && selectedVisible.length < allOrdersVisibleIds.length;
+      }
+      document.querySelectorAll('.all-order-bulk-check').forEach(input => {
+        input.checked = allOrdersBulkSelection.has(input.value);
+      });
+    }
+
+    window.toggleAllOrdersBulk = function(orderId, checked) {
+      if (checked) allOrdersBulkSelection.add(orderId);
+      else allOrdersBulkSelection.delete(orderId);
+      updateAllOrdersBulkControls();
+    };
+
+    window.toggleAllOrdersVisibleBulk = function(checked) {
+      allOrdersVisibleIds.forEach(orderId => {
+        if (checked) allOrdersBulkSelection.add(orderId);
+        else allOrdersBulkSelection.delete(orderId);
+      });
+      updateAllOrdersBulkControls();
+    };
+
+    window.clearAllOrdersBulkSelection = function() {
+      allOrdersBulkSelection.clear();
+      updateAllOrdersBulkControls();
+    };
+
+    function selectedAllOrderRows() {
+      const selectedIds = visibleAllOrderSelection();
+      return selectedIds.map(orderId => orders.find(order => order.id === orderId)).filter(Boolean);
+    }
+
+    function exportSelectedOrdersXlsx(selectedOrders) {
+      if (!window.XLSX) {
+        showToast('XLSX export library is still loading. Try again in a few seconds.');
+        return;
+      }
+      const rows = [
+        ['Order Number', 'Client', 'Customer', 'Phone', 'Item', 'Address', 'Zone', 'Package', 'Delivery Fee', 'Collect', 'Order Status', 'Parcel Status', 'Driver'],
+        ...selectedOrders.map(order => [
+          order.order_number || '',
+          clientName(order),
+          order.customer_name || '',
+          order.customer_phone || '',
+          order.external_item_number || '',
+          orderLabelAddress(order),
+          zoneLabel(order).replace(/<[^>]+>/g, ''),
+          amount(order.package_value || order.cod_amount),
+          amount(order.delivery_fee),
+          driverCollects(order),
+          order.order_status || '',
+          order.parcel_status || '',
+          order.assigned_driver_id ? driverName(order.assigned_driver_id) : ''
+        ])
+      ];
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.aoa_to_sheet(rows);
+      worksheet['!cols'] = rows[0].map(() => ({ wch: 22 }));
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Selected Orders');
+      XLSX.writeFile(workbook, `VirtuDrop-Selected-Orders-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    }
+
+    window.runAllOrdersBulkAction = async function() {
+      const action = document.getElementById('allOrdersBulkAction')?.value || '';
+      const selectedOrders = selectedAllOrderRows();
+      const selectedIds = selectedOrders.map(order => order.id);
+      if (!action) return showToast('Choose a bulk action.');
+      if (!selectedIds.length) return showToast('Select at least one visible order.');
+
+      if (action === 'export_selected') {
+        exportSelectedOrdersXlsx(selectedOrders);
+        return;
+      }
+      if (action === 'print_labels') {
+        if (!window.confirm(`Print ${selectedIds.length} label(s)? Your browser may ask to allow popups.`)) return;
+        selectedIds.forEach(orderId => printOrderLabel(orderId));
+        return;
+      }
+
+      const payload = {};
+      if (action === 'cancel') {
+        const reason = window.prompt(`Reason for cancelling ${selectedIds.length} order(s)`);
+        if (reason === null) return;
+        if (reason.trim().length < 3) {
+          window.vdNotify('Orders Not Cancelled', 'Enter a cancellation reason.', 'warning');
+          return;
+        }
+        payload.reason = reason.trim();
+      }
+      if (action === 'mark_delivered') {
+        const method = window.prompt('Collection method for delivered orders: cash, linx, or none', 'cash');
+        if (method === null) return;
+        const normalizedMethod = method.trim().toLowerCase();
+        if (!['cash', 'linx', 'none'].includes(normalizedMethod)) {
+          window.vdNotify('Orders Not Updated', 'Enter cash, linx, or none.', 'warning');
+          return;
+        }
+        payload.collection_method = normalizedMethod;
+      }
+
+      const labels = {
+        cancel: 'cancel',
+        mark_delivered: 'mark as delivered',
+        clear_driver: 'remove from driver assignment',
+        recalc_schedule: 'recalculate delivery schedule for'
+      };
+      if (!window.confirm(`Apply "${labels[action] || action}" to ${selectedIds.length} selected order(s)?`)) return;
+
+      try {
+        const { data, error } = await supabase.rpc('admin_bulk_order_action', {
+          p_order_ids: selectedIds,
+          p_action: action,
+          p_payload: payload
+        });
+        if (error) throw error;
+        const updated = data?.updated_count ?? selectedIds.length;
+        const skipped = data?.skipped_count ?? 0;
+        showToast(`Bulk action complete. Updated ${updated}${skipped ? `, skipped ${skipped}` : ''}.`);
+        clearAllOrdersBulkSelection();
+        await loadData();
+      } catch (error) {
+        window.vdNotify('Bulk Action Failed', error.message || 'Could not complete this bulk action.', 'error');
+      }
+    };
+
     function renderAllOrders() {
       const tbody = document.querySelector('#panel-all-orders tbody');
       const statusFilter = document.getElementById('orderStatusFilter')?.value || '';
@@ -3526,10 +3715,14 @@
           order.rejection_reason
         ].some(value => String(value || '').toLowerCase().includes(search));
       });
+      allOrdersVisibleIds = visibleOrders.map(order => order.id);
       tbody.innerHTML = visibleOrders.map(order => `
         <tr>
           <td class="td-id">
-            <div>${escapeHtml(order.order_number)}</div>
+            <label class="bulk-order-check">
+              <input class="all-order-bulk-check" type="checkbox" value="${order.id}" ${allOrdersBulkSelection.has(order.id) ? 'checked' : ''} onchange="toggleAllOrdersBulk('${order.id}', this.checked)">
+              <span>${escapeHtml(order.order_number)}</span>
+            </label>
             <div class="order-row-actions">
               <button class="btn btn-primary btn-sm" onclick="openAdminOrderEdit('${order.id}')">Edit Order</button>
               <button class="btn btn-ghost btn-sm" onclick="printOrderLabel('${order.id}')">Print Label</button>
@@ -3555,6 +3748,7 @@
           <td>${order.assigned_driver_id ? escapeHtml(driverName(order.assigned_driver_id)) : '—'}</td>
         </tr>
       `).join('') || '<tr><td colspan="7">No orders found.</td></tr>';
+      updateAllOrdersBulkControls();
     }
     window.renderAllOrders = renderAllOrders;
 
