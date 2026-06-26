@@ -756,7 +756,7 @@
 
       <div class="nav-section-label">Finance</div>
       <button class="nav-item" data-panel="cod-mgmt">
-        <span class="nav-icon">💰</span> COD Management
+        <span class="nav-icon">💰</span> Accounting
       </button>
       <button class="nav-item" data-panel="remittance">
         <span class="nav-icon">💸</span> Remittance
@@ -1125,15 +1125,15 @@
         </div>
       </div>
 
-      <!-- ════════ COD MANAGEMENT ════════ -->
+      <!-- ════════ ACCOUNTING ════════ -->
       <div class="panel" id="panel-cod-mgmt">
         <div class="section-heading">
-          <h2>COD Management</h2>
-          <p>Track what drivers should collect, what VirtuDrop keeps, and what is owed back to business clients.</p>
+          <h2>Accounting</h2>
+          <p>Track delivery revenue, collections, remittance, driver payments, gas, expenses, account balances, and profit.</p>
         </div>
 
         <div class="accounting-note">
-          Reconcile every delivered customer collection against the amount assigned to the driver. Any shortage or overage is recorded as a variance and blocks remittance until resolved.
+          This section combines live order revenue, COD reconciliation, client remittance, and manually entered business transactions. Use the ledger for driver payments, gas, expenses, Cash/LINX/bank movements, adjustments, and any other financial activity outside an order.
         </div>
 
         <div class="stats-grid">
@@ -1156,6 +1156,117 @@
             <div class="stat-label">Client Payouts</div>
             <div class="stat-val" id="accClientPayouts">TTD 0</div>
             <div class="stat-sub">Reconciled COD ready for remittance</div>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card ok">
+            <div class="stat-label">Delivery Revenue</div>
+            <div class="stat-val" id="accDeliveryRevenue">TTD 0</div>
+            <div class="stat-sub">Delivery, pickup, redelivery, and return fees</div>
+          </div>
+          <div class="stat-card warn">
+            <div class="stat-label">Operating Expenses</div>
+            <div class="stat-val" id="accOperatingExpenses">TTD 0</div>
+            <div class="stat-sub">Driver payments, gas, vehicle, office, supplies</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Estimated Profit</div>
+            <div class="stat-val" id="accEstimatedProfit">TTD 0</div>
+            <div class="stat-sub">Revenue and other income minus operating expenses</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Account Balances</div>
+            <div class="stat-val" id="accAccountBalances">TTD 0</div>
+            <div class="stat-sub" id="accAccountBalancesSub">Cash, LINX, bank, other</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📒 Add Accounting Transaction</div>
+          <div class="finance-filter-grid">
+            <div class="finance-field">
+              <label for="acctType">Type</label>
+              <select class="filter-select" id="acctType">
+                <option value="expense">Expense</option>
+                <option value="income">Income</option>
+                <option value="asset_in">Asset In</option>
+                <option value="asset_out">Asset Out</option>
+                <option value="liability_in">Liability In</option>
+                <option value="liability_out">Liability Out</option>
+                <option value="transfer">Transfer</option>
+                <option value="adjustment">Adjustment</option>
+              </select>
+            </div>
+            <div class="finance-field">
+              <label for="acctCategory">Category</label>
+              <select class="filter-select" id="acctCategory" onchange="syncAccountingTransactionDefaults()">
+                <option value="driver_payment">Driver Payment</option>
+                <option value="gas">Gas</option>
+                <option value="vehicle_expense">Vehicle Expense</option>
+                <option value="office_expense">Office Expense</option>
+                <option value="supplies">Supplies</option>
+                <option value="delivery_revenue">Delivery Revenue</option>
+                <option value="pickup_revenue">Pickup Revenue</option>
+                <option value="redelivery_revenue">Redelivery Revenue</option>
+                <option value="return_revenue">Return Revenue</option>
+                <option value="bank_deposit">Bank Deposit</option>
+                <option value="bank_withdrawal">Bank Withdrawal</option>
+                <option value="linx_settlement">LINX Settlement</option>
+                <option value="client_remittance">Client Remittance</option>
+                <option value="owner_draw">Owner Draw</option>
+                <option value="other_income">Other Income</option>
+                <option value="other_expense">Other Expense</option>
+                <option value="adjustment">Adjustment</option>
+              </select>
+            </div>
+            <div class="finance-field">
+              <label for="acctAccount">Account</label>
+              <select class="filter-select" id="acctAccount">
+                <option value="cash">Cash</option>
+                <option value="linx">LINX</option>
+                <option value="bank">Bank</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="finance-field">
+              <label for="acctDirection">Direction</label>
+              <select class="filter-select" id="acctDirection">
+                <option value="outflow">Outflow</option>
+                <option value="inflow">Inflow</option>
+              </select>
+            </div>
+            <div class="finance-field"><label for="acctAmount">Amount</label><input class="filter-input" id="acctAmount" type="number" min="0" step="0.01"></div>
+            <div class="finance-field"><label for="acctDate">Date</label><input class="filter-input" id="acctDate" type="datetime-local"></div>
+            <div class="finance-field"><label for="acctDriver">Driver</label><select class="filter-select" id="acctDriver"><option value="">No driver</option></select></div>
+            <div class="finance-field"><label for="acctClient">Client</label><select class="filter-select" id="acctClient"><option value="">No client</option></select></div>
+            <div class="finance-field"><label for="acctOrder">Order Number</label><input class="filter-input" id="acctOrder" type="text" placeholder="Optional"></div>
+            <div class="finance-field"><label for="acctReference">Reference</label><input class="filter-input" id="acctReference" type="text" placeholder="Receipt, bank ref, note"></div>
+          </div>
+          <div class="finance-field" style="margin-top:0.8rem;"><label for="acctNotes">Notes</label><textarea class="filter-input" id="acctNotes" rows="2" placeholder="Optional details"></textarea></div>
+          <div class="finance-actions" style="margin-top:0.9rem;">
+            <button class="btn btn-primary" type="button" onclick="saveAccountingTransaction()">Save Transaction</button>
+            <button class="btn btn-ghost" type="button" onclick="clearAccountingTransactionForm()">Clear</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📊 Financial Summary</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Metric</th><th>Amount</th><th>Notes</th></tr></thead>
+              <tbody id="fullAccountingSummaryBody"><tr><td colspan="3">Loading accounting summary...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">🧾 Accounting Ledger</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Date</th><th>Type</th><th>Category</th><th>Account</th><th>Direction</th><th>Amount</th><th>Linked To</th><th>Reference / Notes</th><th>Action</th></tr></thead>
+              <tbody id="accountingLedgerBody"><tr><td colspan="9">Loading accounting ledger...</td></tr></tbody>
+            </table>
           </div>
         </div>
 
@@ -1577,7 +1688,7 @@
       'delivery-scheduling': 'Delivery Scheduling',
       'driver-assign': 'Driver Assignment',
       'driver-import': 'Active Delivery Import',
-      'cod-mgmt': 'COD Management',
+      'cod-mgmt': 'Accounting',
       remittance: 'Remittance',
       'historical-import': 'Historical Import',
       accounts: 'Accounts',
@@ -1598,6 +1709,7 @@
     let latestPayoutRows = [];
     let remittanceRecords = [];
     let driverCashRecords = [];
+    let accountingTransactions = [];
     let serviceDateOverrides = [];
     let deliveryManifests = [];
     let appSettings = {
@@ -1781,6 +1893,22 @@
       }
       const importClient = document.getElementById('driverImportClient');
       if (importClient) importClient.innerHTML = clientOptionsHtml(false);
+      const acctClient = document.getElementById('acctClient');
+      if (acctClient) {
+        acctClient.innerHTML = '<option value="">No client</option>' + [...clientsById.entries()]
+          .sort((a, b) => String(a[1].business_name || '').localeCompare(String(b[1].business_name || '')))
+          .map(([id, client]) => `<option value="${escapeHtml(id)}">${escapeHtml(client.business_name || client.slug || id)}</option>`)
+          .join('');
+      }
+      const acctDriver = document.getElementById('acctDriver');
+      if (acctDriver) {
+        acctDriver.innerHTML = '<option value="">No driver</option>' + drivers
+          .map(driver => `<option value="${escapeHtml(driver.id)}">${escapeHtml(driverName(driver.id))}</option>`)
+          .join('');
+      }
+      const acctDate = document.getElementById('acctDate');
+      if (acctDate && !acctDate.value) acctDate.value = new Date().toISOString().slice(0, 16);
+      if (typeof window.syncAccountingTransactionDefaults === 'function') window.syncAccountingTransactionDefaults();
     }
 
     function setToggle(id, enabled) {
@@ -2222,6 +2350,174 @@
       });
     }
 
+    const accountingCategoryLabels = {
+      delivery_revenue: 'Delivery Revenue',
+      pickup_revenue: 'Pickup Revenue',
+      redelivery_revenue: 'Redelivery Revenue',
+      return_revenue: 'Return Revenue',
+      driver_payment: 'Driver Payment',
+      gas: 'Gas',
+      vehicle_expense: 'Vehicle Expense',
+      office_expense: 'Office Expense',
+      supplies: 'Supplies',
+      bank_deposit: 'Bank Deposit',
+      bank_withdrawal: 'Bank Withdrawal',
+      linx_settlement: 'LINX Settlement',
+      client_remittance: 'Client Remittance',
+      owner_draw: 'Owner Draw',
+      other_income: 'Other Income',
+      other_expense: 'Other Expense',
+      adjustment: 'Adjustment'
+    };
+
+    function accountForMethod(method) {
+      if (method === 'linx') return 'linx';
+      if (method === 'bank_transfer') return 'bank';
+      return 'cash';
+    }
+
+    function signedLedgerAmount(transaction) {
+      const value = amount(transaction.amount);
+      return transaction.direction === 'outflow' ? -value : value;
+    }
+
+    function isVoidedTransaction(transaction) {
+      return Boolean(transaction.voided_at);
+    }
+
+    function selectedAccountingTransactions() {
+      const periodOrders = selectedRemittanceOrders();
+      const minDate = periodOrders.reduce((min, order) => {
+        const date = localDate(order.updated_at || order.created_at);
+        return !min || date < min ? date : min;
+      }, '');
+      const maxDate = periodOrders.reduce((max, order) => {
+        const date = localDate(order.updated_at || order.created_at);
+        return !max || date > max ? date : max;
+      }, '');
+      const clientId = document.getElementById('remitClientFilter')?.value || '';
+      return accountingTransactions.filter(transaction => {
+        if (clientId && transaction.business_client_id && transaction.business_client_id !== clientId) return false;
+        const date = localDate(transaction.occurred_at || transaction.created_at);
+        if (minDate && date < minDate) return false;
+        if (maxDate && date > maxDate) return false;
+        return true;
+      });
+    }
+
+    function accountingSummary(baseOrders) {
+      const activeTransactions = selectedAccountingTransactions().filter(transaction => !isVoidedTransaction(transaction));
+      const deliveredOrders = baseOrders.filter(order => isDelivered(order));
+      const revenueOrders = baseOrders.filter(order =>
+        isDelivered(order)
+        || ['confirmed', 'assigned', 'out_for_delivery'].includes(order.order_status)
+        || order.zone_status === 'confirmed'
+      );
+      const deliveryRevenue = revenueOrders.reduce((sum, order) =>
+        sum
+        + amount(order.delivery_fee)
+        + amount(order.pickup_fee)
+        + amount(order.redelivery_fee)
+        + amount(order.return_to_client_fee), 0);
+      const manualIncome = activeTransactions
+        .filter(transaction => ['income', 'asset_in'].includes(transaction.transaction_type) && !['bank_deposit', 'linx_settlement'].includes(transaction.category))
+        .reduce((sum, transaction) => sum + amount(transaction.amount), 0);
+      const operatingExpenses = activeTransactions
+        .filter(transaction => ['expense', 'asset_out'].includes(transaction.transaction_type)
+          && ['driver_payment', 'gas', 'vehicle_expense', 'office_expense', 'supplies', 'other_expense'].includes(transaction.category))
+        .reduce((sum, transaction) => sum + amount(transaction.amount), 0);
+      const driverPayments = activeTransactions
+        .filter(transaction => transaction.category === 'driver_payment' && transaction.direction === 'outflow')
+        .reduce((sum, transaction) => sum + amount(transaction.amount), 0);
+      const gasExpenses = activeTransactions
+        .filter(transaction => transaction.category === 'gas' && transaction.direction === 'outflow')
+        .reduce((sum, transaction) => sum + amount(transaction.amount), 0);
+      const clientRemitted = remittanceRecords
+        .filter(record => record.status !== 'void')
+        .reduce((sum, record) => sum + amount(record.net_amount ?? record.amount), 0);
+      const clientPayoutDue = deliveredOrders
+        .filter(order => order.payment_type === 'cod' && order.remittance_status === 'ready')
+        .reduce((sum, order) => sum + clientPayout(order), 0);
+      const codCollected = driverCashRecords.reduce((sum, record) => sum + amount(record.received_amount ?? record.amount), 0);
+      const balances = { cash: 0, linx: 0, bank: 0, other: 0 };
+      driverCashRecords.forEach(record => {
+        balances[accountForMethod(record.handover_method || record.method)] += amount(record.received_amount ?? record.amount);
+      });
+      remittanceRecords.filter(record => record.status !== 'void').forEach(record => {
+        balances[accountForMethod(record.method)] -= amount(record.net_amount ?? record.amount);
+      });
+      activeTransactions.forEach(transaction => {
+        balances[transaction.account || 'other'] = (balances[transaction.account || 'other'] || 0) + signedLedgerAmount(transaction);
+      });
+      const estimatedProfit = deliveryRevenue + manualIncome - operatingExpenses;
+      return {
+        deliveryRevenue,
+        manualIncome,
+        operatingExpenses,
+        driverPayments,
+        gasExpenses,
+        estimatedProfit,
+        balances,
+        totalBalance: Object.values(balances).reduce((sum, value) => sum + value, 0),
+        clientRemitted,
+        clientPayoutDue,
+        codCollected,
+        transactionCount: activeTransactions.length
+      };
+    }
+
+    function renderFullAccountingSummary(summary) {
+      const balanceText = `Cash ${moneyFull(summary.balances.cash)} | LINX ${moneyFull(summary.balances.linx)} | Bank ${moneyFull(summary.balances.bank)} | Other ${moneyFull(summary.balances.other)}`;
+      const body = document.getElementById('fullAccountingSummaryBody');
+      if (body) {
+        body.innerHTML = [
+          ['Delivery revenue', summary.deliveryRevenue, 'Delivery, pickup, redelivery, and return fees on live/completed orders'],
+          ['Other/manual income', summary.manualIncome, 'Income entered directly into the accounting ledger'],
+          ['Operating expenses', summary.operatingExpenses, 'Driver payments, gas, vehicle, office, supplies, other expenses'],
+          ['Driver payments', summary.driverPayments, 'Manual ledger payments to drivers'],
+          ['Gas', summary.gasExpenses, 'Manual ledger gas expenses'],
+          ['Estimated profit', summary.estimatedProfit, 'Revenue and other income minus operating expenses'],
+          ['COD collected', summary.codCollected, 'Driver collections reconciled into VirtuDrop'],
+          ['Client remittance due', summary.clientPayoutDue, 'Balanced COD ready to pay business clients'],
+          ['Client remittance paid', summary.clientRemitted, 'Saved remittance batch payments'],
+          ['Account balances', summary.totalBalance, balanceText]
+        ].map(([label, value, notes]) => `
+          <tr>
+            <td><div class="td-name">${escapeHtml(label)}</div></td>
+            <td class="accounting-total">${moneyFull(value)}</td>
+            <td class="td-sub">${escapeHtml(notes)}</td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    function renderAccountingLedger() {
+      const body = document.getElementById('accountingLedgerBody');
+      if (!body) return;
+      const rows = selectedAccountingTransactions();
+      body.innerHTML = rows.map(transaction => {
+        const linked = [
+          transaction.order_number ? `Order ${transaction.order_number}` : '',
+          transaction.driver_name ? `Driver ${transaction.driver_name}` : '',
+          transaction.business_name ? `Client ${transaction.business_name}` : ''
+        ].filter(Boolean).join(' | ') || '—';
+        const voided = isVoidedTransaction(transaction);
+        return `
+          <tr style="${voided ? 'opacity:0.55;' : ''}">
+            <td>${new Date(transaction.occurred_at || transaction.created_at).toLocaleString('en-TT')}</td>
+            <td>${escapeHtml(String(transaction.transaction_type || '').replaceAll('_', ' '))}</td>
+            <td><div class="td-name">${escapeHtml(accountingCategoryLabels[transaction.category] || transaction.category)}</div></td>
+            <td>${escapeHtml(String(transaction.account || '').toUpperCase())}</td>
+            <td>${escapeHtml(String(transaction.direction || '').replaceAll('_', ' '))}</td>
+            <td class="accounting-total" style="color:${transaction.direction === 'outflow' ? 'var(--red)' : 'var(--green)'};">${moneyFull(transaction.amount)}</td>
+            <td class="td-sub">${escapeHtml(linked)}</td>
+            <td><div>${escapeHtml(transaction.reference || '—')}</div>${transaction.notes ? `<div class="td-sub">${escapeHtml(transaction.notes)}</div>` : ''}${voided ? `<div class="td-sub" style="color:var(--red);">Voided: ${escapeHtml(transaction.void_reason || '')}</div>` : ''}</td>
+            <td>${voided ? '<span class="badge badge-failed">Voided</span>' : `<button class="btn btn-ghost btn-sm" onclick="voidAccountingTransaction('${transaction.id}')">Void</button>`}</td>
+          </tr>
+        `;
+      }).join('') || '<tr><td colspan="9">No accounting transactions entered yet.</td></tr>';
+    }
+
     function renderAccounting() {
       const baseOrders = selectedRemittanceOrders();
       const collectionOrders = baseOrders.filter(order => ['cod', 'delivery_only'].includes(order.payment_type));
@@ -2235,6 +2531,7 @@
       const pendingTotal = pendingCollection.reduce((sum, order) => sum + driverCollects(order), 0);
       const deliveryFeeTotal = confirmedFeeOrders.reduce((sum, order) => sum + amount(order.delivery_fee) + amount(order.redelivery_fee) + amount(order.pickup_fee) + amount(order.return_to_client_fee), 0);
       const clientPayoutTotal = deliveredCollectable.filter(order => order.remittance_status === 'ready').reduce((sum, order) => sum + clientPayout(order), 0);
+      const fullSummary = accountingSummary(baseOrders);
 
       const setText = (id, value) => {
         const el = document.getElementById(id);
@@ -2247,6 +2544,14 @@
       setText('accPendingCollectionSub', `${pendingCollection.length} order${pendingCollection.length === 1 ? '' : 's'} awaiting collection`);
       setText('accDeliveryFees', moneyFull(deliveryFeeTotal));
       setText('accClientPayouts', moneyFull(clientPayoutTotal));
+      setText('accDeliveryRevenue', moneyFull(fullSummary.deliveryRevenue));
+      setText('accOperatingExpenses', moneyFull(fullSummary.operatingExpenses));
+      setText('accEstimatedProfit', moneyFull(fullSummary.estimatedProfit));
+      setText('accAccountBalances', moneyFull(fullSummary.totalBalance));
+      setText('accAccountBalancesSub', `Cash ${moneyFull(fullSummary.balances.cash)} | LINX ${moneyFull(fullSummary.balances.linx)} | Bank ${moneyFull(fullSummary.balances.bank)}`);
+
+      renderFullAccountingSummary(fullSummary);
+      renderAccountingLedger();
 
       const accountingBody = document.getElementById('accountingRecordsBody');
       if (accountingBody) {
@@ -2347,6 +2652,109 @@
         </tr>
       `).join('') || '<tr><td colspan="9">No remittance batches have been paid yet.</td></tr>';
     }
+
+    window.clearAccountingTransactionForm = function() {
+      ['acctAmount', 'acctOrder', 'acctReference', 'acctNotes'].forEach(id => {
+        const field = document.getElementById(id);
+        if (field) field.value = '';
+      });
+      const date = document.getElementById('acctDate');
+      if (date) date.value = new Date().toISOString().slice(0, 16);
+      const driver = document.getElementById('acctDriver');
+      if (driver) driver.value = '';
+      const client = document.getElementById('acctClient');
+      if (client) client.value = '';
+      syncAccountingTransactionDefaults();
+    };
+
+    window.syncAccountingTransactionDefaults = function() {
+      const category = document.getElementById('acctCategory')?.value || '';
+      const type = document.getElementById('acctType');
+      const direction = document.getElementById('acctDirection');
+      const account = document.getElementById('acctAccount');
+      if (!type || !direction) return;
+      if (['delivery_revenue', 'pickup_revenue', 'redelivery_revenue', 'return_revenue', 'other_income'].includes(category)) {
+        type.value = 'income';
+        direction.value = 'inflow';
+      } else if (['driver_payment', 'gas', 'vehicle_expense', 'office_expense', 'supplies', 'other_expense', 'owner_draw'].includes(category)) {
+        type.value = category === 'owner_draw' ? 'asset_out' : 'expense';
+        direction.value = 'outflow';
+      } else if (category === 'client_remittance') {
+        type.value = 'liability_out';
+        direction.value = 'outflow';
+      } else if (category === 'bank_deposit' || category === 'linx_settlement') {
+        type.value = 'asset_in';
+        direction.value = 'inflow';
+        if (account && category === 'bank_deposit') account.value = 'bank';
+        if (account && category === 'linx_settlement') account.value = 'linx';
+      } else if (category === 'bank_withdrawal') {
+        type.value = 'asset_out';
+        direction.value = 'outflow';
+        if (account) account.value = 'bank';
+      } else if (category === 'adjustment') {
+        type.value = 'adjustment';
+      }
+    };
+
+    window.saveAccountingTransaction = async function() {
+      const orderRef = document.getElementById('acctOrder')?.value.trim() || '';
+      const linkedOrder = orderRef
+        ? orders.find(order => String(order.order_number || '').toLowerCase() === orderRef.toLowerCase())
+        : null;
+      if (orderRef && !linkedOrder) {
+        window.vdNotify('Transaction Not Saved', 'The order number entered was not found. Leave it blank or enter an exact order number.', 'warning');
+        return;
+      }
+      const amountValue = Number(document.getElementById('acctAmount')?.value || 0);
+      if (!Number.isFinite(amountValue) || amountValue <= 0) {
+        window.vdNotify('Transaction Not Saved', 'Enter an amount greater than zero.', 'warning');
+        return;
+      }
+      try {
+        const { error } = await supabase.rpc('admin_record_accounting_transaction', {
+          p_transaction_type: document.getElementById('acctType')?.value || 'expense',
+          p_category: document.getElementById('acctCategory')?.value || 'other_expense',
+          p_account: document.getElementById('acctAccount')?.value || 'cash',
+          p_direction: document.getElementById('acctDirection')?.value || 'outflow',
+          p_amount: amountValue,
+          p_driver_id: document.getElementById('acctDriver')?.value || null,
+          p_business_client_id: document.getElementById('acctClient')?.value || null,
+          p_order_id: linkedOrder?.id || null,
+          p_reference: document.getElementById('acctReference')?.value.trim() || null,
+          p_notes: document.getElementById('acctNotes')?.value.trim() || null,
+          p_occurred_at: document.getElementById('acctDate')?.value ? new Date(document.getElementById('acctDate').value).toISOString() : null
+        });
+        if (error) throw error;
+        showToast('Accounting transaction saved.');
+        clearAccountingTransactionForm();
+        await loadData();
+      } catch (error) {
+        window.vdNotify('Transaction Not Saved', error.message || 'Could not save this accounting transaction.', 'error');
+      }
+    };
+
+    window.voidAccountingTransaction = function(transactionId) {
+      const transaction = accountingTransactions.find(item => item.id === transactionId);
+      if (!transaction) return showToast('Transaction not found.');
+      const reason = window.prompt('Reason for voiding this transaction');
+      if (reason === null) return;
+      if (reason.trim().length < 3) {
+        window.vdNotify('Transaction Not Voided', 'Enter a reason for voiding this transaction.', 'warning');
+        return;
+      }
+      showModal('Void Transaction', `Void ${moneyFull(transaction.amount)} ${accountingCategoryLabels[transaction.category] || transaction.category}?`, async () => {
+        const { error } = await supabase.rpc('admin_void_accounting_transaction', {
+          p_transaction_id: transactionId,
+          p_reason: reason.trim()
+        });
+        if (error) {
+          window.vdNotify('Transaction Not Voided', error.message || 'Could not void this transaction.', 'error');
+          return;
+        }
+        showToast('Accounting transaction voided.');
+        await loadData();
+      });
+    };
 
     window.openMarkDriverCashReceived = function(orderId) {
       const order = orders.find(item => item.id === orderId);
@@ -3895,6 +4303,8 @@
       document.getElementById('sortingQueueBody').innerHTML = '<tr><td colspan="6">Loading sorting queue...</td></tr>';
       document.getElementById('manifestList').innerHTML = '<div class="card">Loading delivery manifests...</div>';
       document.getElementById('accountingRecordsBody').innerHTML = '<tr><td colspan="11">Loading accounting records...</td></tr>';
+      document.getElementById('fullAccountingSummaryBody').innerHTML = '<tr><td colspan="3">Loading accounting summary...</td></tr>';
+      document.getElementById('accountingLedgerBody').innerHTML = '<tr><td colspan="9">Loading accounting ledger...</td></tr>';
       document.getElementById('clientPayoutBody').innerHTML = '<tr><td colspan="7">Loading client payouts...</td></tr>';
       document.getElementById('returnManagementBody').innerHTML = '<tr><td colspan="7">Loading returned parcels...</td></tr>';
       document.getElementById('remittanceHistoryBody').innerHTML = '<tr><td colspan="9">Loading remittance history...</td></tr>';
@@ -3909,11 +4319,12 @@
         return;
       }
 
-      const [bootstrapRes, remittanceRes, driverCashRes, manifestsRes] = await Promise.all([
+      const [bootstrapRes, remittanceRes, driverCashRes, manifestsRes, accountingRes] = await Promise.all([
         supabase.rpc('admin_dashboard_bootstrap'),
         supabase.rpc('admin_list_remittance_batches'),
         supabase.rpc('admin_list_cod_reconciliations'),
-        supabase.rpc('admin_list_delivery_manifests')
+        supabase.rpc('admin_list_delivery_manifests'),
+        supabase.rpc('admin_list_accounting_transactions')
       ]);
 
       if (bootstrapRes.error) throw bootstrapRes.error;
@@ -3951,6 +4362,12 @@
         driverCashRecords = [];
       } else {
         driverCashRecords = driverCashRes.data || [];
+      }
+      if (accountingRes.error) {
+        console.warn('Accounting ledger could not load:', accountingRes.error);
+        accountingTransactions = [];
+      } else {
+        accountingTransactions = Array.isArray(accountingRes.data) ? accountingRes.data : [];
       }
 
       clientsById = new Map(clientRows.map(client => [client.id, client]));
@@ -4481,6 +4898,8 @@
       document.getElementById('sortingQueueBody').innerHTML = `<tr><td colspan="6">${message}</td></tr>`;
       document.getElementById('returnManagementBody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
       document.getElementById('accountingRecordsBody').innerHTML = `<tr><td colspan="11">${message}</td></tr>`;
+      document.getElementById('fullAccountingSummaryBody').innerHTML = `<tr><td colspan="3">${message}</td></tr>`;
+      document.getElementById('accountingLedgerBody').innerHTML = `<tr><td colspan="9">${message}</td></tr>`;
       document.getElementById('clientPayoutBody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
       document.getElementById('remittanceHistoryBody').innerHTML = `<tr><td colspan="9">${message}</td></tr>`;
       document.getElementById('manifestList').innerHTML = `<div class="card">${message}</div>`;
