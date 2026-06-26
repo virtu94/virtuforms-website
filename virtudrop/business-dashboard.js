@@ -782,10 +782,11 @@ function customerNotesParts(order) {
 }
 
 function detailItem(label, value, full = false) {
+  const valueClass = label === 'Customer' ? 'order-detail-value business-customer-name' : 'order-detail-value';
   return `
     <div class="order-detail-item${full ? ' full' : ''}">
       <div class="order-detail-label">${escapeHtml(label)}</div>
-      <div class="order-detail-value">${value || '—'}</div>
+      <div class="${valueClass}">${value || '—'}</div>
     </div>
   `;
 }
@@ -1313,7 +1314,7 @@ function renderCod() {
     return `
       <tr>
         <td style="padding:0.9rem 1rem; font-family:'Courier New',monospace; font-size:0.85rem; color:#2a9d8f;">${escapeHtml(order.order_number)}</td>
-        <td style="padding:0.9rem 1rem;">${escapeHtml(order.customer_name)}</td>
+        <td style="padding:0.9rem 1rem;"><span class="business-customer-name">${escapeHtml(order.customer_name)}</span></td>
         <td style="padding:0.9rem 1rem; text-align:right;">${money(packageAmount)}</td>
         <td style="padding:0.9rem 1rem; text-align:right;">${money(deliveryFee)}</td>
         <td style="padding:0.9rem 1rem; text-align:right; font-weight:700; color:#2a9d8f;">${money(collected)}</td>
@@ -1380,7 +1381,7 @@ function renderFailed() {
   tbody.innerHTML = failed.length ? failed.map(order => `
     <tr>
       <td style="padding:0.9rem 1rem; font-family:'Courier New',monospace; font-size:0.85rem; color:#2a9d8f;">${escapeHtml(order.order_number)}</td>
-      <td style="padding:0.9rem 1rem;">${escapeHtml(order.customer_name)}</td>
+      <td style="padding:0.9rem 1rem;"><span class="business-customer-name">${escapeHtml(order.customer_name)}</span></td>
       <td style="padding:0.9rem 1rem;">${escapeHtml(order.area_name || '—')}</td>
       <td style="padding:0.9rem 1rem;">${formatDate(order.updated_at || order.created_at)}</td>
       <td style="padding:0.9rem 1rem; font-size:0.88rem; color:#6a6a6a;">${escapeHtml(order.delivery_outcome_notes || 'Contact VirtuDrop to confirm next steps')}${order.redelivery_requested_date ? ` · Preferred date: ${escapeHtml(formatDate(order.redelivery_requested_date))}` : ''}</td>

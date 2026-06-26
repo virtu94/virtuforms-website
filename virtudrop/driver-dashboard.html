@@ -175,6 +175,13 @@
     .info-row { display: flex; flex-direction: column; gap: 0.1rem; }
     .info-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--grey); }
     .info-value { font-size: 0.9rem; font-weight: 600; color: var(--black); }
+    .info-value.customer-name-display {
+      color: var(--black);
+      font-size: 1.05rem;
+      font-weight: 800;
+      line-height: 1.3;
+      overflow-wrap: anywhere;
+    }
     .info-value.address { font-size: 0.85rem; font-weight: 500; color: var(--black); line-height: 1.4; }
     .info-value.cod     { color: var(--orange); font-size: 1rem; font-weight: 800; }
     .info-value.no-cod  { color: var(--grey); font-size: 0.85rem; font-weight: 500; }
@@ -939,7 +946,7 @@
               ${order.external_item_number ? `<div class="info-row"><div class="info-label">Item Number</div><div class="info-value">${escapeHtml(order.external_item_number)}</div></div>` : ''}
               <div class="info-row">
                 <div class="info-label">Customer</div>
-                <div class="info-value">${order.customer_name || '—'}</div>
+                <div class="info-value customer-name-display">${escapeHtml(order.customer_name || '—')}</div>
               </div>
               <div class="info-row">
                 <div class="info-label">Phone</div>

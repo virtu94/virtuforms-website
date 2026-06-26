@@ -199,6 +199,28 @@
     .td-id { font-family: 'Courier New', monospace; font-size: 0.8rem; color: var(--teal-mid); font-weight: 700; white-space: nowrap; }
     .td-name { font-weight: 600; color: var(--black); }
     .td-sub  { font-size: 0.78rem; color: var(--grey); }
+    #panel-all-orders table { table-layout: fixed; min-width: 1120px; }
+    #panel-all-orders th:nth-child(1), #panel-all-orders td:nth-child(1) { width: 155px; }
+    #panel-all-orders th:nth-child(2), #panel-all-orders td:nth-child(2) { width: 140px; }
+    #panel-all-orders th:nth-child(3), #panel-all-orders td:nth-child(3) { width: 250px; }
+    #panel-all-orders .customer-cell,
+    #panel-all-orders .client-cell {
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      line-height: 1.35;
+    }
+    #panel-all-orders .customer-name {
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--black);
+    }
+    .order-row-actions {
+      display: flex;
+      gap: 0.35rem;
+      flex-wrap: wrap;
+      margin-top: 0.45rem;
+    }
 
     /* ── Badges ── */
     .badge {
@@ -873,11 +895,10 @@
                   <th>COD</th>
                   <th>Status</th>
                   <th>Driver</th>
-                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                <tr><td colspan="8">Loading orders...</td></tr>
+                <tr><td colspan="7">Loading orders...</td></tr>
               </tbody>
             </table>
           </div>
@@ -2860,16 +2881,18 @@
         <tr>
           <td class="td-id">
             <div>${escapeHtml(order.order_number)}</div>
-            <div style="display:flex; gap:0.35rem; flex-wrap:wrap; margin-top:0.45rem;">
+            <div class="order-row-actions">
               <button class="btn btn-primary btn-sm" onclick="openAdminOrderEdit('${order.id}')">Edit Order</button>
               <button class="btn btn-ghost btn-sm" onclick="printOrderLabel('${order.id}')">Print Label</button>
               ${order.order_status === 'cancelled'
                 ? '<span class="badge badge-unpaid">Cancelled</span>'
                 : `<button class="btn btn-danger btn-sm" onclick="openAdminOrderCancel('${order.id}')">Cancel Order</button>`}
+              <button class="btn btn-ghost btn-sm" onclick="openCustomerTrackingWhatsApp('${order.id}')">Customer</button>
+              <button class="btn btn-ghost btn-sm" onclick="whatsappClient('${order.id}')">Client</button>
             </div>
           </td>
-          <td><div class="td-name">${clientName(order)}</div></td>
-          <td><div class="td-name">${order.customer_name || '—'}</div><div class="td-sub">${order.customer_phone || ''}</div>${order.external_item_number ? `<div class="td-sub">Item: ${escapeHtml(order.external_item_number)}</div>` : ''}${order.delivery_outcome_notes ? `<div class="td-sub" style="color:var(--teal-dark); font-weight:700;">Outcome: ${escapeHtml(order.delivery_outcome_notes)}</div>` : order.driver_notes ? `<div class="td-sub" style="color:var(--teal-dark); font-weight:700;">Driver: ${escapeHtml(order.driver_notes)}</div>` : ''}${order.redelivery_requested_date ? `<div class="td-sub">Preferred redelivery: ${new Date(order.redelivery_requested_date + 'T12:00:00').toLocaleDateString('en-TT')}</div>` : ''}${order.rejection_reason ? `<div class="td-sub" style="color:var(--red); font-weight:700;">${order.order_status === 'cancelled' ? 'Cancelled' : 'Rejected'}: ${escapeHtml(order.rejection_reason)}</div>` : ''}</td>
+          <td class="client-cell"><div class="td-name">${escapeHtml(clientName(order))}</div></td>
+          <td class="customer-cell"><div class="customer-name">${escapeHtml(order.customer_name || '—')}</div><div class="td-sub">${escapeHtml(order.customer_phone || '')}</div>${order.external_item_number ? `<div class="td-sub">Item: ${escapeHtml(order.external_item_number)}</div>` : ''}${order.delivery_outcome_notes ? `<div class="td-sub" style="color:var(--teal-dark); font-weight:700;">Outcome: ${escapeHtml(order.delivery_outcome_notes)}</div>` : order.driver_notes ? `<div class="td-sub" style="color:var(--teal-dark); font-weight:700;">Driver: ${escapeHtml(order.driver_notes)}</div>` : ''}${order.redelivery_requested_date ? `<div class="td-sub">Preferred redelivery: ${new Date(order.redelivery_requested_date + 'T12:00:00').toLocaleDateString('en-TT')}</div>` : ''}${order.rejection_reason ? `<div class="td-sub" style="color:var(--red); font-weight:700;">${order.order_status === 'cancelled' ? 'Cancelled' : 'Rejected'}: ${escapeHtml(order.rejection_reason)}</div>` : ''}</td>
           <td>${zoneLabel(order)}</td>
           <td>
             <div class="td-name">Package: ${moneyFull(order.package_value || order.cod_amount)}</div>
@@ -2880,34 +2903,9 @@
             ${order.pickup_required ? `<div class="td-sub">Pickup: ${moneyFull(order.pickup_fee)} · ${order.pickup_parcel_count || 1} parcel(s)</div>` : ''}
           </td>
           <td>${badgeForStatus(order)}<div class="td-sub" style="margin-top:0.3rem;">Parcel: ${escapeHtml(String(order.parcel_status || 'awaiting_parcel').replaceAll('_', ' '))}</div>${order.delivery_attempt_count ? `<div class="td-sub">Attempt ${order.delivery_attempt_count}${order.delivery_proof_confirmed_at ? ' · Handover confirmed' : ''}</div>` : ''}${order.delivery_return_required ? '<div class="td-sub" style="color:var(--red); font-weight:700;">Awaiting hub return</div>' : order.delivery_returned_hub_at ? '<div class="td-sub" style="color:var(--green); font-weight:700;">Returned to hub</div>' : ''}</td>
-          <td>${order.assigned_driver_id ? driverName(order.assigned_driver_id) : '—'}</td>
-          <td>
-            <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
-              <button class="btn btn-primary btn-sm" onclick="openAdminOrderEdit('${order.id}')">Edit</button>
-              <button class="btn btn-ghost btn-sm" onclick="printOrderLabel('${order.id}')">Print Label</button>
-              ${order.order_status === 'cancelled' ? '' : `<button class="btn btn-danger btn-sm" onclick="openAdminOrderCancel('${order.id}')">Cancel Order</button>`}
-              <button class="btn btn-ghost btn-sm" onclick="openCustomerTrackingWhatsApp('${order.id}')">💬 Customer</button>
-              <button class="btn btn-ghost btn-sm" onclick="whatsappClient('${order.id}')">💬 Client</button>
-              ${order.order_status === 'delivered' && (order.payment_type === 'cod' || order.payment_type === 'delivery_only') && order.payment_status !== 'reconciled'
-                ? `<button class="btn btn-primary btn-sm" onclick="openMarkDriverCashReceived('${order.id}')">Reconcile Collection</button>`
-                : order.payment_status === 'reconciled' ? '<span class="badge badge-paid">Reconciled</span>' : ''}
-              ${order.order_status === 'cancelled'
-                ? '<span class="badge badge-unpaid">Cancelled</span>'
-                : order.parcel_status === 'awaiting_parcel'
-                ? '<button class="btn btn-warn btn-sm" onclick="showPanel(\'parcel-checkin\')">Check In Parcel</button>'
-                : order.zone_status === 'pending' || order.order_status === 'zone_pending'
-                  ? '<button class="btn btn-warn btn-sm" onclick="showPanel(\'zone-confirm\')">Confirm Zone</button>'
-                : order.parcel_status === 'parcel_received'
-                  ? '<button class="btn btn-warn btn-sm" onclick="showPanel(\'sorting-manifests\')">Sort Parcel</button>'
-                : order.delivery_return_required ? '<span class="badge badge-unpaid">Driver returning parcel</span>'
-                : ['failed', 'rescheduled'].includes(order.order_status) || ['returned_to_hub', 'held_for_client_instructions'].includes(order.parcel_status) ? '<button class="btn btn-warn btn-sm" onclick="showPanel(\'returns-redelivery\')">Manage Return</button>'
-                : ['sorted', 'redelivery_scheduled'].includes(order.parcel_status) && !order.assigned_driver_id ? '<button class="btn btn-primary btn-sm" onclick="showPanel(\'driver-assign\')">Assign Driver</button>'
-                : order.assigned_driver_id && ['assigned', 'handed_to_driver'].includes(order.parcel_status) ? '<button class="btn btn-ghost btn-sm" onclick="showPanel(\'sorting-manifests\')">View Manifest</button>'
-                : ''}
-            </div>
-          </td>
+          <td>${order.assigned_driver_id ? escapeHtml(driverName(order.assigned_driver_id)) : '—'}</td>
         </tr>
-      `).join('') || '<tr><td colspan="8">No orders found.</td></tr>';
+      `).join('') || '<tr><td colspan="7">No orders found.</td></tr>';
     }
     window.renderAllOrders = renderAllOrders;
 
@@ -2971,14 +2969,20 @@
         pickup_window: order.pickup_window || null,
         pickup_instructions: order.pickup_instructions || null,
         customer_notes: document.getElementById('adminEditCustomerNotes')?.value.trim() || null,
-        driver_notes: order.driver_notes || null,
+        driver_notes: document.getElementById('adminEditDriverNotes')?.value.trim() || null,
         admin_note: document.getElementById('adminEditAdminNote')?.value.trim() || null,
-        zone_status: order.zone_status || null,
-        order_status: order.order_status || null,
-        parcel_status: order.parcel_status || null,
-        payment_status: order.payment_status || null,
-        remittance_status: order.remittance_status || null,
-        scheduled_delivery_date: order.scheduled_delivery_date || null
+        zone_status: document.getElementById('adminEditZoneStatus')?.value || null,
+        order_status: document.getElementById('adminEditOrderStatus')?.value || null,
+        parcel_status: document.getElementById('adminEditParcelStatus')?.value || null,
+        payment_status: document.getElementById('adminEditPaymentStatus')?.value || null,
+        remittance_status: document.getElementById('adminEditRemittanceStatus')?.value || null,
+        scheduled_delivery_date: document.getElementById('adminEditScheduledDate')?.value || null,
+        assigned_driver_id: document.getElementById('adminEditAssignedDriver')?.value || null,
+        delivery_outcome: document.getElementById('adminEditDeliveryOutcome')?.value || null,
+        delivery_outcome_notes: document.getElementById('adminEditDeliveryOutcomeNotes')?.value.trim() || null,
+        delivery_collection_method: document.getElementById('adminEditCollectionMethod')?.value || null,
+        delivery_collected_amount: document.getElementById('adminEditCollectedAmount')?.value || null,
+        delivery_proof_confirmed: Boolean(document.getElementById('adminEditProofConfirmed')?.checked)
       };
     }
 
@@ -2993,9 +2997,26 @@
       if (pickupBlock) pickupBlock.style.display = pickup ? '' : 'none';
     };
 
+    window.syncAdminOperationalEdit = function() {
+      const orderStatus = document.getElementById('adminEditOrderStatus')?.value;
+      const outcome = document.getElementById('adminEditDeliveryOutcome')?.value;
+      if (orderStatus === 'delivered') {
+        const parcel = document.getElementById('adminEditParcelStatus');
+        const deliveryOutcome = document.getElementById('adminEditDeliveryOutcome');
+        const proof = document.getElementById('adminEditProofConfirmed');
+        if (parcel) parcel.value = 'delivered';
+        if (deliveryOutcome) deliveryOutcome.value = 'delivered';
+        if (proof) proof.checked = true;
+      } else if (outcome === 'delivered') {
+        const proof = document.getElementById('adminEditProofConfirmed');
+        if (proof) proof.checked = true;
+      }
+    };
+
     window.openAdminOrderEdit = function(orderId) {
       const order = orders.find(item => item.id === orderId);
       if (!order) return showToast('Order not found.');
+      const driverOptions = [['', 'Unassigned'], ...drivers.map(driver => [driver.id, driverName(driver.id)])];
       document.getElementById('modalTitle').textContent = `Edit ${order.order_number}`;
       document.getElementById('modalBody').innerHTML = `
         <div class="payment-modal-form" style="text-align:left;">
@@ -3004,11 +3025,76 @@
           <label>Item / Reference<input id="adminEditItemNumber" value="${escapeHtml(order.external_item_number || '')}"></label>
           <label>Package / COD Amount<input id="adminEditPackageValue" type="number" min="0" step="0.01" value="${Number(order.package_value || order.cod_amount || 0).toFixed(2)}"></label>
           <label>Confirmed Delivery Fee<input id="adminEditDeliveryFee" type="number" min="0" step="0.01" value="${order.delivery_fee ?? ''}"></label>
+          <label>Assigned Driver<select id="adminEditAssignedDriver">${adminEditSelect(driverOptions, order.assigned_driver_id || '')}</select></label>
+          <label>Order Status<select id="adminEditOrderStatus" onchange="syncAdminOperationalEdit()">${adminEditSelect([
+            ['zone_pending', 'Zone Pending'],
+            ['pending', 'Pending'],
+            ['confirmed', 'Confirmed'],
+            ['assigned', 'Assigned'],
+            ['out_for_delivery', 'Out for Delivery'],
+            ['delivered', 'Delivered'],
+            ['failed', 'Failed'],
+            ['rescheduled', 'Rescheduled'],
+            ['cancelled', 'Cancelled'],
+            ['rejected', 'Rejected']
+          ], order.order_status || '')}</select></label>
+          <label>Parcel Status<select id="adminEditParcelStatus">${adminEditSelect([
+            ['awaiting_parcel', 'Awaiting Parcel'],
+            ['parcel_received', 'Parcel Received'],
+            ['sorted', 'Sorted'],
+            ['assigned', 'Assigned'],
+            ['handed_to_driver', 'Handed to Driver'],
+            ['delivered', 'Delivered'],
+            ['returned_to_hub', 'Returned to Hub'],
+            ['held_for_client_instructions', 'Held for Client Instructions'],
+            ['redelivery_scheduled', 'Redelivery Scheduled'],
+            ['returned_to_client', 'Returned to Client']
+          ], order.parcel_status || '')}</select></label>
+          <label>Zone Status<select id="adminEditZoneStatus">${adminEditSelect([
+            ['pending', 'Pending'],
+            ['confirmed', 'Confirmed'],
+            ['rejected', 'Rejected']
+          ], order.zone_status || '')}</select></label>
+          <label>Scheduled Delivery Date<input id="adminEditScheduledDate" type="date" value="${escapeHtml(order.scheduled_delivery_date || '')}"></label>
           <label>House / Apt<input id="adminEditHouse" value="${escapeHtml(order.house_number || '')}"></label>
           <label>Street / Building<input id="adminEditStreet" value="${escapeHtml(order.street_name || '')}"></label>
           <label>Area<input id="adminEditArea" value="${escapeHtml(order.area_name || '')}"></label>
           <label>Google Pin / Maps Link<input id="adminEditMapsLink" value="${escapeHtml(order.maps_link || '')}"></label>
+          <label>Payment Status<select id="adminEditPaymentStatus">${adminEditSelect([
+            ['pending', 'Pending'],
+            ['partially_collected', 'Partially Collected'],
+            ['collected_by_driver', 'Collected by Driver'],
+            ['received_by_virtudrop', 'Received by VirtuDrop'],
+            ['reconciled', 'Reconciled'],
+            ['disputed', 'Disputed'],
+            ['not_applicable', 'Not Applicable']
+          ], order.payment_status || 'pending')}</select></label>
+          <label>Remittance Status<select id="adminEditRemittanceStatus">${adminEditSelect([
+            ['not_applicable', 'Not Applicable'],
+            ['pending', 'Pending'],
+            ['ready', 'Ready'],
+            ['paid', 'Paid'],
+            ['held', 'Held'],
+            ['disputed', 'Disputed']
+          ], order.remittance_status || 'not_applicable')}</select></label>
+          <label>Delivery Outcome<select id="adminEditDeliveryOutcome" onchange="syncAdminOperationalEdit()">${adminEditSelect([
+            ['', 'No Outcome'],
+            ['delivered', 'Delivered'],
+            ['no_response', 'No Response'],
+            ['refused', 'Refused'],
+            ['reschedule_requested', 'Reschedule Requested']
+          ], order.delivery_outcome || '')}</select></label>
+          <label>Collection Method<select id="adminEditCollectionMethod">${adminEditSelect([
+            ['', 'No Collection'],
+            ['none', 'None'],
+            ['cash', 'Cash'],
+            ['linx', 'LINX']
+          ], order.delivery_collection_method || '')}</select></label>
+          <label>Collected Amount<input id="adminEditCollectedAmount" type="number" min="0" step="0.01" value="${order.delivery_collected_amount ?? ''}"></label>
+          <label style="display:flex; gap:0.55rem; align-items:center;"><input id="adminEditProofConfirmed" type="checkbox" ${order.delivery_proof_confirmed_at || order.order_status === 'delivered' ? 'checked' : ''}> Delivery handover confirmed</label>
           <label>Customer Notes<textarea id="adminEditCustomerNotes">${escapeHtml(order.customer_notes || '')}</textarea></label>
+          <label>Driver / Outcome Notes<textarea id="adminEditDeliveryOutcomeNotes">${escapeHtml(order.delivery_outcome_notes || '')}</textarea></label>
+          <label>Driver Notes<textarea id="adminEditDriverNotes">${escapeHtml(order.driver_notes || '')}</textarea></label>
           <label>Admin Note<textarea id="adminEditAdminNote" placeholder="Reason for this edit"></textarea></label>
         </div>`;
       document.getElementById('modalConfirm').textContent = 'Save Changes';
@@ -3801,7 +3887,7 @@
     };
 
     function clearStaticAdminData() {
-      document.querySelector('#panel-all-orders tbody').innerHTML = '<tr><td colspan="8">Loading orders...</td></tr>';
+      document.querySelector('#panel-all-orders tbody').innerHTML = '<tr><td colspan="7">Loading orders...</td></tr>';
       document.querySelector('#panel-driver-assign tbody').innerHTML = '<tr><td colspan="9">Loading driver assignments...</td></tr>';
       document.getElementById('parcelCheckinBody').innerHTML = '<tr><td colspan="7">Loading parcel records...</td></tr>';
       document.getElementById('pickupManagementBody').innerHTML = '<tr><td colspan="7">Loading pickup requests...</td></tr>';
@@ -4387,7 +4473,7 @@
       console.error('Admin dashboard load error:', error);
       const message = escapeHtml(error.message || 'Could not load admin dashboard data.');
       showZoneMessage(message);
-      document.querySelector('#panel-all-orders tbody').innerHTML = `<tr><td colspan="8">${message}</td></tr>`;
+      document.querySelector('#panel-all-orders tbody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
       document.querySelector('#panel-driver-assign tbody').innerHTML = `<tr><td colspan="9">${message}</td></tr>`;
       document.getElementById('parcelCheckinBody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
       document.getElementById('pickupManagementBody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
