@@ -858,7 +858,7 @@
           <select class="filter-select" id="orderClientFilter" onchange="renderAllOrders()">
             <option value="">All Clients</option>
           </select>
-          <input class="filter-input" id="orderSearchInput" type="search" placeholder="Search order, customer, phone" oninput="renderAllOrders()" />
+          <input class="filter-input" id="orderSearchInput" type="search" placeholder="Search order, customer, phone, item" oninput="renderAllOrders()" />
         </div>
 
         <div class="card">
@@ -2752,7 +2752,7 @@
         if (filter === 'received' && order.parcel_status !== 'parcel_received') return false;
         if (filter === 'all' && order.parcel_status === 'legacy_untracked') return false;
         if (!search) return true;
-        return [order.order_number, clientName(order), order.customer_name, order.customer_phone]
+        return [order.order_number, clientName(order), order.customer_name, order.customer_phone, order.external_item_number, order.customer_notes]
           .some(value => String(value || '').toLowerCase().includes(search));
       });
 
@@ -2825,7 +2825,31 @@
 
     function renderAllOrders() {
       const tbody = document.querySelector('#panel-all-orders tbody');
-      tbody.innerHTML = orders.map(order => `
+      const statusFilter = document.getElementById('orderStatusFilter')?.value || '';
+      const clientFilter = document.getElementById('orderClientFilter')?.value || '';
+      const search = String(document.getElementById('orderSearchInput')?.value || '').trim().toLowerCase();
+      const visibleOrders = orders.filter(order => {
+        if (statusFilter && order.order_status !== statusFilter && order.zone_status !== statusFilter && order.parcel_status !== statusFilter) return false;
+        if (clientFilter && order.business_client_id !== clientFilter) return false;
+        if (!search) return true;
+        return [
+          order.order_number,
+          clientName(order),
+          order.customer_name,
+          order.customer_phone,
+          order.external_item_number,
+          order.delivery_address,
+          order.house_number,
+          order.street_name,
+          order.area_name,
+          order.customer_notes,
+          order.driver_notes,
+          order.admin_notes,
+          order.delivery_outcome_notes,
+          order.rejection_reason
+        ].some(value => String(value || '').toLowerCase().includes(search));
+      });
+      tbody.innerHTML = visibleOrders.map(order => `
         <tr>
           <td class="td-id">
             <div>${escapeHtml(order.order_number)}</div>
@@ -3259,7 +3283,7 @@
         if (filter === 'active' && !['draft', 'ready', 'collected'].includes(manifest.status)) return false;
         if (!['active', 'all'].includes(filter) && manifest.status !== filter) return false;
         if (!search) return true;
-        return [manifest.manifest_number, manifest.driver_name, ...(manifest.orders || []).map(order => order.order_number)]
+        return [manifest.manifest_number, manifest.driver_name, ...(manifest.orders || []).flatMap(order => [order.order_number, order.customer_name, order.customer_phone, order.external_item_number])]
           .some(value => String(value || '').toLowerCase().includes(search));
       });
       list.innerHTML = rows.map(manifest => `
@@ -3269,7 +3293,7 @@
             <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">${manifestStatusBadge(manifest.status)}<button class="btn btn-ghost btn-sm" onclick="printManifest('${manifest.id}')">Print</button>${manifest.status === 'draft' ? `<button class="btn btn-primary btn-sm" onclick="setManifestStatus('${manifest.id}', 'ready')">Mark Ready</button>` : ''}${manifest.status === 'ready' ? `<button class="btn btn-primary btn-sm" onclick="setManifestStatus('${manifest.id}', 'collected')">Confirm Driver Collection</button>` : ''}</div>
           </div>
           <div class="table-wrap"><table><thead><tr><th>Sequence</th><th>Zone</th><th>Order</th><th>Customer</th><th>Address</th><th>Parcels</th><th>Collect</th>${manifest.status === 'draft' ? '<th>Action</th>' : ''}</tr></thead><tbody>
-            ${(manifest.orders || []).map(order => `<tr><td>${order.route_sequence}</td><td>${escapeHtml(order.zone_code ? `Zone ${order.zone_code}` : '—')}</td><td class="td-id">${escapeHtml(order.order_number)}</td><td><div class="td-name">${escapeHtml(order.customer_name || '')}</div><div class="td-sub">${escapeHtml(order.customer_phone || '')}</div></td><td>${escapeHtml(order.delivery_address || order.area_name || '')}</td><td>${escapeHtml(String(order.parcel_count || 1))}</td><td>${moneyFull(order.amount_to_collect)}</td>${manifest.status === 'draft' ? `<td><button class="btn btn-ghost btn-sm" onclick="removeManifestOrder('${manifest.id}', '${order.id}')">Remove</button></td>` : ''}</tr>`).join('') || `<tr><td colspan="${manifest.status === 'draft' ? 8 : 7}">No parcels on this manifest.</td></tr>`}
+            ${(manifest.orders || []).map(order => `<tr><td>${order.route_sequence}</td><td>${escapeHtml(order.zone_code ? `Zone ${order.zone_code}` : '—')}</td><td class="td-id">${escapeHtml(order.order_number)}</td><td><div class="td-name">${escapeHtml(order.customer_name || '')}</div><div class="td-sub">${escapeHtml(order.customer_phone || '')}</div>${order.external_item_number ? `<div class="td-sub">Item: ${escapeHtml(order.external_item_number)}</div>` : ''}</td><td>${escapeHtml(order.delivery_address || order.area_name || '')}</td><td>${escapeHtml(String(order.parcel_count || 1))}</td><td>${moneyFull(order.amount_to_collect)}</td>${manifest.status === 'draft' ? `<td><button class="btn btn-ghost btn-sm" onclick="removeManifestOrder('${manifest.id}', '${order.id}')">Remove</button></td>` : ''}</tr>`).join('') || `<tr><td colspan="${manifest.status === 'draft' ? 8 : 7}">No parcels on this manifest.</td></tr>`}
           </tbody></table></div>
           ${manifest.handed_to_driver_at ? `<div class="td-sub" style="margin-top:0.75rem;">Handover confirmed ${new Date(manifest.handed_to_driver_at).toLocaleString('en-TT')}</div>` : ''}
         </div>`).join('') || (deliveryManifests.length
@@ -3361,7 +3385,7 @@
       const rows = orders.filter(order => {
         if (!returnRecordMatches(order, filter)) return false;
         if (!search) return true;
-        return [order.order_number, clientName(order), order.customer_name, order.customer_phone]
+        return [order.order_number, clientName(order), order.customer_name, order.customer_phone, order.external_item_number, order.customer_notes, order.delivery_outcome_notes]
           .some(value => String(value || '').toLowerCase().includes(search));
       });
       const outcomeLabels = { no_response: 'No Response', refused: 'Refused', reschedule_requested: 'Reschedule Requested' };
@@ -3561,7 +3585,7 @@
         if (filter === 'active' && !activeStatuses.includes(order.pickup_status)) return false;
         if (!['active', 'all'].includes(filter) && order.pickup_status !== filter) return false;
         if (!search) return true;
-        return [order.order_number, clientName(order), order.pickup_address, order.pickup_area_name]
+        return [order.order_number, clientName(order), order.customer_name, order.customer_phone, order.external_item_number, order.pickup_address, order.pickup_area_name, order.customer_notes]
           .some(value => String(value || '').toLowerCase().includes(search));
       });
       const today = new Date().toISOString().slice(0, 10);
@@ -3663,7 +3687,7 @@
         if (filter === 'active' && terminal.includes(order.order_status)) return false;
         if (filter === 'needs_review' && !(order.scheduled_delivery_date && order.scheduled_delivery_date < today && !terminal.includes(order.order_status))) return false;
         if (!search) return true;
-        return [order.order_number, clientName(order), order.customer_name].some(value => String(value || '').toLowerCase().includes(search));
+        return [order.order_number, clientName(order), order.customer_name, order.customer_phone, order.external_item_number, order.customer_notes, order.delivery_address, order.area_name].some(value => String(value || '').toLowerCase().includes(search));
       }).sort((a, b) => String(a.scheduled_delivery_date || '9999').localeCompare(String(b.scheduled_delivery_date || '9999')));
 
       body.innerHTML = rows.map(order => {
