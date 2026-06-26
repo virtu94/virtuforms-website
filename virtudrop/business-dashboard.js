@@ -1184,7 +1184,9 @@ window.saveBusinessOrderEdit = async function(orderId) {
     if (error) throw error;
     await loadBusinessData();
     openOrderDetails(orderId);
-    showToast('Order updated.');
+    if (window.vdNotify) {
+      window.vdNotify('Order Updated', 'The order changes were saved.', 'success');
+    }
   } catch (error) {
     window.vdNotify('Order Not Updated', error.message || 'Could not update this order.', 'error');
   }
