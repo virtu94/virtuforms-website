@@ -2904,6 +2904,19 @@
     }
     window.renderAllOrders = renderAllOrders;
 
+    function bindAllOrderFilters() {
+      [
+        ['orderStatusFilter', 'change'],
+        ['orderClientFilter', 'change'],
+        ['orderSearchInput', 'input']
+      ].forEach(([id, eventName]) => {
+        const field = document.getElementById(id);
+        if (!field || field.dataset.filterBound === 'true') return;
+        field.dataset.filterBound = 'true';
+        field.addEventListener(eventName, renderAllOrders);
+      });
+    }
+
     function adminPaymentArrangement(order) {
       if (order.payment_arrangement === 'client_pays_delivery') return 'client_pays_delivery';
       if (order.payment_arrangement === 'delivery_only_customer_pays') return 'delivery_only_customer_pays';
@@ -4354,6 +4367,8 @@
       await supabase.auth.signOut();
       window.location.href = 'auth.html?returnTo=admin-dashboard.html';
     });
+
+    bindAllOrderFilters();
 
     loadData().catch(error => {
       console.error('Admin dashboard load error:', error);
