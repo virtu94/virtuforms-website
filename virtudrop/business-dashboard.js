@@ -697,6 +697,7 @@ function statusLabel(status) {
     delivered: 'Delivered',
     failed: 'Failed',
     rescheduled: 'Rescheduled',
+    cancelled: 'Cancelled',
     rejected: 'Rejected'
   };
   return labels[status] || String(status || 'Pending').replaceAll('_', ' ');
@@ -744,7 +745,7 @@ function statusClass(status) {
   if (status === 'delivered') return 'delivered';
   if (status === 'out_for_delivery') return 'out';
   if (status === 'failed' || status === 'rescheduled') return 'failed';
-  if (status === 'rejected') return 'failed';
+  if (status === 'rejected' || status === 'cancelled') return 'failed';
   return 'picked-up';
 }
 
@@ -796,7 +797,11 @@ function businessTrackingBubble(order) {
   let step = 0;
   let label = 'Request Received';
   let message = 'The order is being prepared for delivery.';
-  if (!trackedStatuses.includes(order.order_status) && order.parcel_status === 'awaiting_parcel') {
+  if (order.order_status === 'cancelled') {
+    step = 0;
+    label = 'Cancelled';
+    message = order.rejection_reason ? `This order was cancelled: ${order.rejection_reason}` : 'This order was cancelled.';
+  } else if (!trackedStatuses.includes(order.order_status) && order.parcel_status === 'awaiting_parcel') {
     label = 'Awaiting Parcel';
     message = 'VirtuDrop has not checked in the parcel yet.';
   } else if (!trackedStatuses.includes(order.order_status) && order.parcel_status === 'parcel_received') {
@@ -887,6 +892,9 @@ function orderTableRow(order, includeCost = false) {
   const editButton = canBusinessEditOrder(order)
     ? `<button type="button" class="order-detail-link" onclick="event.stopPropagation(); openBusinessOrderEdit('${order.id}')">Edit</button>`
     : '';
+  const cancelButton = canBusinessCancelOrder(order)
+    ? `<button type="button" class="order-detail-link" style="color:#e05555;" onclick="event.stopPropagation(); cancelBusinessOrder('${order.id}')">Cancel Order</button>`
+    : '';
   return `
     <tr class="order-clickable" onclick="openOrderDetails('${order.id}')">
       <td><strong><button type="button" class="order-detail-link" onclick="event.stopPropagation(); openOrderDetails('${order.id}')">${escapeHtml(order.order_number)}</button></strong></td>
@@ -899,6 +907,7 @@ function orderTableRow(order, includeCost = false) {
         <button type="button" class="order-detail-link" onclick="event.stopPropagation(); openOrderDetails('${order.id}')">Details</button>
         · <button type="button" class="order-detail-link" onclick="event.stopPropagation(); printDeliveryLabel('${order.id}')">Print Label</button>
         ${editButton ? ` · ${editButton}` : ''}
+        ${cancelButton ? ` · ${cancelButton}` : ''}
       </td>
     </tr>
   `;
@@ -922,6 +931,7 @@ function orderCard(order) {
         ${money(order.delivery_fee)} · <button type="button" class="order-detail-link" onclick="event.stopPropagation(); openOrderDetails('${order.id}')">View details</button>
         · <button type="button" class="order-detail-link" onclick="event.stopPropagation(); printDeliveryLabel('${order.id}')">Print label</button>
         ${canBusinessEditOrder(order) ? ` · <button type="button" class="order-detail-link" onclick="event.stopPropagation(); openBusinessOrderEdit('${order.id}')">Edit</button>` : ''}
+        ${canBusinessCancelOrder(order) ? ` · <button type="button" class="order-detail-link" style="color:#e05555;" onclick="event.stopPropagation(); cancelBusinessOrder('${order.id}')">Cancel order</button>` : ''}
       </div>
     </div>
   `;
@@ -1007,6 +1017,7 @@ window.openOrderDetails = function(orderId) {
       ${map ? `<a class="btn btn-primary" href="${escapeHtml(map)}" target="_blank">Open Location</a>` : ''}
       <button type="button" class="btn btn-ghost" onclick="printDeliveryLabel('${order.id}')">Print Label</button>
       ${canBusinessEditOrder(order) ? `<button type="button" class="btn btn-ghost" onclick="openBusinessOrderEdit('${order.id}')">Edit Order</button>` : ''}
+      ${canBusinessCancelOrder(order) ? `<button type="button" class="btn btn-danger" onclick="cancelBusinessOrder('${order.id}')">Cancel Order</button>` : ''}
     </div>
     ${['returned_to_hub', 'held_for_client_instructions'].includes(order.parcel_status) && order.return_to_client_status !== 'ready' && order.redelivery_status !== 'scheduled' ? `
       <div class="business-track-bubble" style="margin-top:1rem;">
@@ -1029,6 +1040,12 @@ function canBusinessEditOrder(order) {
   return order
     && !['delivered', 'cancelled', 'rejected'].includes(order.order_status)
     && !['handed_to_driver', 'returned_to_client'].includes(order.parcel_status);
+}
+
+function canBusinessCancelOrder(order) {
+  return order
+    && !['delivered', 'cancelled', 'rejected'].includes(order.order_status)
+    && !['handed_to_driver', 'delivered', 'returned_to_client'].includes(order.parcel_status);
 }
 
 function businessPaymentOption(order) {
@@ -1189,6 +1206,31 @@ window.saveBusinessOrderEdit = async function(orderId) {
     }
   } catch (error) {
     window.vdNotify('Order Not Updated', error.message || 'Could not update this order.', 'error');
+  }
+};
+
+window.cancelBusinessOrder = async function(orderId) {
+  const order = orders.find(item => item.id === orderId);
+  if (!order) return window.vdNotify('Order Not Cancelled', 'Order not found.', 'error');
+  if (!canBusinessCancelOrder(order)) {
+    window.vdNotify('Order Not Cancelled', 'This order can no longer be cancelled from the business dashboard. Contact VirtuDrop.', 'warning');
+    return;
+  }
+  const confirmed = window.confirm(`Cancel order ${order.order_number}? This will remove it from active delivery work.`);
+  if (!confirmed) return;
+  const reason = window.prompt('Reason for cancellation', 'Cancelled by business client');
+  if (reason === null) return;
+  try {
+    const { error } = await supabase.rpc('business_cancel_order', {
+      p_order_id: orderId,
+      p_reason: reason.trim() || 'Cancelled by business client'
+    });
+    if (error) throw error;
+    await loadBusinessData();
+    openOrderDetails(orderId);
+    window.vdNotify('Order Cancelled', 'The order was cancelled and removed from active delivery work.', 'success');
+  } catch (error) {
+    window.vdNotify('Order Not Cancelled', error.message || 'Could not cancel this order.', 'error');
   }
 };
 
