@@ -1879,6 +1879,10 @@
       return ['failed', 'rescheduled', 'cancelled'].includes(order.order_status);
     }
 
+    function isCancelledOrder(order) {
+      return ['cancelled', 'rejected'].includes(order?.order_status);
+    }
+
     function badgeForStatus(order) {
       if (order.zone_status === 'pending' || order.order_status === 'zone_pending') {
         return '<span class="badge badge-pending">Zone Pending</span>';
@@ -2068,24 +2072,26 @@
 
     function updateBadgesAndStats() {
       const pendingZone = orders.filter(o =>
+        !isCancelledOrder(o)
+        &&
         (o.zone_status === 'pending' || o.order_status === 'zone_pending')
         && ['parcel_received', 'legacy_untracked'].includes(o.parcel_status)
       ).length;
-      const unassigned = orders.filter(o => o.zone_status === 'confirmed' && ['sorted', 'redelivery_scheduled'].includes(o.parcel_status) && !o.assigned_driver_id).length;
+      const unassigned = orders.filter(o => !isCancelledOrder(o) && o.zone_status === 'confirmed' && ['sorted', 'redelivery_scheduled'].includes(o.parcel_status) && !o.assigned_driver_id).length;
       const today = new Date().toISOString().slice(0, 10);
       const todayOrders = orders.filter(o => (o.created_at || '').slice(0, 10) === today).length;
 
       const allBadge = document.querySelector('[data-panel="all-orders"] .nav-badge');
       if (allBadge) allBadge.textContent = orders.length;
       const checkinBadge = document.querySelector('[data-panel="parcel-checkin"] .nav-badge');
-      if (checkinBadge) checkinBadge.textContent = orders.filter(order => order.parcel_status === 'awaiting_parcel').length;
+      if (checkinBadge) checkinBadge.textContent = orders.filter(order => !isCancelledOrder(order) && order.parcel_status === 'awaiting_parcel').length;
       const pickupBadge = document.querySelector('[data-panel="pickup-management"] .nav-badge');
-      const activePickups = orders.filter(order => order.pickup_required && ['requested', 'assigned', 'picked_up'].includes(order.pickup_status)).length;
+      const activePickups = orders.filter(order => !isCancelledOrder(order) && order.pickup_required && ['requested', 'assigned', 'picked_up'].includes(order.pickup_status)).length;
       if (pickupBadge) pickupBadge.textContent = activePickups;
       const scheduleReview = orders.filter(order => order.scheduled_delivery_date && order.scheduled_delivery_date < today && !['delivered', 'cancelled', 'rejected'].includes(order.order_status)).length;
       const scheduleBadge = document.querySelector('[data-panel="delivery-scheduling"] .nav-badge');
       if (scheduleBadge) scheduleBadge.textContent = scheduleReview;
-      const sortingCount = orders.filter(order => order.parcel_status === 'parcel_received' && order.zone_status === 'confirmed').length;
+      const sortingCount = orders.filter(order => !isCancelledOrder(order) && order.parcel_status === 'parcel_received' && order.zone_status === 'confirmed').length;
       const draftManifestCount = deliveryManifests.filter(manifest => manifest.status === 'draft').length;
       const manifestBadge = document.querySelector('[data-panel="sorting-manifests"] .nav-badge');
       if (manifestBadge) manifestBadge.textContent = sortingCount + draftManifestCount;
@@ -2748,6 +2754,7 @@
       const filter = document.getElementById('parcelCheckinFilter')?.value || 'awaiting';
       const search = String(document.getElementById('parcelCheckinSearch')?.value || '').trim().toLowerCase();
       const rows = orders.filter(order => {
+        if (isCancelledOrder(order)) return false;
         if (filter === 'awaiting' && order.parcel_status !== 'awaiting_parcel') return false;
         if (filter === 'received' && order.parcel_status !== 'parcel_received') return false;
         if (filter === 'all' && order.parcel_status === 'legacy_untracked') return false;
@@ -3184,6 +3191,8 @@
       const panel = document.getElementById('panel-zone-confirm');
       panel.querySelectorAll('.zone-card').forEach(card => card.remove());
       const pending = orders.filter(o =>
+        !isCancelledOrder(o)
+        &&
         (o.zone_status === 'pending' || o.order_status === 'zone_pending')
         && ['parcel_received', 'legacy_untracked'].includes(o.parcel_status)
       );
@@ -3268,7 +3277,7 @@
     window.renderSortingQueue = function() {
       const body = document.getElementById('sortingQueueBody');
       if (!body) return;
-      const sortable = orders.filter(order => order.parcel_status === 'parcel_received' && order.zone_status === 'confirmed');
+      const sortable = orders.filter(order => !isCancelledOrder(order) && order.parcel_status === 'parcel_received' && order.zone_status === 'confirmed');
       body.innerHTML = sortable.map(order => {
         const zone = zones.find(item => item.id === order.zone_id);
         return `<tr><td class="td-id">${escapeHtml(order.order_number)}</td><td><div class="td-name">${escapeHtml(clientName(order))}</div><div class="td-sub">${escapeHtml(order.customer_name || '')}</div></td><td>${escapeHtml(order.delivery_address || order.area_name || 'Location pending')}</td><td>${escapeHtml(String(order.checked_in_parcel_count || 1))}</td><td><span class="badge badge-confirmed">${escapeHtml(zone?.code ? `Zone ${zone.code}` : order.pricing_rate_band || 'Confirmed')}</span></td><td><button class="btn btn-primary btn-sm" onclick="markOrderSorted('${order.id}')">Mark Sorted</button></td></tr>`;
@@ -3353,6 +3362,7 @@
     };
 
     function returnRecordMatches(order, filter) {
+      if (isCancelledOrder(order)) return false;
       const hasReturnRecord = order.delivery_return_required
         || ['returned_to_hub', 'held_for_client_instructions', 'redelivery_scheduled', 'returned_to_client'].includes(order.parcel_status)
         || Boolean(order.redelivery_status || order.return_to_client_status);
@@ -3531,6 +3541,7 @@
     function renderDriverAssign() {
       const tbody = document.querySelector('#panel-driver-assign tbody');
       const manageable = orders.filter(order => {
+        if (isCancelledOrder(order)) return false;
         const unassigned = !order.assigned_driver_id
           && order.zone_status === 'confirmed'
           && ['sorted', 'redelivery_scheduled'].includes(order.parcel_status);
@@ -3595,6 +3606,7 @@
       const search = String(document.getElementById('pickupQueueSearch')?.value || '').trim().toLowerCase();
       const activeStatuses = ['requested', 'assigned', 'picked_up'];
       const pickupOrders = orders.filter(order => {
+        if (isCancelledOrder(order)) return false;
         if (!order.pickup_required) return false;
         if (filter === 'active' && !activeStatuses.includes(order.pickup_status)) return false;
         if (!['active', 'all'].includes(filter) && order.pickup_status !== filter) return false;
@@ -3698,6 +3710,7 @@
       const today = new Date().toISOString().slice(0, 10);
       const terminal = ['delivered', 'cancelled', 'rejected'];
       const rows = orders.filter(order => {
+        if (isCancelledOrder(order)) return false;
         if (filter === 'active' && terminal.includes(order.order_status)) return false;
         if (filter === 'needs_review' && !(order.scheduled_delivery_date && order.scheduled_delivery_date < today && !terminal.includes(order.order_status))) return false;
         if (!search) return true;
