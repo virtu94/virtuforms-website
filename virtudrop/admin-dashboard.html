@@ -1665,6 +1665,50 @@
       return `TTD ${n.toFixed(2).replace('.00', '')}`;
     }
 
+    function orderLabelAddress(order) {
+      return [order.house_number, order.street_name, order.area_name].filter(Boolean).join(', ')
+        || order.delivery_address
+        || order.maps_link
+        || order.area_name
+        || 'Address pending';
+    }
+
+    window.printOrderLabel = function(orderId) {
+      const order = orders.find(item => item.id === orderId);
+      if (!order) return showToast('Order not found.');
+      const popup = window.open('', '_blank', 'width=460,height=680');
+      if (!popup) return showToast('Allow popups to print this label.');
+      const logoUrl = new URL('assets/logo.png', window.location.href).href;
+      popup.document.write(`<!doctype html><html><head><title>Label ${escapeHtml(order.order_number)}</title><style>
+        @page{size:4in 6in;margin:0.18in}
+        *{box-sizing:border-box}
+        body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif}
+        .label{width:100%;min-height:5.6in;border:2px solid #000;padding:14px;display:flex;flex-direction:column;gap:10px}
+        .top{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #000;padding-bottom:8px}
+        .logo{height:42px;max-width:150px;object-fit:contain;filter:grayscale(1) contrast(1.5)}
+        .order{font-size:16px;font-weight:800;text-align:right}
+        .section{border-bottom:1px solid #000;padding-bottom:8px}
+        .k{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+        .v{font-size:18px;font-weight:800;margin-top:3px;line-height:1.2}
+        .address{font-size:20px;line-height:1.25}
+        .meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px}
+        .box{border:1px solid #000;padding:7px;min-height:42px}
+        .note{margin-top:auto;font-size:10px;text-align:center;border-top:1px solid #000;padding-top:6px}
+      </style></head><body onload="setTimeout(()=>window.print(),250)"><div class="label">
+        <div class="top"><img class="logo" src="${logoUrl}" alt="VirtuDrop"><div class="order">${escapeHtml(order.order_number || '')}</div></div>
+        <div class="section"><div class="k">Deliver To</div><div class="v">${escapeHtml(order.customer_name || '')}</div><div>${escapeHtml(order.customer_phone || '')}</div></div>
+        <div class="section"><div class="k">Address</div><div class="address">${escapeHtml(orderLabelAddress(order))}</div></div>
+        <div class="meta">
+          <div class="box"><div class="k">Client</div><strong>${escapeHtml(clientName(order))}</strong></div>
+          <div class="box"><div class="k">Collect</div><strong>${escapeHtml(moneyFull(driverCollects(order)))}</strong></div>
+          <div class="box"><div class="k">Item / Ref</div>${escapeHtml(order.external_item_number || '—')}</div>
+          <div class="box"><div class="k">Area</div>${escapeHtml(order.area_name || '—')}</div>
+        </div>
+        <div class="note">Incorrect or incomplete street information may delay VirtuDrop's 1-2 business day delivery service.</div>
+      </div></body></html>`);
+      popup.document.close();
+    };
+
     function escapeHtml(value) {
       return String(value ?? '').replace(/[&<>"']/g, char => ({
         '&': '&amp;',
@@ -2787,6 +2831,7 @@
             <div>${escapeHtml(order.order_number)}</div>
             <div style="display:flex; gap:0.35rem; flex-wrap:wrap; margin-top:0.45rem;">
               <button class="btn btn-primary btn-sm" onclick="openAdminOrderEdit('${order.id}')">Edit Order</button>
+              <button class="btn btn-ghost btn-sm" onclick="printOrderLabel('${order.id}')">Print Label</button>
               ${order.order_status === 'cancelled'
                 ? '<span class="badge badge-unpaid">Cancelled</span>'
                 : `<button class="btn btn-danger btn-sm" onclick="openAdminOrderCancel('${order.id}')">Cancel Order</button>`}
@@ -2808,6 +2853,7 @@
           <td>
             <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
               <button class="btn btn-primary btn-sm" onclick="openAdminOrderEdit('${order.id}')">Edit</button>
+              <button class="btn btn-ghost btn-sm" onclick="printOrderLabel('${order.id}')">Print Label</button>
               ${order.order_status === 'cancelled' ? '' : `<button class="btn btn-danger btn-sm" onclick="openAdminOrderCancel('${order.id}')">Cancel Order</button>`}
               <button class="btn btn-ghost btn-sm" onclick="openCustomerTrackingWhatsApp('${order.id}')">💬 Customer</button>
               <button class="btn btn-ghost btn-sm" onclick="whatsappClient('${order.id}')">💬 Client</button>

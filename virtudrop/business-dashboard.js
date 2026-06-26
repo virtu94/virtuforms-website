@@ -602,6 +602,58 @@ function money(value) {
   return `TTD $${Number(value || 0).toFixed(2)}`;
 }
 
+function labelAddress(order) {
+  return [order.house_number, order.street_name, order.area_name].filter(Boolean).join(', ')
+    || order.delivery_address
+    || order.maps_link
+    || order.area_name
+    || 'Address pending';
+}
+
+function labelCollectAmount(order) {
+  if (order.financial_model_version >= 2) return Number(order.driver_amount_to_collect || 0);
+  if (order.payment_type === 'prepaid') return 0;
+  if (order.payment_type === 'delivery_only') return Number(order.delivery_fee || 0);
+  return Number(order.cod_amount || 0) + Number(order.delivery_fee || 0);
+}
+
+window.printDeliveryLabel = function(orderId) {
+  const order = orders.find(item => item.id === orderId);
+  if (!order) return window.vdNotify('Label Not Printed', 'Order not found.', 'error');
+  const popup = window.open('', '_blank', 'width=460,height=680');
+  if (!popup) return window.vdNotify('Label Not Printed', 'Allow popups to print this label.', 'warning');
+  const logoUrl = new URL('assets/logo.png', window.location.href).href;
+  const collectAmount = labelCollectAmount(order);
+  popup.document.write(`<!doctype html><html><head><title>Label ${escapeHtml(order.order_number)}</title><style>
+    @page{size:4in 6in;margin:0.18in}
+    *{box-sizing:border-box}
+    body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif}
+    .label{width:100%;min-height:5.6in;border:2px solid #000;padding:14px;display:flex;flex-direction:column;gap:10px}
+    .top{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #000;padding-bottom:8px}
+    .logo{height:42px;max-width:150px;object-fit:contain;filter:grayscale(1) contrast(1.5)}
+    .order{font-size:16px;font-weight:800;text-align:right}
+    .section{border-bottom:1px solid #000;padding-bottom:8px}
+    .k{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+    .v{font-size:18px;font-weight:800;margin-top:3px;line-height:1.2}
+    .address{font-size:20px;line-height:1.25}
+    .meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px}
+    .box{border:1px solid #000;padding:7px;min-height:42px}
+    .note{margin-top:auto;font-size:10px;text-align:center;border-top:1px solid #000;padding-top:6px}
+  </style></head><body onload="setTimeout(()=>window.print(),250)"><div class="label">
+    <div class="top"><img class="logo" src="${logoUrl}" alt="VirtuDrop"><div class="order">${escapeHtml(order.order_number || '')}</div></div>
+    <div class="section"><div class="k">Deliver To</div><div class="v">${escapeHtml(order.customer_name || '')}</div><div>${escapeHtml(order.customer_phone || '')}</div></div>
+    <div class="section"><div class="k">Address</div><div class="address">${escapeHtml(labelAddress(order))}</div></div>
+    <div class="meta">
+      <div class="box"><div class="k">Client</div><strong>${escapeHtml(business?.business_name || 'Business Client')}</strong></div>
+      <div class="box"><div class="k">Collect</div><strong>${escapeHtml(money(collectAmount))}</strong></div>
+      <div class="box"><div class="k">Item / Ref</div>${escapeHtml(order.external_item_number || '—')}</div>
+      <div class="box"><div class="k">Area</div>${escapeHtml(order.area_name || '—')}</div>
+    </div>
+    <div class="note">Incorrect or incomplete street information may delay VirtuDrop's 1-2 business day delivery service.</div>
+  </div></body></html>`);
+  popup.document.close();
+};
+
 function formatDate(value) {
   if (!value) return '—';
   const dateValue = /^\d{4}-\d{2}-\d{2}$/.test(String(value)) ? `${value}T12:00:00` : value;
@@ -844,6 +896,7 @@ function orderTableRow(order, includeCost = false) {
       <td><span class="status-badge ${statusClass(order.order_status)}">${escapeHtml(deliveryOutcomeLabel(order))}</span></td>
       <td>
         <button type="button" class="order-detail-link" onclick="event.stopPropagation(); openOrderDetails('${order.id}')">Details</button>
+        · <button type="button" class="order-detail-link" onclick="event.stopPropagation(); printDeliveryLabel('${order.id}')">Print Label</button>
         ${editButton ? ` · ${editButton}` : ''}
       </td>
     </tr>
@@ -866,6 +919,7 @@ function orderCard(order) {
       ${order.pickup_required ? `<div style="font-size:0.78rem; color:#2a6f68; margin-top:0.2rem;">${escapeHtml(pickupStatusLabel(order.pickup_status))}${order.pickup_scheduled_date ? ` · ${escapeHtml(formatDate(order.pickup_scheduled_date))}` : ''}</div>` : ''}
       <div class="order-card-cost">
         ${money(order.delivery_fee)} · <button type="button" class="order-detail-link" onclick="event.stopPropagation(); openOrderDetails('${order.id}')">View details</button>
+        · <button type="button" class="order-detail-link" onclick="event.stopPropagation(); printDeliveryLabel('${order.id}')">Print label</button>
         ${canBusinessEditOrder(order) ? ` · <button type="button" class="order-detail-link" onclick="event.stopPropagation(); openBusinessOrderEdit('${order.id}')">Edit</button>` : ''}
       </div>
     </div>
@@ -950,6 +1004,7 @@ window.openOrderDetails = function(orderId) {
     </div>
     <div class="order-detail-actions">
       ${map ? `<a class="btn btn-primary" href="${escapeHtml(map)}" target="_blank">Open Location</a>` : ''}
+      <button type="button" class="btn btn-ghost" onclick="printDeliveryLabel('${order.id}')">Print Label</button>
       ${canBusinessEditOrder(order) ? `<button type="button" class="btn btn-ghost" onclick="openBusinessOrderEdit('${order.id}')">Edit Order</button>` : ''}
     </div>
     ${['returned_to_hub', 'held_for_client_instructions'].includes(order.parcel_status) && order.return_to_client_status !== 'ready' && order.redelivery_status !== 'scheduled' ? `
@@ -1935,6 +1990,10 @@ async function submitBusinessOrder(event) {
     window.resetOrderForm();
     try {
       await loadBusinessData();
+      const submittedOrder = orders.find(order => order.order_number === result?.order_number);
+      if (submittedOrder && window.confirm(`Print delivery label for ${submittedOrder.order_number}?`)) {
+        printDeliveryLabel(submittedOrder.id);
+      }
     } catch (refreshError) {
       console.error('Business dashboard refresh error after submission:', refreshError);
       showDashboardLoadError('The order was submitted, but the dashboard could not refresh. Do not submit the same order again. Reload after the database update is complete.');
