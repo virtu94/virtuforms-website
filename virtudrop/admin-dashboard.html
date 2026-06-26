@@ -2902,6 +2902,7 @@
         </tr>
       `).join('') || '<tr><td colspan="8">No orders found.</td></tr>';
     }
+    window.renderAllOrders = renderAllOrders;
 
     function adminPaymentArrangement(order) {
       if (order.payment_arrangement === 'client_pays_delivery') return 'client_pays_delivery';
