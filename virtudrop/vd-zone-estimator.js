@@ -1,4 +1,4 @@
-import { calculateOrderMoney, moneyLabel, validateManualAddress } from './vd-order-money.js?v=20260624-financial-3';
+import { calculateOrderMoney, moneyLabel, validateManualAddress } from './vd-order-money.js?v=20260624-split-cod-1';
 
 const REMOTE_ZONE_CODE = 'REMOTE';
 const COVERED_ZONE_CODES = new Set(['A', 'B', 'C', 'D']);
@@ -373,10 +373,14 @@ export function formatEstimateRows({
     rows.push(['Zone Data', estimate.debug.zonesLoaded ? 'Loaded' : 'Not loaded']);
   }
 
-  if (paymentType === 'cod' && money.packageValue > 0) {
+  if ((paymentType === 'cod' || paymentType === 'cod-client-delivery') && money.packageValue > 0) {
     rows.push(['Package Value', moneyLabel(money.packageValue)]);
     rows.push(['Customer Pays', moneyLabel(money.customerAmountDue)]);
     rows.push(['Driver Collects', moneyLabel(money.driverAmountToCollect)]);
+    if (paymentType === 'cod-client-delivery') {
+      rows.push(['Business Owes VirtuDrop', moneyLabel(estimate.fee)]);
+      rows.push(['Settlement', clientFeeSettlement === 'deduct_from_remittance' ? 'Deduct from remittance' : 'Pay separately']);
+    }
   } else if (paymentType === 'pkg-online') {
     rows.push(['Customer Pays', moneyLabel(money.customerAmountDue)]);
     rows.push(['Driver Collects', moneyLabel(money.driverAmountToCollect)]);

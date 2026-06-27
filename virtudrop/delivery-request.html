@@ -323,6 +323,13 @@
               <p>Item already paid to seller. Driver collects the delivery fee only.</p>
             </div>
           </label>
+          <label class="payment-option" onclick="selectPayment(this, 'cod-client-delivery')">
+            <input type="radio" name="payment" value="cod-client-delivery" />
+            <div class="payment-option-text">
+              <h4>🤝 Customer Pays Package — Business Pays Delivery</h4>
+              <p>Driver collects the package value only. The business settles the delivery fee with VirtuDrop.</p>
+            </div>
+          </label>
           <label class="payment-option" onclick="selectPayment(this, 'all-online')">
             <input type="radio" name="payment" value="all-online" />
             <div class="payment-option-text">
@@ -439,14 +446,14 @@
   <script src="vd-modal.js"></script>
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-    import { estimateDeliveryZone, formatEstimateRows } from './vd-zone-estimator.js?v=20260626-primary-extended-1';
-    import { calculateOrderMoney, financialRequestFields, validateManualAddress, validatePickupLocation } from './vd-order-money.js?v=20260624-pickup-1';
+    import { estimateDeliveryZone, formatEstimateRows } from './vd-zone-estimator.js?v=20260626-split-cod-1';
+    import { calculateOrderMoney, financialRequestFields, validateManualAddress, validatePickupLocation } from './vd-order-money.js?v=20260624-split-cod-1';
 
     const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnbXp6YXZ4aHVhcmxhY252bm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Mjk4NTksImV4cCI6MjA5NDIwNTg1OX0.7-YKlwLrhUYUYbiii93ZvgX01TxVephApDNCP50Rl54';
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const paymentMap = { cod: 'cod', 'pkg-online': 'delivery_only', 'all-online': 'prepaid' };
+    const paymentMap = { cod: 'cod', 'cod-client-delivery': 'cod', 'pkg-online': 'delivery_only', 'all-online': 'prepaid' };
     let activeLocTab = 'share';
 
     async function loadBusinessClients() {
@@ -531,10 +538,10 @@
       label.classList.add('selected');
       const radio = label.querySelector('input[type="radio"]');
       if (radio) radio.checked = true;
-      // Show package value only for COD/Linx
-      document.getElementById('pkgValueBlock').classList.toggle('show', value === 'cod');
-      document.getElementById('clientFeeSettlementBlock').classList.toggle('show', value === 'all-online');
-      if (value !== 'all-online') document.getElementById('clientFeeSettlement').value = '';
+      // Show package value whenever the driver must collect the package amount.
+      document.getElementById('pkgValueBlock').classList.toggle('show', value === 'cod' || value === 'cod-client-delivery');
+      document.getElementById('clientFeeSettlementBlock').classList.toggle('show', value === 'all-online' || value === 'cod-client-delivery');
+      if (value !== 'all-online' && value !== 'cod-client-delivery') document.getElementById('clientFeeSettlement').value = '';
       document.getElementById('paymentErr').classList.remove('show');
       // Refresh estimate if we already have location data
       updateEstimate();
@@ -627,7 +634,7 @@
               : estimate.message;
           }
 
-          const pkgVal = payment === 'cod' ? (Number(document.getElementById('pkgValue').value) || 0) : 0;
+          const pkgVal = payment === 'cod' || payment === 'cod-client-delivery' ? (Number(document.getElementById('pkgValue').value) || 0) : 0;
           renderRows(estimateBreakdown, formatEstimateRows({
             estimate,
             paymentType: payment,
@@ -784,11 +791,11 @@
         ok = false;
       }
 
-      if (payment?.value === 'cod' && (!Number.isFinite(Number(document.getElementById('pkgValue').value)) || Number(document.getElementById('pkgValue').value) <= 0)) {
+      if (['cod', 'cod-client-delivery'].includes(payment?.value) && (!Number.isFinite(Number(document.getElementById('pkgValue').value)) || Number(document.getElementById('pkgValue').value) <= 0)) {
         showErr('pkgValue', 'pkgValueErr', 'Please enter the package value.');
         ok = false;
       }
-      if (payment?.value === 'all-online' && !document.getElementById('clientFeeSettlement').value) {
+      if (['all-online', 'cod-client-delivery'].includes(payment?.value) && !document.getElementById('clientFeeSettlement').value) {
         showErr('clientFeeSettlement', 'clientFeeSettlementErr', 'Please select how the delivery fee will be settled.');
         ok = false;
       }
@@ -871,7 +878,7 @@
       });
       const money = calculateOrderMoney({
         paymentOption: paymentValue,
-        packageValue: paymentValue === 'cod' ? Number(document.getElementById('pkgValue').value) : 0,
+        packageValue: paymentValue === 'cod' || paymentValue === 'cod-client-delivery' ? Number(document.getElementById('pkgValue').value) : 0,
         deliveryFee: estimate?.fee ?? null,
         clientFeeSettlement: document.getElementById('clientFeeSettlement').value || null,
         pickupRequired: document.getElementById('pickupRequired').checked,
@@ -908,7 +915,7 @@
         if (error) throw error;
         const result = Array.isArray(data) ? data[0] : data;
         const orderNumber = result?.order_number || 'Submitted';
-        const paymentLabels = { cod: 'Cash on Delivery', 'pkg-online': 'Package Paid Online', 'all-online': 'Fully Paid Online' };
+        const paymentLabels = { cod: 'Cash on Delivery', 'cod-client-delivery': 'Customer Pays Package / Business Pays Delivery', 'pkg-online': 'Package Paid Online', 'all-online': 'Fully Paid Online' };
         const details = [
           ['Customer', requestData.customer_name],
           ['Phone', requestData.customer_phone],

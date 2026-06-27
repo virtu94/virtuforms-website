@@ -1052,6 +1052,7 @@
               <select class="input" id="paymentType" onchange="window.vdSyncBusinessAmountField && window.vdSyncBusinessAmountField()">
                 <option value="">— Select —</option>
                 <option value="cod">COD/Linx — Customer pays at door</option>
+                <option value="cod-client-delivery">COD/Linx — customer pays package, business pays delivery</option>
                 <option value="pkg-online">Package paid online, collect delivery fee</option>
                 <option value="all-online">Package paid online — business pays delivery</option>
               </select>
@@ -1664,24 +1665,23 @@
     var settlement = document.getElementById('clientFeeSettlement');
     if (!payment || !block || !amount) return;
 
-    var isAllOnline = payment.value === 'all-online';
-    block.style.display = isAllOnline ? 'none' : 'flex';
-    amount.disabled = isAllOnline;
-    amount.required = payment.value === 'cod';
-    if (isAllOnline) amount.value = '';
-    if (settlementBlock) settlementBlock.style.display = isAllOnline ? 'flex' : 'none';
+    var collectsPackage = payment.value === 'cod' || payment.value === 'cod-client-delivery';
+    var clientPaysDelivery = payment.value === 'all-online' || payment.value === 'cod-client-delivery';
+    block.style.display = collectsPackage ? 'flex' : 'none';
+    amount.disabled = !collectsPackage;
+    amount.required = collectsPackage;
+    if (!collectsPackage) amount.value = '';
+    if (settlementBlock) settlementBlock.style.display = clientPaysDelivery ? 'flex' : 'none';
     if (settlement) {
-      settlement.required = isAllOnline;
-      if (!isAllOnline) settlement.value = '';
+      settlement.required = clientPaysDelivery;
+      if (!clientPaysDelivery) settlement.value = '';
     }
 
     var label = block.querySelector('label');
     if (label) {
-      label.textContent = payment.value === 'pkg-online'
-        ? 'Delivery Fee to Collect (TTD)'
-        : 'Amount to Collect (TTD)';
+      label.textContent = 'Package Value (TTD)';
     }
-    amount.placeholder = payment.value === 'pkg-online' ? 'e.g. 40.00' : 'e.g. 350.00';
+    amount.placeholder = 'e.g. 350.00';
   };
 
   document.addEventListener('DOMContentLoaded', window.vdSyncBusinessAmountField);

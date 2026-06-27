@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { calculateOrderMoney, financialRequestFields, moneyLabel, validateManualAddress, validatePickupLocation } from './vd-order-money.js?v=20260624-pickup-1';
+import { calculateOrderMoney, financialRequestFields, moneyLabel, validateManualAddress, validatePickupLocation } from './vd-order-money.js?v=20260624-split-cod-1';
 
 const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnbXp6YXZ4aHVhcmxhY252bm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Mjk4NTksImV4cCI6MjA5NDIwNTg1OX0.7-YKlwLrhUYUYbiii93ZvgX01TxVephApDNCP50Rl54';
@@ -363,10 +363,14 @@ function formatEstimateRows({ estimate, paymentType, packageValue }) {
     rows.push(['Zone Data', estimate.debug.zonesLoaded ? 'Loaded' : 'Not loaded']);
   }
 
-  if (paymentType === 'cod' && money.packageValue > 0) {
+  if ((paymentType === 'cod' || paymentType === 'cod-client-delivery') && money.packageValue > 0) {
     rows.push(['Package Value', moneyLabel(money.packageValue)]);
     rows.push(['Customer Pays', moneyLabel(money.customerAmountDue)]);
     rows.push(['Driver Collects', moneyLabel(money.driverAmountToCollect)]);
+    if (paymentType === 'cod-client-delivery') {
+      rows.push(['Business Owes VirtuDrop', moneyLabel(estimate.fee)]);
+      rows.push(['Settlement', settlement === 'deduct_from_remittance' ? 'Deduct from remittance' : 'Pay separately']);
+    }
   } else if (paymentType === 'pkg-online') {
     rows.push(['Customer Pays', moneyLabel(money.customerAmountDue)]);
     rows.push(['Driver Collects', moneyLabel(money.driverAmountToCollect)]);
@@ -459,7 +463,7 @@ async function updateBizEstimate() {
           : estimate.message;
       }
 
-      const pkgVal = paymentType === 'cod' ? (Number(el('#codAmount')?.value) || 0) : 0;
+      const pkgVal = paymentType === 'cod' || paymentType === 'cod-client-delivery' ? (Number(el('#codAmount')?.value) || 0) : 0;
       renderEstimateBreakdown(breakdownEl, formatEstimateRows({ estimate, paymentType, packageValue: pkgVal }));
 
     } catch (err) {
@@ -480,7 +484,7 @@ window.vdSyncBusinessAmountField = function() {
   const settlementBlock = el('#clientFeeSettlementBlock');
   const settlement = el('#clientFeeSettlement');
   if (!block) return;
-  if (paymentType === 'cod') {
+  if (paymentType === 'cod' || paymentType === 'cod-client-delivery') {
     block.style.display = '';
     if (label) label.textContent = 'Package Value (TTD)';
     el('#codAmount').placeholder = 'e.g. 350.00';
@@ -491,10 +495,10 @@ window.vdSyncBusinessAmountField = function() {
   } else {
     block.style.display = 'none';
   }
-  if (settlementBlock) settlementBlock.style.display = paymentType === 'all-online' ? '' : 'none';
+  if (settlementBlock) settlementBlock.style.display = paymentType === 'all-online' || paymentType === 'cod-client-delivery' ? '' : 'none';
   if (settlement) {
-    settlement.required = paymentType === 'all-online';
-    if (paymentType !== 'all-online') settlement.value = '';
+    settlement.required = paymentType === 'all-online' || paymentType === 'cod-client-delivery';
+    if (paymentType !== 'all-online' && paymentType !== 'cod-client-delivery') settlement.value = '';
   }
   updateBizEstimate();
 };
@@ -581,7 +585,7 @@ const panelTitles = {
   settings: 'Settings'
 };
 
-const paymentMap = { cod: 'cod', 'pkg-online': 'delivery_only', 'all-online': 'prepaid' };
+const paymentMap = { cod: 'cod', 'cod-client-delivery': 'cod', 'pkg-online': 'delivery_only', 'all-online': 'prepaid' };
 const paymentLabels = { cod: 'Cash on Delivery', delivery_only: 'Delivery Fee Only', prepaid: 'Fully Paid Online' };
 const activeStatuses = ['zone_pending', 'pending', 'confirmed', 'assigned', 'out_for_delivery'];
 const failedStatuses = ['failed', 'rescheduled'];
@@ -1055,6 +1059,7 @@ function canBusinessCancelOrder(order) {
 }
 
 function businessPaymentOption(order) {
+  if (order.payment_arrangement === 'cod_client_pays_delivery') return 'cod-client-delivery';
   if (order.payment_arrangement === 'client_pays_delivery' || order.payment_type === 'prepaid') return 'all-online';
   if (order.payment_arrangement === 'delivery_only_customer_pays' || order.payment_type === 'delivery_only') return 'pkg-online';
   return 'cod';
@@ -1062,11 +1067,17 @@ function businessPaymentOption(order) {
 
 function businessEditPayloadFromForm(orderId) {
   const paymentOption = el('#editPaymentType')?.value || '';
-  const packageValue = paymentOption === 'cod' ? Number(el('#editPackageValue')?.value || 0) : 0;
+  const packageValue = paymentOption === 'cod' || paymentOption === 'cod-client-delivery' ? Number(el('#editPackageValue')?.value || 0) : 0;
   const pickupRequired = el('#editPickupRequired')?.value === 'yes';
   const pickupParcelCount = Number(el('#editPickupParcelCount')?.value || 1);
   const pickupFee = pickupRequired && pickupParcelCount < 5 ? 20 : 0;
-  const clientPaysDelivery = paymentOption === 'all-online';
+  const clientPaysDelivery = paymentOption === 'all-online' || paymentOption === 'cod-client-delivery';
+  const arrangementMap = {
+    cod: 'cod_customer_pays',
+    'cod-client-delivery': 'cod_client_pays_delivery',
+    'pkg-online': 'delivery_only_customer_pays',
+    'all-online': 'client_pays_delivery'
+  };
   const customerNotes = [
     `Package: ${el('#editPackageDesc')?.value.trim() || ''}`,
     el('#editSpecialNotes')?.value.trim() || ''
@@ -1081,7 +1092,7 @@ function businessEditPayloadFromForm(orderId) {
     latitude: el('#editLatitude')?.value || null,
     longitude: el('#editLongitude')?.value || null,
     payment_type: paymentMap[paymentOption] || '',
-    payment_arrangement: paymentOption === 'all-online' ? 'client_pays_delivery' : paymentOption === 'pkg-online' ? 'delivery_only_customer_pays' : 'cod_customer_pays',
+    payment_arrangement: arrangementMap[paymentOption] || '',
     delivery_fee_payer: clientPaysDelivery ? 'client' : 'customer',
     client_fee_settlement: clientPaysDelivery ? (el('#editClientFeeSettlement')?.value || 'pay_separately') : null,
     package_value: packageValue,
@@ -1145,7 +1156,7 @@ window.openBusinessOrderEdit = function(orderId) {
       <label class="order-detail-item"><div class="order-detail-label">Customer Name</div><input class="input" id="editCustomerName" value="${escapeHtml(order.customer_name || '')}"></label>
       <label class="order-detail-item"><div class="order-detail-label">Customer Phone</div><input class="input" id="editCustomerPhone" value="${escapeHtml(String(order.customer_phone || '').replace(/^868-?/, ''))}"></label>
       <label class="order-detail-item full"><div class="order-detail-label">Package Description</div><textarea class="input" id="editPackageDesc">${escapeHtml(notes.packageText || order.external_item_number || '')}</textarea></label>
-      <label class="order-detail-item"><div class="order-detail-label">Payment Type</div><select class="input" id="editPaymentType" onchange="syncBusinessEditPayment()"><option value="cod" ${paymentOption === 'cod' ? 'selected' : ''}>Customer pays package + delivery</option><option value="pkg-online" ${paymentOption === 'pkg-online' ? 'selected' : ''}>Customer pays delivery only</option><option value="all-online" ${paymentOption === 'all-online' ? 'selected' : ''}>Business pays delivery</option></select></label>
+      <label class="order-detail-item"><div class="order-detail-label">Payment Type</div><select class="input" id="editPaymentType" onchange="syncBusinessEditPayment()"><option value="cod" ${paymentOption === 'cod' ? 'selected' : ''}>Customer pays package + delivery</option><option value="cod-client-delivery" ${paymentOption === 'cod-client-delivery' ? 'selected' : ''}>Customer pays package, business pays delivery</option><option value="pkg-online" ${paymentOption === 'pkg-online' ? 'selected' : ''}>Customer pays delivery only</option><option value="all-online" ${paymentOption === 'all-online' ? 'selected' : ''}>Business pays delivery</option></select></label>
       <label class="order-detail-item"><div class="order-detail-label">Package/COD Amount</div><input class="input" id="editPackageValue" type="number" min="0" step="0.01" value="${Number(order.package_value || order.cod_amount || 0).toFixed(2)}"></label>
       <label class="order-detail-item" id="editClientFeeWrap"><div class="order-detail-label">Client Settlement</div><select class="input" id="editClientFeeSettlement"><option value="pay_separately" ${order.client_fee_settlement === 'pay_separately' ? 'selected' : ''}>Pay separately</option><option value="deduct_from_remittance" ${order.client_fee_settlement === 'deduct_from_remittance' ? 'selected' : ''}>Deduct from remittance</option></select></label>
       <label class="order-detail-item"><div class="order-detail-label">Estimated Fee</div><input class="input" id="editEstimatedFee" type="number" min="0" step="0.01" value="${order.estimated_fee ?? ''}"></label>
@@ -1184,8 +1195,8 @@ window.openBusinessOrderEdit = function(orderId) {
 
 window.syncBusinessEditPayment = function() {
   const option = el('#editPaymentType')?.value || '';
-  if (el('#editPackageValue')) el('#editPackageValue').disabled = option !== 'cod';
-  if (el('#editClientFeeWrap')) el('#editClientFeeWrap').style.display = option === 'all-online' ? '' : 'none';
+  if (el('#editPackageValue')) el('#editPackageValue').disabled = option !== 'cod' && option !== 'cod-client-delivery';
+  if (el('#editClientFeeWrap')) el('#editClientFeeWrap').style.display = option === 'all-online' || option === 'cod-client-delivery' ? '' : 'none';
 };
 
 window.syncBusinessEditPickup = function() {
@@ -1912,12 +1923,12 @@ function validateOrderForm(payload, raw) {
     }
   }
 
-  if (raw.paymentValue === 'cod' && (!Number.isFinite(Number(payload.cod_amount)) || Number(payload.cod_amount) <= 0)) {
+  if (['cod', 'cod-client-delivery'].includes(raw.paymentValue) && (!Number.isFinite(Number(payload.cod_amount)) || Number(payload.cod_amount) <= 0)) {
     markOrderInvalid('#codAmount');
     issues.push('Enter the COD amount the driver should collect.');
   }
 
-  if (raw.paymentValue === 'all-online' && !raw.clientFeeSettlement) {
+  if (['all-online', 'cod-client-delivery'].includes(raw.paymentValue) && !raw.clientFeeSettlement) {
     markOrderInvalid('#clientFeeSettlement');
     issues.push('Choose whether the delivery fee will be deducted from remittance or paid separately.');
   }
@@ -1974,7 +1985,7 @@ async function submitBusinessOrder(event) {
 
   const money = calculateOrderMoney({
     paymentOption: paymentValue,
-    packageValue: paymentValue === 'cod' ? Number(el('#codAmount')?.value || 0) : 0,
+    packageValue: paymentValue === 'cod' || paymentValue === 'cod-client-delivery' ? Number(el('#codAmount')?.value || 0) : 0,
     deliveryFee: estimate?.fee ?? null,
     clientFeeSettlement,
     pickupRequired,
@@ -2224,14 +2235,14 @@ function bindUi() {
     const settlement = el('#clientFeeSettlement');
     if (!block || !amount) return;
 
-    block.style.display = paymentValue === 'cod' ? 'flex' : 'none';
-    amount.disabled = paymentValue !== 'cod';
-    amount.required = paymentValue === 'cod';
-    if (paymentValue !== 'cod') amount.value = '';
-    if (settlementBlock) settlementBlock.style.display = paymentValue === 'all-online' ? 'flex' : 'none';
+    block.style.display = paymentValue === 'cod' || paymentValue === 'cod-client-delivery' ? 'flex' : 'none';
+    amount.disabled = paymentValue !== 'cod' && paymentValue !== 'cod-client-delivery';
+    amount.required = paymentValue === 'cod' || paymentValue === 'cod-client-delivery';
+    if (paymentValue !== 'cod' && paymentValue !== 'cod-client-delivery') amount.value = '';
+    if (settlementBlock) settlementBlock.style.display = paymentValue === 'all-online' || paymentValue === 'cod-client-delivery' ? 'flex' : 'none';
     if (settlement) {
-      settlement.required = paymentValue === 'all-online';
-      if (paymentValue !== 'all-online') settlement.value = '';
+      settlement.required = paymentValue === 'all-online' || paymentValue === 'cod-client-delivery';
+      if (paymentValue !== 'all-online' && paymentValue !== 'cod-client-delivery') settlement.value = '';
     }
     updateBizEstimate();
   }
