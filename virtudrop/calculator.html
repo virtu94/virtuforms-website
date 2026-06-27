@@ -517,7 +517,7 @@ input[type="number"].input {
                 <label for="svc-standard">
                   <span class="service-icon">📅</span>
                   <span class="service-name">Standard Delivery</span>
-                  <span class="service-note">Same or cross zone · $40 / $50</span>
+                  <span class="service-note">Primary areas $40 · Extended areas $50</span>
                 </label>
               </div>
 
@@ -561,8 +561,8 @@ input[type="number"].input {
               <thead>
                 <tr>
                   <th>Service Type</th>
-                  <th>Same Zone</th>
-                  <th>Cross Zone</th>
+                  <th>Primary Areas</th>
+                  <th>Extended Areas</th>
                 </tr>
               </thead>
               <tbody>
@@ -599,7 +599,6 @@ input[type="number"].input {
 
     let zoneAreas = {};
     let zoneNames = {};
-    let pricingRules = [];
     let appSettings = { currency: 'TTD', same_day_enabled: true };
 
     const pickupZone = document.getElementById('pickupZone');
@@ -633,8 +632,9 @@ input[type="number"].input {
       sel.innerHTML = '<option value="">- Select area -</option>';
       zoneAreas[zone].forEach(area => {
         const option = document.createElement('option');
-        option.value = area;
-        option.textContent = area;
+        option.value = area.name;
+        option.dataset.rateBand = area.rateBand;
+        option.textContent = `${area.name}${area.rateBand === 'extended' ? ' - Extended $50' : ''}`;
         sel.appendChild(option);
       });
     }
@@ -642,70 +642,49 @@ input[type="number"].input {
     function getLocationInfo(prefix) {
       const zone = document.getElementById(prefix + 'Zone').value;
       if (!zone) return null;
-      const area = document.getElementById(prefix + 'Area').value;
-      return area ? { zone, area } : null;
+      const areaSelect = document.getElementById(prefix + 'Area');
+      const area = areaSelect.value;
+      const rateBand = areaSelect.selectedOptions[0]?.dataset.rateBand || 'standard';
+      return area ? { zone, area, rateBand } : null;
     }
 
     function getStandardPrice(pickup, drop) {
-      const rule = pricingRules.find(item =>
-        item.service_type === 'standard' &&
-        item.pickup_zone?.code === pickup.zone &&
-        item.dropoff_zone?.code === drop.zone
-      );
-
-      return rule?.base_price ?? null;
+      return drop.rateBand === 'extended' ? 50 : 40;
     }
 
     function getReferencePrices() {
-      const sameZoneRule = pricingRules.find(item =>
-        item.service_type === 'standard' &&
-        item.pickup_zone?.code === item.dropoff_zone?.code
-      );
-      const crossZoneRule = pricingRules.find(item =>
-        item.service_type === 'standard' &&
-        item.pickup_zone?.code !== item.dropoff_zone?.code
-      );
-
-      return {
-        same: sameZoneRule?.base_price ?? 40,
-        cross: crossZoneRule?.base_price ?? 50
-      };
+      return { primary: 40, extended: 50 };
     }
 
     function updatePricingReference() {
       const prices = getReferencePrices();
       if (standardNote) {
-        standardNote.textContent = `Same or cross zone - $${formatMoney(prices.same)} / $${formatMoney(prices.cross)}`;
+        standardNote.textContent = `Primary areas - $${formatMoney(prices.primary)} / Extended areas - $${formatMoney(prices.extended)}`;
       }
       if (pricingRow) {
         const cells = pricingRow.querySelectorAll('td');
-        if (cells[1]) cells[1].textContent = `${appSettings.currency} $${formatMoney(prices.same)}`;
-        if (cells[2]) cells[2].textContent = `${appSettings.currency} $${formatMoney(prices.cross)}`;
+        if (cells[1]) cells[1].textContent = `${appSettings.currency} $${formatMoney(prices.primary)}`;
+        if (cells[2]) cells[2].textContent = `${appSettings.currency} $${formatMoney(prices.extended)}`;
       }
     }
 
     async function loadCalculatorData() {
-      const [zonesRes, pricingRes, settingsRes] = await Promise.all([
+      const [zonesRes, settingsRes] = await Promise.all([
         supabase
           .from('zones')
-          .select('code, name, region, zone_areas(area_name)')
+          .select('code, name, region, zone_areas(area_name, rate_band)')
           .eq('active', true)
           .in('code', ['A', 'B', 'C', 'D'])
           .order('code', { ascending: true }),
-        supabase
-          .from('pricing_rules')
-          .select('service_type, base_price, requires_quote, pickup_zone:pickup_zone_id(code), dropoff_zone:dropoff_zone_id(code)')
-          .eq('active', true),
         supabase
           .from('app_settings')
           .select('key, value')
           .in('key', ['currency', 'same_day_enabled'])
       ]);
 
-      if (zonesRes.error || pricingRes.error || settingsRes.error) {
+      if (zonesRes.error || settingsRes.error) {
         console.error('Unable to load calculator data:', {
           zones: zonesRes.error,
-          pricing: pricingRes.error,
           settings: settingsRes.error
         });
         document.getElementById('resultEmpty').textContent = 'Pricing data could not be loaded. Please refresh the page or contact VirtuDrop.';
@@ -715,9 +694,9 @@ input[type="number"].input {
       const zones = zonesRes.data || [];
       zoneAreas = zones.reduce((lookup, zone) => {
         lookup[zone.code] = (zone.zone_areas || [])
-          .map(item => item.area_name)
-          .filter(Boolean)
-          .sort((a, b) => a.localeCompare(b));
+          .map(item => ({ name: item.area_name, rateBand: item.rate_band || 'standard' }))
+          .filter(item => item.name)
+          .sort((a, b) => a.name.localeCompare(b.name));
         return lookup;
       }, {});
 
@@ -726,7 +705,6 @@ input[type="number"].input {
         return lookup;
       }, {});
 
-      pricingRules = pricingRes.data || [];
       appSettings = (settingsRes.data || []).reduce((settings, item) => {
         settings[item.key] = item.value;
         return settings;
@@ -789,10 +767,8 @@ input[type="number"].input {
       let priceHTML = '';
       let currencyNote = 'Trinidad and Tobago Dollars (TTD)';
       let breakdownHTML = '';
-      const sameZone = pickup.zone === drop.zone;
-      const routeLabel = sameZone
-        ? 'Same zone (' + zoneNames[pickup.zone] + ')'
-        : zoneNames[pickup.zone] + ' &rarr; ' + zoneNames[drop.zone];
+      const routeLabel = zoneNames[pickup.zone] + ' &rarr; ' + zoneNames[drop.zone];
+      const rateLabel = drop.rateBand === 'extended' ? 'Extended delivery area' : 'Primary delivery area';
 
       if (service === 'priority') {
         priceHTML = '<div class="result-price-range">Contact Us</div>';
@@ -828,7 +804,8 @@ input[type="number"].input {
             <div class="breakdown-row"><span class="breakdown-label">Route</span><span class="breakdown-value highlight">${routeLabel}</span></div>
             <div class="breakdown-row"><span class="breakdown-label">Service</span><span class="breakdown-value">Standard Delivery</span></div>
             <div class="breakdown-divider"></div>
-            <div class="breakdown-row"><span class="breakdown-label">Estimated cost</span><span class="breakdown-value highlight">${appSettings.currency} $${formatMoney(basePrice)} ${sameZone ? '(same zone)' : '(cross zone)'}</span></div>
+            <div class="breakdown-row"><span class="breakdown-label">Rate band</span><span class="breakdown-value highlight">${rateLabel}</span></div>
+            <div class="breakdown-row"><span class="breakdown-label">Estimated cost</span><span class="breakdown-value highlight">${appSettings.currency} $${formatMoney(basePrice)}</span></div>
           `;
           notes.push('<strong>Standard Delivery:</strong> Delivery is scheduled on your zone\'s assigned days. Orders must be submitted by 8:00 PM daily.');
         }

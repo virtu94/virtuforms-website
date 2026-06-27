@@ -225,6 +225,18 @@
       border-color: #2a9d8f;
       transform: translateY(-2px);
     }
+    .location-tag.extended,
+    .drawer-tag.extended {
+      border-color: #e07a3a;
+      background: #fff8f0;
+    }
+    .location-tag.extended::after,
+    .drawer-tag.extended::after {
+      content: " $50";
+      color: #e07a3a;
+      font-weight: 800;
+      margin-left: 0.25rem;
+    }
 
     /* See full list button */
     .see-full-btn {
@@ -710,7 +722,7 @@
       <div class="container">
         <div class="page-header">
           <h1>Delivery Zones</h1>
-          <p>VirtuDrop uses zones to keep delivery fast, predictable, and affordable across Trinidad.</p>
+          <p>VirtuDrop uses primary and extended delivery areas to keep pricing clear: primary areas are $40 and extended areas are $50.</p>
         </div>
 
         <div class="zones-grid">
@@ -739,7 +751,7 @@
             </div>
             <div class="zone-info">
               <span class="zone-info-icon">📦</span>
-              <p>Standard delivery is 1–2 days. Next-day delivery must be arranged first — contact us to confirm what can be done.</p>
+              <p>Primary areas are $40. Extended areas are marked $50. Standard delivery is 1–2 days on scheduled delivery days.</p>
             </div>
           </div>
 
@@ -767,7 +779,7 @@
             </div>
             <div class="zone-info">
               <span class="zone-info-icon">📦</span>
-              <p>Standard delivery is 1–2 days. Next-day delivery must be arranged first — contact us to confirm what can be done.</p>
+              <p>Primary areas are $40. Extended areas are marked $50. Standard delivery is 1–2 days on scheduled delivery days.</p>
             </div>
           </div>
 
@@ -795,7 +807,7 @@
             </div>
             <div class="zone-info">
               <span class="zone-info-icon">📦</span>
-              <p>Standard delivery is 1–2 days. Next-day delivery must be arranged first — contact us to confirm what can be done.</p>
+              <p>Primary areas are $40. Extended areas are marked $50. Standard delivery is 1–2 days on scheduled delivery days.</p>
             </div>
           </div>
 
@@ -823,7 +835,7 @@
             </div>
             <div class="zone-info">
               <span class="zone-info-icon">📦</span>
-              <p>Standard delivery is 1–2 days. Next-day delivery must be arranged first — contact us to confirm what can be done.</p>
+              <p>Primary areas are $40. Extended areas are marked $50. Standard delivery is 1–2 days on scheduled delivery days.</p>
             </div>
           </div>
 
@@ -835,13 +847,13 @@
         <div class="info-grid">
           <div class="info-card">
             <div class="info-icon">🗺️</div>
-            <h3>In-Zone Delivery</h3>
-            <p>Deliveries within the same zone are faster and more affordable.</p>
+            <h3>Primary Areas</h3>
+            <p>Primary delivery areas are covered at TTD $40 per package.</p>
           </div>
           <div class="info-card">
             <div class="info-icon">🔄</div>
-            <h3>Cross-Zone Delivery</h3>
-            <p>We also handle deliveries between different zones at adjusted rates.</p>
+            <h3>Extended Areas</h3>
+            <p>Extended delivery areas are covered at TTD $50 per package.</p>
           </div>
           <div class="info-card">
             <div class="info-icon">📍</div>
@@ -922,8 +934,8 @@
     function buildAreaTags(areas, limit) {
       return areas.slice(0, limit).map(area => {
         const tag = document.createElement('span');
-        tag.className = 'location-tag';
-        tag.textContent = area;
+        tag.className = `location-tag${area.rateBand === 'extended' ? ' extended' : ''}`;
+        tag.textContent = area.name;
         return tag;
       });
     }
@@ -952,7 +964,7 @@
     async function loadZones() {
       const { data, error } = await supabase
         .from('zones')
-        .select('code, name, region, zone_areas(area_name)')
+        .select('code, name, region, zone_areas(area_name, rate_band)')
         .eq('active', true)
         .in('code', ['A', 'B', 'C', 'D'])
         .order('code', { ascending: true });
@@ -964,9 +976,9 @@
 
       zoneData = (data || []).reduce((zones, zone) => {
         const areas = (zone.zone_areas || [])
-          .map(item => item.area_name)
-          .filter(Boolean)
-          .sort((a, b) => a.localeCompare(b));
+          .map(item => ({ name: item.area_name, rateBand: item.rate_band || 'standard' }))
+          .filter(item => item.name)
+          .sort((a, b) => a.name.localeCompare(b.name));
 
         zones[zone.code] = {
           label: zone.name,
@@ -993,15 +1005,16 @@
         drawerTitle.textContent = data.label;
         drawerSub.textContent = data.subtitle;
         drawerBody.innerHTML = '';
-        drawerCount.textContent = `${data.areas.length} areas covered`;
+        const extendedCount = data.areas.filter(area => area.rateBand === 'extended').length;
+        drawerCount.textContent = `${data.areas.length} areas covered · ${extendedCount} extended at $50`;
 
         const tagWrap = document.createElement('div');
         tagWrap.className = 'drawer-tags';
 
         data.areas.forEach((area, index) => {
           const tag = document.createElement('span');
-          tag.className = 'drawer-tag';
-          tag.textContent = area;
+          tag.className = `drawer-tag${area.rateBand === 'extended' ? ' extended' : ''}`;
+          tag.textContent = area.name;
           tag.style.animationDelay = `${index * 0.02}s`;
           tagWrap.appendChild(tag);
         });

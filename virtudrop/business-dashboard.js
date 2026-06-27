@@ -11,7 +11,13 @@ window.supabase = supabase;
 const REMOTE_ZONE_CODE = 'REMOTE';
 const COVERED_ZONE_CODES = new Set(['A', 'B', 'C', 'D']);
 const STANDARD_FEES = { standard: 40, extended: 50 };
-const EXTENDED_AREA_NAMES = new Set(['wallerfield', 'valencia', 'guaico', 'sangre grande', 'sangre grande proper', 'preysal', 'gran couva', 'carenage', 'chaguaramas']);
+const EXTENDED_AREA_NAMES = new Set([
+  'wallerfield', 'cumuto', 'guanapo', 'heights of guanapo', 'lopinot', 'surrey village',
+  'arena', 'gran couva', 'todds road', 'todds road station', 'las lomas', 'esmeralda',
+  'madras', 'st helena', 'st helena eastern sections', 'orange grove',
+  'point fortin', 'oropouche', 'san francique', 'la brea', 'aripero', 'rousillac',
+  'carenage', 'chaguaramas', 'chaguaramus', 'paramin'
+]);
 
 let bizEstimateTimer = null;
 let latestBizEstimate = null;

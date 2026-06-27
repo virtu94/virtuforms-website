@@ -1,9 +1,15 @@
-import { calculateOrderMoney, moneyLabel, validateManualAddress } from './vd-order-money.js?v=20260624-financial-2';
+import { calculateOrderMoney, moneyLabel, validateManualAddress } from './vd-order-money.js?v=20260624-financial-3';
 
 const REMOTE_ZONE_CODE = 'REMOTE';
 const COVERED_ZONE_CODES = new Set(['A', 'B', 'C', 'D']);
 const STANDARD_FEES = { standard: 40, extended: 50 };
-const EXTENDED_AREA_NAMES = new Set(['wallerfield', 'valencia', 'guaico', 'sangre grande', 'sangre grande proper', 'preysal', 'gran couva', 'carenage', 'chaguaramas']);
+const EXTENDED_AREA_NAMES = new Set([
+  'wallerfield', 'cumuto', 'guanapo', 'heights of guanapo', 'lopinot', 'surrey village',
+  'arena', 'gran couva', 'todds road', 'todds road station', 'las lomas', 'esmeralda',
+  'madras', 'st helena', 'st helena eastern sections', 'orange grove',
+  'point fortin', 'oropouche', 'san francique', 'la brea', 'aripero', 'rousillac',
+  'carenage', 'chaguaramas', 'chaguaramus', 'paramin'
+]);
 
 let zonesPromise = null;
 
@@ -331,13 +337,24 @@ export async function estimateDeliveryZone({
   };
 }
 
-export function formatEstimateRows({ estimate, paymentType, packageValue, clientFeeSettlement = null }) {
+export function formatEstimateRows({
+  estimate,
+  paymentType,
+  packageValue,
+  clientFeeSettlement = null,
+  pickupRequired = false,
+  pickupParcelCount = 1,
+  pickupFeeSettlement = null
+}) {
   const rows = [];
   const money = calculateOrderMoney({
     paymentOption: paymentType,
     packageValue,
     deliveryFee: estimate.fee,
-    clientFeeSettlement
+    clientFeeSettlement,
+    pickupRequired,
+    pickupParcelCount,
+    pickupFeeSettlement
   });
 
   if (estimate.status === 'unknown') {
@@ -367,6 +384,10 @@ export function formatEstimateRows({ estimate, paymentType, packageValue, client
     rows.push(['Customer Pays Driver', '$0.00']);
     rows.push(['Business Owes VirtuDrop', moneyLabel(estimate.fee)]);
     rows.push(['Settlement', clientFeeSettlement === 'deduct_from_remittance' ? 'Deduct from remittance' : 'Pay separately']);
+  }
+  if (pickupRequired) {
+    rows.push(['Pickup', money.pickupFee > 0 ? moneyLabel(money.pickupFee) : 'Free (5+ parcels)']);
+    if (money.pickupFee > 0) rows.push(['Pickup Settlement', pickupFeeSettlement === 'deduct_from_remittance' ? 'Deduct from remittance' : 'Pay separately']);
   }
 
   return rows;
