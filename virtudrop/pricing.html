@@ -547,10 +547,16 @@
     .plan-card h3 { font-size: 1.8rem; font-weight: 700; color: #1a1a1a; margin-bottom: 1.5rem; }
     .plan-price-row {
       display: flex;
-      align-items: flex-end;
+      align-items: center;
+      justify-content: center;
       gap: 1rem;
       margin-bottom: 1.5rem;
       flex-wrap: nowrap;
+      width: fit-content;
+      max-width: 100%;
+      margin-left: auto;
+      margin-right: auto;
+      text-align: left;
     }
 
     .plan-monthly-price {
@@ -565,8 +571,8 @@
       font-size: 0.9rem;
       color: #4a4a4a;
       line-height: 1.5;
-      padding-bottom: 0.2rem;
-      min-width: 110px;
+      min-width: 135px;
+      max-width: 165px;
     }
     .plan-price-meta strong { display: block; font-size: 1rem; color: #1a1a1a; }
 
@@ -812,8 +818,8 @@
       .plan-card.bronze:hover { transform: translateY(-4px) !important; }
       .plan-price-row {
         flex-direction: column;
-        align-items: center;
-        text-align: center;
+        align-items: flex-start;
+        text-align: left;
         gap: 0.4rem;
       }
       .plan-monthly-price, .weekly-plan-price, .price {
@@ -823,7 +829,8 @@
       }
       .plan-price-meta {
         min-width: 0;
-        text-align: center;
+        max-width: 100%;
+        text-align: left;
         padding-bottom: 0;
       }
       .plan-detail-row {
