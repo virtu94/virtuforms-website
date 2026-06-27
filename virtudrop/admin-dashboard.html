@@ -1095,12 +1095,12 @@
         </div>
 
         <div class="bulk-toolbar" id="driverAssignBulkToolbar">
-          <label><input id="driverAssignSelectAll" type="checkbox" onchange="toggleDriverAssignVisibleBulk(this.checked)"> Select all visible unassigned</label>
-          <select class="filter-select" id="driverAssignBulkDriver">
-            <option value="">Select driver</option>
+          <label><input id="driverAssignSelectAll" type="checkbox" onchange="toggleDriverAssignVisibleBulk(this.checked)"> Select all visible</label>
+          <select class="filter-select" id="driverAssignBulkDriver" onchange="applyBulkDriverToSelected()">
+            <option value="">Set selected to driver</option>
           </select>
-          <input class="filter-input" id="driverAssignBulkDate" type="date" />
-          <button class="btn btn-primary btn-sm" type="button" onclick="assignSelectedDrivers()">Assign Selected</button>
+          <input class="filter-input" id="driverAssignBulkDate" type="date" onchange="applyBulkDateToSelected()" />
+          <button class="btn btn-primary btn-sm" type="button" onclick="assignSelectedDrivers()">Assign Selected Items</button>
           <button class="btn btn-ghost btn-sm" type="button" onclick="clearDriverAssignSelection()">Clear</button>
           <span class="bulk-count" id="driverAssignBulkCount">0 selected</span>
         </div>
@@ -4514,9 +4514,38 @@
       updateDriverAssignBulkControls();
     };
 
+    window.markDriverAssignRowSelected = function(orderId) {
+      driverAssignSelection.add(orderId);
+      const input = document.querySelector(`.driver-assign-bulk-check[value="${orderId}"]`);
+      if (input) input.checked = true;
+      updateDriverAssignBulkControls();
+    };
+
+    window.applyBulkDriverToSelected = function() {
+      const driverId = document.getElementById('driverAssignBulkDriver')?.value || '';
+      if (!driverId) return;
+      const visible = new Set(driverAssignVisibleIds);
+      [...driverAssignSelection].filter(orderId => visible.has(orderId)).forEach(orderId => {
+        const row = document.querySelector(`#panel-driver-assign tr[data-driver-order-id="${orderId}"]`);
+        const select = row?.querySelector('.driver-select');
+        if (select) select.value = driverId;
+      });
+    };
+
+    window.applyBulkDateToSelected = function() {
+      const routeDate = document.getElementById('driverAssignBulkDate')?.value || '';
+      if (!routeDate) return;
+      const visible = new Set(driverAssignVisibleIds);
+      [...driverAssignSelection].filter(orderId => visible.has(orderId)).forEach(orderId => {
+        const row = document.querySelector(`#panel-driver-assign tr[data-driver-order-id="${orderId}"]`);
+        const input = row?.querySelector('.route-date');
+        if (input) input.value = routeDate;
+      });
+    };
+
     function syncDriverAssignBulkControls() {
       const driverSelect = document.getElementById('driverAssignBulkDriver');
-      if (driverSelect) driverSelect.innerHTML = '<option value="">Select driver</option>' + driverOptions();
+      if (driverSelect) driverSelect.innerHTML = '<option value="">Set selected to driver</option>' + driverOptions();
       const dateInput = document.getElementById('driverAssignBulkDate');
       if (dateInput && !dateInput.value) dateInput.value = new Date().toISOString().slice(0, 10);
       updateDriverAssignBulkControls();
@@ -4525,30 +4554,53 @@
     window.assignSelectedDrivers = function() {
       const visible = new Set(driverAssignVisibleIds);
       const orderIds = [...driverAssignSelection].filter(orderId => visible.has(orderId));
-      const driverId = document.getElementById('driverAssignBulkDriver')?.value || '';
-      const routeDate = document.getElementById('driverAssignBulkDate')?.value || '';
-      const driverLabel = document.getElementById('driverAssignBulkDriver')?.selectedOptions[0]?.textContent || 'driver';
 
-      if (!orderIds.length) return showToast('Select at least one unassigned order.');
-      if (!driverId) return showToast('Select a driver.');
-      if (!routeDate) return showToast('Select a route date.');
+      if (!orderIds.length) return showToast('Select at least one order.');
 
-      const selectedOrders = orderIds.map(orderId => orders.find(order => order.id === orderId)).filter(Boolean);
-      showModal('Assign Selected Orders', `Assign ${selectedOrders.length} order(s) to ${driverLabel} for ${routeDate}?`, async () => {
+      const selectedOrders = orderIds.map(orderId => {
+        const order = orders.find(item => item.id === orderId);
+        const row = document.querySelector(`#panel-driver-assign tr[data-driver-order-id="${orderId}"]`);
+        return {
+          order,
+          row,
+          driverId: row?.querySelector('.driver-select')?.value || '',
+          driverLabel: row?.querySelector('.driver-select')?.selectedOptions[0]?.textContent || 'driver',
+          routeDate: row?.querySelector('.route-date')?.value || '',
+          reason: row?.querySelector('.transfer-reason')?.value.trim() || ''
+        };
+      }).filter(item => item.order && item.row);
+
+      const missingDriver = selectedOrders.find(item => !item.driverId);
+      if (missingDriver) return showToast(`Select a driver for ${missingDriver.order.order_number}.`);
+      const missingDate = selectedOrders.find(item => !item.order.assigned_driver_id && !item.routeDate);
+      if (missingDate) return showToast(`Select a route date for ${missingDate.order.order_number}.`);
+      const missingReason = selectedOrders.find(item => item.order.assigned_driver_id && item.reason.length < 3);
+      if (missingReason) return showToast(`Enter a reason for changing ${missingReason.order.order_number}.`);
+
+      showModal('Assign Selected Items', `Assign or change ${selectedOrders.length} selected item(s)?`, async () => {
         let assigned = 0;
         const failed = [];
-        for (const order of selectedOrders) {
+        for (const item of selectedOrders) {
           try {
-            await saveDriverAssignment(order.id, driverId, routeDate);
+            if (item.order.assigned_driver_id) {
+              const { error } = await supabase.rpc('admin_transfer_order_driver', {
+                p_order_id: item.order.id,
+                p_to_driver_id: item.driverId,
+                p_reason: item.reason
+              });
+              if (error) throw error;
+            } else {
+              await saveDriverAssignment(item.order.id, item.driverId, item.routeDate);
+            }
             assigned += 1;
           } catch (error) {
-            failed.push(`${order.order_number}: ${error.message || 'failed'}`);
+            failed.push(`${item.order.order_number}: ${error.message || 'failed'}`);
           }
         }
         if (failed.length) {
           window.vdNotify('Some Assignments Failed', `${assigned} assigned. ${failed.slice(0, 3).join(' | ')}${failed.length > 3 ? ' ...' : ''}`, 'warning');
         } else {
-          showToast(`${assigned} order(s) assigned to ${driverLabel}.`);
+          showToast(`${assigned} selected item(s) updated.`);
         }
         clearDriverAssignSelection();
         await loadData();
@@ -4568,9 +4620,7 @@
           && !['delivered', 'cancelled', 'rejected'].includes(order.order_status);
         return unassigned || assigned;
       });
-      driverAssignVisibleIds = manageable
-        .filter(order => !order.assigned_driver_id && order.zone_status === 'confirmed' && ['sorted', 'redelivery_scheduled'].includes(order.parcel_status))
-        .map(order => order.id);
+      driverAssignVisibleIds = manageable.map(order => order.id);
       tbody.innerHTML = manageable.map(order => {
         const isAssigned = Boolean(order.assigned_driver_id);
         const collected = order.parcel_status === 'handed_to_driver';
@@ -4584,16 +4634,17 @@
         return `
           <tr data-driver-order-id="${order.id}">
             <td class="td-id">
-              ${isAssigned
-                ? escapeHtml(order.order_number)
-                : `<label class="bulk-order-check"><input class="driver-assign-bulk-check" type="checkbox" value="${order.id}" ${driverAssignSelection.has(order.id) ? 'checked' : ''} onchange="toggleDriverAssignBulk('${order.id}', this.checked)"><span>${escapeHtml(order.order_number)}</span></label>`}
+              <label class="bulk-order-check">
+                <input class="driver-assign-bulk-check" type="checkbox" value="${order.id}" ${driverAssignSelection.has(order.id) ? 'checked' : ''} onchange="toggleDriverAssignBulk('${order.id}', this.checked)">
+                <span>${escapeHtml(order.order_number)}</span>
+              </label>
             </td>
             <td>${escapeHtml(clientName(order))}</td>
             <td><div class="td-name">${escapeHtml(order.customer_name || '—')}</div><div class="td-sub">${escapeHtml(order.customer_phone || '')}</div></td>
             <td><span class="badge ${collected ? 'badge-active' : isAssigned ? 'badge-confirmed' : 'badge-pending'}">${escapeHtml(status)}</span></td>
             <td>${moneyFull(driverCollects(order))}${order.redelivery_fee > 0 ? `<div class="td-sub">Includes ${moneyFull(order.redelivery_fee)} redelivery</div>` : ''}</td>
             <td>${isAssigned ? escapeHtml(driverName(order.assigned_driver_id)) : 'Unassigned'}</td>
-            <td><select class="filter-select driver-select" style="width:180px;">${isAssigned ? transferDriverOptions(order.assigned_driver_id) : driverOptions()}</select></td>
+            <td><select class="filter-select driver-select" style="width:180px;" onchange="markDriverAssignRowSelected('${order.id}')">${isAssigned ? transferDriverOptions(order.assigned_driver_id) : driverOptions()}</select></td>
             <td>${controls}</td>
             <td><button class="btn btn-primary btn-sm" onclick="assignDriver('${order.id}')">${isAssigned ? 'Change Driver' : 'Assign'}</button></td>
           </tr>`;
