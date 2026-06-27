@@ -763,6 +763,14 @@ function routeText(order) {
   return order.area_name || order.delivery_address || order.maps_link || 'Zone pending';
 }
 
+function customerDisplayName(order) {
+  return order.customer_name || 'Customer name pending';
+}
+
+function orderLocationSummary(order) {
+  return order.area_name || order.delivery_address || (order.maps_link ? 'Google Maps pin provided' : 'Location pending');
+}
+
 function trackingLink(order) {
   if (!order?.order_number || !order?.tracking_token) return '';
   const base = window.location.origin + window.location.pathname.replace(/dashboard\.html$/, 'track.html');
@@ -908,7 +916,7 @@ function orderTableRow(order, includeCost = false) {
   return `
     <tr class="order-clickable" onclick="openOrderDetails('${order.id}')">
       <td><strong><button type="button" class="order-detail-link" onclick="event.stopPropagation(); openOrderDetails('${order.id}')">${escapeHtml(order.order_number)}</button></strong></td>
-      <td>${escapeHtml(routeText(order))}</td>
+      <td><div class="business-customer-name">${escapeHtml(customerDisplayName(order))}</div><div class="business-order-location">${escapeHtml(orderLocationSummary(order))}</div></td>
       <td>${escapeHtml(paymentLabels[order.payment_type] || 'Delivery')}</td>
       ${includeCost ? `<td>${money(order.delivery_fee)}</td>` : ''}
       <td>${formatDate(order.created_at)}</td>
@@ -930,7 +938,8 @@ function orderCard(order) {
         <span class="order-card-id">${escapeHtml(order.order_number)}</span>
         <span class="status-badge ${statusClass(order.order_status)}">${escapeHtml(deliveryOutcomeLabel(order))}</span>
       </div>
-      <div class="order-card-route">${escapeHtml(routeText(order))}</div>
+      <div class="order-card-route">${escapeHtml(customerDisplayName(order))}</div>
+      <div class="business-order-location">${escapeHtml(orderLocationSummary(order))}</div>
       <div class="order-card-meta">
         <span>${escapeHtml(paymentLabels[order.payment_type] || 'Delivery')}</span>
         <span>${formatDate(order.created_at)}</span>
@@ -1304,8 +1313,8 @@ function renderOverview() {
           <div class="delivery-item">
             <div class="delivery-icon">📦</div>
             <div class="delivery-info">
-              <div class="delivery-route">${escapeHtml(routeText(order))}</div>
-              <div class="delivery-meta">Order ${escapeHtml(order.order_number)} · ${escapeHtml(paymentLabels[order.payment_type] || 'Delivery')}</div>
+              <div class="delivery-route">${escapeHtml(customerDisplayName(order))}</div>
+              <div class="delivery-meta">Order ${escapeHtml(order.order_number)} · ${escapeHtml(orderLocationSummary(order))}</div>
             </div>
             <div class="delivery-status"><span class="status-badge ${statusClass(order.order_status)}">${escapeHtml(statusLabel(order.order_status))}</span></div>
           </div>
