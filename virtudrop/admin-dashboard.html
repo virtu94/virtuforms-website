@@ -1031,7 +1031,7 @@
           </table></div>
         </div>
         <div class="filter-bar">
-          <select class="filter-select" id="manifestStatusFilter" onchange="renderManifests()"><option value="active">Current Manifests</option><option value="draft">Draft</option><option value="ready">Ready</option><option value="collected">Collected by Driver</option><option value="all">All Manifests</option></select>
+          <select class="filter-select" id="manifestStatusFilter" onchange="renderManifests()"><option value="active">Current Manifests</option><option value="draft">Draft</option><option value="ready">Ready</option><option value="collected">Collected by Driver</option><option value="closed">Closed</option><option value="all">All Manifests</option></select>
           <input class="filter-input" id="manifestSearch" type="search" placeholder="Search manifest, driver or order" oninput="renderManifests()" />
         </div>
         <div id="manifestList"><div class="card">Loading delivery manifests...</div></div>
@@ -3779,6 +3779,7 @@
     }
 
     function adminPaymentArrangement(order) {
+      if (order.payment_arrangement === 'cod_client_pays_delivery') return 'cod_client_pays_delivery';
       if (order.payment_arrangement === 'client_pays_delivery') return 'client_pays_delivery';
       if (order.payment_arrangement === 'delivery_only_customer_pays') return 'delivery_only_customer_pays';
       if (order.payment_arrangement === 'cod_customer_pays') return 'cod_customer_pays';
@@ -3794,6 +3795,7 @@
     function adminOrderEditPayload(order) {
       const arrangement = adminPaymentArrangement(order);
       const paymentType = order.payment_type || (arrangement === 'client_pays_delivery' ? 'prepaid' : arrangement === 'delivery_only_customer_pays' ? 'delivery_only' : 'cod');
+      const clientPaysDelivery = arrangement === 'client_pays_delivery' || arrangement === 'cod_client_pays_delivery';
       return {
         business_client_id: order.business_client_id || null,
         customer_name: document.getElementById('adminEditCustomerName')?.value.trim() || '',
@@ -3807,7 +3809,7 @@
         longitude: order.longitude ?? null,
         payment_type: paymentType,
         payment_arrangement: arrangement,
-        delivery_fee_payer: order.delivery_fee_payer || (arrangement === 'client_pays_delivery' ? 'client' : 'customer'),
+        delivery_fee_payer: order.delivery_fee_payer || (clientPaysDelivery ? 'client' : 'customer'),
         client_fee_settlement: order.client_fee_settlement || null,
         package_value: document.getElementById('adminEditPackageValue')?.value || 0,
         estimated_fee: order.estimated_fee ?? null,
@@ -3843,10 +3845,11 @@
     }
 
     window.syncAdminOrderEditForm = function() {
-      const clientPays = document.getElementById('adminEditPaymentArrangement')?.value === 'client_pays_delivery';
+      const arrangement = document.getElementById('adminEditPaymentArrangement')?.value;
+      const clientPays = arrangement === 'client_pays_delivery' || arrangement === 'cod_client_pays_delivery';
       const pickup = document.getElementById('adminEditPickupRequired')?.value === 'true';
       const packageInput = document.getElementById('adminEditPackageValue');
-      if (packageInput) packageInput.disabled = document.getElementById('adminEditPaymentArrangement')?.value !== 'cod_customer_pays';
+      if (packageInput) packageInput.disabled = arrangement !== 'cod_customer_pays' && arrangement !== 'cod_client_pays_delivery';
       const settlement = document.getElementById('adminEditClientSettlementWrap');
       if (settlement) settlement.style.display = clientPays ? '' : 'none';
       const pickupBlock = document.getElementById('adminEditPickupBlock');
@@ -4216,6 +4219,28 @@
       return `<span class="badge ${cls}">${escapeHtml(labels[status] || status)}</span>`;
     }
 
+    function manifestCloseSummaryHtml(manifest) {
+      const summary = manifest.close_summary || {};
+      const blockers = Array.isArray(summary.blockers) ? summary.blockers : [];
+      const canClose = Boolean(summary.can_close);
+      const statusText = manifest.status === 'closed'
+        ? `Closed ${manifest.closed_at ? new Date(manifest.closed_at).toLocaleString('en-TT') : ''}`
+        : canClose
+          ? 'Ready to close'
+          : 'Cannot close yet';
+      const badgeClass = manifest.status === 'closed' || canClose ? 'badge-confirmed' : 'badge-pending';
+      return `
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; margin:0.75rem 0;">
+          <span class="badge ${badgeClass}">${escapeHtml(statusText)}</span>
+          <span class="td-sub">Expected ${moneyFull(summary.expected_collection || 0)}</span>
+          <span class="td-sub">Received ${moneyFull(summary.received_collection || 0)}</span>
+          <span class="td-sub">Variance ${moneyFull(summary.variance_amount || 0)}</span>
+        </div>
+        ${blockers.length ? `<div class="td-sub" style="color:#8a5a00;">${blockers.map(escapeHtml).join('<br>')}</div>` : ''}
+        ${manifest.close_notes ? `<div class="td-sub" style="margin-top:0.35rem;"><strong>Close notes:</strong> ${escapeHtml(manifest.close_notes)}</div>` : ''}
+      `;
+    }
+
     window.renderSortingQueue = function() {
       const body = document.getElementById('sortingQueueBody');
       if (!body) return;
@@ -4255,10 +4280,11 @@
         <div class="card" style="margin-bottom:1rem;" data-manifest-id="${manifest.id}">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap; margin-bottom:1rem;">
             <div><div class="td-id" style="font-size:1rem;">${escapeHtml(manifest.manifest_number)}</div><div class="td-name">${escapeHtml(manifest.driver_name || 'Driver')} · ${new Date(manifest.route_date + 'T12:00:00').toLocaleDateString('en-TT')}</div><div class="td-sub">${(manifest.orders || []).length} parcel order(s)</div></div>
-            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">${manifestStatusBadge(manifest.status)}<button class="btn btn-ghost btn-sm" onclick="printManifest('${manifest.id}')">Print</button>${manifest.status === 'draft' ? `<button class="btn btn-primary btn-sm" onclick="setManifestStatus('${manifest.id}', 'ready')">Mark Ready</button>` : ''}${manifest.status === 'ready' ? `<button class="btn btn-primary btn-sm" onclick="setManifestStatus('${manifest.id}', 'collected')">Confirm Driver Collection</button>` : ''}</div>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">${manifestStatusBadge(manifest.status)}<button class="btn btn-ghost btn-sm" onclick="printManifest('${manifest.id}')">Print</button>${manifest.status === 'draft' ? `<button class="btn btn-primary btn-sm" onclick="setManifestStatus('${manifest.id}', 'ready')">Mark Ready</button>` : ''}${manifest.status === 'ready' ? `<button class="btn btn-primary btn-sm" onclick="setManifestStatus('${manifest.id}', 'collected')">Confirm Driver Collection</button>` : ''}${manifest.status === 'collected' && manifest.close_summary?.can_close ? `<button class="btn btn-primary btn-sm" onclick="closeDeliveryManifest('${manifest.id}')">Close Manifest</button>` : ''}</div>
           </div>
-          <div class="table-wrap"><table><thead><tr><th>Sequence</th><th>Zone</th><th>Order</th><th>Customer</th><th>Address</th><th>Parcels</th><th>Collect</th>${manifest.status === 'draft' ? '<th>Action</th>' : ''}</tr></thead><tbody>
-            ${(manifest.orders || []).map(order => `<tr><td>${order.route_sequence}</td><td>${escapeHtml(order.zone_code ? `Zone ${order.zone_code}` : '—')}</td><td class="td-id">${escapeHtml(order.order_number)}</td><td><div class="td-name">${escapeHtml(order.customer_name || '')}</div><div class="td-sub">${escapeHtml(order.customer_phone || '')}</div>${order.external_item_number ? `<div class="td-sub">Item: ${escapeHtml(order.external_item_number)}</div>` : ''}</td><td>${escapeHtml(order.delivery_address || order.area_name || '')}</td><td>${escapeHtml(String(order.parcel_count || 1))}</td><td>${moneyFull(order.amount_to_collect)}</td>${manifest.status === 'draft' ? `<td><button class="btn btn-ghost btn-sm" onclick="removeManifestOrder('${manifest.id}', '${order.id}')">Remove</button></td>` : ''}</tr>`).join('') || `<tr><td colspan="${manifest.status === 'draft' ? 8 : 7}">No parcels on this manifest.</td></tr>`}
+          ${manifestCloseSummaryHtml(manifest)}
+          <div class="table-wrap"><table><thead><tr><th>Sequence</th><th>Zone</th><th>Order</th><th>Customer</th><th>Address</th><th>Parcels</th><th>Collect</th><th>Delivery</th><th>Cash</th>${manifest.status === 'draft' ? '<th>Action</th>' : ''}</tr></thead><tbody>
+            ${(manifest.orders || []).map(order => `<tr><td>${order.route_sequence}</td><td>${escapeHtml(order.zone_code ? `Zone ${order.zone_code}` : '—')}</td><td class="td-id">${escapeHtml(order.order_number)}</td><td><div class="td-name">${escapeHtml(order.customer_name || '')}</div><div class="td-sub">${escapeHtml(order.customer_phone || '')}</div>${order.external_item_number ? `<div class="td-sub">Item: ${escapeHtml(order.external_item_number)}</div>` : ''}</td><td>${escapeHtml(order.delivery_address || order.area_name || '')}</td><td>${escapeHtml(String(order.parcel_count || 1))}</td><td>${moneyFull(order.amount_to_collect)}</td><td><div class="td-sub">${escapeHtml(String(order.order_status || '').replaceAll('_', ' '))}</div><div class="td-sub">${escapeHtml(String(order.parcel_status || '').replaceAll('_', ' '))}</div>${order.delivery_return_required ? '<div class="td-sub" style="color:#b42318;">Return required</div>' : ''}</td><td>${Number(order.amount_to_collect || 0) > 0 && order.order_status === 'delivered' ? escapeHtml(order.reconciliation_status || 'unreconciled') : '—'}</td>${manifest.status === 'draft' ? `<td><button class="btn btn-ghost btn-sm" onclick="removeManifestOrder('${manifest.id}', '${order.id}')">Remove</button></td>` : ''}</tr>`).join('') || `<tr><td colspan="${manifest.status === 'draft' ? 10 : 9}">No parcels on this manifest.</td></tr>`}
           </tbody></table></div>
           ${manifest.handed_to_driver_at ? `<div class="td-sub" style="margin-top:0.75rem;">Handover confirmed ${new Date(manifest.handed_to_driver_at).toLocaleString('en-TT')}</div>` : ''}
         </div>`).join('') || (deliveryManifests.length
@@ -4280,6 +4306,34 @@
           window.vdNotify('Manifest Not Updated', error.message || 'Could not update this manifest.', 'error');
         }
       });
+    };
+
+    window.closeDeliveryManifest = function(manifestId) {
+      const manifest = deliveryManifests.find(item => item.id === manifestId);
+      if (!manifest) return showToast('Manifest not found.');
+      const summary = manifest.close_summary || {};
+      if (!summary.can_close) {
+        const blockers = Array.isArray(summary.blockers) ? summary.blockers.join('\n') : 'This manifest still has unresolved work.';
+        return window.vdNotify('Manifest Cannot Close', blockers, 'warning');
+      }
+      showModal(
+        'Close Manifest',
+        `Close ${manifest.manifest_number}? This confirms every delivery/return is resolved and driver collections have been reconciled. Expected ${moneyFull(summary.expected_collection || 0)}, received ${moneyFull(summary.received_collection || 0)}, variance ${moneyFull(summary.variance_amount || 0)}.`,
+        async () => {
+          const notes = window.prompt('Optional close notes:', '') || '';
+          try {
+            const { error } = await supabase.rpc('admin_close_delivery_manifest', {
+              p_manifest_id: manifestId,
+              p_notes: notes
+            });
+            if (error) throw error;
+            showToast(`${manifest.manifest_number} closed.`);
+            await loadData();
+          } catch (error) {
+            window.vdNotify('Manifest Not Closed', error.message || 'Could not close this manifest.', 'error');
+          }
+        }
+      );
     };
 
     window.removeManifestOrder = async function(manifestId, orderId) {
