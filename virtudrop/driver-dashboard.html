@@ -343,16 +343,18 @@
     .bottom-btn.ghost:hover { border-color: var(--teal-mid); color: var(--teal-mid); }
 
     /* ── Modal ── */
+    body.modal-open { overflow: hidden; }
     .modal-overlay {
       display: none; position: fixed; inset: 0;
       background: rgba(0,0,0,0.5); z-index: 500;
       align-items: flex-end; justify-content: center; padding: 0;
+      overflow-y: auto; overscroll-behavior: contain;
     }
     .modal-overlay.show { display: flex; }
     .modal {
       background: var(--white); border-radius: 20px 20px 0 0;
       padding: 2rem 1.5rem 2.5rem; width: 100%; max-width: 600px;
-      max-height: 88vh; overflow-y: auto; overscroll-behavior: contain;
+      max-height: calc(100dvh - 1rem); overflow-y: auto; overscroll-behavior: contain;
       scrollbar-gutter: stable;
       box-shadow: 0 -10px 40px rgba(0,0,0,0.2);
       animation: slideUp 0.3s ease-out;
@@ -776,10 +778,14 @@
       document.getElementById('modalTitle').textContent = title;
       document.getElementById('modalBody').textContent = body;
       document.getElementById('modalActions').innerHTML = actions;
+      document.body.classList.add('modal-open');
       document.getElementById('modal').classList.add('show');
     }
     window.openModal = openModal;
-    window.closeModal = function() { document.getElementById('modal').classList.remove('show'); };
+    window.closeModal = function() {
+      document.getElementById('modal').classList.remove('show');
+      document.body.classList.remove('modal-open');
+    };
     window.closeModalIfBg = function(e) { if (e.target === document.getElementById('modal')) closeModal(); };
 
     function normalizeStatus(order) {
