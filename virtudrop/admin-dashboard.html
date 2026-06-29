@@ -1335,6 +1335,16 @@
         </div>
 
         <div class="card">
+          <div class="card-title">🚚 Driver Payments & Incentives</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Driver</th><th>Cycle</th><th>Tier Progress</th><th>Completed</th><th>Earned</th><th>Paid</th><th>Outstanding</th><th>Recent Payments</th><th>Action</th></tr></thead>
+              <tbody id="driverFinanceBody"><tr><td colspan="9">Loading driver finance records...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
           <div class="card-title">🧾 Accounting Ledger</div>
           <div class="finance-filter-grid" style="margin-bottom:0.9rem;">
             <div class="finance-field"><label for="acctFilterType">Type</label><select class="filter-select" id="acctFilterType" onchange="renderAccounting()"><option value="">All types</option><option value="income">Income</option><option value="expense">Expense</option><option value="asset_in">Asset In</option><option value="asset_out">Asset Out</option><option value="liability_in">Liability In</option><option value="liability_out">Liability Out</option><option value="transfer">Transfer</option><option value="adjustment">Adjustment</option></select></div>
@@ -1798,6 +1808,7 @@
     let remittanceRecords = [];
     let driverCashRecords = [];
     let accountingTransactions = [];
+    let driverFinanceRecords = [];
     let editingAccountingTransactionId = null;
     let serviceDateOverrides = [];
     let deliveryManifests = [];
@@ -2657,6 +2668,51 @@
       }).join('') || '<tr><td colspan="9">No accounting transactions entered yet.</td></tr>';
     }
 
+    function renderDriverFinance() {
+      const body = document.getElementById('driverFinanceBody');
+      if (!body) return;
+      const tierIcon = incentive => incentive?.icon
+        ? `<img src="${escapeHtml(incentive.icon)}" alt="${escapeHtml(incentive.current_tier || 'Tier')}" style="width:48px;height:48px;object-fit:contain;display:block;margin-bottom:0.35rem;" onerror="this.style.display='none';">`
+        : '';
+      body.innerHTML = driverFinanceRecords.map(record => {
+        const cycle = record.cycle || {};
+        const incentive = record.incentive || {};
+        const progress = Math.max(0, Math.min(100, Number(incentive.progress_percent || 0)));
+        const nextTier = incentive.next_tier
+          ? `${escapeHtml(incentive.next_tier)} at ${escapeHtml(incentive.next_target)} deliveries`
+          : 'Top tier reached';
+        const recentPayments = (record.recent_payments || [])
+          .filter(payment => !payment.voided_at)
+          .slice(0, 3)
+          .map(payment => `${moneyFull(payment.amount)} ${String(payment.payment_method || '').replaceAll('_', ' ')} · ${payment.payment_date}`)
+          .join('<br>') || 'No payments recorded';
+        return `
+          <tr>
+            <td><div class="td-name">${escapeHtml(record.driver_name || driverName(record.driver_id))}</div><div class="td-sub">Pay rate: ${moneyFull(record.delivery_pay_rate)} / delivery</div></td>
+            <td><div class="td-name">${escapeHtml(cycle.cycle_start || '—')} to ${escapeHtml(cycle.cycle_end || '—')}</div><div class="td-sub">Resets ${escapeHtml(cycle.reset_date || '—')}</div></td>
+            <td>
+              ${tierIcon(incentive)}
+              <div class="td-name">${escapeHtml(incentive.current_tier || 'Starter')} · Total Subsidy ${moneyFull(incentive.subsidy_amount)}</div>
+              <div class="td-sub">Phone ${moneyFull(incentive.phone_allowance)} · Monthly ${moneyFull(incentive.monthly_subsidy)}</div>
+              <div style="height:8px; background:#e6eeee; border-radius:999px; overflow:hidden; margin:0.4rem 0; width:150px;"><div style="height:100%; width:${progress}%; background:var(--teal-mid);"></div></div>
+              <div class="td-sub">${nextTier}</div>
+            </td>
+            <td><div class="td-name">${escapeHtml(record.completed_deliveries_cycle || 0)} this cycle</div><div class="td-sub">${escapeHtml(record.completed_deliveries_all_time || 0)} all time</div></td>
+            <td><div class="td-name">${moneyFull(record.earned_cycle)}</div><div class="td-sub">${moneyFull(record.earned_all_time)} all time</div></td>
+            <td><div class="td-name">${moneyFull(record.paid_cycle)}</div><div class="td-sub">${moneyFull(record.paid_all_time)} all time</div></td>
+            <td class="accounting-total" style="color:${Number(record.outstanding_balance || 0) > 0 ? 'var(--orange)' : 'var(--green)'};">${moneyFull(record.outstanding_balance)}</td>
+            <td class="td-sub">${recentPayments}</td>
+            <td>
+              <div class="finance-actions">
+                <button class="btn btn-primary btn-sm" type="button" onclick="recordDriverPayment('${record.driver_id}')">Record Payment</button>
+                <button class="btn btn-ghost btn-sm" type="button" onclick="voidLatestDriverPayment('${record.driver_id}')">Void Latest</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('') || '<tr><td colspan="9">No active drivers found.</td></tr>';
+    }
+
     function renderAccounting() {
       const baseOrders = selectedAccountingOrders();
       const collectionOrders = baseOrders.filter(order => ['cod', 'delivery_only'].includes(order.payment_type));
@@ -2690,6 +2746,7 @@
       setText('accAccountBalancesSub', `Cash ${moneyFull(fullSummary.balances.cash)} | LINX ${moneyFull(fullSummary.balances.linx)} | Bank ${moneyFull(fullSummary.balances.bank)}`);
 
       renderFullAccountingSummary(fullSummary);
+      renderDriverFinance();
       renderAccountingLedger();
 
       const accountingBody = document.getElementById('accountingRecordsBody');
@@ -2918,6 +2975,71 @@
       } catch (error) {
         window.vdNotify('Transaction Not Saved', error.message || 'Could not save this accounting transaction.', 'error');
       }
+    };
+
+    window.recordDriverPayment = async function(driverId) {
+      const record = driverFinanceRecords.find(item => item.driver_id === driverId);
+      if (!record) return showToast('Driver finance record not found.');
+      const defaultAmount = Math.max(0, Number(record.outstanding_balance || 0)).toFixed(2);
+      const amountInput = window.prompt(`Payment amount for ${record.driver_name || driverName(driverId)}`, defaultAmount);
+      if (amountInput === null) return;
+      const paymentAmount = Number(amountInput);
+      if (!Number.isFinite(paymentAmount) || paymentAmount <= 0) {
+        window.vdNotify('Payment Not Saved', 'Enter a payment amount greater than zero.', 'warning');
+        return;
+      }
+      const methodInput = window.prompt('Payment method: cash, linx, bank_transfer, other', 'cash');
+      if (methodInput === null) return;
+      const paymentMethod = methodInput.trim().toLowerCase();
+      if (!['cash', 'linx', 'bank_transfer', 'other'].includes(paymentMethod)) {
+        window.vdNotify('Payment Not Saved', 'Use cash, linx, bank_transfer, or other.', 'warning');
+        return;
+      }
+      const dateInput = window.prompt('Payment date (YYYY-MM-DD)', new Date().toISOString().slice(0, 10));
+      if (dateInput === null) return;
+      const paymentDate = dateInput.trim() || new Date().toISOString().slice(0, 10);
+      const reference = window.prompt('Reference or receipt number (optional)', '') || '';
+      const notes = window.prompt('Notes (optional)', '') || '';
+      showModal('Record Driver Payment', `Record ${moneyFull(paymentAmount)} paid by ${paymentMethod.replaceAll('_', ' ')} to ${record.driver_name || driverName(driverId)}?`, async () => {
+        const { error } = await supabase.rpc('admin_record_driver_payment', {
+          p_driver_id: driverId,
+          p_amount: paymentAmount,
+          p_payment_method: paymentMethod,
+          p_payment_date: paymentDate,
+          p_reference: reference.trim() || null,
+          p_notes: notes.trim() || null
+        });
+        if (error) {
+          window.vdNotify('Payment Not Saved', error.message || 'Could not record this driver payment.', 'error');
+          return;
+        }
+        showToast('Driver payment recorded.');
+        await loadData();
+      });
+    };
+
+    window.voidLatestDriverPayment = function(driverId) {
+      const record = driverFinanceRecords.find(item => item.driver_id === driverId);
+      const latestPayment = (record?.recent_payments || []).find(payment => !payment.voided_at);
+      if (!latestPayment) return showToast('No active driver payment found to void.');
+      const reason = window.prompt('Reason for voiding the latest driver payment');
+      if (reason === null) return;
+      if (reason.trim().length < 3) {
+        window.vdNotify('Payment Not Voided', 'Enter a reason for voiding this driver payment.', 'warning');
+        return;
+      }
+      showModal('Void Driver Payment', `Void latest payment of ${moneyFull(latestPayment.amount)} for ${record.driver_name || driverName(driverId)}?`, async () => {
+        const { error } = await supabase.rpc('admin_void_driver_payment', {
+          p_payment_id: latestPayment.id,
+          p_reason: reason.trim()
+        });
+        if (error) {
+          window.vdNotify('Payment Not Voided', error.message || 'Could not void this driver payment.', 'error');
+          return;
+        }
+        showToast('Driver payment voided.');
+        await loadData();
+      });
     };
 
     window.voidAccountingTransaction = function(transactionId) {
@@ -4956,12 +5078,13 @@
         return;
       }
 
-      const [bootstrapRes, remittanceRes, driverCashRes, manifestsRes, accountingRes] = await Promise.all([
+      const [bootstrapRes, remittanceRes, driverCashRes, manifestsRes, accountingRes, driverFinanceRes] = await Promise.all([
         supabase.rpc('admin_dashboard_bootstrap'),
         supabase.rpc('admin_list_remittance_batches'),
         supabase.rpc('admin_list_cod_reconciliations'),
         supabase.rpc('admin_list_delivery_manifests'),
-        supabase.rpc('admin_list_accounting_transactions')
+        supabase.rpc('admin_list_accounting_transactions'),
+        supabase.rpc('admin_list_driver_finance')
       ]);
 
       if (bootstrapRes.error) throw bootstrapRes.error;
@@ -5005,6 +5128,12 @@
         accountingTransactions = [];
       } else {
         accountingTransactions = Array.isArray(accountingRes.data) ? accountingRes.data : [];
+      }
+      if (driverFinanceRes.error) {
+        console.warn('Driver finance records could not load:', driverFinanceRes.error);
+        driverFinanceRecords = [];
+      } else {
+        driverFinanceRecords = Array.isArray(driverFinanceRes.data) ? driverFinanceRes.data : [];
       }
 
       clientsById = new Map(clientRows.map(client => [client.id, client]));
