@@ -2504,6 +2504,36 @@
       return { start, end };
     }
 
+    function remittanceDateBounds() {
+      const period = document.getElementById('remitPeriodFilter')?.value || 'all';
+      let start = document.getElementById('remitStartDate')?.value || '';
+      let end = document.getElementById('remitEndDate')?.value || '';
+      const now = new Date();
+      if (period === 'day' && !start) start = now.toISOString().slice(0, 10);
+      if (period === 'week' && !start) {
+        const first = new Date(now);
+        first.setDate(now.getDate() - now.getDay());
+        start = first.toISOString().slice(0, 10);
+      }
+      if (period === 'month' && !start) start = now.toISOString().slice(0, 7) + '-01';
+      if (period === 'year' && !start) start = now.getFullYear() + '-01-01';
+      if (period !== 'all' && !end) end = now.toISOString().slice(0, 10);
+      return { start, end };
+    }
+
+    function selectedRemittancePayoutOrders() {
+      const clientId = document.getElementById('remitClientFilter')?.value || '';
+      const { start, end } = remittanceDateBounds();
+      return orders.filter(order => {
+        if (clientId && order.business_client_id !== clientId) return false;
+        if (order.payment_type !== 'cod' || order.remittance_status !== 'ready' || !isDelivered(order)) return false;
+        const date = localDate(order.delivery_proof_confirmed_at || order.last_delivery_attempt_at || order.updated_at || order.created_at);
+        if (start && date < start) return false;
+        if (end && date > end) return false;
+        return true;
+      });
+    }
+
     function selectedAccountingOrders() {
       const clientId = document.getElementById('acctClientFilter')?.value || '';
       const { start, end } = accountingDateBounds();
@@ -2851,6 +2881,7 @@
       renderClientPayouts(deliveredCollectable.filter(order => order.payment_type === 'cod' && order.remittance_status === 'ready'));
       renderRemittanceHistory();
     }
+    window.renderAccounting = renderAccounting;
 
     function renderClientPayouts(deliveredCollectable) {
       const payoutBody = document.getElementById('clientPayoutBody');
@@ -3579,7 +3610,7 @@
     }
 
     window.applyRemittanceFilters = function() {
-      renderAccounting();
+      renderClientPayouts(selectedRemittancePayoutOrders());
       showToast('Remittance filters applied.');
     };
 
