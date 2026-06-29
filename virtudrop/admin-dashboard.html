@@ -903,6 +903,7 @@
         </div>
 
         <div class="filter-bar">
+          <button class="btn btn-primary" type="button" onclick="openAdminCreateOrder()">Create Order</button>
           <select class="filter-select" id="orderStatusFilter" onchange="renderAllOrders()">
             <option value="">All Statuses</option>
             <option value="zone_pending">Zone Pending</option>
@@ -4003,6 +4004,71 @@
         if (proof) proof.checked = true;
       }
     };
+
+    window.openAdminCreateOrder = function() {
+      document.getElementById('modalTitle').textContent = 'Create Order';
+      document.getElementById('modalBody').innerHTML = `
+        <div class="payment-modal-form" style="text-align:left;">
+          <label>Business Client<select id="adminCreateClient">${clientOptionsHtml(false)}</select></label>
+          <label>Customer Name<input id="adminCreateCustomerName" placeholder="Customer receiving the delivery"></label>
+          <label>Customer Phone<input id="adminCreateCustomerPhone" placeholder="868-000-0000"></label>
+          <label>Item / Reference<input id="adminCreateItemNumber" placeholder="Optional item or client reference"></label>
+          <label>Payment Arrangement<select id="adminCreatePaymentArrangement">
+            <option value="cod_customer_pays">COD - customer pays package and delivery</option>
+            <option value="cod_client_pays_delivery">COD - customer pays package, client pays delivery</option>
+            <option value="delivery_only_customer_pays">Delivery only - customer pays delivery</option>
+            <option value="client_pays_delivery">Prepaid/package paid - client pays delivery</option>
+          </select></label>
+          <label>Package / COD Amount<input id="adminCreatePackageValue" type="number" min="0" step="0.01" value="0"></label>
+          <label>Estimated Delivery Fee<input id="adminCreateEstimatedFee" type="number" min="0" step="0.01" placeholder="40 or 50 if known"></label>
+          <label>Driver Pay<input id="adminCreateDriverPay" type="number" min="0" step="0.01" value="0"></label>
+          <label>House / Apt<input id="adminCreateHouse" placeholder="Optional"></label>
+          <label>Street / Building<input id="adminCreateStreet" placeholder="Street, road, building, landmark"></label>
+          <label>Area<input id="adminCreateArea" placeholder="Area"></label>
+          <label>Google Pin / Maps Link<input id="adminCreateMapsLink" placeholder="Optional Google Maps link"></label>
+          <label style="display:flex; gap:0.55rem; align-items:center;"><input id="adminCreateParcelsReceived" type="checkbox"> Parcel already received at hub</label>
+          <label>Customer Notes<textarea id="adminCreateCustomerNotes" placeholder="Delivery instructions visible to driver/client"></textarea></label>
+          <label>Admin Notes<textarea id="adminCreateAdminNotes" placeholder="Internal note"></textarea></label>
+        </div>`;
+      document.getElementById('modalConfirm').textContent = 'Create Order';
+      document.getElementById('modal').classList.add('show');
+      modalCb = async () => saveAdminCreatedOrder();
+    };
+
+    async function saveAdminCreatedOrder() {
+      const clientId = document.getElementById('adminCreateClient')?.value || '';
+      const payload = {
+        customer_name: document.getElementById('adminCreateCustomerName')?.value.trim() || '',
+        customer_phone: document.getElementById('adminCreateCustomerPhone')?.value.trim() || '',
+        external_item_number: document.getElementById('adminCreateItemNumber')?.value.trim() || null,
+        payment_arrangement: document.getElementById('adminCreatePaymentArrangement')?.value || 'cod_customer_pays',
+        package_value: document.getElementById('adminCreatePackageValue')?.value || 0,
+        estimated_fee: document.getElementById('adminCreateEstimatedFee')?.value || null,
+        driver_delivery_pay: document.getElementById('adminCreateDriverPay')?.value || 0,
+        house_number: document.getElementById('adminCreateHouse')?.value.trim() || null,
+        street_name: document.getElementById('adminCreateStreet')?.value.trim() || null,
+        area_name: document.getElementById('adminCreateArea')?.value.trim() || null,
+        maps_link: document.getElementById('adminCreateMapsLink')?.value.trim() || null,
+        parcels_received: Boolean(document.getElementById('adminCreateParcelsReceived')?.checked),
+        customer_notes: document.getElementById('adminCreateCustomerNotes')?.value.trim() || null,
+        admin_notes: document.getElementById('adminCreateAdminNotes')?.value.trim() || null
+      };
+      if (!clientId) return window.vdNotify('Order Not Created', 'Select the business client.', 'warning');
+      if (!payload.customer_name || payload.customer_name.length < 2) return window.vdNotify('Order Not Created', 'Enter the customer name.', 'warning');
+      if (String(payload.customer_phone || '').replace(/\D/g, '').length < 7) return window.vdNotify('Order Not Created', 'Enter the customer phone number.', 'warning');
+      if (!payload.maps_link && !payload.street_name && !payload.area_name) return window.vdNotify('Order Not Created', 'Enter a street/area or Google Maps pin.', 'warning');
+      try {
+        const { data, error } = await supabase.rpc('admin_create_order', {
+          p_business_client_id: clientId,
+          p_request_data: payload
+        });
+        if (error) throw error;
+        showToast(`Order ${data?.order_number || ''} created.`);
+        await loadData();
+      } catch (error) {
+        window.vdNotify('Order Not Created', error.message || 'Could not create this order.', 'error');
+      }
+    }
 
     window.openAdminOrderEdit = function(orderId) {
       const order = orders.find(item => item.id === orderId);
