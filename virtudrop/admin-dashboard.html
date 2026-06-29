@@ -2572,13 +2572,16 @@
       const manualIncome = activeTransactions
         .filter(transaction => ['income', 'asset_in'].includes(transaction.transaction_type) && !['bank_deposit', 'linx_settlement'].includes(transaction.category))
         .reduce((sum, transaction) => sum + amount(transaction.amount), 0);
-      const operatingExpenses = activeTransactions
+      const nonDriverOperatingExpenses = activeTransactions
         .filter(transaction => ['expense', 'asset_out'].includes(transaction.transaction_type)
-          && ['driver_payment', 'gas', 'vehicle_expense', 'office_expense', 'supplies', 'other_expense'].includes(transaction.category))
+          && ['gas', 'vehicle_expense', 'office_expense', 'supplies', 'other_expense'].includes(transaction.category))
         .reduce((sum, transaction) => sum + amount(transaction.amount), 0);
       const driverPayments = activeTransactions
         .filter(transaction => transaction.category === 'driver_payment' && transaction.direction === 'outflow')
         .reduce((sum, transaction) => sum + amount(transaction.amount), 0);
+      const driverEarningsIncurred = deliveredOrders.reduce((sum, order) => sum + amount(order.driver_delivery_pay), 0);
+      const operatingExpenses = nonDriverOperatingExpenses + driverEarningsIncurred;
+      const driverBalanceOutstanding = driverEarningsIncurred - driverPayments;
       const gasExpenses = activeTransactions
         .filter(transaction => transaction.category === 'gas' && transaction.direction === 'outflow')
         .reduce((sum, transaction) => sum + amount(transaction.amount), 0);
@@ -2604,7 +2607,10 @@
         deliveryRevenue,
         manualIncome,
         operatingExpenses,
+        nonDriverOperatingExpenses,
         driverPayments,
+        driverEarningsIncurred,
+        driverBalanceOutstanding,
         gasExpenses,
         estimatedProfit,
         balances,
@@ -2623,8 +2629,10 @@
         body.innerHTML = [
           ['Delivery revenue', summary.deliveryRevenue, 'Delivery, pickup, redelivery, and return fees on live/completed orders'],
           ['Other/manual income', summary.manualIncome, 'Income entered directly into the accounting ledger'],
-          ['Operating expenses', summary.operatingExpenses, 'Driver payments, gas, vehicle, office, supplies, other expenses'],
-          ['Driver payments', summary.driverPayments, 'Manual ledger payments to drivers'],
+          ['Operating expenses', summary.operatingExpenses, 'Driver earnings incurred, gas, vehicle, office, supplies, other expenses'],
+          ['Driver earnings incurred', summary.driverEarningsIncurred, 'Driver pay owed from delivered orders'],
+          ['Driver payments made', summary.driverPayments, 'Actual payments recorded to drivers'],
+          ['Driver balance outstanding', summary.driverBalanceOutstanding, 'Driver earnings incurred minus payments made'],
           ['Gas', summary.gasExpenses, 'Manual ledger gas expenses'],
           ['Estimated profit', summary.estimatedProfit, 'Revenue and other income minus operating expenses'],
           ['COD collected', summary.codCollected, 'Driver collections reconciled into VirtuDrop'],
@@ -2688,7 +2696,7 @@
           .join('<br>') || 'No payments recorded';
         return `
           <tr>
-            <td><div class="td-name">${escapeHtml(record.driver_name || driverName(record.driver_id))}</div><div class="td-sub">Pay rate: ${moneyFull(record.delivery_pay_rate)} / delivery</div></td>
+            <td><div class="td-name">${escapeHtml(record.driver_name || driverName(record.driver_id))}</div><div class="td-sub">Earnings come from each order's Driver Pay</div></td>
             <td><div class="td-name">${escapeHtml(cycle.cycle_start || '—')} to ${escapeHtml(cycle.cycle_end || '—')}</div><div class="td-sub">Resets ${escapeHtml(cycle.reset_date || '—')}</div></td>
             <td>
               ${tierIcon(incentive)}
@@ -3874,6 +3882,7 @@
           <td>
             <div class="td-name">Package: ${moneyFull(order.package_value || order.cod_amount)}</div>
             <div class="td-sub">Delivery: ${moneyFull(order.delivery_fee)}</div>
+            <div class="td-sub">Driver Pay: ${moneyFull(order.driver_delivery_pay)}</div>
             ${order.redelivery_fee > 0 ? `<div class="td-sub">Redelivery: ${moneyFull(order.redelivery_fee)} · ${escapeHtml(order.redelivery_fee_payer || 'payer pending')}</div>` : ''}
             ${order.return_to_client_fee > 0 ? `<div class="td-sub">Client return: ${moneyFull(order.return_to_client_fee)}</div>` : ''}
             <div class="td-sub">Collect: ${moneyFull(driverCollects(order))}</div>
@@ -3936,6 +3945,7 @@
         package_value: document.getElementById('adminEditPackageValue')?.value || 0,
         estimated_fee: order.estimated_fee ?? null,
         delivery_fee: document.getElementById('adminEditDeliveryFee')?.value || null,
+        driver_delivery_pay: document.getElementById('adminEditDriverPay')?.value || 0,
         pricing_rate_band: order.pricing_rate_band || null,
         quote_status: order.quote_status || 'not_required',
         pickup_required: Boolean(order.pickup_required),
@@ -4006,6 +4016,7 @@
           <label>Item / Reference<input id="adminEditItemNumber" value="${escapeHtml(order.external_item_number || '')}"></label>
           <label>Package / COD Amount<input id="adminEditPackageValue" type="number" min="0" step="0.01" value="${Number(order.package_value || order.cod_amount || 0).toFixed(2)}"></label>
           <label>Confirmed Delivery Fee<input id="adminEditDeliveryFee" type="number" min="0" step="0.01" value="${order.delivery_fee ?? ''}"></label>
+          <label>Driver Pay<input id="adminEditDriverPay" type="number" min="0" step="0.01" value="${Number(order.driver_delivery_pay || 0).toFixed(2)}"></label>
           <label>Assigned Driver<select id="adminEditAssignedDriver">${adminEditSelect(driverOptions, order.assigned_driver_id || '')}</select></label>
           <label>Order Status<select id="adminEditOrderStatus" onchange="syncAdminOperationalEdit()">${adminEditSelect([
             ['zone_pending', 'Zone Pending'],
@@ -4323,6 +4334,7 @@
             <div class="zone-card-actions">
               <select class="zone-select">${zoneOptions()}</select>
               <input class="zone-select fee-input" type="number" min="0" step="0.01" value="${suggestedFee.toFixed(2)}" title="Final delivery fee" />
+              <input class="zone-select driver-pay-input" type="number" min="0" step="0.01" value="${Number(order.driver_delivery_pay || 0).toFixed(2)}" placeholder="Driver pay" title="Amount the driver earns for this delivery" />
               <input class="zone-select override-reason-input" type="text" maxlength="180" placeholder="Override/quote reason" title="Required when changing the estimate or quoting a remote order" />
               <button class="btn btn-primary btn-sm" onclick="confirmZone('${order.id}')">✅ Confirm Zone</button>
               <button class="btn btn-warn btn-sm" onclick="rejectOrder('${order.id}')">❌ Reject</button>
@@ -5163,11 +5175,12 @@
       loadAdminNotificationBadge();
     }
 
-    async function saveZoneConfirmation(orderId, zoneId, fee, overrideReason, isOverride) {
+    async function saveZoneConfirmation(orderId, zoneId, fee, driverPay, overrideReason, isOverride) {
       const rpcResult = await supabase.rpc('admin_confirm_order_zone', {
         p_order_id: orderId,
         p_zone_id: zoneId,
-        p_delivery_fee: fee
+        p_delivery_fee: fee,
+        p_driver_delivery_pay: driverPay
       });
 
       if (!rpcResult.error) {
@@ -5194,6 +5207,9 @@
           zone_status: 'confirmed',
           order_status: 'confirmed',
           delivery_fee: fee,
+          driver_delivery_pay: driverPay,
+          driver_delivery_pay_set_by: currentProfile?.id || null,
+          driver_delivery_pay_set_at: new Date().toISOString(),
           pricing_rate_band: isOverride ? 'override' : undefined,
           price_override_reason: isOverride ? overrideReason : null,
           price_overridden_at: isOverride ? new Date().toISOString() : null,
@@ -5221,6 +5237,7 @@
       }
       const zoneSelect = card.querySelector('.zone-select');
       const fee = Number(card.querySelector('.fee-input').value || 0);
+      const driverPay = Number(card.querySelector('.driver-pay-input')?.value || 0);
       const overrideReason = card.querySelector('.override-reason-input')?.value.trim() || '';
       const zoneId = zoneSelect.value;
       const zone = zones.find(z => z.id === zoneId);
@@ -5236,15 +5253,19 @@
         showToast('Enter a valid final delivery fee.');
         return;
       }
+      if (!Number.isFinite(driverPay) || driverPay < 0) {
+        showToast('Enter a valid driver pay amount.');
+        return;
+      }
       if ((isOverride || isRemoteQuote) && !overrideReason) {
         showToast(isRemoteQuote ? 'Enter a reason for the remote quote.' : 'Enter a reason for changing the standard fee.');
         card.querySelector('.override-reason-input')?.focus();
         return;
       }
 
-      showModal('Confirm Zone', `Set ${order.order_number} to ${zone.name} with delivery fee TTD ${fee}?`, async () => {
+      showModal('Confirm Zone', `Set ${order.order_number} to ${zone.name} with delivery fee ${moneyFull(fee)} and driver pay ${moneyFull(driverPay)}?`, async () => {
         try {
-          await saveZoneConfirmation(orderId, zoneId, fee, overrideReason, isOverride || isRemoteQuote);
+          await saveZoneConfirmation(orderId, zoneId, fee, driverPay, overrideReason, isOverride || isRemoteQuote);
           showToast(`✅ ${order.order_number} zone confirmed.`);
           await loadData();
         } catch (error) {
