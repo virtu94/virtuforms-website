@@ -1018,7 +1018,7 @@
       }
 
       return common + `
-        <button class="action-btn btn-delivered" onclick="markDelivered('${order.id}', ${collect})">Mark Delivered</button>
+        <button class="action-btn btn-delivered" type="button" data-driver-action="delivered" data-order-id="${order.id}" data-collect="${collect}">Mark Delivered</button>
         <button class="action-btn btn-unavailable" onclick="markNoResponse('${order.id}')">No Response</button>
         <button class="action-btn btn-failed" onclick="markRefused('${order.id}')">Refused</button>
         <button class="action-btn btn-reschedule" onclick="markRescheduleRequested('${order.id}')">Reschedule Requested</button>
@@ -1340,6 +1340,7 @@
       const canvas = document.getElementById('deliverySignatureCanvas');
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
+      if (!ctx) return;
       const ratio = Math.max(window.devicePixelRatio || 1, 1);
       const rect = canvas.getBoundingClientRect();
       canvas.width = Math.round(rect.width * ratio);
@@ -1425,16 +1426,29 @@
           <input id="deliveryRecipientName" type="text" placeholder="Name of person receiving package" style="width:100%; padding:0.75rem; border:2px solid #e0e0e0; border-radius:8px; box-sizing:border-box; margin-bottom:0.75rem;">
           <label style="display:block; font-weight:800; margin-bottom:0.35rem;">Recipient Signature</label>
           <canvas id="deliverySignatureCanvas" style="width:100%; height:170px; background:#fff; border:2px solid #d7e3e1; border-radius:8px; touch-action:none; display:block;"></canvas>
-          <button class="modal-btn" style="margin-top:0.55rem;" onclick="clearDeliverySignature()">Clear Signature</button>
+          <button class="modal-btn" id="clearDeliverySignatureButton" type="button" style="margin-top:0.55rem;">Clear Signature</button>
         </div>`;
       openModal(
         '✅ Mark as Delivered',
         `Confirm delivery of ${order.order_number} is complete.${codText}`,
-        `${methodBox}${signatureBox}${proofBox}<button class="modal-btn confirm" onclick="confirmDeliveredWithCollection('${order.id}', ${collectAmount})">Confirm Delivery</button>
-         <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>`
+        `${methodBox}${signatureBox}${proofBox}<button class="modal-btn confirm" id="confirmDeliveryButton" type="button">Confirm Delivery</button>
+         <button class="modal-btn cancel" type="button" onclick="closeModal()">Cancel</button>`
       );
-      setTimeout(initDeliverySignaturePad, 50);
+      setTimeout(() => {
+        initDeliverySignaturePad();
+        document.getElementById('clearDeliverySignatureButton')?.addEventListener('click', window.clearDeliverySignature);
+        document.getElementById('confirmDeliveryButton')?.addEventListener('click', () => {
+          window.confirmDeliveredWithCollection(order.id, collectAmount);
+        });
+      }, 50);
     };
+
+    document.addEventListener('click', event => {
+      const button = event.target.closest('[data-driver-action="delivered"]');
+      if (!button) return;
+      event.preventDefault();
+      window.markDelivered(button.dataset.orderId, Number(button.dataset.collect || 0));
+    });
 
     window.confirmDeliveredWithCollection = function(orderId, collectAmount = 0) {
       let note = 'Driver confirmed parcel handover to customer or authorized recipient.';
