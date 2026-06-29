@@ -2516,6 +2516,31 @@
       });
     }
 
+    function selectedAccountingRemittanceRecords() {
+      const clientId = document.getElementById('acctClientFilter')?.value || '';
+      const { start, end } = accountingDateBounds();
+      return remittanceRecords.filter(record => {
+        if (clientId && record.business_client_id !== clientId) return false;
+        const date = localDate(record.paid_at || record.created_at);
+        if (start && date < start) return false;
+        if (end && date > end) return false;
+        return true;
+      });
+    }
+
+    function selectedAccountingDriverCashRecords() {
+      const clientId = document.getElementById('acctClientFilter')?.value || '';
+      const { start, end } = accountingDateBounds();
+      return driverCashRecords.filter(record => {
+        const linkedOrder = orders.find(order => order.id === record.order_id);
+        if (clientId && linkedOrder?.business_client_id !== clientId) return false;
+        const date = localDate(record.reconciled_at || record.received_at || record.created_at);
+        if (start && date < start) return false;
+        if (end && date > end) return false;
+        return true;
+      });
+    }
+
     const accountingCategoryLabels = {
       delivery_revenue: 'Delivery Revenue',
       pickup_revenue: 'Pickup Revenue',
@@ -2567,7 +2592,11 @@
       const directionFilter = document.getElementById('acctFilterDirection')?.value || '';
       const voidFilter = document.getElementById('acctFilterVoids')?.value || 'active';
       return accountingTransactions.filter(transaction => {
-        if (clientId && transaction.business_client_id && transaction.business_client_id !== clientId) return false;
+        if (clientId) {
+          const linkedOrder = transaction.order_id ? orders.find(order => order.id === transaction.order_id) : null;
+          const linkedClientId = transaction.business_client_id || linkedOrder?.business_client_id || '';
+          if (linkedClientId !== clientId) return false;
+        }
         if (typeFilter && transaction.transaction_type !== typeFilter) return false;
         if (categoryFilter && transaction.category !== categoryFilter) return false;
         if (accountFilter && transaction.account !== accountFilter) return false;
@@ -2583,6 +2612,8 @@
 
     function accountingSummary(baseOrders) {
       const activeTransactions = selectedAccountingTransactions().filter(transaction => !isVoidedTransaction(transaction));
+      const scopedRemittanceRecords = selectedAccountingRemittanceRecords();
+      const scopedDriverCashRecords = selectedAccountingDriverCashRecords();
       const deliveredOrders = baseOrders.filter(order => isDelivered(order));
       const revenueOrders = baseOrders.filter(order =>
         isDelivered(order)
@@ -2611,18 +2642,18 @@
       const gasExpenses = activeTransactions
         .filter(transaction => transaction.category === 'gas' && transaction.direction === 'outflow')
         .reduce((sum, transaction) => sum + amount(transaction.amount), 0);
-      const clientRemitted = remittanceRecords
+      const clientRemitted = scopedRemittanceRecords
         .filter(record => record.status !== 'void')
         .reduce((sum, record) => sum + amount(record.net_amount ?? record.amount), 0);
       const clientPayoutDue = deliveredOrders
         .filter(order => order.payment_type === 'cod' && order.remittance_status === 'ready')
         .reduce((sum, order) => sum + clientPayout(order), 0);
-      const codCollected = driverCashRecords.reduce((sum, record) => sum + amount(record.received_amount ?? record.amount), 0);
+      const codCollected = scopedDriverCashRecords.reduce((sum, record) => sum + amount(record.received_amount ?? record.amount), 0);
       const balances = { cash: 0, linx: 0, bank: 0, other: 0 };
-      driverCashRecords.forEach(record => {
+      scopedDriverCashRecords.forEach(record => {
         balances[accountForMethod(record.handover_method || record.method)] += amount(record.received_amount ?? record.amount);
       });
-      remittanceRecords.filter(record => record.status !== 'void').forEach(record => {
+      scopedRemittanceRecords.filter(record => record.status !== 'void').forEach(record => {
         balances[accountForMethod(record.method)] -= amount(record.net_amount ?? record.amount);
       });
       activeTransactions.forEach(transaction => {
@@ -2752,7 +2783,8 @@
       const collectionOrders = baseOrders.filter(order => ['cod', 'delivery_only'].includes(order.payment_type));
       const today = new Date().toISOString().slice(0, 10);
       const deliveredCollectable = collectionOrders.filter(order => isDelivered(order));
-      const receivedToday = driverCashRecords.filter(record => String(record.reconciled_at || record.received_at || record.created_at || '').slice(0, 10) === today);
+      const filteredCashRecords = selectedAccountingDriverCashRecords();
+      const receivedToday = filteredCashRecords.filter(record => String(record.reconciled_at || record.received_at || record.created_at || '').slice(0, 10) === today);
       const pendingCollection = deliveredCollectable.filter(order => driverCollects(order) > 0 && driverCashRecordForOrder(order.id)?.status !== 'balanced');
       const confirmedFeeOrders = baseOrders.filter(order => order.zone_status === 'confirmed' || ['confirmed', 'assigned', 'out_for_delivery', 'delivered'].includes(order.order_status));
 
@@ -2785,6 +2817,8 @@
 
       const accountingBody = document.getElementById('accountingRecordsBody');
       if (accountingBody) {
+        const selectedClientId = document.getElementById('acctClientFilter')?.value || '';
+        const selectedClientName = selectedClientId ? clientsById.get(selectedClientId)?.business_name || 'selected client' : '';
         accountingBody.innerHTML = collectionOrders.map(order => {
           const record = driverCashRecordForOrder(order.id);
           const expected = record ? amount(record.expected_amount) : driverCollects(order);
@@ -2811,7 +2845,7 @@
               </div>
             </td>
           </tr>
-        `;}).join('') || '<tr><td colspan="11">No COD or delivery-fee collection orders found yet.</td></tr>';
+        `;}).join('') || `<tr><td colspan="11">No COD or delivery-fee collection orders found${selectedClientName ? ` for ${escapeHtml(selectedClientName)}` : ''} in the selected filters.</td></tr>`;
       }
 
       renderClientPayouts(deliveredCollectable.filter(order => order.payment_type === 'cod' && order.remittance_status === 'ready'));
@@ -2868,7 +2902,8 @@
     function renderRemittanceHistory() {
       const body = document.getElementById('remittanceHistoryBody');
       if (!body) return;
-      body.innerHTML = remittanceRecords.map(record => `
+      const rows = selectedAccountingRemittanceRecords();
+      body.innerHTML = rows.map(record => `
         <tr>
           <td class="td-id">${escapeHtml(record.batch_number || String(record.id).slice(0, 8))}</td>
           <td>${escapeHtml(clientsById.get(record.business_client_id)?.business_name || 'Client')}</td>
@@ -2880,7 +2915,7 @@
           <td>${new Date(record.paid_at || record.created_at).toLocaleString('en-TT')}</td>
           <td><button class="btn btn-ghost btn-sm" onclick="viewRemittanceRecord('${record.id}')">View</button></td>
         </tr>
-      `).join('') || '<tr><td colspan="9">No remittance batches have been paid yet.</td></tr>';
+      `).join('') || '<tr><td colspan="9">No remittance batches match the selected filters.</td></tr>';
     }
 
     window.clearAccountingTransactionForm = function() {
@@ -3311,6 +3346,29 @@
       return '<span class="badge badge-pending">Pending Approval</span>';
     }
 
+    function businessClientForProfile(profileId) {
+      return [...clientsById.values()].find(client => client.profile_id === profileId) || null;
+    }
+
+    function businessAccountFinanceSummary(clientId) {
+      const clientOrders = orders.filter(order => order.business_client_id === clientId);
+      const clientOrderIds = new Set(clientOrders.map(order => order.id));
+      const deliveredCollectable = clientOrders.filter(order => isDelivered(order) && ['cod', 'delivery_only'].includes(order.payment_type));
+      const pendingCollection = deliveredCollectable
+        .filter(order => driverCollects(order) > 0 && driverCashRecordForOrder(order.id)?.status !== 'balanced')
+        .reduce((sum, order) => sum + driverCollects(order), 0);
+      const readyRemittance = clientOrders
+        .filter(order => order.payment_type === 'cod' && order.remittance_status === 'ready')
+        .reduce((sum, order) => sum + clientPayout(order), 0);
+      const paidRemittance = remittanceRecords
+        .filter(record => record.business_client_id === clientId && record.status !== 'void')
+        .reduce((sum, record) => sum + amount(record.net_amount ?? record.amount), 0);
+      const reconciledCollections = driverCashRecords
+        .filter(record => clientOrderIds.has(record.order_id))
+        .reduce((sum, record) => sum + amount(record.received_amount ?? record.amount), 0);
+      return { pendingCollection, readyRemittance, paidRemittance, reconciledCollections, orderCount: clientOrders.length };
+    }
+
     function renderAccounts() {
       const grid = document.getElementById('accountsGrid');
       if (!grid) return;
@@ -3377,6 +3435,17 @@
         const convertDriverButton = profile.role === 'business' && !isSelf
           ? `<button class="btn btn-primary btn-sm" onclick="convertAccountToDriver('${profile.id}')">Convert to Driver</button>`
           : '';
+        const businessClient = profile.role === 'business' ? businessClientForProfile(profile.id) : null;
+        const finance = businessClient ? businessAccountFinanceSummary(businessClient.id) : null;
+        const financeSummary = finance
+          ? `<div class="acc-meta" style="margin-top:0.45rem;">
+              Orders: ${finance.orderCount} · Pending collection: ${moneyFull(finance.pendingCollection)}<br>
+              Owed now: ${moneyFull(finance.readyRemittance)} · Paid: ${moneyFull(finance.paidRemittance)} · Reconciled: ${moneyFull(finance.reconciledCollections)}
+            </div>`
+          : '';
+        const accountingButton = businessClient
+          ? `<button class="btn btn-primary btn-sm" onclick="viewClientAccounting('${businessClient.id}')">View Accounting</button>`
+          : '';
 
         return `
           <div class="account-card${lockedClass}">
@@ -3385,9 +3454,11 @@
               <div class="acc-name">${escapeHtml(name)}</div>
               <div class="acc-meta">${role}${isSelf ? ' · Current admin' : ''}</div>
               <div style="margin-top:0.3rem;">${accountStatusBadge(status)}</div>
+              ${financeSummary}
             </div>
             <div class="acc-actions">
               ${approveButton}
+              ${accountingButton}
               ${convertDriverButton}
               ${unlockButton}
               ${reactivateButton}
@@ -3399,6 +3470,13 @@
       }).join('');
     }
     window.renderAccounts = renderAccounts;
+
+    window.viewClientAccounting = function(clientId) {
+      showPanel('cod-mgmt');
+      const clientFilter = document.getElementById('acctClientFilter');
+      if (clientFilter) clientFilter.value = clientId;
+      renderAccounting();
+    };
 
     window.convertAccountToDriver = function(profileId) {
       const profile = allProfiles.find(item => item.id === profileId);
