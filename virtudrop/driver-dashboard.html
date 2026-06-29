@@ -780,9 +780,11 @@
     window.closeModal = function() { document.getElementById('modal').classList.remove('show'); };
     window.closeModalIfBg = function(e) { if (e.target === document.getElementById('modal')) closeModal(); };
 
-    function normalizeStatus(orderStatus) {
-      if (orderStatus === 'out_for_delivery') return 'out';
-      if (orderStatus === 'delivered') return 'delivered';
+    function normalizeStatus(order) {
+      const orderStatus = typeof order === 'string' ? order : order?.order_status;
+      const parcelStatus = typeof order === 'string' ? '' : order?.parcel_status;
+      if (orderStatus === 'out_for_delivery' || parcelStatus === 'handed_to_driver') return 'out';
+      if (orderStatus === 'delivered' || parcelStatus === 'delivered') return 'delivered';
       if (orderStatus === 'failed') return 'failed';
       if (orderStatus === 'rescheduled') return 'rescheduled';
       return 'queued';
@@ -1008,7 +1010,7 @@
 
       if (status === 'queued') {
         const manifest = manifestForOrder(order.id);
-        if (manifest && manifest.status !== 'collected') {
+        if (manifest && manifest.status !== 'collected' && order.parcel_status !== 'handed_to_driver') {
           return `<span class="status-badge ${manifest.status === 'ready' ? 'badge-out' : 'badge-queued'}">Manifest ${manifest.status === 'ready' ? 'ready - awaiting handover' : 'being prepared'}</span>`;
         }
         return common + `<button class="action-btn btn-collected" onclick="markCollected('${order.id}')">📦 Mark Collected</button>`;
@@ -1025,7 +1027,7 @@
     function renderOrders() {
       const list = document.getElementById('deliveryList');
       list.innerHTML = orders.map(order => {
-        const status = normalizeStatus(order.order_status);
+        const status = normalizeStatus(order);
         const manifest = manifestForOrder(order.id);
         const collect = amountToCollect(order);
         const notes = [order.redelivery_status === 'scheduled' ? `Redelivery attempt${order.redelivery_notes ? `: ${order.redelivery_notes}` : ''}` : '', order.customer_notes || '']
@@ -1107,10 +1109,10 @@
     function updateFilterTabs() {
       const counts = {
         all: orders.length,
-        queued: orders.filter(o => normalizeStatus(o.order_status) === 'queued').length,
-        out: orders.filter(o => normalizeStatus(o.order_status) === 'out').length,
-        delivered: orders.filter(o => normalizeStatus(o.order_status) === 'delivered').length,
-        failed: orders.filter(o => ['failed', 'rescheduled'].includes(normalizeStatus(o.order_status))).length
+        queued: orders.filter(o => normalizeStatus(o) === 'queued').length,
+        out: orders.filter(o => normalizeStatus(o) === 'out').length,
+        delivered: orders.filter(o => normalizeStatus(o) === 'delivered').length,
+        failed: orders.filter(o => ['failed', 'rescheduled'].includes(normalizeStatus(o))).length
       };
       document.querySelector('.filter-tabs').innerHTML = `
         <button class="filter-tab ${activeFilter === 'all' ? 'active' : ''}" onclick="filterCards('all', this)">All (${counts.all})</button>
@@ -1140,11 +1142,11 @@
     };
 
     function updateStats() {
-      const delivered = orders.filter(o => normalizeStatus(o.order_status) === 'delivered').length;
-      const failed = orders.filter(o => ['failed', 'rescheduled'].includes(normalizeStatus(o.order_status))).length;
-      const remaining = orders.filter(o => !['delivered', 'failed', 'rescheduled'].includes(normalizeStatus(o.order_status))).length;
+      const delivered = orders.filter(o => normalizeStatus(o) === 'delivered').length;
+      const failed = orders.filter(o => ['failed', 'rescheduled'].includes(normalizeStatus(o))).length;
+      const remaining = orders.filter(o => !['delivered', 'failed', 'rescheduled'].includes(normalizeStatus(o))).length;
       const cod = orders
-        .filter(o => normalizeStatus(o.order_status) === 'delivered')
+        .filter(o => normalizeStatus(o) === 'delivered')
         .reduce((sum, o) => sum + amountToCollect(o), 0);
 
       document.getElementById('statTotal').textContent = orders.length;
