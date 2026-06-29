@@ -1947,6 +1947,31 @@
       popup.document.close();
     };
 
+    window.viewDeliverySignature = function(orderId) {
+      const order = orders.find(item => item.id === orderId);
+      if (!order?.delivery_signature_data_url) return showToast('No delivery signature found for this order.');
+      const popup = window.open('', '_blank', 'width=620,height=640');
+      if (!popup) return showToast('Allow popups to view this signature.');
+      popup.document.write(`<!doctype html><html><head><title>Signature ${escapeHtml(order.order_number)}</title><style>
+        body{font-family:Arial,Helvetica,sans-serif;padding:24px;color:#172b28}
+        h1{margin:0 0 8px;font-size:22px}
+        .meta{margin:0 0 18px;color:#4a4a4a;line-height:1.55}
+        .sig{border:1px solid #bbb;max-width:100%;background:#fff}
+        button{margin-top:18px;padding:10px 14px;border:0;border-radius:8px;background:#2a9d8f;color:#fff;font-weight:700;cursor:pointer}
+      </style></head><body>
+        <h1>Delivery Signature</h1>
+        <div class="meta">
+          <strong>Order:</strong> ${escapeHtml(order.order_number || '')}<br>
+          <strong>Customer:</strong> ${escapeHtml(order.customer_name || '')}<br>
+          <strong>Recipient:</strong> ${escapeHtml(order.delivery_recipient_name || '')}<br>
+          <strong>Signed:</strong> ${escapeHtml(order.delivery_signed_at ? new Date(order.delivery_signed_at).toLocaleString('en-TT') : '')}
+        </div>
+        <img class="sig" src="${escapeHtml(order.delivery_signature_data_url)}" alt="Delivery signature">
+        <br><button onclick="window.print()">Print Proof</button>
+      </body></html>`);
+      popup.document.close();
+    };
+
     function escapeHtml(value) {
       return String(value ?? '').replace(/[&<>"']/g, char => ({
         '&': '&amp;',
@@ -3889,7 +3914,7 @@
             <div class="td-sub">Collect: ${moneyFull(driverCollects(order))}</div>
             ${order.pickup_required ? `<div class="td-sub">Pickup: ${moneyFull(order.pickup_fee)} · ${order.pickup_parcel_count || 1} parcel(s)</div>` : ''}
           </td>
-          <td>${badgeForStatus(order)}<div class="td-sub" style="margin-top:0.3rem;">Parcel: ${escapeHtml(String(order.parcel_status || 'awaiting_parcel').replaceAll('_', ' '))}</div>${order.delivery_attempt_count ? `<div class="td-sub">Attempt ${order.delivery_attempt_count}${order.delivery_proof_confirmed_at ? ' · Handover confirmed' : ''}</div>` : ''}${order.delivery_return_required ? '<div class="td-sub" style="color:var(--red); font-weight:700;">Awaiting hub return</div>' : order.delivery_returned_hub_at ? '<div class="td-sub" style="color:var(--green); font-weight:700;">Returned to hub</div>' : ''}</td>
+          <td>${badgeForStatus(order)}<div class="td-sub" style="margin-top:0.3rem;">Parcel: ${escapeHtml(String(order.parcel_status || 'awaiting_parcel').replaceAll('_', ' '))}</div>${order.delivery_attempt_count ? `<div class="td-sub">Attempt ${order.delivery_attempt_count}${order.delivery_proof_confirmed_at ? ' · Handover confirmed' : ''}</div>` : ''}${order.delivery_recipient_name ? `<div class="td-sub">Recipient: ${escapeHtml(order.delivery_recipient_name)}</div>` : ''}${order.delivery_signature_data_url ? `<button class="btn btn-ghost btn-sm" type="button" onclick="viewDeliverySignature('${order.id}')">View Signature</button>` : ''}${order.delivery_return_required ? '<div class="td-sub" style="color:var(--red); font-weight:700;">Awaiting hub return</div>' : order.delivery_returned_hub_at ? '<div class="td-sub" style="color:var(--green); font-weight:700;">Returned to hub</div>' : ''}</td>
           <td>${order.assigned_driver_id ? escapeHtml(driverName(order.assigned_driver_id)) : '—'}</td>
         </tr>
       `).join('') || '<tr><td colspan="7">No orders found.</td></tr>';

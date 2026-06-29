@@ -751,6 +751,7 @@
     let clientsById = new Map();
     let activeFilter = 'all';
     let activeWorkView = 'deliveries';
+    let deliverySignaturePad = null;
 
     document.getElementById('todayDate').textContent =
       new Date().toLocaleDateString('en-TT', { weekday:'long', day:'numeric', month:'short', year:'numeric' });
@@ -1087,6 +1088,7 @@
                 <div class="info-value">${order.scheduled_delivery_date ? new Date(order.scheduled_delivery_date + 'T12:00:00').toLocaleDateString('en-TT') : 'Not scheduled'}</div>
               </div>
               ${order.delivery_outcome ? `<div class="info-row"><div class="info-label">Latest Outcome</div><div class="info-value">${escapeHtml(String(order.delivery_outcome).replaceAll('_', ' '))}</div></div>` : ''}
+              ${order.delivery_recipient_name ? `<div class="info-row"><div class="info-label">Recipient</div><div class="info-value">${escapeHtml(order.delivery_recipient_name)}</div></div>` : ''}
             </div>
             ${notes}
             <div class="driver-update-box">
@@ -1205,7 +1207,7 @@
       const [ordersRes, pickupsRes, manifestsRes, clientsRes, financeRes] = await Promise.all([
         supabase
           .from('orders')
-          .select('id, order_number, external_item_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, cod_amount, package_value, delivery_fee, driver_delivery_pay, driver_amount_to_collect, pickup_required, pickup_parcel_count, pickup_fee, scheduled_delivery_date, parcel_status, delivery_outcome, delivery_attempt_count, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, redelivery_status, redelivery_fee, redelivery_fee_payer, redelivery_notes, order_status, assigned_driver_id, customer_notes, driver_notes, tracking_token, created_at')
+          .select('id, order_number, external_item_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, cod_amount, package_value, delivery_fee, driver_delivery_pay, driver_amount_to_collect, pickup_required, pickup_parcel_count, pickup_fee, scheduled_delivery_date, parcel_status, delivery_outcome, delivery_attempt_count, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_recipient_name, delivery_signed_at, delivery_signature_data_url, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, redelivery_status, redelivery_fee, redelivery_fee_payer, redelivery_notes, order_status, assigned_driver_id, customer_notes, driver_notes, tracking_token, created_at')
           .eq('assigned_driver_id', driver.id)
           .order('created_at', { ascending: false }),
         supabase.rpc('driver_list_my_pickups'),
@@ -1334,6 +1336,71 @@
       );
     };
 
+    function initDeliverySignaturePad() {
+      const canvas = document.getElementById('deliverySignatureCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const ratio = Math.max(window.devicePixelRatio || 1, 1);
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = Math.round(rect.width * ratio);
+      canvas.height = Math.round(rect.height * ratio);
+      ctx.scale(ratio, ratio);
+      ctx.lineWidth = 2.2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = '#0d2b28';
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, rect.width, rect.height);
+      deliverySignaturePad = { canvas, ctx, drawing: false, signed: false };
+
+      const point = event => {
+        const bounds = canvas.getBoundingClientRect();
+        const source = event.touches?.[0] || event.changedTouches?.[0] || event;
+        return { x: source.clientX - bounds.left, y: source.clientY - bounds.top };
+      };
+      const start = event => {
+        event.preventDefault();
+        const p = point(event);
+        deliverySignaturePad.drawing = true;
+        deliverySignaturePad.signed = true;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+      };
+      const move = event => {
+        if (!deliverySignaturePad?.drawing) return;
+        event.preventDefault();
+        const p = point(event);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+      };
+      const stop = event => {
+        if (!deliverySignaturePad) return;
+        event.preventDefault();
+        deliverySignaturePad.drawing = false;
+      };
+      canvas.addEventListener('mousedown', start);
+      canvas.addEventListener('mousemove', move);
+      window.addEventListener('mouseup', stop);
+      canvas.addEventListener('touchstart', start, { passive: false });
+      canvas.addEventListener('touchmove', move, { passive: false });
+      canvas.addEventListener('touchend', stop, { passive: false });
+      canvas.addEventListener('touchcancel', stop, { passive: false });
+    }
+
+    window.clearDeliverySignature = function() {
+      if (!deliverySignaturePad) return;
+      const { canvas, ctx } = deliverySignaturePad;
+      const rect = canvas.getBoundingClientRect();
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, rect.width, rect.height);
+      deliverySignaturePad.signed = false;
+    };
+
+    function deliverySignatureDataUrl() {
+      if (!deliverySignaturePad?.signed) return null;
+      return deliverySignaturePad.canvas.toDataURL('image/png');
+    }
+
     window.markDelivered = function(orderRef, maybeOrderNumberOrCollect = 0, maybeCollectAmount = 0) {
       const order = resolveOrderRef(orderRef, maybeOrderNumberOrCollect);
       if (!order) {
@@ -1352,16 +1419,35 @@
            </div>`
         : '';
       const proofBox = `<label style="display:flex; gap:0.6rem; align-items:flex-start; padding:0.8rem; margin:0.8rem 0; background:#eef8f6; border-radius:8px; text-align:left;"><input type="checkbox" id="deliveryProofConfirmed" style="margin-top:0.2rem;"> <span>I confirm that I handed this parcel to the customer or authorized recipient.</span></label>`;
+      const signatureBox = `
+        <div style="text-align:left; margin:0.8rem 0;">
+          <label style="display:block; font-weight:800; margin-bottom:0.35rem;">Recipient Name</label>
+          <input id="deliveryRecipientName" type="text" placeholder="Name of person receiving package" style="width:100%; padding:0.75rem; border:2px solid #e0e0e0; border-radius:8px; box-sizing:border-box; margin-bottom:0.75rem;">
+          <label style="display:block; font-weight:800; margin-bottom:0.35rem;">Recipient Signature</label>
+          <canvas id="deliverySignatureCanvas" style="width:100%; height:170px; background:#fff; border:2px solid #d7e3e1; border-radius:8px; touch-action:none; display:block;"></canvas>
+          <button class="modal-btn" style="margin-top:0.55rem;" onclick="clearDeliverySignature()">Clear Signature</button>
+        </div>`;
       openModal(
         '✅ Mark as Delivered',
         `Confirm delivery of ${order.order_number} is complete.${codText}`,
-        `${methodBox}${proofBox}<button class="modal-btn confirm" onclick="confirmDeliveredWithCollection('${order.id}', ${collectAmount})">Confirm Delivery</button>
+        `${methodBox}${signatureBox}${proofBox}<button class="modal-btn confirm" onclick="confirmDeliveredWithCollection('${order.id}', ${collectAmount})">Confirm Delivery</button>
          <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>`
       );
+      setTimeout(initDeliverySignaturePad, 50);
     };
 
     window.confirmDeliveredWithCollection = function(orderId, collectAmount = 0) {
       let note = 'Driver confirmed parcel handover to customer or authorized recipient.';
+      const recipientName = document.getElementById('deliveryRecipientName')?.value.trim() || '';
+      const signatureDataUrl = deliverySignatureDataUrl();
+      if (recipientName.length < 2) {
+        showToast('Enter the recipient name.');
+        return;
+      }
+      if (!signatureDataUrl) {
+        showToast('Recipient signature is required.');
+        return;
+      }
       if (!document.getElementById('deliveryProofConfirmed')?.checked) {
         showToast('Confirm parcel handover before completing delivery.');
         return;
@@ -1375,7 +1461,7 @@
         }
         note = `Customer payment collected by driver: ${method} - ${money(collectAmount)}`;
       }
-      window.saveDeliveryOutcome(orderId, 'delivered', note, null, method, Number(collectAmount), true);
+      window.saveDeliveryOutcome(orderId, 'delivered', note, null, method, Number(collectAmount), true, recipientName, signatureDataUrl);
     };
 
     function openDeliveryException(orderId, outcome, title, defaultNote, includeDate = false) {
@@ -1407,10 +1493,10 @@
       const note = document.getElementById(noteId)?.value.trim() || '';
       const requestedDate = dateId ? document.getElementById(dateId)?.value || null : null;
       if (outcome === 'reschedule_requested' && !requestedDate) return showToast('Enter the customer preferred date.');
-      window.saveDeliveryOutcome(orderId, outcome, note, requestedDate, null, 0, false);
+      window.saveDeliveryOutcome(orderId, outcome, note, requestedDate, null, 0, false, null, null);
     };
 
-    window.saveDeliveryOutcome = async function(orderId, outcome, note, requestedDate, collectionMethod, amountCollected, proofConfirmed) {
+    window.saveDeliveryOutcome = async function(orderId, outcome, note, requestedDate, collectionMethod, amountCollected, proofConfirmed, recipientName = null, signatureDataUrl = null) {
       try {
         const { error } = await supabase.rpc('driver_record_delivery_outcome', {
           p_order_id: orderId,
@@ -1419,7 +1505,9 @@
           p_requested_redelivery_date: requestedDate || null,
           p_collection_method: collectionMethod || null,
           p_amount_collected: Number(amountCollected || 0),
-          p_proof_confirmed: Boolean(proofConfirmed)
+          p_proof_confirmed: Boolean(proofConfirmed),
+          p_recipient_name: recipientName || null,
+          p_signature_data_url: signatureDataUrl || null
         });
         if (error) throw error;
         closeModal();
