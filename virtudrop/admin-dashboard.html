@@ -3993,7 +3993,6 @@
         payment_status: document.getElementById('adminEditPaymentStatus')?.value || null,
         remittance_status: document.getElementById('adminEditRemittanceStatus')?.value || null,
         scheduled_delivery_date: document.getElementById('adminEditScheduledDate')?.value || null,
-        assigned_driver_id: document.getElementById('adminEditAssignedDriver')?.value || null,
         delivery_outcome: document.getElementById('adminEditDeliveryOutcome')?.value || null,
         delivery_outcome_notes: document.getElementById('adminEditDeliveryOutcomeNotes')?.value.trim() || null,
         delivery_collection_method: document.getElementById('adminEditCollectionMethod')?.value || null,
@@ -4098,7 +4097,6 @@
     window.openAdminOrderEdit = function(orderId) {
       const order = orders.find(item => item.id === orderId);
       if (!order) return showToast('Order not found.');
-      const driverOptions = [['', 'Unassigned'], ...drivers.map(driver => [driver.id, driverName(driver.id)])];
       document.getElementById('modalTitle').textContent = `Edit ${order.order_number}`;
       document.getElementById('modalBody').innerHTML = `
         <div class="payment-modal-form" style="text-align:left;">
@@ -4108,7 +4106,11 @@
           <label>Package / COD Amount<input id="adminEditPackageValue" type="number" min="0" step="0.01" value="${Number(order.package_value || order.cod_amount || 0).toFixed(2)}"></label>
           <label>Confirmed Delivery Fee<input id="adminEditDeliveryFee" type="number" min="0" step="0.01" value="${order.delivery_fee ?? ''}"></label>
           <label>Driver Pay<input id="adminEditDriverPay" type="number" min="0" step="0.01" value="${Number(order.driver_delivery_pay || 0).toFixed(2)}"></label>
-          <label>Assigned Driver<select id="adminEditAssignedDriver">${adminEditSelect(driverOptions, order.assigned_driver_id || '')}</select></label>
+          <div style="padding:0.75rem; background:#f5fbfa; border:1px solid #d7e9e6; border-radius:8px;">
+            <div style="font-weight:800; color:var(--ink);">Assigned Driver</div>
+            <div class="td-sub">${escapeHtml(order.assigned_driver_id ? driverName(order.assigned_driver_id) : 'Unassigned')}</div>
+            <div class="td-sub">Use Driver Assignment to assign, remove, or transfer a driver so manifests and driver dashboards stay synchronized.</div>
+          </div>
           <label>Order Status<select id="adminEditOrderStatus" onchange="syncAdminOperationalEdit()">${adminEditSelect([
             ['zone_pending', 'Zone Pending'],
             ['pending', 'Pending'],
@@ -4494,7 +4496,11 @@
       if (!list) return;
       const filter = document.getElementById('manifestStatusFilter')?.value || 'active';
       const search = String(document.getElementById('manifestSearch')?.value || '').trim().toLowerCase();
-      const rows = deliveryManifests.filter(manifest => {
+      const rows = deliveryManifests.map(manifest => ({
+        ...manifest,
+        orders: (manifest.orders || []).filter(order => !isCancelledOrder(order))
+      })).filter(manifest => {
+        if (!(manifest.orders || []).length) return false;
         if (filter === 'active' && !['draft', 'ready', 'collected'].includes(manifest.status)) return false;
         if (!['active', 'all'].includes(filter) && manifest.status !== filter) return false;
         if (!search) return true;

@@ -1228,9 +1228,19 @@
       }
 
       clientsById = new Map((clientsRes.data || []).map(client => [client.id, client]));
-      orders = ordersRes.data || [];
+      orders = (ordersRes.data || []).filter(order =>
+        order.assigned_driver_id === driver.id
+        && !['cancelled', 'rejected'].includes(order.order_status)
+        && !['returned_to_client'].includes(order.parcel_status)
+      );
       pickups = Array.isArray(pickupsRes.data) ? pickupsRes.data : [];
-      driverManifests = Array.isArray(manifestsRes.data) ? manifestsRes.data : [];
+      const visibleOrderIds = new Set(orders.map(order => order.id));
+      driverManifests = (Array.isArray(manifestsRes.data) ? manifestsRes.data : [])
+        .map(manifest => ({
+          ...manifest,
+          order_ids: (manifest.order_ids || []).filter(orderId => visibleOrderIds.has(orderId))
+        }))
+        .filter(manifest => (manifest.order_ids || []).length > 0);
       renderDriverFinance();
       renderOrders();
       renderPickups();
