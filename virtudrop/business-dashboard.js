@@ -1290,19 +1290,25 @@ window.closeOrderDetails = function() {
 function renderOverview() {
   const month = new Date().toISOString().slice(0, 7);
   const thisMonth = orders.filter(order => String(order.created_at || '').slice(0, 7) === month);
+  const deliveredAll = orders.filter(order => order.order_status === 'delivered');
   const active = orders.filter(order => activeStatuses.includes(order.order_status));
-  const delivered = thisMonth.filter(order => order.order_status === 'delivered');
+  const deliveredThisMonth = thisMonth.filter(order => order.order_status === 'delivered');
+  const pendingZone = orders.filter(order => order.order_status === 'zone_pending' || order.zone_status === 'pending');
 
   const heading = el('#panel-overview .section-heading');
   if (heading?.childNodes?.[0]) heading.childNodes[0].nodeValue = `Good day, ${firstName()}! 👋 `;
   setText('#panel-overview .section-sub', `Here is a live snapshot for ${business?.business_name || 'your business'}.`);
 
+  const statLabels = all('#panel-overview .stat-label');
   const statValues = all('#panel-overview .stat-value');
   const statNotes = all('#panel-overview .stat-note');
-  if (statValues[0]) statValues[0].textContent = thisMonth.length;
+  if (statLabels[0]) statLabels[0].textContent = 'Total Orders';
+  if (statValues[0]) statValues[0].textContent = orders.length;
+  if (statNotes[0]) statNotes[0].textContent = `${thisMonth.length} created this month`;
   if (statValues[1]) statValues[1].textContent = active.length;
-  if (statValues[2]) statValues[2].textContent = delivered.length;
-  if (statValues[3]) statValues[3].textContent = orders.filter(order => order.order_status === 'zone_pending').length;
+  if (statValues[2]) statValues[2].textContent = deliveredAll.length;
+  if (statNotes[2]) statNotes[2].textContent = `${deliveredThisMonth.length} completed this month`;
+  if (statValues[3]) statValues[3].textContent = pendingZone.length;
   if (statNotes[3]) statNotes[3].textContent = 'awaiting zone confirmation';
 
   const activeCard = el('#panel-overview .overview-grid .card:nth-child(1)');

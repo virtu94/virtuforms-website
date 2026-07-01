@@ -4083,16 +4083,34 @@
         driver_delivery_pay: document.getElementById('adminEditDriverPay')?.value || 0,
         pricing_rate_band: order.pricing_rate_band || null,
         quote_status: order.quote_status || 'not_required',
-        pickup_required: Boolean(order.pickup_required),
-        pickup_parcel_count: order.pickup_parcel_count || null,
-        pickup_fee_settlement: order.pickup_fee_settlement || null,
-        pickup_contact_name: order.pickup_contact_name || null,
-        pickup_contact_phone: order.pickup_contact_phone || null,
-        pickup_business_name: order.pickup_business_name || null,
-        pickup_street_name: order.pickup_street_name || null,
-        pickup_area_name: order.pickup_area_name || null,
-        pickup_window: order.pickup_window || null,
-        pickup_instructions: order.pickup_instructions || null,
+        pickup_required: document.getElementById('adminEditPickupRequired')?.value === 'true',
+        pickup_parcel_count: document.getElementById('adminEditPickupRequired')?.value === 'true'
+          ? document.getElementById('adminEditPickupParcelCount')?.value || 1
+          : null,
+        pickup_fee_settlement: document.getElementById('adminEditPickupRequired')?.value === 'true'
+          ? document.getElementById('adminEditPickupFeeSettlement')?.value || null
+          : null,
+        pickup_contact_name: document.getElementById('adminEditPickupRequired')?.value === 'true'
+          ? document.getElementById('adminEditPickupContactName')?.value.trim() || null
+          : null,
+        pickup_contact_phone: document.getElementById('adminEditPickupRequired')?.value === 'true'
+          ? document.getElementById('adminEditPickupContactPhone')?.value.trim() || null
+          : null,
+        pickup_business_name: document.getElementById('adminEditPickupRequired')?.value === 'true'
+          ? document.getElementById('adminEditPickupBusinessName')?.value.trim() || null
+          : null,
+        pickup_street_name: document.getElementById('adminEditPickupRequired')?.value === 'true'
+          ? document.getElementById('adminEditPickupStreetName')?.value.trim() || null
+          : null,
+        pickup_area_name: document.getElementById('adminEditPickupRequired')?.value === 'true'
+          ? document.getElementById('adminEditPickupAreaName')?.value.trim() || null
+          : null,
+        pickup_window: document.getElementById('adminEditPickupRequired')?.value === 'true'
+          ? document.getElementById('adminEditPickupWindow')?.value.trim() || null
+          : null,
+        pickup_instructions: document.getElementById('adminEditPickupRequired')?.value === 'true'
+          ? document.getElementById('adminEditPickupInstructions')?.value.trim() || null
+          : null,
         customer_notes: document.getElementById('adminEditCustomerNotes')?.value.trim() || null,
         driver_notes: document.getElementById('adminEditDriverNotes')?.value.trim() || null,
         admin_note: document.getElementById('adminEditAdminNote')?.value.trim() || null,
@@ -4111,13 +4129,14 @@
     }
 
     window.syncAdminOrderEditForm = function() {
-      const arrangement = document.getElementById('adminEditPaymentArrangement')?.value;
+      const arrangementField = document.getElementById('adminEditPaymentArrangement');
+      const arrangement = arrangementField?.value || '';
       const clientPays = arrangement === 'client_pays_delivery' || arrangement === 'cod_client_pays_delivery';
       const pickup = document.getElementById('adminEditPickupRequired')?.value === 'true';
       const packageInput = document.getElementById('adminEditPackageValue');
-      if (packageInput) packageInput.disabled = arrangement !== 'cod_customer_pays' && arrangement !== 'cod_client_pays_delivery';
+      if (packageInput && arrangementField) packageInput.disabled = arrangement !== 'cod_customer_pays' && arrangement !== 'cod_client_pays_delivery';
       const settlement = document.getElementById('adminEditClientSettlementWrap');
-      if (settlement) settlement.style.display = clientPays ? '' : 'none';
+      if (settlement && arrangementField) settlement.style.display = clientPays ? '' : 'none';
       const pickupBlock = document.getElementById('adminEditPickupBlock');
       if (pickupBlock) pickupBlock.style.display = pickup ? '' : 'none';
     };
@@ -4254,6 +4273,27 @@
           <label>Street / Building<input id="adminEditStreet" value="${escapeHtml(order.street_name || '')}"></label>
           <label>Area<input id="adminEditArea" value="${escapeHtml(order.area_name || '')}"></label>
           <label>Google Pin / Maps Link<input id="adminEditMapsLink" value="${escapeHtml(order.maps_link || '')}"></label>
+          <label>Pickup Required<select id="adminEditPickupRequired" onchange="syncAdminOrderEditForm()">${adminEditSelect([
+            ['false', 'No'],
+            ['true', 'Yes']
+          ], String(Boolean(order.pickup_required)))}</select></label>
+          <label>Pickup Parcels<input id="adminEditPickupParcelCount" type="number" min="1" step="1" value="${Number(order.pickup_parcel_count || 1)}"></label>
+          <div id="adminEditPickupBlock" style="grid-column:1 / -1; padding:0.75rem; background:#f8fbfa; border:1px solid #d7e9e6; border-radius:8px;">
+            <div style="font-weight:800; color:var(--ink); margin-bottom:0.6rem;">Pickup Information</div>
+            <div class="payment-modal-form" style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:0.75rem;">
+              <label>Pickup Contact<input id="adminEditPickupContactName" value="${escapeHtml(order.pickup_contact_name || '')}"></label>
+              <label>Pickup Phone<input id="adminEditPickupContactPhone" value="${escapeHtml(order.pickup_contact_phone || '')}"></label>
+              <label>Pickup Business Name<input id="adminEditPickupBusinessName" value="${escapeHtml(order.pickup_business_name || '')}"></label>
+              <label>Pickup Street / Building<input id="adminEditPickupStreetName" value="${escapeHtml(order.pickup_street_name || '')}"></label>
+              <label>Pickup Area<input id="adminEditPickupAreaName" value="${escapeHtml(order.pickup_area_name || '')}"></label>
+              <label>Pickup Window<input id="adminEditPickupWindow" value="${escapeHtml(order.pickup_window || '')}" placeholder="e.g. 9 AM - 12 PM"></label>
+              <label>Pickup Fee Settlement<select id="adminEditPickupFeeSettlement">${adminEditSelect([
+                ['pay_separately', 'Pay separately'],
+                ['deduct_from_remittance', 'Deduct from remittance']
+              ], order.pickup_fee_settlement || 'pay_separately')}</select></label>
+              <label style="grid-column:1 / -1;">Pickup Instructions<textarea id="adminEditPickupInstructions">${escapeHtml(order.pickup_instructions || '')}</textarea></label>
+            </div>
+          </div>
           <label>Payment Status<select id="adminEditPaymentStatus">${adminEditSelect([
             ['pending', 'Pending'],
             ['partially_collected', 'Partially Collected'],
@@ -4293,6 +4333,8 @@
         </div>`;
       document.getElementById('modalConfirm').textContent = 'Save Changes';
       document.getElementById('modal').classList.add('show');
+      syncAdminOrderEditForm();
+      syncAdminOperationalEdit();
       modalCb = async () => {
         if (!window.confirm(`Save changes to ${order.order_number}?`)) return;
         await saveAdminOrderEdit(orderId);
@@ -4310,6 +4352,20 @@
       if (!String(payload.customer_phone || '').replace(/\D/g, '').slice(-7)) {
         window.vdNotify('Order Not Updated', 'Enter the customer phone number.', 'warning');
         return;
+      }
+      if (payload.pickup_required) {
+        if (!payload.pickup_contact_name || payload.pickup_contact_name.length < 2) {
+          window.vdNotify('Order Not Updated', 'Enter the pickup contact name.', 'warning');
+          return;
+        }
+        if (String(payload.pickup_contact_phone || '').replace(/\D/g, '').length < 7) {
+          window.vdNotify('Order Not Updated', 'Enter the pickup contact phone number.', 'warning');
+          return;
+        }
+        if (!payload.pickup_street_name || !payload.pickup_area_name) {
+          window.vdNotify('Order Not Updated', 'Enter the pickup street/building and area.', 'warning');
+          return;
+        }
       }
       try {
         const { error } = await supabase.rpc('admin_update_order_details', {
