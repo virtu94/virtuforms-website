@@ -1001,7 +1001,7 @@ window.openOrderDetails = function(orderId) {
       ${order.client_fee_settlement ? detailItem('Business Settlement', escapeHtml(order.client_fee_settlement === 'deduct_from_remittance' ? 'Deduct from remittance' : 'Pay separately')) : ''}
       ${order.pickup_required ? detailItem('Pickup', `${escapeHtml(String(order.pickup_parcel_count || 1))} parcel(s) · ${escapeHtml(money(order.pickup_fee))}`, true) : ''}
       ${order.pickup_required ? detailItem('Pickup Contact', `${escapeHtml(order.pickup_contact_name || '')} · ${escapeHtml(order.pickup_contact_phone || '')}`, true) : ''}
-      ${order.pickup_required ? detailItem('Pickup Address / Window', `${escapeHtml(order.pickup_address || [order.pickup_business_name, order.pickup_street_name, order.pickup_area_name].filter(Boolean).join(', '))} · ${escapeHtml(order.pickup_window || '')}`, true) : ''}
+      ${order.pickup_required ? detailItem('Pickup Address / Window', `${escapeHtml(order.pickup_address || order.pickup_maps_link || [order.pickup_business_name, order.pickup_street_name, order.pickup_area_name].filter(Boolean).join(', ') || (order.pickup_latitude && order.pickup_longitude ? `${order.pickup_latitude}, ${order.pickup_longitude}` : ''))} · ${escapeHtml(order.pickup_window || '')}`, true) : ''}
       ${order.pickup_required ? detailItem('Pickup Status', escapeHtml(pickupStatusLabel(order.pickup_status))) : ''}
       ${order.pickup_required && order.pickup_scheduled_date ? detailItem('Scheduled Pickup', `${escapeHtml(formatDate(order.pickup_scheduled_date))} · ${escapeHtml(order.pickup_scheduled_window || order.pickup_window || '')}`) : ''}
       ${order.pickup_cancellation_reason ? detailItem('Pickup Cancellation', escapeHtml(order.pickup_cancellation_reason), true) : ''}
@@ -1117,6 +1117,9 @@ function businessEditPayloadFromForm(orderId) {
     pickup_business_name: pickupRequired ? el('#editPickupBusinessName')?.value.trim() || null : null,
     pickup_street_name: pickupRequired ? el('#editPickupStreetName')?.value.trim() || null : null,
     pickup_area_name: pickupRequired ? el('#editPickupAreaName')?.value.trim() || null : null,
+    pickup_maps_link: pickupRequired ? el('#editPickupMapsLink')?.value.trim() || null : null,
+    pickup_latitude: pickupRequired ? el('#editPickupLatitude')?.value || null : null,
+    pickup_longitude: pickupRequired ? el('#editPickupLongitude')?.value || null : null,
     pickup_window: pickupRequired ? el('#editPickupWindow')?.value.trim() || null : null,
     pickup_instructions: pickupRequired ? el('#editPickupInstructions')?.value.trim() || null : null,
     customer_notes: customerNotes
@@ -1136,10 +1139,16 @@ function validateBusinessEditPayload(payload, paymentOption) {
   const packageLine = String(payload.customer_notes || '').match(/^Package:\s*(.*)$/m)?.[1] || '';
   if (packageLine.trim().length < 2) return 'Enter the package description.';
   if (payload.pickup_required) {
-    const pickupError = validatePickupLocation(payload.pickup_street_name, payload.pickup_area_name);
-    if (pickupError) return pickupError;
     if (String(payload.pickup_contact_name || '').length < 2) return 'Enter the pickup contact name.';
     if (String(payload.pickup_contact_phone || '').replace(/\D/g, '').length < 7) return 'Enter a valid pickup phone number.';
+    const hasPickupManual = Boolean(payload.pickup_street_name && payload.pickup_area_name);
+    const hasPickupPin = Boolean(payload.pickup_maps_link || (payload.pickup_latitude && payload.pickup_longitude));
+    if (!hasPickupManual && !hasPickupPin) return 'Enter pickup street and area, paste a pickup Google Maps link, or use current location for pickup.';
+    if (payload.pickup_maps_link && !isValidMapsLink(payload.pickup_maps_link)) return 'Paste a valid pickup Google Maps link.';
+    if (hasPickupManual) {
+      const pickupError = validatePickupLocation(payload.pickup_street_name, payload.pickup_area_name);
+      if (pickupError) return pickupError;
+    }
     if (String(payload.pickup_window || '').length < 3) return 'Enter the pickup window.';
   }
   return '';
@@ -1186,6 +1195,11 @@ window.openBusinessOrderEdit = function(orderId) {
           <label class="order-detail-item"><div class="order-detail-label">Business Name</div><input class="input" id="editPickupBusinessName" value="${escapeHtml(order.pickup_business_name || '')}"></label>
           <label class="order-detail-item"><div class="order-detail-label">Pickup Street</div><input class="input" id="editPickupStreetName" value="${escapeHtml(order.pickup_street_name || '')}"></label>
           <label class="order-detail-item"><div class="order-detail-label">Pickup Area</div><input class="input" id="editPickupAreaName" value="${escapeHtml(order.pickup_area_name || '')}"></label>
+          <label class="order-detail-item full"><div class="order-detail-label">Pickup Google Maps Link</div><input class="input" id="editPickupMapsLink" value="${escapeHtml(order.pickup_maps_link || '')}"></label>
+          <label class="order-detail-item"><div class="order-detail-label">Pickup Latitude</div><input class="input" id="editPickupLatitude" type="number" step="any" value="${order.pickup_latitude ?? ''}"></label>
+          <label class="order-detail-item"><div class="order-detail-label">Pickup Longitude</div><input class="input" id="editPickupLongitude" type="number" step="any" value="${order.pickup_longitude ?? ''}"></label>
+          <button type="button" class="btn" style="grid-column:1 / -1;" onclick="useEditPickupCurrentLocation()">📍 Use Current Location for Pickup</button>
+          <div id="editPickupGpsResult" class="order-detail-item full" style="display:none; background:#e8f5f3; color:#0d2b28;"></div>
           <label class="order-detail-item"><div class="order-detail-label">Pickup Window</div><input class="input" id="editPickupWindow" value="${escapeHtml(order.pickup_window || '')}"></label>
           <label class="order-detail-item"><div class="order-detail-label">Pickup Fee Settlement</div><select class="input" id="editPickupFeeSettlement"><option value="pay_separately" ${order.pickup_fee_settlement === 'pay_separately' ? 'selected' : ''}>Pay separately</option><option value="deduct_from_remittance" ${order.pickup_fee_settlement === 'deduct_from_remittance' ? 'selected' : ''}>Deduct from remittance</option></select></label>
           <label class="order-detail-item full"><div class="order-detail-label">Pickup Instructions</div><textarea class="input" id="editPickupInstructions">${escapeHtml(order.pickup_instructions || '')}</textarea></label>
@@ -1294,6 +1308,15 @@ function renderOverview() {
   const active = orders.filter(order => activeStatuses.includes(order.order_status));
   const deliveredThisMonth = thisMonth.filter(order => order.order_status === 'delivered');
   const pendingZone = orders.filter(order => order.order_status === 'zone_pending' || order.zone_status === 'pending');
+  const pendingRemittance = orders
+    .filter(order => order.payment_type === 'cod' && order.remittance_status === 'ready')
+    .reduce((sum, order) => sum + clientPayout(order), 0);
+  const clientFeesDue = orders
+    .filter(order => !['cancelled', 'rejected'].includes(order.order_status))
+    .reduce((sum, order) => sum + Number(order.client_amount_due || 0), 0);
+  const remittedTotal = remittanceRecords
+    .filter(record => record.business_client_id === business?.id && record.status !== 'void')
+    .reduce((sum, record) => sum + Number(record.net_amount ?? record.amount ?? 0), 0);
 
   const heading = el('#panel-overview .section-heading');
   if (heading?.childNodes?.[0]) heading.childNodes[0].nodeValue = `Good day, ${firstName()}! 👋 `;
@@ -1348,12 +1371,12 @@ function renderOverview() {
   if (usageCard) {
     usageCard.innerHTML = `
       <div class="card-title">📦 Account Status</div>
-      <div style="display:flex; justify-content:space-between; font-size:0.88rem; color:#6a6a6a; margin-bottom:0.4rem;">
-        <span>${escapeHtml(business?.business_name || 'Business account')}</span>
-        <span>${escapeHtml(business?.status || 'active')}</span>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:0.8rem; font-size:0.9rem;">
+        <div><div style="color:#6a6a6a;">Pending Remittance</div><strong style="color:#2a9d8f;">${money(pendingRemittance)}</strong></div>
+        <div><div style="color:#6a6a6a;">Remitted</div><strong>${money(remittedTotal)}</strong></div>
+        <div><div style="color:#6a6a6a;">Fees Owed</div><strong style="color:${clientFeesDue > 0 ? '#e07a3a' : '#0d2b28'};">${money(clientFeesDue)}</strong></div>
+        <div><div style="color:#6a6a6a;">Status</div><strong>${escapeHtml(business?.status || 'active')}</strong></div>
       </div>
-      <div class="plan-progress-bar"><div class="plan-progress-fill" style="width:100%;"></div></div>
-      <div style="font-size:0.8rem; color:#aaa; margin-top:0.3rem;">Plan usage will be calculated once billing cycles are enabled.</div>
     `;
   }
 }
@@ -1426,8 +1449,9 @@ function renderRemittance() {
     if (remittancePeriod === 'month' && paid < monthStart) return false;
     return true;
   });
-  const total = clientRecords.reduce((sum, record) => sum + Number(record.amount || 0), 0);
-  const bank = clientRecords.filter(record => record.method === 'bank_transfer').reduce((sum, record) => sum + Number(record.amount || 0), 0);
+  const remittancePaidAmount = record => Number(record.net_amount ?? record.amount ?? 0);
+  const total = clientRecords.reduce((sum, record) => sum + remittancePaidAmount(record), 0);
+  const bank = clientRecords.filter(record => record.method === 'bank_transfer').reduce((sum, record) => sum + remittancePaidAmount(record), 0);
   const cash = clientRecords.filter(record => ['cash', 'office_cash_collection', 'next_pickup_cash'].includes(record.method)).reduce((sum, record) => sum + Number(record.net_amount ?? record.amount ?? 0), 0);
   setText('#remitTotal', money(total));
   setText('#remitOnline', money(bank));
@@ -1815,7 +1839,7 @@ async function loadBusinessData() {
   const [{ data: orderData, error: orderError }, { data: remitData, error: remitError }] = await Promise.all([
     supabase
       .from('orders')
-      .select('id, order_number, external_item_number, financial_model_version, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, remittance_gross_amount, remittance_deductions_amount, remittance_net_amount, remittance_paid_amount, remittance_batch_id, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_business_name, pickup_street_name, pickup_area_name, pickup_address, pickup_window, pickup_instructions, pickup_scheduled_date, pickup_scheduled_window, pickup_picked_up_at, pickup_arrived_hub_at, pickup_cancelled_at, pickup_cancellation_reason, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, delivery_outcome, delivery_attempt_count, last_delivery_attempt_at, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, redelivery_status, redelivery_fee, redelivery_fee_payer, redelivery_fee_settlement, redelivery_scheduled_at, redelivery_notes, return_disposition, holding_type, hold_until, return_to_client_status, return_to_client_fee, return_to_client_settlement, return_to_client_requested_at, return_to_client_completed_at, return_management_notes, zone_status, order_status, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, created_at, updated_at')
+      .select('id, order_number, external_item_number, financial_model_version, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, remittance_gross_amount, remittance_deductions_amount, remittance_net_amount, remittance_paid_amount, remittance_batch_id, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_business_name, pickup_street_name, pickup_area_name, pickup_maps_link, pickup_latitude, pickup_longitude, pickup_address, pickup_window, pickup_instructions, pickup_scheduled_date, pickup_scheduled_window, pickup_picked_up_at, pickup_arrived_hub_at, pickup_cancelled_at, pickup_cancellation_reason, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, delivery_outcome, delivery_attempt_count, last_delivery_attempt_at, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, redelivery_status, redelivery_fee, redelivery_fee_payer, redelivery_fee_settlement, redelivery_scheduled_at, redelivery_notes, return_disposition, holding_type, hold_until, return_to_client_status, return_to_client_fee, return_to_client_settlement, return_to_client_requested_at, return_to_client_completed_at, return_management_notes, zone_status, order_status, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, created_at, updated_at')
       .eq('business_client_id', business.id)
       .order('created_at', { ascending: false }),
     supabase.rpc('business_list_my_remittances')
@@ -1949,10 +1973,16 @@ function validateOrderForm(payload, raw) {
   }
 
   if (raw.pickupRequired) {
-    const pickupLocationError = validatePickupLocation(raw.pickupStreetName, raw.pickupAreaName);
     if ((raw.pickupContactName || '').length < 2) issues.push('Enter the pickup contact name.');
     if ((raw.pickupPhoneDigits || '').length < 7) issues.push('Enter a valid pickup contact number.');
-    if (pickupLocationError) issues.push(pickupLocationError);
+    const hasPickupManual = Boolean(raw.pickupStreetName && raw.pickupAreaName);
+    const hasPickupPin = Boolean(raw.pickupMapsLink || raw.pickupHasGps);
+    if (!hasPickupManual && !hasPickupPin) issues.push('Enter pickup street and area, paste a pickup Google Maps link, or use current location for pickup.');
+    if (raw.pickupMapsLink && !isValidMapsLink(raw.pickupMapsLink)) issues.push('Paste a valid pickup Google Maps link.');
+    if (hasPickupManual) {
+      const pickupLocationError = validatePickupLocation(raw.pickupStreetName, raw.pickupAreaName);
+      if (pickupLocationError) issues.push(pickupLocationError);
+    }
     if ((raw.pickupWindow || '').length < 3) issues.push('Enter the available pickup window.');
     if (!Number.isInteger(raw.pickupParcelCount) || raw.pickupParcelCount < 1) issues.push('Enter a valid number of parcels for pickup.');
     if (raw.pickupParcelCount < 5 && !raw.pickupFeeSettlement) issues.push('Choose how the pickup fee will be paid.');
@@ -1993,6 +2023,7 @@ async function submitBusinessOrder(event) {
   const pickupRequired = Boolean(el('#pickupRequired')?.checked);
   const pickupParcelCount = Number(el('#pickupParcelCount')?.value || 1);
   const pickupFeeSettlement = el('#pickupFeeSettlement')?.value || null;
+  const pickupHasGps = Boolean(el('#pickupLatitude')?.value && el('#pickupLongitude')?.value);
   const estimate = await estimateDeliveryZone(currentEstimateInput()).catch(error => {
     console.warn('Business submit estimate failed:', error);
     return latestBizEstimate;
@@ -2024,6 +2055,9 @@ async function submitBusinessOrder(event) {
     pickup_business_name: pickupRequired ? el('#pickupBusinessName')?.value.trim() : null,
     pickup_street_name: pickupRequired ? el('#pickupStreetName')?.value.trim() : null,
     pickup_area_name: pickupRequired ? el('#pickupAreaName')?.value.trim() : null,
+    pickup_maps_link: pickupRequired ? el('#pickupMapsLink')?.value.trim() || null : null,
+    pickup_latitude: pickupRequired && pickupHasGps ? Number(el('#pickupLatitude')?.value) : null,
+    pickup_longitude: pickupRequired && pickupHasGps ? Number(el('#pickupLongitude')?.value) : null,
     pickup_window: pickupRequired ? el('#pickupWindow')?.value.trim() : null,
     pickup_instructions: pickupRequired ? el('#pickupInstructions')?.value.trim() : null,
     customer_notes: [`Package: ${packageDescription}`, specialNotes].filter(Boolean).join('\n') || null
@@ -2042,6 +2076,8 @@ async function submitBusinessOrder(event) {
     pickupPhoneDigits: el('#pickupContactPhone')?.value.replace(/\D/g, '') || '',
     pickupStreetName: el('#pickupStreetName')?.value.trim() || '',
     pickupAreaName: el('#pickupAreaName')?.value.trim() || '',
+    pickupMapsLink: el('#pickupMapsLink')?.value.trim() || '',
+    pickupHasGps,
     pickupWindow: el('#pickupWindow')?.value.trim() || ''
   });
   if (validationError) {
@@ -2117,6 +2153,13 @@ window.resetOrderForm = function() {
   clearOrderValidation();
   el('#codAmountBlock')?.style.setProperty('display', 'none');
   el('#pickupDetails')?.style.setProperty('display', 'none');
+  const pickupGpsResult = el('#pickupGpsResult');
+  if (pickupGpsResult) {
+    pickupGpsResult.style.display = 'none';
+    pickupGpsResult.textContent = '';
+  }
+  if (el('#pickupLatitude')) el('#pickupLatitude').value = '';
+  if (el('#pickupLongitude')) el('#pickupLongitude').value = '';
   const street = el('#streetName');
   const area = el('#areaName');
   if (street) street.required = false;
@@ -2184,6 +2227,53 @@ window.useCurrentLocation = function() {
     },
     { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
   );
+};
+
+function capturePickupLocation({ resultSelector, latSelector, lngSelector }) {
+  const result = el(resultSelector);
+  if (!result) return;
+  if (!navigator.geolocation) {
+    result.style.display = 'block';
+    result.style.background = '#fff3f3';
+    result.textContent = '❌ Geolocation is not supported by this browser.';
+    return;
+  }
+  result.style.display = 'block';
+  result.style.background = '#e8f5f3';
+  result.textContent = '📍 Detecting pickup location...';
+  navigator.geolocation.getCurrentPosition(
+    position => {
+      const lat = position.coords.latitude.toFixed(6);
+      const lng = position.coords.longitude.toFixed(6);
+      if (el(latSelector)) el(latSelector).value = lat;
+      if (el(lngSelector)) el(lngSelector).value = lng;
+      result.textContent = `📍 Pickup location captured: ${lat}, ${lng}.`;
+    },
+    error => {
+      result.style.background = '#fff3f3';
+      const needsSecureOrigin = location.protocol !== 'https:' && !['localhost', '127.0.0.1'].includes(location.hostname);
+      result.textContent = needsSecureOrigin
+        ? '❌ Current location needs HTTPS in most browsers. Use the live secure site or paste a pickup Google Maps link.'
+        : `❌ Could not access pickup location${error?.message ? `: ${error.message}` : ''}. Allow location permission, then try again.`;
+    },
+    { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+  );
+}
+
+window.usePickupCurrentLocation = function() {
+  capturePickupLocation({
+    resultSelector: '#pickupGpsResult',
+    latSelector: '#pickupLatitude',
+    lngSelector: '#pickupLongitude'
+  });
+};
+
+window.useEditPickupCurrentLocation = function() {
+  capturePickupLocation({
+    resultSelector: '#editPickupGpsResult',
+    latSelector: '#editPickupLatitude',
+    lngSelector: '#editPickupLongitude'
+  });
 };
 
 window.copyLink = async function() {
