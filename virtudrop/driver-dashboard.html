@@ -1232,7 +1232,9 @@
       ]);
 
       if (ordersRes.error) throw ordersRes.error;
-      if (pickupsRes.error) throw pickupsRes.error;
+      if (pickupsRes.error) {
+        console.warn('Driver pickups could not load:', pickupsRes.error);
+      }
       if (manifestsRes.error) throw manifestsRes.error;
       if (clientsRes.error) throw clientsRes.error;
       if (financeRes.error) {
@@ -1248,7 +1250,7 @@
         && !['cancelled', 'rejected'].includes(order.order_status)
         && !['returned_to_client'].includes(order.parcel_status)
       );
-      pickups = Array.isArray(pickupsRes.data) ? pickupsRes.data : [];
+      pickups = pickupsRes.error ? [] : (Array.isArray(pickupsRes.data) ? pickupsRes.data : []);
       const visibleOrderIds = new Set(orders.map(order => order.id));
       driverManifests = (Array.isArray(manifestsRes.data) ? manifestsRes.data : [])
         .map(manifest => ({
