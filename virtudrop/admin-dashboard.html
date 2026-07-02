@@ -4059,8 +4059,13 @@
     }
 
     function adminOrderEditPayload(order) {
-      const arrangement = adminPaymentArrangement(order);
-      const paymentType = order.payment_type || (arrangement === 'client_pays_delivery' ? 'prepaid' : arrangement === 'delivery_only_customer_pays' ? 'delivery_only' : 'cod');
+      syncAdminIncludedDeliveryTotal();
+      const arrangement = document.getElementById('adminEditPaymentArrangement')?.value || adminPaymentArrangement(order);
+      const paymentType = arrangement === 'client_pays_delivery'
+        ? 'prepaid'
+        : arrangement === 'delivery_only_customer_pays'
+          ? 'delivery_only'
+          : 'cod';
       const clientPaysDelivery = arrangement === 'client_pays_delivery' || arrangement === 'cod_client_pays_delivery';
       return {
         business_client_id: order.business_client_id || null,
@@ -4075,8 +4080,10 @@
         longitude: order.longitude ?? null,
         payment_type: paymentType,
         payment_arrangement: arrangement,
-        delivery_fee_payer: order.delivery_fee_payer || (clientPaysDelivery ? 'client' : 'customer'),
-        client_fee_settlement: order.client_fee_settlement || null,
+        delivery_fee_payer: clientPaysDelivery ? 'client' : 'customer',
+        client_fee_settlement: clientPaysDelivery
+          ? document.getElementById('adminEditClientFeeSettlement')?.value || 'pay_separately'
+          : null,
         package_value: document.getElementById('adminEditPackageValue')?.value || 0,
         estimated_fee: order.estimated_fee ?? null,
         delivery_fee: document.getElementById('adminEditDeliveryFee')?.value || null,
@@ -4104,6 +4111,15 @@
           : null,
         pickup_area_name: document.getElementById('adminEditPickupRequired')?.value === 'true'
           ? document.getElementById('adminEditPickupAreaName')?.value.trim() || null
+          : null,
+        pickup_maps_link: document.getElementById('adminEditPickupRequired')?.value === 'true'
+          ? document.getElementById('adminEditPickupMapsLink')?.value.trim() || null
+          : null,
+        pickup_latitude: document.getElementById('adminEditPickupRequired')?.value === 'true'
+          ? document.getElementById('adminEditPickupLatitude')?.value || null
+          : null,
+        pickup_longitude: document.getElementById('adminEditPickupRequired')?.value === 'true'
+          ? document.getElementById('adminEditPickupLongitude')?.value || null
           : null,
         pickup_window: document.getElementById('adminEditPickupRequired')?.value === 'true'
           ? document.getElementById('adminEditPickupWindow')?.value.trim() || null
@@ -4137,8 +4153,56 @@
       if (packageInput && arrangementField) packageInput.disabled = arrangement !== 'cod_customer_pays' && arrangement !== 'cod_client_pays_delivery';
       const settlement = document.getElementById('adminEditClientSettlementWrap');
       if (settlement && arrangementField) settlement.style.display = clientPays ? '' : 'none';
+      const includedWrap = document.getElementById('adminEditIncludedDeliveryWrap');
+      if (includedWrap) includedWrap.style.display = arrangement === 'cod_customer_pays' ? '' : 'none';
+      if (arrangement !== 'cod_customer_pays') {
+        const included = document.getElementById('adminEditDeliveryIncluded');
+        if (included) included.checked = false;
+      }
       const pickupBlock = document.getElementById('adminEditPickupBlock');
       if (pickupBlock) pickupBlock.style.display = pickup ? '' : 'none';
+      syncAdminIncludedDeliveryTotal();
+    };
+
+    window.syncAdminIncludedDeliveryTotal = function() {
+      const arrangement = document.getElementById('adminEditPaymentArrangement')?.value || '';
+      const included = Boolean(document.getElementById('adminEditDeliveryIncluded')?.checked);
+      const packageInput = document.getElementById('adminEditPackageValue');
+      const totalInput = document.getElementById('adminEditCustomerTotal');
+      const deliveryInput = document.getElementById('adminEditDeliveryFee');
+      const summary = document.getElementById('adminEditMoneySummary');
+      const deliveryFee = Number(deliveryInput?.value || 0);
+      const driverPay = Number(document.getElementById('adminEditDriverPay')?.value || 0);
+
+      if (included && arrangement === 'cod_customer_pays' && packageInput && totalInput) {
+        const total = Number(totalInput.value || 0);
+        packageInput.value = Math.max(total - deliveryFee, 0).toFixed(2);
+      }
+
+      const packageAmount = Number(packageInput?.value || 0);
+      const customerCollects = arrangement === 'cod_customer_pays'
+        ? packageAmount + deliveryFee
+        : arrangement === 'cod_client_pays_delivery'
+          ? packageAmount
+          : arrangement === 'delivery_only_customer_pays'
+            ? deliveryFee
+            : 0;
+      const clientRemittanceGross = arrangement === 'cod_customer_pays' || arrangement === 'cod_client_pays_delivery'
+        ? packageAmount
+        : 0;
+      const vdropProfit = deliveryFee - driverPay;
+
+      if (totalInput && (!included || arrangement !== 'cod_customer_pays')) {
+        totalInput.value = customerCollects > 0 ? customerCollects.toFixed(2) : '';
+      }
+      if (summary) {
+        summary.innerHTML = `
+          <div><strong>Customer Collects:</strong> ${moneyFull(customerCollects)}</div>
+          <div><strong>Client Package/Remittance Base:</strong> ${moneyFull(clientRemittanceGross)}</div>
+          <div><strong>Driver Earns:</strong> ${moneyFull(driverPay)}</div>
+          <div><strong>VDrop Gross Profit on Delivery:</strong> ${moneyFull(vdropProfit)}</div>
+        `;
+      }
     };
 
     window.syncAdminOperationalEdit = function() {
@@ -4231,9 +4295,29 @@
           <label>Customer Name<input id="adminEditCustomerName" value="${escapeHtml(order.customer_name || '')}"></label>
           <label>Customer Phone<input id="adminEditCustomerPhone" value="${escapeHtml(order.customer_phone || '')}"></label>
           <label>Item / Reference<input id="adminEditItemNumber" value="${escapeHtml(order.external_item_number || '')}"></label>
-          <label>Package / COD Amount<input id="adminEditPackageValue" type="number" min="0" step="0.01" value="${Number(order.package_value || order.cod_amount || 0).toFixed(2)}"></label>
-          <label>Confirmed Delivery Fee<input id="adminEditDeliveryFee" type="number" min="0" step="0.01" value="${order.delivery_fee ?? ''}"></label>
-          <label>Driver Pay<input id="adminEditDriverPay" type="number" min="0" step="0.01" value="${Number(order.driver_delivery_pay || 0).toFixed(2)}"></label>
+          <label>Payment Arrangement<select id="adminEditPaymentArrangement" onchange="syncAdminOrderEditForm()">
+            ${adminEditSelect([
+              ['cod_customer_pays', 'Customer pays package + delivery'],
+              ['cod_client_pays_delivery', 'Customer pays package, business pays delivery'],
+              ['delivery_only_customer_pays', 'Customer pays delivery only'],
+              ['client_pays_delivery', 'Business pays delivery']
+            ], adminPaymentArrangement(order))}
+          </select></label>
+          <label id="adminEditClientSettlementWrap">Business Delivery Fee Settlement<select id="adminEditClientFeeSettlement" onchange="syncAdminIncludedDeliveryTotal()">
+            ${adminEditSelect([
+              ['pay_separately', 'Pay separately'],
+              ['deduct_from_remittance', 'Deduct from remittance']
+            ], order.client_fee_settlement || 'pay_separately')}
+          </select></label>
+          <label>Package / COD Amount<input id="adminEditPackageValue" type="number" min="0" step="0.01" value="${Number(order.package_value || order.cod_amount || 0).toFixed(2)}" oninput="syncAdminIncludedDeliveryTotal()"></label>
+          <div id="adminEditIncludedDeliveryWrap" style="display:none; padding:0.75rem; background:#fff8e6; border:1px solid #f2d68c; border-radius:8px;">
+            <label style="display:flex; gap:0.55rem; align-items:center;"><input id="adminEditDeliveryIncluded" type="checkbox" onchange="syncAdminIncludedDeliveryTotal()"> Delivery fee is included in the customer total</label>
+            <label>Total Customer Collection<input id="adminEditCustomerTotal" type="number" min="0" step="0.01" value="${Number(order.driver_amount_to_collect || order.customer_amount_due || 0).toFixed(2)}" oninput="syncAdminIncludedDeliveryTotal()"></label>
+            <div class="td-sub">Use this when the client gives one total amount. Example: customer total TTD 500, delivery fee TTD 40, driver pay TTD 20. The package/remittance base becomes TTD 460.</div>
+          </div>
+          <label>Confirmed Delivery Fee<input id="adminEditDeliveryFee" type="number" min="0" step="0.01" value="${order.delivery_fee ?? ''}" oninput="syncAdminIncludedDeliveryTotal()"></label>
+          <label>Driver Pay<input id="adminEditDriverPay" type="number" min="0" step="0.01" value="${Number(order.driver_delivery_pay || 0).toFixed(2)}" oninput="syncAdminIncludedDeliveryTotal()"></label>
+          <div id="adminEditMoneySummary" style="padding:0.75rem; background:#f5fbfa; border:1px solid #d7e9e6; border-radius:8px; display:grid; gap:0.3rem; font-size:0.9rem;"></div>
           <div style="padding:0.75rem; background:#f5fbfa; border:1px solid #d7e9e6; border-radius:8px;">
             <div style="font-weight:800; color:var(--ink);">Assigned Driver</div>
             <div class="td-sub">${escapeHtml(order.assigned_driver_id ? driverName(order.assigned_driver_id) : 'Unassigned')}</div>
@@ -4286,6 +4370,9 @@
               <label>Pickup Business Name<input id="adminEditPickupBusinessName" value="${escapeHtml(order.pickup_business_name || '')}"></label>
               <label>Pickup Street / Building<input id="adminEditPickupStreetName" value="${escapeHtml(order.pickup_street_name || '')}"></label>
               <label>Pickup Area<input id="adminEditPickupAreaName" value="${escapeHtml(order.pickup_area_name || '')}"></label>
+              <label style="grid-column:1 / -1;">Pickup Google Maps Link<input id="adminEditPickupMapsLink" value="${escapeHtml(order.pickup_maps_link || '')}"></label>
+              <label>Pickup Latitude<input id="adminEditPickupLatitude" type="number" step="any" value="${order.pickup_latitude ?? ''}"></label>
+              <label>Pickup Longitude<input id="adminEditPickupLongitude" type="number" step="any" value="${order.pickup_longitude ?? ''}"></label>
               <label>Pickup Window<input id="adminEditPickupWindow" value="${escapeHtml(order.pickup_window || '')}" placeholder="e.g. 9 AM - 12 PM"></label>
               <label>Pickup Fee Settlement<select id="adminEditPickupFeeSettlement">${adminEditSelect([
                 ['pay_separately', 'Pay separately'],
@@ -4362,8 +4449,10 @@
           window.vdNotify('Order Not Updated', 'Enter the pickup contact phone number.', 'warning');
           return;
         }
-        if (!payload.pickup_street_name || !payload.pickup_area_name) {
-          window.vdNotify('Order Not Updated', 'Enter the pickup street/building and area.', 'warning');
+        const hasPickupManual = Boolean(payload.pickup_street_name && payload.pickup_area_name);
+        const hasPickupPin = Boolean(payload.pickup_maps_link || (payload.pickup_latitude && payload.pickup_longitude));
+        if (!hasPickupManual && !hasPickupPin) {
+          window.vdNotify('Order Not Updated', 'Enter pickup street and area, paste a pickup Google Maps link, or enter pickup GPS.', 'warning');
           return;
         }
       }
