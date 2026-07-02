@@ -903,6 +903,10 @@
     }
 
     function pickupMapsTarget(pickup) {
+      if (pickup.pickup_maps_link) return pickup.pickup_maps_link;
+      if (pickup.pickup_latitude && pickup.pickup_longitude) {
+        return `https://www.google.com/maps/search/?api=1&query=${pickup.pickup_latitude},${pickup.pickup_longitude}`;
+      }
       return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((pickup.pickup_address || '') + ', Trinidad')}`;
     }
 
@@ -942,11 +946,15 @@
       const list = document.getElementById('pickupList');
       const empty = document.getElementById('pickupEmptyState');
       const activeCount = pickups.filter(pickup => ['assigned', 'picked_up'].includes(pickup.pickup_status)).length;
-      document.getElementById('pickupWorkTab').textContent = `Pickups (${activeCount})`;
+      const pickupTab = document.getElementById('pickupWorkTab');
+      pickupTab.textContent = `Pickups (${activeCount})`;
+      pickupTab.style.borderColor = activeCount ? 'var(--teal-mid)' : '';
+      pickupTab.style.color = activeCount ? 'var(--teal-dark)' : '';
       list.innerHTML = pickups.map(pickup => {
         const scheduledDate = pickup.pickup_scheduled_date
           ? new Date(pickup.pickup_scheduled_date + 'T12:00:00').toLocaleDateString('en-TT')
           : 'Date pending';
+        const pickupAddress = pickup.pickup_address || pickup.pickup_maps_link || (pickup.pickup_latitude && pickup.pickup_longitude ? `${pickup.pickup_latitude}, ${pickup.pickup_longitude}` : '');
         return `
           <div class="delivery-card${pickup.pickup_status === 'picked_up' ? ' status-out' : pickup.pickup_status === 'arrived_at_hub' ? ' status-delivered' : ''}">
             <div class="card-header">
@@ -956,7 +964,7 @@
             <div class="customer-info">
               <div class="info-row"><div class="info-label">Pickup Contact</div><div class="info-value">${escapeHtml(pickup.pickup_contact_name || 'Not entered')}</div></div>
               <div class="info-row"><div class="info-label">Phone</div><div class="info-value">${escapeHtml(pickup.pickup_contact_phone || 'Not entered')}</div></div>
-              <div class="info-row" style="grid-column:1/-1;"><div class="info-label">Pickup Address</div><div class="info-value address">${escapeHtml(pickup.pickup_address || 'Address missing')}</div></div>
+              <div class="info-row" style="grid-column:1/-1;"><div class="info-label">Pickup Address</div><div class="info-value address">${escapeHtml(pickupAddress || 'Address missing')}</div></div>
               <div class="info-row"><div class="info-label">Scheduled</div><div class="info-value">${escapeHtml(scheduledDate)}</div></div>
               <div class="info-row"><div class="info-label">Window</div><div class="info-value">${escapeHtml(pickup.pickup_scheduled_window || pickup.pickup_window || 'Not entered')}</div></div>
               <div class="info-row"><div class="info-label">Parcels</div><div class="info-value">${escapeHtml(String(pickup.pickup_parcel_count || 1))}</div></div>
@@ -1251,6 +1259,10 @@
       renderDriverFinance();
       renderOrders();
       renderPickups();
+      const activePickupCount = pickups.filter(pickup => ['assigned', 'picked_up'].includes(pickup.pickup_status)).length;
+      if (activePickupCount > 0) {
+        activeWorkView = 'pickups';
+      }
       switchWorkView(activeWorkView);
       loadDriverNotificationBadge();
     }
