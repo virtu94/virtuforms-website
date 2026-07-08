@@ -482,7 +482,7 @@
   <script src="vd-modal.js"></script>
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-    import { estimateDeliveryZone, formatEstimateRows } from './vd-zone-estimator.js?v=20260707-estimator-fix-2';
+    import { estimateDeliveryZone, formatEstimateRows } from './vd-zone-estimator.js?v=20260708-business-rates-1';
     import { calculateOrderMoney, financialRequestFields, validateManualAddress, validatePickupLocation } from './vd-order-money.js?v=20260624-split-cod-1';
 
     const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
@@ -635,6 +635,7 @@
       const useSharedLocation = activeLocTab !== 'manual';
       return {
         supabase,
+        businessClientId: businessClient?.id || null,
         houseNumber: useSharedLocation ? '' : document.getElementById('houseNum').value.trim(),
         streetName: useSharedLocation ? '' : document.getElementById('streetName').value.trim(),
         areaName: useSharedLocation ? '' : document.getElementById('areaName').value.trim(),

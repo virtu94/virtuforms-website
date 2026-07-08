@@ -4693,7 +4693,8 @@
         const suggestedFee = Number.isFinite(savedEstimate) && savedEstimate > 0 ? savedEstimate : rateDefault;
         const rateLabel = order.pricing_rate_band === 'extended' ? 'Extended $50'
           : order.pricing_rate_band === 'remote' ? 'Remote quote'
-            : 'Standard $40';
+            : order.pricing_rate_band === 'override' ? 'Business/custom rate'
+              : 'Standard $40';
 
         panel.insertAdjacentHTML('beforeend', `
           <div class="zone-card" data-order-id="${order.id}" data-baseline-fee="${suggestedFee.toFixed(2)}" data-rate-band="${order.pricing_rate_band || 'standard'}">

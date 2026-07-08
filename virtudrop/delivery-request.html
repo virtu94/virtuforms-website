@@ -446,7 +446,7 @@
   <script src="vd-modal.js"></script>
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-    import { estimateDeliveryZone, formatEstimateRows } from './vd-zone-estimator.js?v=20260707-estimator-fix-2';
+    import { estimateDeliveryZone, formatEstimateRows } from './vd-zone-estimator.js?v=20260708-business-rates-1';
     import { calculateOrderMoney, financialRequestFields, validateManualAddress, validatePickupLocation } from './vd-order-money.js?v=20260624-split-cod-1';
 
     const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
@@ -578,6 +578,7 @@
       const useSharedLocation = activeLocTab !== 'manual';
       return {
         supabase,
+        businessClientId: document.getElementById('clientSelect').value === 'other' ? null : document.getElementById('clientSelect').value,
         houseNumber: useSharedLocation ? '' : document.getElementById('houseNum').value.trim(),
         streetName: useSharedLocation ? '' : document.getElementById('streetName').value.trim(),
         areaName: useSharedLocation ? '' : document.getElementById('areaName').value.trim(),
@@ -723,6 +724,7 @@
     // Trigger estimate update on location/value changes
     document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('mapsLink').addEventListener('input', updateEstimate);
+      document.getElementById('clientSelect').addEventListener('change', updateEstimate);
       ['areaName', 'streetName'].forEach(id => document.getElementById(id).addEventListener('input', () => {
         const street = document.getElementById('streetName').value;
         const area = document.getElementById('areaName').value;

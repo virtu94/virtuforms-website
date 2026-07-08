@@ -52,6 +52,7 @@ const EXTENDED_AREA_NAMES = new Set([
 let bizEstimateTimer = null;
 let latestBizEstimate = null;
 let zonesPromise = null;
+const businessRatesPromises = new Map();
 
 function withTimeout(promise, ms, fallback) {
   let timer = null;
@@ -118,6 +119,28 @@ async function loadEstimateZones() {
     })();
   }
   return zonesPromise;
+}
+
+async function loadBusinessDeliveryRates(businessClientId) {
+  if (!businessClientId) return [];
+  if (!businessRatesPromises.has(businessClientId)) {
+    businessRatesPromises.set(businessClientId, (async () => {
+      const result = await supabase
+        .from("business_delivery_rates")
+        .select("match_type, match_value, delivery_fee, rate_note")
+        .eq("business_client_id", businessClientId)
+        .eq("active", true)
+        .order("match_type");
+
+      if (result.error) {
+        console.warn("Business delivery rates could not be loaded:", result.error);
+        return [];
+      }
+
+      return result.data || [];
+    })());
+  }
+  return businessRatesPromises.get(businessClientId);
 }
 
 function extractLatLngFromMapsUrl(url) {
@@ -260,7 +283,44 @@ function classifyZoneMatch(match) {
   };
 }
 
+function applyBusinessRate(estimate, rates, sourceText) {
+  if (!estimate || !Array.isArray(rates) || !rates.length) {
+    return estimate;
+  }
+
+  const areaRate = rates.find(rate =>
+    rate.match_type === "area" &&
+    (
+      areaMatches(sourceText, rate.match_value) ||
+      areaMatches(estimate.matchedArea, rate.match_value)
+    )
+  );
+  const bandRate = rates.find(rate =>
+    estimate.fee !== null &&
+    rate.match_type === "rate_band" &&
+    normaliseZoneText(rate.match_value) === normaliseZoneText(estimate.status)
+  );
+  const rate = areaRate || bandRate;
+
+  if (!rate) return estimate;
+
+  return {
+    ...estimate,
+    fee: Number(rate.delivery_fee),
+    rateBand: "override",
+    businessRateApplied: true,
+    businessRateMatch: rate.match_value,
+    businessRateNote: rate.rate_note || "",
+    status: areaRate && estimate.fee === null ? 'business_area' : estimate.status,
+    zoneCode: areaRate && estimate.fee === null ? '' : estimate.zoneCode,
+    zoneName: areaRate && estimate.fee === null ? '' : estimate.zoneName,
+    region: areaRate && estimate.fee === null ? '' : estimate.region,
+    message: rate.rate_note || estimate.message
+  };
+}
+
 async function estimateDeliveryZone({
+  businessClientId = null,
   houseNumber = '',
   streetName = '',
   areaName = '',
@@ -478,7 +538,7 @@ async function estimateDeliveryZone({
         match.matchedArea.area_name;
     }
 
-    return {
+    const estimate = {
       ...classifyZoneMatch(match),
       sourceText,
       resolvedAddress,
@@ -488,6 +548,14 @@ async function estimateDeliveryZone({
         sourceLabel ||
         sourceText
     };
+
+    const businessRates = await withTimeout(
+      loadBusinessDeliveryRates(businessClientId),
+      5000,
+      []
+    );
+
+    return applyBusinessRate(estimate, businessRates, sourceText);
 }
 
 function formatEstimateRows({ estimate, paymentType, packageValue }) {
@@ -511,7 +579,10 @@ function formatEstimateRows({ estimate, paymentType, packageValue }) {
   } else {
     rows.push(['Delivery Fee', estimate.fee !== null ? `$${Number(estimate.fee).toFixed(2)}` : 'Quote required']);
   }
-  rows.push(['Zone', estimate.zoneCode ? `${estimate.zoneName} - ${estimate.region}` : estimate.message]);
+  rows.push(["Zone", estimate.zoneCode ? estimate.zoneName + " - " + estimate.region : estimate.message]);
+  if (estimate.businessRateApplied) {
+    rows.push(["Business Rate", estimate.businessRateNote || "Matched " + estimate.businessRateMatch]);
+  }
   if (estimate.status === 'unknown' && estimate.debug) {
     rows.push(['Location Source', estimate.debug.source || 'none']);
     rows.push(['Coordinates', estimate.debug.hasCoordinates ? 'Captured' : 'Not available']);
@@ -551,6 +622,7 @@ function currentEstimateInput() {
   const useMapsLink = useSharedLocation && Boolean(mapsLink);
   return {
     supabase,
+    businessClientId: business?.id || null,
     houseNumber: useSharedLocation ? '' : (el('#houseNum')?.value.trim() || ''),
     streetName: useSharedLocation ? '' : (el('#streetName')?.value.trim() || ''),
     areaName: useSharedLocation ? '' : (el('#areaName')?.value.trim() || ''),
