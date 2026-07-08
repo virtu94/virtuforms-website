@@ -1107,6 +1107,17 @@
                   <label for="pickupAreaName">Pickup Area</label>
                   <input class="input" id="pickupAreaName" type="text" placeholder="Community or area" />
                 </div>
+                <div class="form-group full">
+                  <label for="pickupMapsLink">Pickup Google Maps Link <span>(optional)</span></label>
+                  <input class="input" id="pickupMapsLink" type="url" placeholder="https://maps.google.com/..." />
+                  <div style="font-size:0.76rem; color:#6a6a6a; margin-top:0.35rem;">Use this if the pickup location is easier to identify by pin. Street and area are still preferred when available.</div>
+                </div>
+                <div class="form-group full">
+                  <button type="button" onclick="usePickupCurrentLocation()" style="width:100%; padding:0.8rem; background:#f0f9f8; border:2px solid #2a9d8f; border-radius:10px; color:#2a9d8f; font-family:'Inter',sans-serif; font-size:0.9rem; font-weight:700; cursor:pointer;">📍 Use Current Location for Pickup</button>
+                  <div id="pickupGpsResult" style="display:none; padding:0.75rem 0.9rem; background:#e8f5f3; border-radius:8px; font-size:0.84rem; color:#0d2b28; margin-top:0.7rem;"></div>
+                  <input type="hidden" id="pickupLatitude" />
+                  <input type="hidden" id="pickupLongitude" />
+                </div>
                 <div class="form-group full" style="font-size:0.8rem; color:#6a6a6a;">Pickup is available only in primary and extended delivery zones.</div>
                 <div class="form-group">
                   <label for="pickupWindow">Available Pickup Window</label>
@@ -1139,7 +1150,7 @@
                 <button type="button" onclick="useCurrentLocation()" style="width:100%; padding:0.85rem; background:#f0f9f8; border:2px solid #2a9d8f; border-radius:10px; color:#2a9d8f; font-family:'Inter',sans-serif; font-size:0.92rem; font-weight:600; cursor:pointer; margin-bottom:1rem; transition:all 0.2s;">📍 Use My Current Location</button>
                 <div id="gpsResult" style="display:none; padding:0.8rem 1rem; background:#e8f5f3; border-radius:8px; font-size:0.88rem; color:#0d2b28; margin-bottom:1rem;"></div>
                 <label style="font-size:0.85rem; font-weight:600; color:#1a1a1a; margin-bottom:0.4rem; display:block;">Or paste a Google Maps link:</label>
-                <input class="input" type="url" id="mapsLink" placeholder="https://maps.google.com/..." style="margin-bottom:0.6rem;" />
+                <input class="input" type="url" id="mapsLink" placeholder="Paste a maps.app.goo.gl or Google Maps link" autocomplete="off" style="margin-bottom:0.6rem;" />
                 <div style="padding:0.9rem 1rem; background:#f8f9fa; border-radius:8px; font-size:0.82rem; color:#6a6a6a; line-height:1.7;">
                   <strong style="color:#1a1a1a;">How to get your link:</strong><br>
                   1. Open Google Maps → 2. Search address or long-press location → 3. Tap Share → 4. Copy link and paste above
@@ -1615,55 +1626,6 @@
   </div>
 </div>
 
-
-
-
-<!-- Business location button fallback - Codex -->
-<script>
-  window.switchLocTab = window.switchLocTab || function (tab, btn) {
-    var share = document.getElementById('loc-share');
-    var manual = document.getElementById('loc-manual');
-    document.querySelectorAll('.loc-tab').forEach(function (button) {
-      button.classList.remove('active');
-      button.style.background = 'transparent';
-      button.style.color = '#4a4a4a';
-    });
-    if (btn) {
-      btn.classList.add('active');
-      btn.style.background = '#0d2b28';
-      btn.style.color = '#ffffff';
-    }
-    if (share) share.style.display = tab === 'share' ? 'block' : 'none';
-    if (manual) manual.style.display = tab === 'manual' ? 'block' : 'none';
-    window.activeLocTab = tab;
-  };
-
-  window.useCurrentLocation = window.useCurrentLocation || function () {
-    var result = document.getElementById('gpsResult');
-    if (!result) return;
-    result.style.display = 'block';
-
-    if (!navigator.geolocation) {
-      result.textContent = 'Location is not available on this browser. Paste a Google Maps link or enter the address.';
-      return;
-    }
-
-    result.textContent = 'Getting your location...';
-    navigator.geolocation.getCurrentPosition(
-      function (position) {
-        result.dataset.lat = String(position.coords.latitude);
-        result.dataset.lng = String(position.coords.longitude);
-        result.textContent = 'Location captured. You can submit the order now.';
-        if (typeof window.updateBizEstimate === 'function') window.updateBizEstimate();
-      },
-      function () {
-        result.textContent = 'Location permission was blocked or unavailable. Paste a Google Maps link or enter the address.';
-      },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
-    );
-  };
-</script>
-
 <!-- Business amount field visibility fallback - Codex -->
 <script>
   window.vdSyncBusinessAmountField = function () {
@@ -1765,7 +1727,6 @@
 
 <script src="vd-modal.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script type="module" src="business-dashboard.js?v=20260701-overview-pickup-1"></script>
-
+  <script type="module" src="business-dashboard.js?v=20260708-address-display-1"></script>
 </body>
 </html>

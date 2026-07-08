@@ -482,7 +482,7 @@
   <script src="vd-modal.js"></script>
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-    import { estimateDeliveryZone, formatEstimateRows } from './vd-zone-estimator.js?v=20260626-split-cod-1';
+    import { estimateDeliveryZone, formatEstimateRows } from './vd-zone-estimator.js?v=20260707-estimator-fix-2';
     import { calculateOrderMoney, financialRequestFields, validateManualAddress, validatePickupLocation } from './vd-order-money.js?v=20260624-split-cod-1';
 
     const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
@@ -594,6 +594,7 @@
           try {
             const estimate = await estimateDeliveryZone(estimateInput());
             latestEstimate = estimate;
+            applyResolvedAddress(estimate);
             const addressText = estimate.sourceText || estimate.label || 'address detected';
             el.textContent = estimate.zoneCode
               ? `Location captured: ${addressText} - ${estimate.zoneName} (${estimate.region}).`
@@ -657,10 +658,74 @@
       `).join('');
     }
 
+    function applyResolvedAddress(estimate) {
+      const resolved = estimate?.resolvedAddress;
+
+      if (!resolved) return;
+
+      const houseInput = document.getElementById('houseNum');
+      const streetInput = document.getElementById('streetName');
+      const areaInput = document.getElementById('areaName');
+      const gpsResult = document.getElementById('gpsResult');
+
+      if (
+        houseInput &&
+        resolved.houseNumber &&
+        !houseInput.value.trim()
+      ) {
+        houseInput.value = resolved.houseNumber;
+      }
+
+      if (streetInput && resolved.streetName) {
+        streetInput.value = resolved.streetName;
+      }
+
+      if (areaInput) {
+        areaInput.value =
+          estimate.matchedArea ||
+          resolved.areaName ||
+          '';
+      }
+
+      if (
+        gpsResult &&
+        Number.isFinite(Number(resolved.latitude)) &&
+        Number.isFinite(Number(resolved.longitude))
+      ) {
+        gpsResult.dataset.lat = String(resolved.latitude);
+        gpsResult.dataset.lng = String(resolved.longitude);
+        gpsResult.className = 'gps-result success';
+        gpsResult.style.display = 'block';
+        gpsResult.textContent =
+          `Address identified: ${resolved.formattedAddress}. ` +
+          `Please review the street name and area.`;
+      }
+
+      if (activeLocTab !== 'manual') {
+        document.querySelectorAll('.loc-tab').forEach(button => {
+          button.classList.remove('active');
+        });
+
+        const manualButton = document.querySelector(
+          '.loc-tab[onclick*="manual"]'
+        );
+
+        manualButton?.classList.add('active');
+
+        document.querySelectorAll('.loc-panel').forEach(panel => {
+          panel.classList.remove('active');
+        });
+
+        document
+          .getElementById('loc-manual')
+          ?.classList.add('active');
+
+        activeLocTab = 'manual';
+      }
+    }
     async function updateEstimate() {
       const card = document.getElementById('estimateCard');
       const payment = document.querySelector('input[name="payment"]:checked')?.value;
-      if (!payment) { card.style.display = 'none'; return; }
 
       const input = estimateInput();
       if (!hasEstimateLocation(input)) { card.style.display = 'none'; return; }
@@ -875,35 +940,46 @@
 
     function getLocationPayload() {
       const gpsResult = document.getElementById('gpsResult');
-      const mapsLink = document.getElementById('mapsLink').value.trim();
-      const houseNumber = document.getElementById('houseNum').value.trim();
-      const streetName = document.getElementById('streetName').value.trim();
-      const areaName = document.getElementById('areaName').value.trim();
 
-      if (activeLocTab === 'manual') {
-        return {
-          delivery_address: [houseNumber, streetName, areaName].filter(Boolean).join(', '),
-          house_number: houseNumber || null,
-          street_name: streetName,
-          area_name: areaName,
-          maps_link: null,
-          latitude: null,
-          longitude: null
-        };
-      }
+      const mapsLink =
+        document.getElementById('mapsLink').value.trim();
 
-      const hasGps = gpsResult.dataset.lat && gpsResult.dataset.lng;
+      const houseNumber =
+        document.getElementById('houseNum').value.trim();
+
+      const streetName =
+        document.getElementById('streetName').value.trim();
+
+      const areaName =
+        document.getElementById('areaName').value.trim();
+
+      const hasGps =
+        gpsResult.dataset.lat &&
+        gpsResult.dataset.lng;
+
       return {
-        delivery_address: mapsLink || (hasGps ? 'GPS location captured' : 'Location shared by customer'),
-        house_number: null,
-        street_name: null,
-        area_name: null,
+        delivery_address: [
+          houseNumber,
+          streetName,
+          areaName
+        ].filter(Boolean).join(', '),
+
+        house_number: houseNumber || null,
+        street_name: streetName || null,
+        area_name: areaName || null,
+
+        // Retain the source Google location.
         maps_link: mapsLink || null,
-        latitude: hasGps ? Number(gpsResult.dataset.lat) : null,
-        longitude: hasGps ? Number(gpsResult.dataset.lng) : null
+
+        latitude: hasGps
+          ? Number(gpsResult.dataset.lat)
+          : null,
+
+        longitude: hasGps
+          ? Number(gpsResult.dataset.lng)
+          : null
       };
     }
-
     window.submitForm = async function() {
       if (!validateForm()) {
         document.querySelector('.has-error, .error-text.show')?.closest('.form-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });

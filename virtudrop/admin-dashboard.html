@@ -1917,32 +1917,71 @@
       const popup = window.open('', '_blank', 'width=460,height=680');
       if (!popup) return showToast('Allow popups to print this label.');
       const logoUrl = new URL('assets/logo.png', window.location.href).href;
+      const itemText = order.external_item_number || order.customer_notes || 'Package';
+      const addressParts = orderLabelAddress(order).split(',').map(part => part.trim()).filter(Boolean);
+      const addressLine1 = addressParts[0] || orderLabelAddress(order);
+      const addressLine2 = addressParts.slice(1).join(', ') || order.area_name || 'Trinidad';
       popup.document.write(`<!doctype html><html><head><title>Label ${escapeHtml(order.order_number)}</title><style>
-        @page{size:4in 6in;margin:0.18in}
+        @page{size:4in 6in;margin:0.12in}
         *{box-sizing:border-box}
         body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif}
-        .label{width:100%;min-height:5.6in;border:2px solid #000;padding:14px;display:flex;flex-direction:column;gap:10px}
-        .top{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #000;padding-bottom:8px}
-        .logo{height:42px;max-width:150px;object-fit:contain;filter:grayscale(1) contrast(1.5)}
-        .order{font-size:16px;font-weight:800;text-align:right}
-        .section{border-bottom:1px solid #000;padding-bottom:8px}
-        .k{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
-        .v{font-size:18px;font-weight:800;margin-top:3px;line-height:1.2}
-        .address{font-size:20px;line-height:1.25}
-        .meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px}
-        .box{border:1px solid #000;padding:7px;min-height:42px}
-        .note{margin-top:auto;font-size:10px;text-align:center;border-top:1px solid #000;padding-top:6px}
+        .label{width:100%;min-height:5.76in;border:3px solid #000;border-radius:18px;padding:18px 22px 14px;display:flex;flex-direction:column;gap:0}
+        .brand{text-align:center;padding-bottom:15px}
+        .logo{width:245px;max-width:82%;filter:grayscale(1) contrast(1.55);display:block;margin:0 auto 4px}
+        .tag{font-size:10px;font-weight:800;letter-spacing:.22em;text-transform:uppercase}
+        .rule{border-top:2px solid #000}
+        .split{display:grid;grid-template-columns:1fr 1fr}
+        .cell{padding:18px 8px}
+        .cell + .cell{border-left:2px solid #000;padding-left:24px}
+        .k{font-size:13px;font-weight:900;letter-spacing:.07em;text-transform:uppercase}
+        .big{font-size:25px;font-weight:900;line-height:1.05;margin-top:12px}
+        .date{font-size:17px;margin-top:14px}
+        .main{min-height:2.15in}
+        .icon{width:38px;height:38px;border:2px solid #000;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-weight:900;font-size:20px}
+        .center{text-align:center}
+        .name{font-size:18px;font-weight:900;margin:8px 0 10px}
+        .addr{font-size:13px;line-height:1.35;margin-top:5px}
+        .phone{display:grid;grid-template-columns:38px 1fr;gap:12px;align-items:center;margin-top:22px}
+        .phone .icon{margin:0}
+        .item{font-size:17px;font-weight:900;line-height:1.15;margin:8px 0 18px}
+        .detail{font-size:13px;font-weight:800;line-height:1.55}
+        .review{text-align:center;padding:13px 0}
+        .review .icon{margin-bottom:7px}
+        .review-title{font-size:14px;font-weight:900;letter-spacing:.05em}
+        .review-copy{font-size:12px;line-height:1.25;margin-top:4px}
+        .foot{display:grid;grid-template-columns:1fr auto 1.25fr;gap:16px;align-items:center;padding-top:10px}
+        .thanks{font-size:26px;font-weight:900}
+        .social{font-size:16px;font-weight:800;display:flex;gap:12px;align-items:center;justify-content:center}
+        .mark{width:25px;height:25px;border:2px solid #000;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;font-weight:900}
+        .divider{height:36px;border-left:2px solid #000}
       </style></head><body onload="setTimeout(()=>window.print(),250)"><div class="label">
-        <div class="top"><img class="logo" src="${logoUrl}" alt="VirtuDrop"><div class="order">${escapeHtml(order.order_number || '')}</div></div>
-        <div class="section"><div class="k">Deliver To</div><div class="v">${escapeHtml(order.customer_name || '')}</div><div>${escapeHtml(order.customer_phone || '')}</div></div>
-        <div class="section"><div class="k">Address</div><div class="address">${escapeHtml(orderLabelAddress(order))}</div></div>
-        <div class="meta">
-          <div class="box"><div class="k">Client</div><strong>${escapeHtml(clientName(order))}</strong></div>
-          <div class="box"><div class="k">Collect</div><strong>${escapeHtml(moneyFull(driverCollects(order)))}</strong></div>
-          <div class="box"><div class="k">Item / Ref</div>${escapeHtml(order.external_item_number || '—')}</div>
-          <div class="box"><div class="k">Area</div>${escapeHtml(order.area_name || '—')}</div>
+        <div class="brand"><img class="logo" src="${logoUrl}" alt="VirtuDrop"><div class="tag">Professional &bull; Structured &bull; Reliable</div></div>
+        <div class="rule"></div>
+        <div class="split">
+          <div class="cell"><div class="k">Order #</div><div class="big">${escapeHtml(order.order_number || '')}</div></div>
+          <div class="cell"><div class="k">Date</div><div class="date">${escapeHtml(new Date(order.created_at || Date.now()).toLocaleDateString('en-TT', { year: 'numeric', month: 'short', day: 'numeric' }))}</div></div>
         </div>
-        <div class="note">Incorrect or incomplete street information may delay VirtuDrop's 1-2 business day delivery service.</div>
+        <div class="rule"></div>
+        <div class="split main">
+          <div class="cell center">
+            <div class="icon">●</div><div class="k">Ship To:</div>
+            <div class="name">${escapeHtml(order.customer_name || '')}</div>
+            <div class="addr">${escapeHtml(addressLine1)}</div>
+            <div class="addr">${escapeHtml(addressLine2)}</div>
+            <div class="phone"><div class="icon">☎</div><div><div class="k">Phone:</div><div>${escapeHtml(order.customer_phone || '')}</div></div></div>
+          </div>
+          <div class="cell center">
+            <div class="icon">□</div><div class="k">Item / Contents:</div>
+            <div class="item">${escapeHtml(itemText)}</div>
+            <div class="detail">Client: ${escapeHtml(clientName(order))}</div>
+            <div class="detail">Area: ${escapeHtml(order.area_name || '—')}</div>
+            <div class="detail">Qty: ${escapeHtml(String(order.checked_in_parcel_count || 1))}</div>
+          </div>
+        </div>
+        <div class="rule"></div>
+        <div class="review"><div class="icon">★</div><div class="review-title">Leave a Review</div><div class="review-copy">Love your order?<br>Your feedback means<br>a lot to us!</div></div>
+        <div class="rule"></div>
+        <div class="foot"><div class="thanks">Thank you!</div><div class="divider"></div><div class="social"><span class="mark">◎</span><span class="mark">f</span><span>VirtuForms</span></div></div>
       </div></body></html>`);
       popup.document.close();
     };
@@ -4638,7 +4677,7 @@
         const coords = order.latitude && order.longitude
           ? `GPS: ${order.latitude}, ${order.longitude}`
           : 'No GPS data - verify manually';
-        const address = order.delivery_address || order.area_name || 'Location pending';
+        const address = orderLabelAddress(order);
         const savedEstimate = Number(order.estimated_fee);
         const rateDefault = order.pricing_rate_band === 'extended' ? 50 : Number(appSettings.default_delivery_fee || 40) || 40;
         const suggestedFee = Number.isFinite(savedEstimate) && savedEstimate > 0 ? savedEstimate : rateDefault;
@@ -4655,7 +4694,7 @@
                 <span class="badge badge-confirmed">${rateLabel}</span>
               </div>
               <div class="zone-card-client">${clientName(order)} &middot; Customer: ${order.customer_name || '—'} &middot; ${order.customer_phone || ''}</div>
-              <div class="zone-card-address">📍 ${address}</div>
+              <div class="zone-card-address">📍 ${escapeHtml(address)}</div>
               <div class="zone-card-coords">${coords}</div>
               <div style="margin-top:0.55rem; display:flex; gap:0.8rem; flex-wrap:wrap; font-size:0.8rem; color:var(--grey);">
                 <span><strong>Package:</strong> ${moneyFull(order.package_value || order.cod_amount)}</span>
@@ -4728,7 +4767,7 @@
       const sortable = orders.filter(order => !isCancelledOrder(order) && order.parcel_status === 'parcel_received' && order.zone_status === 'confirmed');
       body.innerHTML = sortable.map(order => {
         const zone = zones.find(item => item.id === order.zone_id);
-        return `<tr><td class="td-id">${escapeHtml(order.order_number)}</td><td><div class="td-name">${escapeHtml(clientName(order))}</div><div class="td-sub">${escapeHtml(order.customer_name || '')}</div></td><td>${escapeHtml(order.delivery_address || order.area_name || 'Location pending')}</td><td>${escapeHtml(String(order.checked_in_parcel_count || 1))}</td><td><span class="badge badge-confirmed">${escapeHtml(zone?.code ? `Zone ${zone.code}` : order.pricing_rate_band || 'Confirmed')}</span></td><td><button class="btn btn-primary btn-sm" onclick="markOrderSorted('${order.id}')">Mark Sorted</button></td></tr>`;
+        return `<tr><td class="td-id">${escapeHtml(order.order_number)}</td><td><div class="td-name">${escapeHtml(clientName(order))}</div><div class="td-sub">${escapeHtml(order.customer_name || '')}</div></td><td>${escapeHtml(orderLabelAddress(order))}</td><td>${escapeHtml(String(order.checked_in_parcel_count || 1))}</td><td><span class="badge badge-confirmed">${escapeHtml(zone?.code ? `Zone ${zone.code}` : order.pricing_rate_band || 'Confirmed')}</span></td><td><button class="btn btn-primary btn-sm" onclick="markOrderSorted('${order.id}')">Mark Sorted</button></td></tr>`;
       }).join('') || '<tr><td colspan="6">No received, zone-confirmed parcels are waiting to be sorted.</td></tr>';
     };
 
@@ -4769,7 +4808,7 @@
           </div>
           ${manifestCloseSummaryHtml(manifest)}
           <div class="table-wrap"><table><thead><tr><th>Sequence</th><th>Zone</th><th>Order</th><th>Customer</th><th>Address</th><th>Parcels</th><th>Collect</th><th>Delivery</th><th>Cash</th>${manifest.status === 'draft' ? '<th>Action</th>' : ''}</tr></thead><tbody>
-            ${(manifest.orders || []).map(order => `<tr><td>${order.route_sequence}</td><td>${escapeHtml(order.zone_code ? `Zone ${order.zone_code}` : '—')}</td><td class="td-id">${escapeHtml(order.order_number)}</td><td><div class="td-name">${escapeHtml(order.customer_name || '')}</div><div class="td-sub">${escapeHtml(order.customer_phone || '')}</div>${order.external_item_number ? `<div class="td-sub">Item: ${escapeHtml(order.external_item_number)}</div>` : ''}</td><td>${escapeHtml(order.delivery_address || order.area_name || '')}</td><td>${escapeHtml(String(order.parcel_count || 1))}</td><td>${moneyFull(order.amount_to_collect)}</td><td><div class="td-sub">${escapeHtml(String(order.order_status || '').replaceAll('_', ' '))}</div><div class="td-sub">${escapeHtml(String(order.parcel_status || '').replaceAll('_', ' '))}</div>${order.delivery_return_required ? '<div class="td-sub" style="color:#b42318;">Return required</div>' : ''}</td><td>${Number(order.amount_to_collect || 0) > 0 && order.order_status === 'delivered' ? escapeHtml(order.reconciliation_status || 'unreconciled') : '—'}</td>${manifest.status === 'draft' ? `<td><button class="btn btn-ghost btn-sm" onclick="removeManifestOrder('${manifest.id}', '${order.id}')">Remove</button></td>` : ''}</tr>`).join('') || `<tr><td colspan="${manifest.status === 'draft' ? 10 : 9}">No parcels on this manifest.</td></tr>`}
+            ${(manifest.orders || []).map(order => `<tr><td>${order.route_sequence}</td><td>${escapeHtml(order.zone_code ? `Zone ${order.zone_code}` : '—')}</td><td class="td-id">${escapeHtml(order.order_number)}</td><td><div class="td-name">${escapeHtml(order.customer_name || '')}</div><div class="td-sub">${escapeHtml(order.customer_phone || '')}</div>${order.external_item_number ? `<div class="td-sub">Item: ${escapeHtml(order.external_item_number)}</div>` : ''}</td><td>${escapeHtml(orderLabelAddress(order))}</td><td>${escapeHtml(String(order.parcel_count || 1))}</td><td>${moneyFull(order.amount_to_collect)}</td><td><div class="td-sub">${escapeHtml(String(order.order_status || '').replaceAll('_', ' '))}</div><div class="td-sub">${escapeHtml(String(order.parcel_status || '').replaceAll('_', ' '))}</div>${order.delivery_return_required ? '<div class="td-sub" style="color:#b42318;">Return required</div>' : ''}</td><td>${Number(order.amount_to_collect || 0) > 0 && order.order_status === 'delivered' ? escapeHtml(order.reconciliation_status || 'unreconciled') : '—'}</td>${manifest.status === 'draft' ? `<td><button class="btn btn-ghost btn-sm" onclick="removeManifestOrder('${manifest.id}', '${order.id}')">Remove</button></td>` : ''}</tr>`).join('') || `<tr><td colspan="${manifest.status === 'draft' ? 10 : 9}">No parcels on this manifest.</td></tr>`}
           </tbody></table></div>
           ${manifest.handed_to_driver_at ? `<div class="td-sub" style="margin-top:0.75rem;">Handover confirmed ${new Date(manifest.handed_to_driver_at).toLocaleString('en-TT')}</div>` : ''}
         </div>`).join('') || (deliveryManifests.length
@@ -4835,7 +4874,7 @@
     window.printManifest = function(manifestId) {
       const manifest = deliveryManifests.find(item => item.id === manifestId);
       if (!manifest) return showToast('Manifest not found.');
-      const rows = (manifest.orders || []).map(order => `<tr><td>${order.route_sequence}</td><td>${escapeHtml(order.zone_code || '')}</td><td>${escapeHtml(order.order_number)}</td><td>${escapeHtml(order.customer_name || '')}</td><td>${escapeHtml(order.customer_phone || '')}</td><td>${escapeHtml(order.delivery_address || order.area_name || '')}</td><td>${moneyFull(order.amount_to_collect)}</td></tr>`).join('');
+      const rows = (manifest.orders || []).map(order => `<tr><td>${order.route_sequence}</td><td>${escapeHtml(order.zone_code || '')}</td><td>${escapeHtml(order.order_number)}</td><td>${escapeHtml(order.customer_name || '')}</td><td>${escapeHtml(order.customer_phone || '')}</td><td>${escapeHtml(orderLabelAddress(order))}</td><td>${moneyFull(order.amount_to_collect)}</td></tr>`).join('');
       const popup = window.open('', '_blank', 'width=1000,height=760');
       if (!popup) return showToast('Allow popups to print the manifest.');
       popup.document.write(`<!doctype html><html><head><title>${escapeHtml(manifest.manifest_number)}</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#172b28}h1{margin-bottom:4px}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #bbb;padding:8px;text-align:left;font-size:12px}th{background:#edf5f4}.sign{margin-top:45px;display:flex;justify-content:space-between}.line{width:42%;border-top:1px solid #333;padding-top:6px}</style></head><body><h1>VirtuDrop Delivery Manifest</h1><div><strong>${escapeHtml(manifest.manifest_number)}</strong></div><div>Driver: ${escapeHtml(manifest.driver_name || '')}</div><div>Route date: ${escapeHtml(manifest.route_date)}</div><table><thead><tr><th>#</th><th>Zone</th><th>Order</th><th>Customer</th><th>Phone</th><th>Address</th><th>Collect</th></tr></thead><tbody>${rows}</tbody></table><div class="sign"><div class="line">Admin handover</div><div class="line">Driver received</div></div><script>window.onload=()=>window.print();<\/script></body></html>`);

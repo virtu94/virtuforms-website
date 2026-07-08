@@ -7,6 +7,36 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 window.supabase = supabase;
 
+async function resolveGoogleLocation(payload) {
+  const { data, error } = await supabase.functions.invoke(
+    'resolve-google-location',
+    {
+      body: payload
+    }
+  );
+
+  if (error) {
+    console.error(
+      '[VirtuDrop Google Location] Edge Function error:',
+      error
+    );
+
+    throw new Error(
+      error.message ||
+      'The Google Maps location could not be resolved.'
+    );
+  }
+
+  if (!data?.success) {
+    throw new Error(
+      data?.message ||
+      'The Google Maps location could not be resolved.'
+    );
+  }
+
+  return data;
+}
+
 // ── Config ────────────────────────────────────────────────────────
 const REMOTE_ZONE_CODE = 'REMOTE';
 const COVERED_ZONE_CODES = new Set(['A', 'B', 'C', 'D']);
@@ -265,73 +295,199 @@ async function estimateDeliveryZone({
   }
   let sourceText = manualText;
   let sourceLabel = areaName || streetName || '';
-  if (sourceText) debug.source = 'manual';
+  let resolvedAddress = null;
 
-  if (!sourceText && Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude))) {
-    debug.source = 'gps';
-    sourceText = await withTimeout(reverseGeocode(Number(latitude), Number(longitude)), 10000, '');
-    sourceLabel = sourceText;
-  }
+    if (sourceText) {
+      debug.source = 'manual';
+    }
 
-  if (!sourceText && mapsLink) {
-    debug.source = 'maps-link';
-    const coords = extractLatLngFromMapsUrl(mapsLink);
-    if (coords) {
-      debug.hasCoordinates = true;
-      sourceText = await withTimeout(reverseGeocode(coords.lat, coords.lng), 10000, '');
-      sourceLabel = sourceText;
-    } else {
-      sourceText = extractTextFromMapsUrl(mapsLink);
-      sourceLabel = sourceText;
-      if (sourceText) {
-        sourceText = [sourceText, await withTimeout(geocodeAddress(sourceText), 10000, '')].filter(Boolean).join(' ');
+    if (
+      !sourceText &&
+      Number.isFinite(Number(latitude)) &&
+      Number.isFinite(Number(longitude))
+    ) {
+      debug.source = 'gps';
+
+      try {
+        resolvedAddress = await withTimeout(
+          resolveGoogleLocation({
+            latitude: Number(latitude),
+            longitude: Number(longitude)
+          }),
+          15000,
+          null
+        );
+      } catch (error) {
+        console.warn(
+          '[VirtuDrop Google Location] GPS resolution failed:',
+          error
+        );
+      }
+
+      if (resolvedAddress) {
+        debug.hasCoordinates = true;
+
+        sourceText =
+          resolvedAddress.searchText ||
+          resolvedAddress.formattedAddress ||
+          '';
+
+        sourceLabel =
+          resolvedAddress.areaName ||
+          resolvedAddress.formattedAddress ||
+          '';
+      } else {
+        // Keep the existing OpenStreetMap service as a fallback.
+        sourceText = await withTimeout(
+          reverseGeocode(
+            Number(latitude),
+            Number(longitude)
+          ),
+          10000,
+          ''
+        ) || '';
+
+        sourceLabel = sourceText;
       }
     }
-  }
-  debug.addressFound = Boolean(sourceText);
 
-  if (!sourceText) {
-    const shortMapsLink = /(^|\.)maps\.app\.goo\.gl$|(^|\.)goo\.gl$/i.test(new URL(mapsLink || window.location.href, window.location.origin).hostname || '');
-    return {
-      status: 'unknown',
-      fee: null,
-      zoneCode: '',
-      zoneName: '',
-      region: '',
-      matchedArea: '',
-      sourceText: '',
-      label: 'Location could not be identified',
-      debug,
-      message: shortMapsLink
-        ? 'Short Google Maps links cannot be read here. Use current location or paste a full Google Maps link.'
-        : 'Enter an area or use GPS to estimate'
-    };
-  }
+    if (!sourceText && mapsLink) {
+      debug.source = 'maps-link';
 
-  const zones = await withTimeout(loadEstimateZones(), 7000, null);
-  if (!zones) {
+      try {
+        resolvedAddress = await withTimeout(
+          resolveGoogleLocation({
+            mapsLink
+          }),
+          15000,
+          null
+        );
+      } catch (error) {
+        console.warn(
+          '[VirtuDrop Google Location] Maps-link resolution failed:',
+          error
+        );
+      }
+
+      if (resolvedAddress) {
+        debug.hasCoordinates = true;
+
+        sourceText =
+          resolvedAddress.searchText ||
+          resolvedAddress.formattedAddress ||
+          '';
+
+        sourceLabel =
+          resolvedAddress.areaName ||
+          resolvedAddress.formattedAddress ||
+          '';
+      } else {
+        /*
+         * Retain the old fallback for full Google Maps links
+         * that already contain readable coordinates.
+         */
+        const coords = extractLatLngFromMapsUrl(mapsLink);
+
+        if (coords) {
+          debug.hasCoordinates = true;
+
+          sourceText = await withTimeout(
+            reverseGeocode(coords.lat, coords.lng),
+            10000,
+            ''
+          ) || '';
+
+          sourceLabel = sourceText;
+        } else {
+          sourceText = extractTextFromMapsUrl(mapsLink);
+          sourceLabel = sourceText;
+
+          if (sourceText) {
+            sourceText = [
+              sourceText,
+              await withTimeout(
+                geocodeAddress(sourceText),
+                10000,
+                ''
+              )
+            ].filter(Boolean).join(' ');
+          }
+        }
+      }
+    }
+
+    debug.addressFound = Boolean(sourceText);
+
+    if (!sourceText) {
+      return {
+        status: 'unknown',
+        fee: null,
+        zoneCode: '',
+        zoneName: '',
+        region: '',
+        matchedArea: '',
+        sourceText: '',
+        resolvedAddress: null,
+        label: 'Location could not be identified',
+        debug,
+        message:
+          'The Google Maps location could not be identified. ' +
+          'Check the link or enter the address manually.'
+      };
+    }
+
+    const zones = await withTimeout(
+      loadEstimateZones(),
+      7000,
+      null
+    );
+
+    if (!zones) {
+      return {
+        status: 'unknown',
+        fee: null,
+        zoneCode: '',
+        zoneName: '',
+        region: '',
+        matchedArea: '',
+        sourceText,
+        resolvedAddress,
+        label: sourceLabel || sourceText,
+        debug,
+        message:
+          'Address found, but zone data could not be loaded. Try again.'
+      };
+    }
+
+    debug.zonesLoaded = true;
+
+    const match = matchZoneFromText(
+      zones,
+      sourceText
+    );
+
+    /*
+     * When the matched database area is more specific than the
+     * Google area, use the exact VirtuDrop area name.
+     */
+    if (
+      resolvedAddress &&
+      match?.matchedArea?.area_name
+    ) {
+      resolvedAddress.areaName =
+        match.matchedArea.area_name;
+    }
+
     return {
-      status: 'unknown',
-      fee: null,
-      zoneCode: '',
-      zoneName: '',
-      region: '',
-      matchedArea: '',
+      ...classifyZoneMatch(match),
       sourceText,
-      label: sourceLabel || sourceText,
+      resolvedAddress,
       debug,
-      message: 'Address found, but zone data could not be loaded. Try again.'
+      label:
+        match?.matchedArea?.area_name ||
+        sourceLabel ||
+        sourceText
     };
-  }
-  debug.zonesLoaded = true;
-
-  const match = matchZoneFromText(zones, sourceText);
-  return {
-    ...classifyZoneMatch(match),
-    sourceText,
-    debug,
-    label: match?.matchedArea?.area_name || sourceLabel || sourceText
-  };
 }
 
 function formatEstimateRows({ estimate, paymentType, packageValue }) {
@@ -391,14 +547,16 @@ function currentEstimateInput() {
   const gpsResult = el('#gpsResult');
   const hasGps = gpsResult?.dataset.lat && gpsResult?.dataset.lng;
   const useSharedLocation = activeLocTab !== 'manual';
+  const mapsLink = el('#mapsLink')?.value.trim() || '';
+  const useMapsLink = useSharedLocation && Boolean(mapsLink);
   return {
     supabase,
     houseNumber: useSharedLocation ? '' : (el('#houseNum')?.value.trim() || ''),
     streetName: useSharedLocation ? '' : (el('#streetName')?.value.trim() || ''),
     areaName: useSharedLocation ? '' : (el('#areaName')?.value.trim() || ''),
-    mapsLink: useSharedLocation && !hasGps ? (el('#mapsLink')?.value.trim() || '') : '',
-    latitude: useSharedLocation && hasGps ? Number(gpsResult.dataset.lat) : null,
-    longitude: useSharedLocation && hasGps ? Number(gpsResult.dataset.lng) : null
+    mapsLink: useMapsLink ? mapsLink : '',
+    latitude: useSharedLocation && !useMapsLink && hasGps ? Number(gpsResult.dataset.lat) : null,
+    longitude: useSharedLocation && !useMapsLink && hasGps ? Number(gpsResult.dataset.lng) : null
   };
 }
 
@@ -416,15 +574,131 @@ function renderEstimateBreakdown(target, rows) {
     </div>`).join('');
 }
 
-async function updateBizEstimate() {
+function applyBusinessResolvedAddress(estimate) {
+  const resolved = estimate?.resolvedAddress;
+
+  if (!resolved) {
+    return;
+  }
+
+  const houseInput = el('#houseNum');
+  const streetInput = el('#streetName');
+  const areaInput = el('#areaName');
+  const gpsResult = el('#gpsResult');
+
+  const matchedArea =
+    estimate.matchedArea ||
+    resolved.areaName ||
+    '';
+
+  /*
+   * Do not overwrite a house number that the client
+   * already entered manually.
+   */
+  if (
+    houseInput &&
+    resolved.houseNumber &&
+    !houseInput.value.trim()
+  ) {
+    houseInput.value = resolved.houseNumber;
+  }
+
+  /*
+   * Fill the street returned by Google.
+   */
+  if (
+    streetInput &&
+    resolved.streetName
+  ) {
+    streetInput.value = resolved.streetName;
+  }
+
+  /*
+   * Prefer the exact area name from VirtuDrop's zone database.
+   */
+  if (
+    areaInput &&
+    matchedArea
+  ) {
+    areaInput.value = matchedArea;
+  }
+
+  /*
+   * Preserve the coordinates so they are saved with the order.
+   */
+  if (
+    gpsResult &&
+    Number.isFinite(Number(resolved.latitude)) &&
+    Number.isFinite(Number(resolved.longitude))
+  ) {
+    gpsResult.dataset.lat =
+      String(resolved.latitude);
+
+    gpsResult.dataset.lng =
+      String(resolved.longitude);
+
+    gpsResult.style.display = 'block';
+    gpsResult.style.background = '#e8f5f3';
+
+    gpsResult.textContent =
+      `📍 Address identified: ` +
+      `${resolved.formattedAddress}. ` +
+      `Please review the street name and area.`;
+  }
+
+  /*
+   * Switch to the address panel so the client can review
+   * and correct the converted address.
+   */
+  if (activeLocTab !== 'manual') {
+    const manualButton = all('.loc-tab').find(
+      button =>
+        button
+          .getAttribute('onclick')
+          ?.includes("'manual'")
+    );
+
+    window.switchLocTab(
+      'manual',
+      manualButton
+    );
+  }
+ }
+
+ async function updateBizEstimate() {
   const block = el('#bizEstimateBlock');
-  if (!block) return;
-  const paymentType = el('#paymentType')?.value || '';
-  if (!paymentType) { block.style.display = 'none'; return; }
+
+  if (!block) {
+    console.error(
+      '[VirtuDrop Estimate] #bizEstimateBlock was not found.'
+    );
+    return;
+  }
+
+  /*
+   * Payment type is not required merely to calculate
+   * the delivery location and fee.
+   */
+  const paymentType =
+    el('#paymentType')?.value || '';
 
   const estimateInput = currentEstimateInput();
-  if (!hasEstimateLocation(estimateInput)) { block.style.display = 'none'; return; }
+   console.log(
+    '[VirtuDrop Estimate] Location input:',
+    estimateInput
+  );
+  if (!hasEstimateLocation(estimateInput)) {
+      console.log(
+        '[VirtuDrop Estimate] Waiting for a location.'
+      );
 
+      block.style.display = 'none';
+      return;
+    }
+  
+  console.log(
+    '[VirtuDrop Estimate] Starting estimate...'
+  );
   block.style.display = '';
   setText('#bizEstimateAmount', 'Calculating...');
   setText('#bizEstimateRoute', 'Detecting zone...');
@@ -445,11 +719,13 @@ async function updateBizEstimate() {
         region: '',
         matchedArea: '',
         sourceText: '',
+        resolvedAddress: null,
         label: 'Location could not be identified',
         message: 'Location lookup timed out. Try again or enter the address manually.',
         debug: { source: 'timeout', hasCoordinates: false, addressFound: false, zonesLoaded: false }
       });
       latestBizEstimate = estimate;
+      applyBusinessResolvedAddress(estimate);
 
       if (amountEl) {
         amountEl.textContent = estimate.fee !== null
@@ -633,33 +909,71 @@ window.printDeliveryLabel = function(orderId) {
   const popup = window.open('', '_blank', 'width=460,height=680');
   if (!popup) return window.vdNotify('Label Not Printed', 'Allow popups to print this label.', 'warning');
   const logoUrl = new URL('assets/logo.png', window.location.href).href;
-  const collectAmount = labelCollectAmount(order);
+  const itemText = order.external_item_number || order.customer_notes || 'Package';
+  const addressParts = labelAddress(order).split(',').map(part => part.trim()).filter(Boolean);
+  const addressLine1 = addressParts[0] || labelAddress(order);
+  const addressLine2 = addressParts.slice(1).join(', ') || order.area_name || 'Trinidad';
   popup.document.write(`<!doctype html><html><head><title>Label ${escapeHtml(order.order_number)}</title><style>
-    @page{size:4in 6in;margin:0.18in}
+    @page{size:4in 6in;margin:0.12in}
     *{box-sizing:border-box}
     body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif}
-    .label{width:100%;min-height:5.6in;border:2px solid #000;padding:14px;display:flex;flex-direction:column;gap:10px}
-    .top{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #000;padding-bottom:8px}
-    .logo{height:42px;max-width:150px;object-fit:contain;filter:grayscale(1) contrast(1.5)}
-    .order{font-size:16px;font-weight:800;text-align:right}
-    .section{border-bottom:1px solid #000;padding-bottom:8px}
-    .k{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
-    .v{font-size:18px;font-weight:800;margin-top:3px;line-height:1.2}
-    .address{font-size:20px;line-height:1.25}
-    .meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px}
-    .box{border:1px solid #000;padding:7px;min-height:42px}
-    .note{margin-top:auto;font-size:10px;text-align:center;border-top:1px solid #000;padding-top:6px}
+    .label{width:100%;min-height:5.76in;border:3px solid #000;border-radius:18px;padding:18px 22px 14px;display:flex;flex-direction:column;gap:0}
+    .brand{text-align:center;padding-bottom:15px}
+    .logo{width:245px;max-width:82%;filter:grayscale(1) contrast(1.55);display:block;margin:0 auto 4px}
+    .tag{font-size:10px;font-weight:800;letter-spacing:.22em;text-transform:uppercase}
+    .rule{border-top:2px solid #000}
+    .split{display:grid;grid-template-columns:1fr 1fr}
+    .cell{padding:18px 8px}
+    .cell + .cell{border-left:2px solid #000;padding-left:24px}
+    .k{font-size:13px;font-weight:900;letter-spacing:.07em;text-transform:uppercase}
+    .big{font-size:25px;font-weight:900;line-height:1.05;margin-top:12px}
+    .date{font-size:17px;margin-top:14px}
+    .main{min-height:2.15in}
+    .icon{width:38px;height:38px;border:2px solid #000;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-weight:900;font-size:20px}
+    .center{text-align:center}
+    .name{font-size:18px;font-weight:900;margin:8px 0 10px}
+    .addr{font-size:13px;line-height:1.35;margin-top:5px}
+    .phone{display:grid;grid-template-columns:38px 1fr;gap:12px;align-items:center;margin-top:22px}
+    .phone .icon{margin:0}
+    .item{font-size:17px;font-weight:900;line-height:1.15;margin:8px 0 18px}
+    .detail{font-size:13px;font-weight:800;line-height:1.55}
+    .review{text-align:center;padding:13px 0}
+    .review .icon{margin-bottom:7px}
+    .review-title{font-size:14px;font-weight:900;letter-spacing:.05em}
+    .review-copy{font-size:12px;line-height:1.25;margin-top:4px}
+    .foot{display:grid;grid-template-columns:1fr auto 1.25fr;gap:16px;align-items:center;padding-top:10px}
+    .thanks{font-size:26px;font-weight:900}
+    .social{font-size:16px;font-weight:800;display:flex;gap:12px;align-items:center;justify-content:center}
+    .mark{width:25px;height:25px;border:2px solid #000;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;font-weight:900}
+    .divider{height:36px;border-left:2px solid #000}
   </style></head><body onload="setTimeout(()=>window.print(),250)"><div class="label">
-    <div class="top"><img class="logo" src="${logoUrl}" alt="VirtuDrop"><div class="order">${escapeHtml(order.order_number || '')}</div></div>
-    <div class="section"><div class="k">Deliver To</div><div class="v">${escapeHtml(order.customer_name || '')}</div><div>${escapeHtml(order.customer_phone || '')}</div></div>
-    <div class="section"><div class="k">Address</div><div class="address">${escapeHtml(labelAddress(order))}</div></div>
-    <div class="meta">
-      <div class="box"><div class="k">Client</div><strong>${escapeHtml(business?.business_name || 'Business Client')}</strong></div>
-      <div class="box"><div class="k">Collect</div><strong>${escapeHtml(money(collectAmount))}</strong></div>
-      <div class="box"><div class="k">Item / Ref</div>${escapeHtml(order.external_item_number || '—')}</div>
-      <div class="box"><div class="k">Area</div>${escapeHtml(order.area_name || '—')}</div>
+    <div class="brand"><img class="logo" src="${logoUrl}" alt="VirtuDrop"><div class="tag">Professional &bull; Structured &bull; Reliable</div></div>
+    <div class="rule"></div>
+    <div class="split">
+      <div class="cell"><div class="k">Order #</div><div class="big">${escapeHtml(order.order_number || '')}</div></div>
+      <div class="cell"><div class="k">Date</div><div class="date">${escapeHtml(formatDate(order.created_at || new Date().toISOString()))}</div></div>
     </div>
-    <div class="note">Incorrect or incomplete street information may delay VirtuDrop's 1-2 business day delivery service.</div>
+    <div class="rule"></div>
+    <div class="split main">
+      <div class="cell center">
+        <div class="icon">●</div><div class="k">Ship To:</div>
+        <div class="name">${escapeHtml(order.customer_name || '')}</div>
+        <div class="addr">${escapeHtml(addressLine1)}</div>
+        <div class="addr">${escapeHtml(addressLine2)}</div>
+        <div class="phone"><div class="icon">☎</div><div><div class="k">Phone:</div><div>${escapeHtml(order.customer_phone || '')}</div></div></div>
+      </div>
+      <div class="cell center">
+        <div class="icon">□</div><div class="k">Item / Contents:</div>
+        <div class="item">${escapeHtml(itemText)}</div>
+        <div class="detail">Client: ${escapeHtml(business?.business_name || 'Business Client')}</div>
+        <div class="detail">Area: ${escapeHtml(order.area_name || '—')}</div>
+        <div class="detail">Qty: ${escapeHtml(String(order.checked_in_parcel_count || 1))}</div>
+      </div>
+    </div>
+    <div class="rule"></div>
+    <div class="review"><div class="icon">★</div><div class="review-title">Leave a Review</div><div class="review-copy">Love your order?<br>Your feedback means<br>a lot to us!</div></div>
+    <div class="rule"></div>
+    <div class="foot"><div class="thanks">Thank you!</div><div class="divider"></div><div class="social"><span class="mark">◎</span><span class="mark">f</span><span>VirtuForms</span></div></div>
   </div></body></html>`);
   popup.document.close();
 };
@@ -760,7 +1074,7 @@ function statusClass(status) {
 }
 
 function routeText(order) {
-  return order.area_name || order.delivery_address || order.maps_link || 'Zone pending';
+  return labelAddress(order);
 }
 
 function customerDisplayName(order) {
@@ -768,7 +1082,7 @@ function customerDisplayName(order) {
 }
 
 function orderLocationSummary(order) {
-  return order.area_name || order.delivery_address || (order.maps_link ? 'Google Maps pin provided' : 'Location pending');
+  return labelAddress(order);
 }
 
 function trackingLink(order) {
@@ -783,7 +1097,7 @@ function mapsLink(order) {
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.latitude + ',' + order.longitude)}`;
   }
   if (order?.delivery_address || order?.area_name) {
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((order.delivery_address || order.area_name) + ', Trinidad')}`;
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(labelAddress(order) + ', Trinidad')}`;
   }
   return '';
 }
@@ -1025,7 +1339,7 @@ window.openOrderDetails = function(orderId) {
       ${order.parcel_received_at ? detailItem('Parcel Received', escapeHtml(formatDateTime(order.parcel_received_at))) : ''}
       ${detailItem('Package', escapeHtml(notes.packageText || 'Not entered'), true)}
       ${order.rejection_reason ? detailItem('❌ Rejection Reason', `<span style="color:#e05555; font-weight:600;">${escapeHtml(order.rejection_reason)}</span>`, true) : ''}
-      ${detailItem('Delivery Address', escapeHtml(order.delivery_address || 'Location pending'), true)}
+      ${detailItem('Delivery Address', escapeHtml(labelAddress(order)), true)}
       ${detailItem('House / Apt', escapeHtml(order.house_number || ''))}
       ${detailItem('Street', escapeHtml(order.street_name || ''))}
       ${detailItem('Area', escapeHtml(order.area_name || ''))}
@@ -1859,32 +2173,67 @@ async function loadBusinessData() {
 
 function getLocationPayload() {
   const gpsResult = el('#gpsResult');
-  const mapsLink = el('#mapsLink')?.value.trim() || '';
-  const houseNumber = el('#houseNum')?.value.trim() || '';
-  const streetName = el('#streetName')?.value.trim() || '';
-  const areaName = el('#areaName')?.value.trim() || '';
 
-  if (activeLocTab === 'manual') {
-    return {
-      delivery_address: [houseNumber, streetName, areaName].filter(Boolean).join(', '),
-      house_number: houseNumber || null,
-      street_name: streetName,
-      area_name: areaName,
-      maps_link: null,
-      latitude: null,
-      longitude: null
-    };
-  }
+  const mapsLink =
+    el('#mapsLink')?.value.trim() || '';
 
-  const hasGps = gpsResult?.dataset.lat && gpsResult?.dataset.lng;
+  const houseNumber =
+    el('#houseNum')?.value.trim() || '';
+
+  const streetName =
+    el('#streetName')?.value.trim() || '';
+
+  const areaName =
+    el('#areaName')?.value.trim() || '';
+
+  const hasGps = Boolean(
+    gpsResult?.dataset.lat &&
+    gpsResult?.dataset.lng
+  );
+
+  const completedAddress = [
+    houseNumber,
+    streetName,
+    areaName
+  ].filter(Boolean).join(', ');
+
   return {
-    delivery_address: mapsLink || (hasGps ? 'GPS location captured by business' : ''),
-    house_number: null,
-    street_name: null,
-    area_name: null,
-    maps_link: mapsLink || null,
-    latitude: hasGps ? Number(gpsResult.dataset.lat) : null,
-    longitude: hasGps ? Number(gpsResult.dataset.lng) : null
+    delivery_address:
+      completedAddress ||
+      mapsLink ||
+      (
+        hasGps
+          ? 'GPS location captured by business'
+          : ''
+      ),
+
+    house_number:
+      houseNumber || null,
+
+    street_name:
+      streetName || null,
+
+    area_name:
+      areaName || null,
+
+    /*
+     * Keep the original Google Maps link.
+     */
+    maps_link:
+      mapsLink || null,
+
+    /*
+     * Keep the resolved coordinates.
+     */
+    latitude:
+      hasGps
+        ? Number(gpsResult.dataset.lat)
+        : null,
+
+    longitude:
+      hasGps
+        ? Number(gpsResult.dataset.lng)
+        : null
   };
 }
 
@@ -2183,14 +2532,16 @@ window.switchLocTab = function(tab, btn) {
   const area = el('#areaName');
   if (street) street.required = tab === 'manual';
   if (area) area.required = tab === 'manual';
-  updateBizEstimate();
+  if (tab === 'manual') updateBizEstimate();
 };
+
 
 window.useCurrentLocation = function() {
   const result = el('#gpsResult');
   if (!result) return;
   activeLocTab = 'share';
   window.switchLocTab('share', document.querySelector('.loc-tab'));
+  if (el('#mapsLink')) el('#mapsLink').value = '';
   if (!navigator.geolocation) {
     result.style.display = 'block';
     result.style.background = '#fff3f3';
@@ -2202,13 +2553,29 @@ window.useCurrentLocation = function() {
   result.textContent = '📍 Detecting your location...';
   navigator.geolocation.getCurrentPosition(
     async position => {
+      const accuracy = Number(position.coords.accuracy);
+      if (Number.isFinite(accuracy) && accuracy > 150) {
+        delete result.dataset.lat;
+        delete result.dataset.lng;
+        result.style.background = "#fff8f0";
+        result.textContent = "📍 Your browser returned an approximate location (" + Math.round(accuracy) + "m accuracy). For delivery, paste your Google Maps current-location link instead.";
+        return;
+      }
       result.dataset.lat = position.coords.latitude.toFixed(6);
       result.dataset.lng = position.coords.longitude.toFixed(6);
-      result.textContent = `📍 Location captured. Identifying address and zone...`;
+      result.textContent = "📍 Location captured" + (Number.isFinite(accuracy) ? " (" + Math.round(accuracy) + "m accuracy)" : "") + ". Identifying address and zone...";
       try {
-        const estimate = await estimateDeliveryZone(currentEstimateInput());
+        const estimate = await estimateDeliveryZone(
+          currentEstimateInput()
+        );
+
         latestBizEstimate = estimate;
-        const addressText = estimate.sourceText || estimate.label || 'address detected';
+        applyBusinessResolvedAddress(estimate);
+        const addressText =
+          estimate.resolvedAddress?.formattedAddress ||
+          estimate.sourceText ||
+          estimate.label ||
+          'address detected';
         result.textContent = estimate.zoneCode
           ? `📍 Location captured: ${addressText} - ${estimate.zoneName} (${estimate.region}).`
           : `📍 Location captured: ${addressText}. ${estimate.message}.`;
@@ -2382,25 +2749,36 @@ function bindUi() {
   el('#submitOrderBtn')?.addEventListener('click', submitBusinessOrder);
   window.resetOrderForm();
 
-  // Wire location inputs to estimate updater — use delegation so hidden panel inputs are covered
-  document.addEventListener('input', event => {
+
+  // Wire location inputs to estimate updater - use delegation so hidden panel inputs are covered
+  document.addEventListener("input", event => {
     const id = event.target?.id;
-    if (id === 'mapsLink' || id === 'areaName' || id === 'streetName' || id === 'houseNum' || id === 'codAmount') {
-      if (id === 'streetName' || id === 'areaName') {
-        const message = validateManualAddress(el('#streetName')?.value, el('#areaName')?.value);
-        const error = el('#streetNameErr');
+    if (id === "mapsLink" || id === "areaName" || id === "streetName" || id === "houseNum" || id === "codAmount") {
+      if (id === "mapsLink") {
+        const gpsResult = el("#gpsResult");
+        if (gpsResult) {
+          delete gpsResult.dataset.lat;
+          delete gpsResult.dataset.lng;
+          gpsResult.textContent = "";
+          gpsResult.style.display = "none";
+        }
+      }
+      if (id === "streetName" || id === "areaName") {
+        const message = validateManualAddress(el("#streetName")?.value, el("#areaName")?.value);
+        const error = el("#streetNameErr");
         if (error) {
           error.textContent = message;
-          error.style.display = message && el('#streetName')?.value && el('#areaName')?.value ? 'block' : 'none';
+          error.style.display = message && el("#streetName")?.value && el("#areaName")?.value ? "block" : "none";
         }
-        el('#streetName')?.classList.toggle('has-error', Boolean(message && el('#streetName')?.value && el('#areaName')?.value));
+        el("#streetName")?.classList.toggle("has-error", Boolean(message && el("#streetName")?.value && el("#areaName")?.value));
       }
       updateBizEstimate();
     }
   });
-  document.addEventListener('change', event => {
+
+  document.addEventListener("change", event => {
     const id = event.target?.id;
-    if (id === 'paymentType') {
+    if (id === "paymentType") {
       window.vdSyncBusinessAmountField && window.vdSyncBusinessAmountField();
     }
   });

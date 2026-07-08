@@ -162,6 +162,30 @@ async function geocodeAddressWithOpenStreetMap(address) {
   }
 }
 
+async function resolveGoogleLocation(supabase, payload) {
+  const { data, error } = await supabase.functions.invoke(
+    'resolve-google-location',
+    {
+      body: payload
+    }
+  );
+
+  if (error) {
+    console.error('Location Edge Function error:', error);
+    throw new Error(
+      error.message || 'The Google Maps location could not be resolved.'
+    );
+  }
+
+  if (!data?.success) {
+    throw new Error(
+      data?.message || 'The location could not be resolved.'
+    );
+  }
+
+  return data;
+}
+
 async function reverseGeocode(lat, lng) {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   return reverseGeocodeWithOpenStreetMap(lat, lng);
@@ -258,58 +282,134 @@ export async function estimateDeliveryZone({
     }
   }
 
-  let sourceText = manualText;
-  let sourceLabel = areaName || streetName || '';
-  if (sourceText) debug.source = 'manual';
+    let sourceText = manualText;
+    let sourceLabel = areaName || streetName || '';
+    let resolvedAddress = null;
 
-  if (!sourceText && Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude))) {
-    debug.source = 'gps';
-    sourceText = await withTimeout(
-      reverseGeocode(Number(latitude), Number(longitude)),
-      10000,
-      ''
-    ) || '';
-    sourceLabel = sourceText;
-  }
+    if (sourceText) {
+      debug.source = 'manual';
+    }
 
-  if (!sourceText && mapsLink) {
-    debug.source = 'maps-link';
-    const coords = extractLatLngFromMapsUrl(mapsLink);
-    if (coords) {
-      debug.hasCoordinates = true;
-      sourceText = await withTimeout(
-        reverseGeocode(coords.lat, coords.lng),
-        10000,
-        ''
-      ) || '';
-      sourceLabel = sourceText;
-    } else {
-      sourceText = extractTextFromMapsUrl(mapsLink);
-      sourceLabel = sourceText;
-      if (sourceText) {
-        sourceText = [sourceText, await withTimeout(geocodeAddress(sourceText), 10000, '')].filter(Boolean).join(' ');
+    if (
+      !sourceText &&
+      Number.isFinite(Number(latitude)) &&
+      Number.isFinite(Number(longitude))
+    ) {
+      debug.source = 'gps';
+
+      try {
+        resolvedAddress = await withTimeout(
+          resolveGoogleLocation(supabase, {
+            latitude: Number(latitude),
+            longitude: Number(longitude)
+          }),
+          15000,
+          null
+        );
+      } catch (error) {
+        console.warn('Google GPS resolution failed:', error);
+      }
+
+      if (resolvedAddress) {
+        sourceText =
+          resolvedAddress.searchText ||
+          resolvedAddress.formattedAddress ||
+          '';
+
+        sourceLabel =
+          resolvedAddress.areaName ||
+          resolvedAddress.formattedAddress ||
+          '';
+      } else {
+        // Temporary fallback to the existing OpenStreetMap lookup.
+        sourceText = await withTimeout(
+          reverseGeocode(Number(latitude), Number(longitude)),
+          10000,
+          ''
+        ) || '';
+
+        sourceLabel = sourceText;
       }
     }
-  }
-  debug.addressFound = Boolean(sourceText);
+
+    if (!sourceText && mapsLink) {
+      debug.source = 'maps-link';
+
+      try {
+        resolvedAddress = await withTimeout(
+          resolveGoogleLocation(supabase, {
+            mapsLink
+          }),
+          15000,
+          null
+        );
+      } catch (error) {
+        console.warn('Google Maps link resolution failed:', error);
+      }
+
+      if (resolvedAddress) {
+        debug.hasCoordinates = true;
+
+        sourceText =
+          resolvedAddress.searchText ||
+          resolvedAddress.formattedAddress ||
+          '';
+
+        sourceLabel =
+          resolvedAddress.areaName ||
+          resolvedAddress.formattedAddress ||
+          '';
+      } else {
+        // Existing fallback for full Google Maps links.
+        const coords = extractLatLngFromMapsUrl(mapsLink);
+
+        if (coords) {
+          debug.hasCoordinates = true;
+
+          sourceText = await withTimeout(
+            reverseGeocode(coords.lat, coords.lng),
+            10000,
+            ''
+          ) || '';
+
+          sourceLabel = sourceText;
+        } else {
+          sourceText = extractTextFromMapsUrl(mapsLink);
+          sourceLabel = sourceText;
+
+          if (sourceText) {
+            sourceText = [
+              sourceText,
+              await withTimeout(
+                geocodeAddress(sourceText),
+                10000,
+                ''
+              )
+            ].filter(Boolean).join(' ');
+          }
+        }
+      }
+    }
+
+    debug.addressFound = Boolean(sourceText);
+
 
   if (!sourceText) {
-    const shortMapsLink = /(^|\.)maps\.app\.goo\.gl$|(^|\.)goo\.gl$/i.test(new URL(mapsLink || window.location.href, window.location.origin).hostname || '');
-    return {
-      status: 'unknown',
-      fee: null,
-      zoneCode: '',
-      zoneName: '',
-      region: '',
-      matchedArea: '',
-      sourceText: '',
-      label: 'Location could not be identified',
-      debug,
-      message: shortMapsLink
-        ? 'Short Google Maps links cannot be read here. Use current location or paste a full Google Maps link.'
-        : 'Enter an area or use GPS to estimate'
-    };
-  }
+  return {
+    status: 'unknown',
+    fee: null,
+    zoneCode: '',
+    zoneName: '',
+    region: '',
+    matchedArea: '',
+    sourceText: '',
+    label: 'Location could not be identified',
+    resolvedAddress: null,
+    debug,
+    message:
+      'The Google Maps location could not be identified. Check the link or enter the address manually.'
+  };
+}
 
   const zones = await withTimeout(loadZones(supabase), 7000, null);
   if (!zones) {
@@ -329,12 +429,22 @@ export async function estimateDeliveryZone({
   debug.zonesLoaded = true;
 
   const match = matchZoneFromText(zones, sourceText);
-  return {
-    ...classifyMatch(match),
-    sourceText,
-    debug,
-    label: match?.matchedArea?.area_name || sourceLabel || sourceText
-  };
+
+    if (resolvedAddress && match?.matchedArea?.area_name) {
+      resolvedAddress.areaName = match.matchedArea.area_name;
+    }
+
+    return {
+      ...classifyMatch(match),
+      sourceText,
+      resolvedAddress,
+      debug,
+      label:
+        match?.matchedArea?.area_name ||
+        sourceLabel ||
+        sourceText
+    };
+
 }
 
 export function formatEstimateRows({
@@ -372,6 +482,8 @@ export function formatEstimateRows({
     rows.push(['Address Lookup', estimate.debug.addressFound ? 'Found address text' : 'No address returned']);
     rows.push(['Zone Data', estimate.debug.zonesLoaded ? 'Loaded' : 'Not loaded']);
   }
+
+  if (!paymentType) return rows;
 
   if ((paymentType === 'cod' || paymentType === 'cod-client-delivery') && money.packageValue > 0) {
     rows.push(['Package Value', moneyLabel(money.packageValue)]);
