@@ -1916,18 +1916,18 @@
     window.printOrderLabel = function(orderId) {
       const order = orders.find(item => item.id === orderId);
       if (!order) return showToast('Order not found.');
-      const popup = window.open('', '_blank', 'width=460,height=680');
+      const popup = window.open('', '_blank', 'width=820,height=800');
       if (!popup) return showToast('Allow popups to print this label.');
       const logoUrl = new URL('assets/logo.png', window.location.href).href;
       const itemText = order.external_item_number || order.customer_notes || 'Package';
-      const addressParts = orderLabelAddress(order).split(',').map(part => part.trim()).filter(Boolean);
-      const addressLine1 = addressParts[0] || orderLabelAddress(order);
-      const addressLine2 = addressParts.slice(1).join(', ') || order.area_name || 'Trinidad';
+      const legacyAddress = /^https?:\/\//i.test(String(order.delivery_address || '')) ? '' : order.delivery_address;
+      const addressLine1 = [order.house_number, order.street_name].filter(Boolean).join(' ') || legacyAddress || 'Street pending';
+      const addressLine2 = order.area_name || 'Area pending';
       popup.document.write(`<!doctype html><html><head><title>Label ${escapeHtml(order.order_number)}</title><style>
         @page{size:letter portrait;margin:0.7in}
         *{box-sizing:border-box}
         body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;display:flex;justify-content:center;align-items:flex-start}
-        .label{width:3.35in;max-width:100%;min-height:0;border:2px solid #000;border-radius:18px;padding:18px 22px 14px;display:flex;flex-direction:column;gap:0}
+        .label{width:6.5in;max-width:100%;min-height:0;border:2px solid #000;border-radius:18px;padding:18px 22px 14px;display:flex;flex-direction:column;gap:0}
         .brand{text-align:center;padding-bottom:15px}
         .logo{width:245px;max-width:82%;filter:grayscale(1) contrast(1.55);display:block;margin:0 auto 4px}
         .tag{font-size:10px;font-weight:800;letter-spacing:.22em;text-transform:uppercase}
