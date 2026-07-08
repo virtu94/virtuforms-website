@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -927,7 +927,7 @@
             <option value="mark_delivered">Mark selected as delivered</option>
             <option value="clear_driver">Remove selected from driver</option>
             <option value="recalc_schedule">Recalculate delivery schedule</option>
-            <option value="print_labels">Print selected labels</option>
+            <option value="print_labels">Download selected labels (JPEG)</option>
             <option value="export_selected">Export selected orders</option>
           </select>
           <button class="btn btn-primary btn-sm" type="button" onclick="runAllOrdersBulkAction()">Apply</button>
@@ -1913,80 +1913,364 @@
         || 'Address pending';
     }
 
-    window.printOrderLabel = function(orderId) {
+    function labelCanvasRoundRect(ctx, x, y, width, height, radius) {
+      const r = Math.min(radius, width / 2, height / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + width, y, x + width, y + height, r);
+      ctx.arcTo(x + width, y + height, x, y + height, r);
+      ctx.arcTo(x, y + height, x, y, r);
+      ctx.arcTo(x, y, x + width, y, r);
+      ctx.closePath();
+    }
+
+    function labelCanvasWrapText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 4, align = 'center') {
+      const words = String(text || '').trim().split(/\s+/).filter(Boolean);
+      if (!words.length) return y;
+      const lines = [];
+      let line = '';
+
+      words.forEach(word => {
+        const testLine = line ? `${line} ${word}` : word;
+        if (ctx.measureText(testLine).width > maxWidth && line) {
+          lines.push(line);
+          line = word;
+        } else {
+          line = testLine;
+        }
+      });
+      if (line) lines.push(line);
+
+      const visibleLines = lines.slice(0, maxLines);
+      if (lines.length > maxLines) {
+        let finalLine = visibleLines[maxLines - 1];
+        while (finalLine.length && ctx.measureText(`${finalLine}…`).width > maxWidth) {
+          finalLine = finalLine.slice(0, -1);
+        }
+        visibleLines[maxLines - 1] = `${finalLine.trim()}…`;
+      }
+
+      ctx.textAlign = align;
+      visibleLines.forEach((value, index) => ctx.fillText(value, x, y + (index * lineHeight)));
+      return y + ((visibleLines.length - 1) * lineHeight);
+    }
+
+    function labelCanvasImage(url) {
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error('The VirtuDrop logo could not be loaded.'));
+        image.src = url;
+      });
+    }
+
+    function labelCanvasCircleIcon(ctx, cx, cy, radius, painter) {
+      const gradient = ctx.createLinearGradient(cx - radius, cy - radius, cx + radius, cy + radius);
+      gradient.addColorStop(0, '#00998f');
+      gradient.addColorStop(1, '#00585b');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.save();
+      ctx.strokeStyle = '#ffffff';
+      ctx.fillStyle = '#ffffff';
+      ctx.lineWidth = Math.max(4, radius * 0.095);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      painter(ctx, cx, cy, radius);
+      ctx.restore();
+    }
+
+    function labelCanvasUserIcon(ctx, cx, cy, radius) {
+      ctx.beginPath();
+      ctx.arc(cx, cy - radius * 0.25, radius * 0.22, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(cx, cy + radius * 0.35, radius * 0.42, Math.PI, 0);
+      ctx.lineTo(cx + radius * 0.42, cy + radius * 0.47);
+      ctx.lineTo(cx - radius * 0.42, cy + radius * 0.47);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function labelCanvasPackageIcon(ctx, cx, cy, radius) {
+      const s = radius * 0.82;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - s * 0.68);
+      ctx.lineTo(cx + s * 0.72, cy - s * 0.3);
+      ctx.lineTo(cx, cy + s * 0.08);
+      ctx.lineTo(cx - s * 0.72, cy - s * 0.3);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx - s * 0.72, cy - s * 0.3);
+      ctx.lineTo(cx - s * 0.72, cy + s * 0.48);
+      ctx.lineTo(cx, cy + s * 0.88);
+      ctx.lineTo(cx + s * 0.72, cy + s * 0.48);
+      ctx.lineTo(cx + s * 0.72, cy - s * 0.3);
+      ctx.moveTo(cx, cy + s * 0.08);
+      ctx.lineTo(cx, cy + s * 0.88);
+      ctx.stroke();
+    }
+
+    function labelCanvasPhoneIcon(ctx, cx, cy, radius) {
+      ctx.font = `700 ${Math.round(radius * 1.05)}px Arial, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('☎', cx, cy + 1);
+      ctx.textBaseline = 'alphabetic';
+    }
+
+    function labelCanvasStarIcon(ctx, cx, cy, radius) {
+      const outer = radius * 0.58;
+      const inner = outer * 0.45;
+      ctx.beginPath();
+      for (let i = 0; i < 10; i += 1) {
+        const angle = (-Math.PI / 2) + (i * Math.PI / 5);
+        const r = i % 2 === 0 ? outer : inner;
+        const x = cx + Math.cos(angle) * r;
+        const y = cy + Math.sin(angle) * r;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function labelCanvasInstagramIcon(ctx, cx, cy, size, teal) {
+      ctx.save();
+      ctx.strokeStyle = teal;
+      ctx.lineWidth = 5;
+      ctx.lineJoin = 'round';
+      labelCanvasRoundRect(ctx, cx - size / 2, cy - size / 2, size, size, size * 0.22);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(cx, cy, size * 0.22, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = teal;
+      ctx.beginPath();
+      ctx.arc(cx + size * 0.27, cy - size * 0.27, size * 0.055, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function labelCanvasFacebookIcon(ctx, cx, cy, radius, teal) {
+      ctx.save();
+      ctx.fillStyle = teal;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `800 ${Math.round(radius * 1.55)}px Arial, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('f', cx + 1, cy + radius * 0.13);
+      ctx.restore();
+    }
+
+    window.printOrderLabel = async function(orderId, options = {}) {
       const order = orders.find(item => item.id === orderId);
-      if (!order) return showToast('Order not found.');
-      const popup = window.open('', '_blank', 'width=820,height=800');
-      if (!popup) return showToast('Allow popups to print this label.');
-      const logoUrl = new URL('assets/logo.png', window.location.href).href;
-      const itemText = order.external_item_number || order.customer_notes || 'Package';
-      const legacyAddress = /^https?:\/\//i.test(String(order.delivery_address || '')) ? '' : order.delivery_address;
-      const addressLine1 = [order.house_number, order.street_name].filter(Boolean).join(' ') || legacyAddress || 'Street pending';
-      const addressLine2 = order.area_name || 'Area pending';
-      popup.document.write(`<!doctype html><html><head><title>Label ${escapeHtml(order.order_number)}</title><style>
-        @page{size:letter portrait;margin:0.5in}
-        *{box-sizing:border-box}
-        body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;display:flex;justify-content:center;align-items:flex-start}
-        .label{width:7.2in;max-width:100%;min-height:6.6in;border:2px solid #000;border-radius:18px;padding:0;overflow:hidden;display:flex;flex-direction:column;gap:0;break-inside:avoid;page-break-inside:avoid}
-        .brand{text-align:center;padding:18px 22px 15px}
-        .logo{width:245px;max-width:82%;filter:grayscale(1) contrast(1.55);display:block;margin:0 auto 4px}
-        .tag{font-size:10px;font-weight:800;letter-spacing:.22em;text-transform:uppercase}
-        .rule{border-top:2px solid #000}
-        .split{display:grid;grid-template-columns:1fr 1fr}
-        .cell{padding:18px 8px}
-        .cell + .cell{border-left:2px solid #000;padding-left:24px}
-        .k{font-size:13px;font-weight:900;letter-spacing:.07em;text-transform:uppercase}
-        .big{font-size:18px;font-weight:900;line-height:1.05;margin-top:12px;white-space:nowrap;letter-spacing:-.02em}
-        .date{font-size:17px;margin-top:14px}
-        .main{min-height:2.55in}
-        .icon{width:44px;height:44px;border:2px solid #000;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px}.icon svg{width:25px;height:25px;display:block;fill:none;stroke:#000;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-        .center{text-align:center}
-        .name{font-size:18px;font-weight:900;margin:8px 0 10px}
-        .addr{font-size:13px;line-height:1.35;margin-top:5px}
-        .phone{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:center;margin-top:22px}
-        .phone .icon{margin:0}
-        .item{font-size:17px;font-weight:900;line-height:1.15;margin:8px 0 18px}
-        .detail{font-size:13px;font-weight:800;line-height:1.55}
-        .review{text-align:center;padding:13px 0}
-        .review .icon{margin-bottom:7px}
-        .review-title{font-size:14px;font-weight:900;letter-spacing:.05em}
-        .review-copy{font-size:12px;line-height:1.25;margin-top:4px}
-        .foot{display:grid;grid-template-columns:1fr auto 1.25fr;gap:16px;align-items:center;padding:12px 22px 14px}
-        .thanks{font-size:26px;font-weight:900}
-        .social{font-size:16px;font-weight:800;display:flex;gap:12px;align-items:center;justify-content:center}
-        .social svg{width:25px;height:25px;display:block;fill:none;stroke:#000;stroke-width:2}
-        .divider{height:36px;border-left:2px solid #000}
-      </style></head><body onload="setTimeout(()=>window.print(),250)"><div class="label">
-        <div class="brand"><img class="logo" src="${logoUrl}" alt="VirtuDrop"><div class="tag">Professional &bull; Structured &bull; Reliable</div></div>
-        <div class="rule"></div>
-        <div class="split">
-          <div class="cell"><div class="k">Order #</div><div class="big">${escapeHtml(order.order_number || '')}</div></div>
-          <div class="cell"><div class="k">Date</div><div class="date">${escapeHtml(new Date(order.created_at || Date.now()).toLocaleDateString('en-TT', { year: 'numeric', month: 'short', day: 'numeric' }))}</div></div>
-        </div>
-        <div class="rule"></div>
-        <div class="split main">
-          <div class="cell center">
-            <div class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4.5 21a7.5 7.5 0 0 1 15 0"></path></svg></div><div class="k">Ship To:</div>
-            <div class="name">${escapeHtml(order.customer_name || '')}</div>
-            <div class="addr">${escapeHtml(addressLine1)}</div>
-            <div class="addr">${escapeHtml(addressLine2)}</div>
-            <div class="phone"><div class="icon">☎</div><div><div class="k">Phone:</div><div>${escapeHtml(order.customer_phone || '')}</div></div></div>
-          </div>
-          <div class="cell center">
-            <div class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 7 8-4 8 4-8 4-8-4Z"></path><path d="M4 7v10l8 4 8-4V7M12 11v10"></path></svg></div><div class="k">Item / Contents:</div>
-            <div class="item">${escapeHtml(itemText)}</div>
-            <div class="detail">Client: ${escapeHtml(clientName(order))}</div>
-            <div class="detail">Area: ${escapeHtml(order.area_name || '—')}</div>
-            <div class="detail">Qty: ${escapeHtml(String(order.checked_in_parcel_count || 1))}</div>
-          </div>
-        </div>
-        <div class="rule"></div>
-        <div class="review"><div class="icon">★</div><div class="review-title">Leave a Review</div><div class="review-copy">Love your order?<br>Your feedback means<br>a lot to us!</div></div>
-        <div class="rule"></div>
-        <div class="foot"><div class="thanks">Thank you!</div><div class="divider"></div><div class="social"><svg viewBox="0 0 24 24" aria-label="Instagram"><rect x="3" y="3" width="18" height="18" rx="5"></rect><circle cx="12" cy="12" r="4"></circle><circle cx="17.5" cy="6.5" r="1" fill="#000" stroke="none"></circle></svg><svg viewBox="0 0 24 24" aria-label="Facebook"><path d="M14 21v-8h3l.5-4H14V7c0-1.2.6-2 2.2-2H18V1.5c-.7-.1-1.7-.2-3-.2-3 0-5 1.8-5 5.2V9H7v4h3v8"></path></svg><span>@VirtuForms</span></div></div>
-      </div></body></html>`);
-      popup.document.close();
+      if (!order) {
+        showToast('Order not found.');
+        return false;
+      }
+
+      const isBulk = Boolean(options.bulk);
+      if (!isBulk) showToast('Preparing JPEG label...');
+
+      try {
+        if (document.fonts?.ready) await document.fonts.ready;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 1200;
+        canvas.height = 1800;
+        const ctx = canvas.getContext('2d');
+        const teal = '#006b69';
+        const black = '#090909';
+        const lightText = '#252525';
+        const left = 100;
+        const right = 1100;
+        const middle = 600;
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.strokeStyle = teal;
+        ctx.lineWidth = 7;
+        labelCanvasRoundRect(ctx, 30, 30, 1140, 1740, 52);
+        ctx.stroke();
+
+        const logoUrl = new URL('assets/logo.png', window.location.href).href;
+        try {
+          const logo = await labelCanvasImage(logoUrl);
+          const maxWidth = 560;
+          const maxHeight = 345;
+          const scale = Math.min(maxWidth / logo.naturalWidth, maxHeight / logo.naturalHeight);
+          const drawWidth = logo.naturalWidth * scale;
+          const drawHeight = logo.naturalHeight * scale;
+          ctx.drawImage(logo, (canvas.width - drawWidth) / 2, 60, drawWidth, drawHeight);
+        } catch (logoError) {
+          ctx.fillStyle = teal;
+          ctx.font = '800 94px Inter, Arial, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('VirtuDrop', 600, 285);
+        }
+
+        ctx.fillStyle = teal;
+        ctx.font = '600 24px Inter, Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.letterSpacing = '2px';
+        ctx.fillText('PROFESSIONAL  •  STRUCTURED  •  RELIABLE', 600, 470);
+        ctx.letterSpacing = '0px';
+
+        const drawRule = y => {
+          ctx.strokeStyle = teal;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(left, y);
+          ctx.lineTo(right, y);
+          ctx.stroke();
+        };
+        drawRule(520);
+
+        ctx.fillStyle = teal;
+        ctx.textAlign = 'left';
+        ctx.font = '800 29px Inter, Arial, sans-serif';
+        ctx.fillText('ORDER #', 110, 610);
+        ctx.fillStyle = black;
+        ctx.font = '800 48px Inter, Arial, sans-serif';
+        const orderNumber = String(order.order_number || 'Pending');
+        labelCanvasWrapText(ctx, orderNumber, 110, 688, 430, 52, 2, 'left');
+
+        ctx.strokeStyle = teal;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(middle, 565);
+        ctx.lineTo(middle, 730);
+        ctx.stroke();
+
+        ctx.fillStyle = teal;
+        ctx.font = '800 29px Inter, Arial, sans-serif';
+        ctx.fillText('DATE', 740, 610);
+        ctx.fillStyle = black;
+        ctx.font = '500 34px Inter, Arial, sans-serif';
+        const labelDate = new Date(order.created_at || Date.now()).toLocaleDateString('en-TT', {
+          year: 'numeric', month: 'long', day: 'numeric'
+        });
+        ctx.fillText(labelDate, 740, 685);
+        drawRule(770);
+
+        const legacyAddress = /^https?:\/\//i.test(String(order.delivery_address || '')) ? '' : order.delivery_address;
+        const addressLine1 = [order.house_number, order.street_name].filter(Boolean).join(' ') || legacyAddress || 'Street pending';
+        const addressLine2 = order.area_name || 'Area pending';
+        const itemText = order.external_item_number || order.customer_notes || 'Package';
+        const quantity = String(order.checked_in_parcel_count || 1);
+
+        labelCanvasCircleIcon(ctx, 320, 875, 50, labelCanvasUserIcon);
+        ctx.fillStyle = teal;
+        ctx.font = '800 28px Inter, Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('SHIP TO:', 320, 980);
+        ctx.fillStyle = black;
+        ctx.font = '800 38px Inter, Arial, sans-serif';
+        let shipY = labelCanvasWrapText(ctx, order.customer_name || 'Customer', 320, 1045, 430, 44, 2, 'center');
+        ctx.fillStyle = lightText;
+        ctx.font = '500 27px Inter, Arial, sans-serif';
+        shipY = labelCanvasWrapText(ctx, addressLine1, 320, shipY + 62, 430, 36, 3, 'center');
+        shipY = labelCanvasWrapText(ctx, addressLine2, 320, shipY + 45, 430, 36, 2, 'center');
+
+        labelCanvasCircleIcon(ctx, 170, 1320, 44, labelCanvasPhoneIcon);
+        ctx.fillStyle = teal;
+        ctx.font = '800 27px Inter, Arial, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('PHONE:', 235, 1310);
+        ctx.fillStyle = black;
+        ctx.font = '500 29px Inter, Arial, sans-serif';
+        ctx.fillText(order.customer_phone || 'Not provided', 235, 1355);
+
+        ctx.strokeStyle = teal;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(middle, 820);
+        ctx.lineTo(middle, 1395);
+        ctx.stroke();
+
+        labelCanvasCircleIcon(ctx, 880, 875, 50, labelCanvasPackageIcon);
+        ctx.fillStyle = teal;
+        ctx.font = '800 28px Inter, Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('ITEM / CONTENTS:', 880, 980);
+        ctx.fillStyle = black;
+        ctx.font = '800 36px Inter, Arial, sans-serif';
+        const itemBottom = labelCanvasWrapText(ctx, itemText, 880, 1045, 430, 43, 4, 'center');
+
+        ctx.font = '700 27px Inter, Arial, sans-serif';
+        ctx.fillStyle = black;
+        let detailY = Math.max(itemBottom + 80, 1210);
+        const details = [
+          `Business: ${clientName(order)}`,
+          `Area: ${order.area_name || '—'}`,
+          `Qty: ${quantity}`
+        ];
+        details.forEach(detail => {
+          detailY = labelCanvasWrapText(ctx, detail, 880, detailY, 430, 35, 2, 'center') + 47;
+        });
+
+        drawRule(1420);
+        labelCanvasCircleIcon(ctx, 600, 1495, 47, labelCanvasStarIcon);
+        ctx.fillStyle = teal;
+        ctx.font = '800 28px Inter, Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('LEAVE A REVIEW', 600, 1585);
+        ctx.fillStyle = black;
+        ctx.font = '500 25px Inter, Arial, sans-serif';
+        ctx.fillText('Love your order?', 600, 1625);
+        ctx.fillText('Your feedback means a lot to us!', 600, 1660);
+
+        drawRule(1695);
+        ctx.fillStyle = teal;
+        ctx.font = '800 47px Inter, Arial, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('Thank you!', 130, 1760);
+
+        ctx.strokeStyle = teal;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(560, 1715);
+        ctx.lineTo(560, 1768);
+        ctx.stroke();
+
+        labelCanvasInstagramIcon(ctx, 690, 1740, 54, teal);
+        labelCanvasFacebookIcon(ctx, 785, 1740, 29, teal);
+        ctx.fillStyle = teal;
+        ctx.font = '700 28px Inter, Arial, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('@VirtuDropTT', 835, 1750);
+
+        const jpegBlob = await new Promise((resolve, reject) => {
+          canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Could not create the JPEG image.')), 'image/jpeg', 0.95);
+        });
+        const fileUrl = URL.createObjectURL(jpegBlob);
+        const anchor = document.createElement('a');
+        const safeOrderNumber = orderNumber.replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '') || 'Order';
+        anchor.href = fileUrl;
+        anchor.download = `VirtuDrop-Label-${safeOrderNumber}.jpg`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        setTimeout(() => URL.revokeObjectURL(fileUrl), 1500);
+
+        if (!isBulk) showToast('JPEG label downloaded.');
+        return true;
+      } catch (error) {
+        console.error('Label download failed:', error);
+        showToast(error?.message || 'The label could not be downloaded.');
+        return false;
+      }
     };
+
+    window.downloadOrderLabel = window.printOrderLabel;
 
     window.viewDeliverySignature = function(orderId) {
       const order = orders.find(item => item.id === orderId);
@@ -3965,8 +4249,12 @@
         return;
       }
       if (action === 'print_labels') {
-        if (!window.confirm(`Print ${selectedIds.length} label(s)? Your browser may ask to allow popups.`)) return;
-        selectedIds.forEach(orderId => printOrderLabel(orderId));
+        if (!window.confirm(`Download ${selectedIds.length} JPEG label(s)? Your browser may ask you to allow multiple downloads.`)) return;
+        for (const orderId of selectedIds) {
+          await printOrderLabel(orderId, { bulk: true });
+          await new Promise(resolve => setTimeout(resolve, 250));
+        }
+        showToast(`${selectedIds.length} JPEG label(s) prepared.`);
         return;
       }
 
@@ -4052,7 +4340,7 @@
             </label>
             <div class="order-row-actions">
               <button class="btn btn-primary btn-sm" onclick="openAdminOrderEdit('${order.id}')">Edit Order</button>
-              <button class="btn btn-ghost btn-sm" onclick="printOrderLabel('${order.id}')">Print Label</button>
+              <button class="btn btn-ghost btn-sm" onclick="printOrderLabel('${order.id}')">Download Label</button>
               ${order.order_status === 'cancelled'
                 ? '<span class="badge badge-unpaid">Cancelled</span>'
                 : `<button class="btn btn-danger btn-sm" onclick="openAdminOrderCancel('${order.id}')">Cancel Order</button>`}
