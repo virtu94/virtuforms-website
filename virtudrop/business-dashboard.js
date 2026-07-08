@@ -644,6 +644,9 @@ function applyBusinessResolvedAddress(estimate) {
       `📍 Address identified: ` +
       `${resolved.formattedAddress}. ` +
       `Please review the street name and area.`;
+
+    gpsResult.dataset.resolvedMapsLink =
+      el("#mapsLink")?.value.trim() || "";
   }
 
   /*
@@ -2177,14 +2180,24 @@ function getLocationPayload() {
   const mapsLink =
     el('#mapsLink')?.value.trim() || '';
 
+  const addressBelongsToMapsLink =
+    !mapsLink ||
+    gpsResult?.dataset.resolvedMapsLink === mapsLink;
+
   const houseNumber =
-    el('#houseNum')?.value.trim() || '';
+    addressBelongsToMapsLink
+      ? el('#houseNum')?.value.trim() || ''
+      : '';
 
   const streetName =
-    el('#streetName')?.value.trim() || '';
+    addressBelongsToMapsLink
+      ? el('#streetName')?.value.trim() || ''
+      : '';
 
   const areaName =
-    el('#areaName')?.value.trim() || '';
+    addressBelongsToMapsLink
+      ? el('#areaName')?.value.trim() || ''
+      : '';
 
   const hasGps = Boolean(
     gpsResult?.dataset.lat &&
@@ -2759,9 +2772,16 @@ function bindUi() {
         if (gpsResult) {
           delete gpsResult.dataset.lat;
           delete gpsResult.dataset.lng;
+          delete gpsResult.dataset.resolvedMapsLink;
           gpsResult.textContent = "";
           gpsResult.style.display = "none";
         }
+        const house = el("#houseNum");
+        const street = el("#streetName");
+        const area = el("#areaName");
+        if (house) house.value = "";
+        if (street) street.value = "";
+        if (area) area.value = "";
       }
       if (id === "streetName" || id === "areaName") {
         const message = validateManualAddress(el("#streetName")?.value, el("#areaName")?.value);
