@@ -1924,11 +1924,11 @@
       const addressLine1 = [order.house_number, order.street_name].filter(Boolean).join(' ') || legacyAddress || 'Street pending';
       const addressLine2 = order.area_name || 'Area pending';
       popup.document.write(`<!doctype html><html><head><title>Label ${escapeHtml(order.order_number)}</title><style>
-        @page{size:letter portrait;margin:0.7in}
+        @page{size:letter portrait;margin:0.5in}
         *{box-sizing:border-box}
         body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;display:flex;justify-content:center;align-items:flex-start}
-        .label{width:6.5in;max-width:100%;min-height:0;border:2px solid #000;border-radius:18px;padding:18px 22px 14px;display:flex;flex-direction:column;gap:0}
-        .brand{text-align:center;padding-bottom:15px}
+        .label{width:7.2in;max-width:100%;min-height:6.6in;border:2px solid #000;border-radius:18px;padding:0;overflow:hidden;display:flex;flex-direction:column;gap:0;break-inside:avoid;page-break-inside:avoid}
+        .brand{text-align:center;padding:18px 22px 15px}
         .logo{width:245px;max-width:82%;filter:grayscale(1) contrast(1.55);display:block;margin:0 auto 4px}
         .tag{font-size:10px;font-weight:800;letter-spacing:.22em;text-transform:uppercase}
         .rule{border-top:2px solid #000}
@@ -1936,14 +1936,14 @@
         .cell{padding:18px 8px}
         .cell + .cell{border-left:2px solid #000;padding-left:24px}
         .k{font-size:13px;font-weight:900;letter-spacing:.07em;text-transform:uppercase}
-        .big{font-size:25px;font-weight:900;line-height:1.05;margin-top:12px}
+        .big{font-size:18px;font-weight:900;line-height:1.05;margin-top:12px;white-space:nowrap;letter-spacing:-.02em}
         .date{font-size:17px;margin-top:14px}
-        .main{min-height:2.15in}
-        .icon{width:38px;height:38px;border:2px solid #000;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-weight:900;font-size:20px}
+        .main{min-height:2.55in}
+        .icon{width:44px;height:44px;border:2px solid #000;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px}.icon svg{width:25px;height:25px;display:block;fill:none;stroke:#000;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
         .center{text-align:center}
         .name{font-size:18px;font-weight:900;margin:8px 0 10px}
         .addr{font-size:13px;line-height:1.35;margin-top:5px}
-        .phone{display:grid;grid-template-columns:38px 1fr;gap:12px;align-items:center;margin-top:22px}
+        .phone{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:center;margin-top:22px}
         .phone .icon{margin:0}
         .item{font-size:17px;font-weight:900;line-height:1.15;margin:8px 0 18px}
         .detail{font-size:13px;font-weight:800;line-height:1.55}
@@ -1951,10 +1951,10 @@
         .review .icon{margin-bottom:7px}
         .review-title{font-size:14px;font-weight:900;letter-spacing:.05em}
         .review-copy{font-size:12px;line-height:1.25;margin-top:4px}
-        .foot{display:grid;grid-template-columns:1fr auto 1.25fr;gap:16px;align-items:center;padding-top:10px}
+        .foot{display:grid;grid-template-columns:1fr auto 1.25fr;gap:16px;align-items:center;padding:12px 22px 14px}
         .thanks{font-size:26px;font-weight:900}
         .social{font-size:16px;font-weight:800;display:flex;gap:12px;align-items:center;justify-content:center}
-        .mark{width:25px;height:25px;border:2px solid #000;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;font-weight:900}
+        .social svg{width:25px;height:25px;display:block;fill:none;stroke:#000;stroke-width:2}
         .divider{height:36px;border-left:2px solid #000}
       </style></head><body onload="setTimeout(()=>window.print(),250)"><div class="label">
         <div class="brand"><img class="logo" src="${logoUrl}" alt="VirtuDrop"><div class="tag">Professional &bull; Structured &bull; Reliable</div></div>
@@ -1966,14 +1966,14 @@
         <div class="rule"></div>
         <div class="split main">
           <div class="cell center">
-            <div class="icon">●</div><div class="k">Ship To:</div>
+            <div class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4.5 21a7.5 7.5 0 0 1 15 0"></path></svg></div><div class="k">Ship To:</div>
             <div class="name">${escapeHtml(order.customer_name || '')}</div>
             <div class="addr">${escapeHtml(addressLine1)}</div>
             <div class="addr">${escapeHtml(addressLine2)}</div>
             <div class="phone"><div class="icon">☎</div><div><div class="k">Phone:</div><div>${escapeHtml(order.customer_phone || '')}</div></div></div>
           </div>
           <div class="cell center">
-            <div class="icon">□</div><div class="k">Item / Contents:</div>
+            <div class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 7 8-4 8 4-8 4-8-4Z"></path><path d="M4 7v10l8 4 8-4V7M12 11v10"></path></svg></div><div class="k">Item / Contents:</div>
             <div class="item">${escapeHtml(itemText)}</div>
             <div class="detail">Client: ${escapeHtml(clientName(order))}</div>
             <div class="detail">Area: ${escapeHtml(order.area_name || '—')}</div>
@@ -1983,7 +1983,7 @@
         <div class="rule"></div>
         <div class="review"><div class="icon">★</div><div class="review-title">Leave a Review</div><div class="review-copy">Love your order?<br>Your feedback means<br>a lot to us!</div></div>
         <div class="rule"></div>
-        <div class="foot"><div class="thanks">Thank you!</div><div class="divider"></div><div class="social"><span class="mark">◎</span><span class="mark">f</span><span>VirtuForms</span></div></div>
+        <div class="foot"><div class="thanks">Thank you!</div><div class="divider"></div><div class="social"><svg viewBox="0 0 24 24" aria-label="Instagram"><rect x="3" y="3" width="18" height="18" rx="5"></rect><circle cx="12" cy="12" r="4"></circle><circle cx="17.5" cy="6.5" r="1" fill="#000" stroke="none"></circle></svg><svg viewBox="0 0 24 24" aria-label="Facebook"><path d="M14 21v-8h3l.5-4H14V7c0-1.2.6-2 2.2-2H18V1.5c-.7-.1-1.7-.2-3-.2-3 0-5 1.8-5 5.2V9H7v4h3v8"></path></svg><span>@VirtuForms</span></div></div>
       </div></body></html>`);
       popup.document.close();
     };
