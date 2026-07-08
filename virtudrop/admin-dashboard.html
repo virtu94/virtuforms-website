@@ -1021,21 +1021,23 @@
 
       <div class="panel" id="panel-sorting-manifests">
         <div class="section-heading">
-          <h2>Sorting &amp; Manifests</h2>
-          <p>Sort received parcels by confirmed zone, prepare driver manifests, and record evening handover.</p>
+          <h2>Driver Manifests</h2>
+          <p>Select a driver to review their assigned orders, mark the manifest ready, confirm driver collection, or close the manifest.</p>
         </div>
-        <div class="card" style="margin-bottom:1rem;">
+        <div class="filter-bar">
+          <select class="filter-select" id="manifestDriverFilter" onchange="renderManifests()"><option value="">Select driver</option></select>
+          <select class="filter-select" id="manifestStatusFilter" onchange="renderManifests()"><option value="active">Current Manifests</option><option value="draft">Draft</option><option value="ready">Ready</option><option value="collected">Collected by Driver</option><option value="closed">Closed</option><option value="all">All Manifests</option></select>
+          <input class="filter-input" id="manifestSearch" type="search" placeholder="Search order or customer" oninput="renderManifests()" />
+        </div>
+        <div id="manifestList"><div class="card">Select a driver to manage their manifest.</div></div>
+        <div class="card" style="margin-top:1rem;">
           <div class="card-title">Parcels Ready for Sorting</div>
+          <div class="td-sub" style="margin-bottom:0.75rem;">Use this only for received parcels that still need to be marked sorted before driver assignment.</div>
           <div class="table-wrap"><table>
             <thead><tr><th>Order</th><th>Client / Customer</th><th>Delivery Area</th><th>Parcels</th><th>Zone</th><th>Action</th></tr></thead>
             <tbody id="sortingQueueBody"><tr><td colspan="6">Loading sorting queue...</td></tr></tbody>
           </table></div>
         </div>
-        <div class="filter-bar">
-          <select class="filter-select" id="manifestStatusFilter" onchange="renderManifests()"><option value="active">Current Manifests</option><option value="draft">Draft</option><option value="ready">Ready</option><option value="collected">Collected by Driver</option><option value="closed">Closed</option><option value="all">All Manifests</option></select>
-          <input class="filter-input" id="manifestSearch" type="search" placeholder="Search manifest, driver or order" oninput="renderManifests()" />
-        </div>
-        <div id="manifestList"><div class="card">Loading delivery manifests...</div></div>
       </div>
 
       <div class="panel" id="panel-returns-redelivery">
@@ -2070,6 +2072,14 @@
           .sort((a, b) => String(a[1].business_name || '').localeCompare(String(b[1].business_name || '')))
           .map(([id, client]) => `<option value="${escapeHtml(id)}">${escapeHtml(client.business_name || client.slug || id)}</option>`)
           .join('');
+      }
+      const manifestDriverFilter = document.getElementById('manifestDriverFilter');
+      if (manifestDriverFilter) {
+        const currentManifestDriver = manifestDriverFilter.value;
+        manifestDriverFilter.innerHTML = '<option value="">Select driver</option>' + drivers
+          .map(driver => '<option value="' + escapeHtml(driver.id) + '">' + escapeHtml(driverName(driver.id)) + '</option>')
+          .join('');
+        manifestDriverFilter.value = currentManifestDriver;
       }
       const acctDriver = document.getElementById('acctDriver');
       if (acctDriver) {
@@ -4787,12 +4797,18 @@
     window.renderManifests = function() {
       const list = document.getElementById('manifestList');
       if (!list) return;
+      const selectedDriverId = document.getElementById('manifestDriverFilter')?.value || '';
       const filter = document.getElementById('manifestStatusFilter')?.value || 'active';
       const search = String(document.getElementById('manifestSearch')?.value || '').trim().toLowerCase();
+      if (!selectedDriverId) {
+        list.innerHTML = '<div class="card"><strong>Select a driver to manage a manifest.</strong><div class="td-sub" style="margin-top:0.5rem;">After selecting a driver, you will see their assigned orders and can mark the manifest ready, confirm driver collection, or close it.</div></div>';
+        return;
+      }
       const rows = deliveryManifests.map(manifest => ({
         ...manifest,
         orders: (manifest.orders || []).filter(order => !isCancelledOrder(order))
       })).filter(manifest => {
+        if (manifest.driver_id !== selectedDriverId) return false;
         if (!(manifest.orders || []).length) return false;
         if (filter === 'active' && !['draft', 'ready', 'collected'].includes(manifest.status)) return false;
         if (!['active', 'all'].includes(filter) && manifest.status !== filter) return false;
@@ -4812,7 +4828,7 @@
           </tbody></table></div>
           ${manifest.handed_to_driver_at ? `<div class="td-sub" style="margin-top:0.75rem;">Handover confirmed ${new Date(manifest.handed_to_driver_at).toLocaleString('en-TT')}</div>` : ''}
         </div>`).join('') || (deliveryManifests.length
-          ? '<div class="card">No manifests match the selected status or search.</div>'
+          ? '<div class="card">No manifests match the selected driver, status, or search.</div>'
           : '<div class="card"><strong>No manifests have been created yet.</strong><div class="td-sub" style="margin-top:0.5rem;">Sort a received parcel, then assign it to a driver. Existing assignments require database migration 20260624_010_manifest_backfill.sql.</div></div>');
     };
 
