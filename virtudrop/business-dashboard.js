@@ -989,10 +989,10 @@ window.printDeliveryLabel = function(orderId) {
   const addressLine1 = addressParts[0] || labelAddress(order);
   const addressLine2 = addressParts.slice(1).join(', ') || order.area_name || 'Trinidad';
   popup.document.write(`<!doctype html><html><head><title>Label ${escapeHtml(order.order_number)}</title><style>
-    @page{size:4in 6in;margin:0.12in}
+    @page{size:letter portrait;margin:0.7in}
     *{box-sizing:border-box}
-    body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif}
-    .label{width:100%;min-height:5.76in;border:3px solid #000;border-radius:18px;padding:18px 22px 14px;display:flex;flex-direction:column;gap:0}
+    body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;display:flex;justify-content:center;align-items:flex-start}
+    .label{width:3.35in;max-width:100%;min-height:0;border:2px solid #000;border-radius:18px;padding:18px 22px 14px;display:flex;flex-direction:column;gap:0}
     .brand{text-align:center;padding-bottom:15px}
     .logo{width:245px;max-width:82%;filter:grayscale(1) contrast(1.55);display:block;margin:0 auto 4px}
     .tag{font-size:10px;font-weight:800;letter-spacing:.22em;text-transform:uppercase}
