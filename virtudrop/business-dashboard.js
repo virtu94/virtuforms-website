@@ -333,7 +333,8 @@ async function estimateDeliveryZone({
     hasMapsLink: Boolean(mapsLink),
     source: '',
     addressFound: false,
-    zonesLoaded: false
+    zonesLoaded: false,
+    locationError: ''
   };
   const manualText = [houseNumber, streetName, areaName].filter(Boolean).join(' ');
   if (streetName || areaName) {
@@ -382,6 +383,9 @@ async function estimateDeliveryZone({
           '[VirtuDrop Google Location] GPS resolution failed:',
           error
         );
+        debug.locationError =
+          error?.message ||
+          'Google GPS resolution failed.';
       }
 
       if (resolvedAddress) {
@@ -427,6 +431,9 @@ async function estimateDeliveryZone({
           '[VirtuDrop Google Location] Maps-link resolution failed:',
           error
         );
+        debug.locationError =
+          error?.message ||
+          'Google Maps link resolution failed.';
       }
 
       if (resolvedAddress) {
@@ -479,6 +486,10 @@ async function estimateDeliveryZone({
     debug.addressFound = Boolean(sourceText);
 
     if (!sourceText) {
+      const coordinatesMessage = debug.hasCoordinates
+        ? 'Coordinates were captured, but address lookup failed. Enter the street and area manually so we can calculate the delivery fee.'
+        : 'The Google Maps location could not be identified. Check the link or enter the address manually.';
+
       return {
         status: 'unknown',
         fee: null,
@@ -490,9 +501,7 @@ async function estimateDeliveryZone({
         resolvedAddress: null,
         label: 'Location could not be identified',
         debug,
-        message:
-          'The Google Maps location could not be identified. ' +
-          'Check the link or enter the address manually.'
+        message: coordinatesMessage
       };
     }
 
@@ -587,6 +596,9 @@ function formatEstimateRows({ estimate, paymentType, packageValue }) {
     rows.push(['Location Source', estimate.debug.source || 'none']);
     rows.push(['Coordinates', estimate.debug.hasCoordinates ? 'Captured' : 'Not available']);
     rows.push(['Address Lookup', estimate.debug.addressFound ? 'Found address text' : 'No address returned']);
+    if (estimate.debug.locationError) {
+      rows.push(['Lookup Error', estimate.debug.locationError]);
+    }
     rows.push(['Zone Data', estimate.debug.zonesLoaded ? 'Loaded' : 'Not loaded']);
   }
 
@@ -740,6 +752,31 @@ function applyBusinessResolvedAddress(estimate) {
   }
  }
 
+
+function promptBusinessManualLocationIfNeeded(estimate) {
+  if (
+    activeLocTab === 'manual' ||
+    estimate?.status !== 'unknown' ||
+    !estimate?.debug?.hasCoordinates ||
+    estimate?.debug?.addressFound
+  ) return;
+
+  const manualButton = all('.loc-tab').find(
+    button => button.getAttribute('onclick')?.includes("'manual'")
+  );
+
+  if (typeof window.switchLocTab === 'function') {
+    window.switchLocTab('manual', manualButton);
+  }
+
+  const gpsResult = el('#gpsResult');
+  if (gpsResult) {
+    gpsResult.style.display = 'block';
+    gpsResult.style.background = '#fff4e5';
+    gpsResult.textContent = estimate.message;
+  }
+}
+
  async function updateBizEstimate() {
   const block = el('#bizEstimateBlock');
 
@@ -801,6 +838,7 @@ function applyBusinessResolvedAddress(estimate) {
       });
       latestBizEstimate = estimate;
       applyBusinessResolvedAddress(estimate);
+      promptBusinessManualLocationIfNeeded(estimate);
 
       if (amountEl) {
         amountEl.textContent = estimate.fee !== null

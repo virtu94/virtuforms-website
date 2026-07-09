@@ -320,7 +320,8 @@ export async function estimateDeliveryZone({
     hasMapsLink: Boolean(mapsLink),
     source: '',
     addressFound: false,
-    zonesLoaded: false
+    zonesLoaded: false,
+    locationError: ''
   };
   const manualText = [houseNumber, streetName, areaName].filter(Boolean).join(' ');
 
@@ -368,6 +369,7 @@ export async function estimateDeliveryZone({
         );
       } catch (error) {
         console.warn('Google GPS resolution failed:', error);
+        debug.locationError = error?.message || 'Google GPS resolution failed.';
       }
 
       if (resolvedAddress) {
@@ -405,6 +407,7 @@ export async function estimateDeliveryZone({
         );
       } catch (error) {
         console.warn('Google Maps link resolution failed:', error);
+        debug.locationError = error?.message || 'Google Maps link resolution failed.';
       }
 
       if (resolvedAddress) {
@@ -455,6 +458,10 @@ export async function estimateDeliveryZone({
 
 
   if (!sourceText) {
+  const coordinatesMessage = debug.hasCoordinates
+    ? 'Coordinates were captured, but address lookup failed. Enter the street and area manually so we can calculate the delivery fee.'
+    : 'The Google Maps location could not be identified. Check the link or enter the address manually.';
+
   return {
     status: 'unknown',
     fee: null,
@@ -466,8 +473,7 @@ export async function estimateDeliveryZone({
     label: 'Location could not be identified',
     resolvedAddress: null,
     debug,
-    message:
-      'The Google Maps location could not be identified. Check the link or enter the address manually.'
+    message: coordinatesMessage
   };
 }
 
@@ -551,6 +557,9 @@ export function formatEstimateRows({
     rows.push(['Location Source', estimate.debug.source || 'none']);
     rows.push(['Coordinates', estimate.debug.hasCoordinates ? 'Captured' : 'Not available']);
     rows.push(['Address Lookup', estimate.debug.addressFound ? 'Found address text' : 'No address returned']);
+    if (estimate.debug.locationError) {
+      rows.push(['Lookup Error', estimate.debug.locationError]);
+    }
     rows.push(['Zone Data', estimate.debug.zonesLoaded ? 'Loaded' : 'Not loaded']);
   }
 

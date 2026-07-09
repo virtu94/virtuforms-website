@@ -446,7 +446,7 @@
   <script src="vd-modal.js"></script>
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-    import { estimateDeliveryZone, formatEstimateRows } from './vd-zone-estimator.js?v=20260708-business-rates-1';
+    import { estimateDeliveryZone, formatEstimateRows } from './vd-zone-estimator.js?v=20260709-location-debug-1';
     import { calculateOrderMoney, financialRequestFields, validateManualAddress, validatePickupLocation } from './vd-order-money.js?v=20260624-split-cod-1';
 
     const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
@@ -668,6 +668,35 @@
       }
     }
 
+    function promptManualLocationIfNeeded(estimate) {
+      if (
+        activeLocTab === 'manual' ||
+        estimate?.status !== 'unknown' ||
+        !estimate?.debug?.hasCoordinates ||
+        estimate?.debug?.addressFound
+      ) return;
+
+      document.querySelectorAll('.loc-tab').forEach(button => {
+        button.classList.remove('active');
+      });
+
+      document.querySelector(".loc-tab[onclick*='manual']")?.classList.add('active');
+
+      document.querySelectorAll('.loc-panel').forEach(panel => {
+        panel.classList.remove('active');
+      });
+
+      document.getElementById('loc-manual')?.classList.add('active');
+      activeLocTab = 'manual';
+
+      const gpsResult = document.getElementById('gpsResult');
+      if (gpsResult) {
+        gpsResult.className = 'gps-result error';
+        gpsResult.style.display = 'block';
+        gpsResult.textContent = estimate.message;
+      }
+    }
+
     async function updateEstimate() {
       const card = document.getElementById('estimateCard');
       const payment = document.querySelector('input[name="payment"]:checked')?.value;
@@ -690,6 +719,8 @@
         try {
           const estimate = await withEstimateTimeout(estimateDeliveryZone(input));
           latestEstimate = estimate;
+          applyResolvedAddress(estimate);
+          promptManualLocationIfNeeded(estimate);
 
           if (estimate.fee !== null) {
             estimateAmount.textContent = `$${Number(estimate.fee).toFixed(2)} TTD`;
