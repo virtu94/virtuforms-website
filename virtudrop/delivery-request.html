@@ -576,9 +576,13 @@
       const gpsResult = document.getElementById('gpsResult');
       const hasGps = gpsResult.dataset.lat && gpsResult.dataset.lng;
       const useSharedLocation = activeLocTab !== 'manual';
+      const clientSelect = document.getElementById('clientSelect');
+      const selectedClientOption = clientSelect.options[clientSelect.selectedIndex];
       return {
         supabase,
-        businessClientId: document.getElementById('clientSelect').value === 'other' ? null : document.getElementById('clientSelect').value,
+        businessClientId: clientSelect.value === 'other' ? null : clientSelect.value,
+        businessName: clientSelect.value === 'other' ? '' : (selectedClientOption?.textContent || ''),
+        businessSlug: '',
         houseNumber: useSharedLocation ? '' : document.getElementById('houseNum').value.trim(),
         streetName: useSharedLocation ? '' : document.getElementById('streetName').value.trim(),
         areaName: useSharedLocation ? '' : document.getElementById('areaName').value.trim(),

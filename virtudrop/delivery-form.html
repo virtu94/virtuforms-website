@@ -636,6 +636,8 @@
       return {
         supabase,
         businessClientId: businessClient?.id || null,
+        businessName: businessClient?.business_name || '',
+        businessSlug: businessClient?.slug || '',
         houseNumber: useSharedLocation ? '' : document.getElementById('houseNum').value.trim(),
         streetName: useSharedLocation ? '' : document.getElementById('streetName').value.trim(),
         areaName: useSharedLocation ? '' : document.getElementById('areaName').value.trim(),

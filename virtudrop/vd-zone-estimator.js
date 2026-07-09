@@ -10,9 +10,60 @@ const EXTENDED_AREA_NAMES = new Set([
   'point fortin', 'oropouche', 'san francique', 'la brea', 'aripero', 'rousillac',
   'carenage', 'chaguaramas', 'chaguaramus', 'paramin'
 ]);
+const YD_HARVEST_IDENTIFIERS = new Set([
+  'ydharvest',
+  'ydharvestltd',
+  'ydharvestlimited'
+]);
+const YD_HARVEST_RATE_ROWS = [
+  ['rate_band', 'standard', 35, 'YD Harvest primary zones'],
+  ['area', 'Wallerfield', 45, 'YD Harvest East'],
+  ['area', 'Cumuto', 50, 'YD Harvest East'],
+  ['area', 'San Rafael', 45, 'YD Harvest East'],
+  ['area', 'Brazil', 45, 'YD Harvest East'],
+  ['area', 'San Chiquito', 55, 'YD Harvest East'],
+  ['area', 'Oropouche', 50, 'YD Harvest listed East/South area'],
+  ['area', 'Oropuche', 50, 'YD Harvest listed East/South spelling alias'],
+  ['area', 'Guanapo', 50, 'YD Harvest East'],
+  ['area', 'Heights of Guanapo', 55, 'YD Harvest East'],
+  ['area', 'Lopinot', 50, 'YD Harvest East'],
+  ['area', 'Surrey Village', 45, 'YD Harvest East - verify exact area during zone confirmation'],
+  ['area', 'Arena', 40, 'YD Harvest Central'],
+  ['area', 'Gran Couva', 45, 'YD Harvest Central - some areas'],
+  ['area', 'Gran Couva Some Areas', 45, 'YD Harvest Central - some areas'],
+  ['area', 'Todds Road', 45, 'YD Harvest Central'],
+  ['area', 'Todds Road Station', 45, 'YD Harvest Central - verify exact area during zone confirmation'],
+  ['area', 'Las Lomas', 45, 'YD Harvest Central - listed as $40-$45; confirm if needed'],
+  ['area', 'Esmeralda', 35, 'YD Harvest Central'],
+  ['area', 'Madras', 40, 'YD Harvest Central'],
+  ['area', 'St. Helena Eastern Sections', 40, 'YD Harvest Central'],
+  ['area', 'St Helena Eastern Sections', 40, 'YD Harvest Central'],
+  ['area', 'Chickland', 40, 'YD Harvest Central'],
+  ['area', 'Point Fortin', 60, 'YD Harvest South'],
+  ['area', 'San Francique', 50, 'YD Harvest South'],
+  ['area', 'La Brea', 55, 'YD Harvest South'],
+  ['area', 'Aripero', 55, 'YD Harvest South'],
+  ['area', 'Rousillac', 55, 'YD Harvest South'],
+  ['area', 'Fyzabad', 55, 'YD Harvest South'],
+  ['area', 'Williamsville', 45, 'YD Harvest South'],
+  ['area', 'Indian Walk', 55, 'YD Harvest South'],
+  ['area', 'Barrackpore', 55, 'YD Harvest South'],
+  ['area', 'Siparia', 60, 'YD Harvest South'],
+  ['area', 'Carenage', 45, 'YD Harvest West'],
+  ['area', 'Chaguaramas', 55, 'YD Harvest West'],
+  ['area', 'Chaguaramus', 55, 'YD Harvest West spelling alias'],
+  ['area', 'Paramin', 55, 'YD Harvest West - minimum; confirm higher fee where needed'],
+  ['area', 'Paramin Some Areas', 55, 'YD Harvest West - minimum; confirm higher fee where needed']
+].map(([match_type, match_value, delivery_fee, rate_note]) => ({
+  match_type,
+  match_value,
+  delivery_fee,
+  rate_note
+}));
 
 let zonesPromise = null;
 const businessRatesPromises = new Map();
+const businessIdentityPromises = new Map();
 
 function withTimeout(promise, ms, fallback) {
   let timer = null;
@@ -33,6 +84,54 @@ function normalise(value) {
     .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function normaliseIdentifier(value) {
+  return normalise(value).replace(/\s+/g, '');
+}
+
+function isYdHarvestIdentity(identity = {}) {
+  return [
+    identity.business_name,
+    identity.businessName,
+    identity.slug,
+    identity.businessSlug
+  ].some(value => YD_HARVEST_IDENTIFIERS.has(normaliseIdentifier(value)));
+}
+
+async function loadBusinessIdentity(supabase, businessClientId) {
+  if (!businessClientId) return null;
+  if (!businessIdentityPromises.has(businessClientId)) {
+    businessIdentityPromises.set(businessClientId, (async () => {
+      const result = await supabase
+        .from('business_clients')
+        .select('business_name, slug')
+        .eq('id', businessClientId)
+        .maybeSingle();
+
+      if (result.error) {
+        console.warn('Business identity could not be loaded:', result.error);
+        return null;
+      }
+
+      return result.data || null;
+    })());
+  }
+  return businessIdentityPromises.get(businessClientId);
+}
+
+function mergeBusinessRates(primaryRates, secondaryRates) {
+  const merged = [];
+  const seen = new Set();
+
+  for (const rate of [...primaryRates, ...secondaryRates]) {
+    const key = `${rate.match_type}:${normalise(rate.match_value)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(rate);
+  }
+
+  return merged;
 }
 
 function areaVariants(area) {
@@ -83,10 +182,16 @@ async function loadZones(supabase) {
   return zonesPromise;
 }
 
-async function loadBusinessDeliveryRates(supabase, businessClientId) {
+async function loadBusinessDeliveryRates(supabase, businessClientId, businessIdentity = {}) {
   if (!businessClientId) return [];
   if (!businessRatesPromises.has(businessClientId)) {
     businessRatesPromises.set(businessClientId, (async () => {
+      const identity = isYdHarvestIdentity(businessIdentity)
+        ? businessIdentity
+        : await loadBusinessIdentity(supabase, businessClientId);
+      const fixedRates = isYdHarvestIdentity(identity)
+        ? YD_HARVEST_RATE_ROWS
+        : [];
       const result = await supabase
         .from('business_delivery_rates')
         .select('match_type, match_value, delivery_fee, rate_note')
@@ -96,10 +201,10 @@ async function loadBusinessDeliveryRates(supabase, businessClientId) {
 
       if (result.error) {
         console.warn('Business delivery rates could not be loaded:', result.error);
-        return [];
+        return fixedRates;
       }
 
-      return result.data || [];
+      return mergeBusinessRates(fixedRates, result.data || []);
     })());
   }
   return businessRatesPromises.get(businessClientId);
@@ -313,7 +418,9 @@ export async function estimateDeliveryZone({
   areaName = '',
   mapsLink = '',
   latitude = null,
-  longitude = null
+  longitude = null,
+  businessName = '',
+  businessSlug = ''
 }) {
   const debug = {
     hasCoordinates: Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude)),
@@ -511,10 +618,19 @@ export async function estimateDeliveryZone({
         sourceText
     };
 
+    const fixedBusinessRates = isYdHarvestIdentity({
+      businessName,
+      businessSlug
+    })
+      ? YD_HARVEST_RATE_ROWS
+      : [];
     const businessRates = await withTimeout(
-      loadBusinessDeliveryRates(supabase, businessClientId),
+      loadBusinessDeliveryRates(supabase, businessClientId, {
+        businessName,
+        businessSlug
+      }),
       5000,
-      []
+      fixedBusinessRates
     );
 
     return applyBusinessRate(estimate, businessRates, sourceText);
