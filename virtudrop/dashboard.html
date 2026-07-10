@@ -282,6 +282,15 @@
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
     .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
     .form-group.full { grid-column: 1 / -1; }
+    .pickup-fee-callout {
+      margin-top: 0.25rem; padding: 1rem 1.1rem;
+      background: #fff8f0; border: 2px solid #e07a3a; border-radius: 10px;
+      color: #7a4a1a; line-height: 1.45;
+    }
+    .pickup-fee-callout strong {
+      display: block; font-size: 1.15rem; color: #1a1a1a; margin-bottom: 0.15rem;
+    }
+    .pickup-fee-callout span { display: block; font-size: 0.92rem; font-weight: 600; }
 
     label { font-size: 0.88rem; font-weight: 600; color: #1a1a1a; }
     label span { font-weight: 400; color: #6a6a6a; font-size: 0.82rem; }
@@ -1083,7 +1092,10 @@
                 <input type="checkbox" id="pickupRequired" style="width:18px; height:18px; accent-color:#2a9d8f;" />
                 Pickup required from the business location
               </label>
-              <div style="font-size:0.8rem; color:#6a6a6a;">Pickup is free when collecting 5 or more packages. Pickups of 4 packages or fewer cost TTD $20.</div>
+              <div class="pickup-fee-callout">
+                <strong>TTD $20 pickup fee for 1-4 packages</strong>
+                <span>Pickup is free when collecting 5 or more packages.</span>
+              </div>
             </div>
             <div class="form-group full" id="pickupDetails" style="display:none;">
               <div class="form-grid" style="padding:1rem; background:#f8fbfa; border:1px solid #dcecea; border-radius:8px;">

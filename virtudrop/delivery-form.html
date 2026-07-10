@@ -184,6 +184,16 @@
     .cod-amount { margin-top: 1rem; display: none; }
     .cod-amount.show { display: block; animation: fadeInUp 0.3s ease; }
 
+    .pickup-fee-callout {
+      margin-top: 0.75rem; padding: 1rem 1.1rem;
+      background: #fff8f0; border: 2px solid #e07a3a; border-radius: 10px;
+      color: #7a4a1a; line-height: 1.45;
+    }
+    .pickup-fee-callout strong {
+      display: block; font-size: 1.15rem; color: #1a1a1a; margin-bottom: 0.15rem;
+    }
+    .pickup-fee-callout span { display: block; font-size: 0.92rem; font-weight: 600; }
+
     /* ── Submit ── */
     .submit-section { margin-top: 1.5rem; }
     .submit-btn {
@@ -399,7 +409,10 @@
           <input type="checkbox" id="pickupRequired" style="width:18px; height:18px; accent-color:#2a9d8f;" />
           VirtuDrop should collect the parcel from the business
         </label>
-        <p style="font-size:0.82rem; color:#6a6a6a; margin-top:0.45rem;">Pickup is free when collecting 5 or more packages. Pickups of 4 packages or fewer cost TTD $20.</p>
+        <p class="pickup-fee-callout">
+          <strong>TTD $20 pickup fee for 1-4 packages</strong>
+          <span>Pickup is free when collecting 5 or more packages.</span>
+        </p>
         <div id="pickupDetails" style="display:none; margin-top:1rem;">
           <div class="addr-grid">
             <div class="field"><label for="pickupContactName">Pickup Contact <span class="req">*</span></label><input class="input" id="pickupContactName" type="text" /></div>
