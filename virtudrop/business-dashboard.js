@@ -443,8 +443,13 @@ async function estimateDeliveryZone({
     zonesLoaded: false,
     locationError: ''
   };
-  const manualText = [houseNumber, streetName, areaName].filter(Boolean).join(' ');
-  if (streetName || areaName) {
+  const hasCoordinateInput = Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude));
+  const hasMapsInput = Boolean(mapsLink);
+  const shouldUseManualAddress = !hasCoordinateInput && !hasMapsInput;
+  const manualText = shouldUseManualAddress
+    ? [houseNumber, streetName, areaName].filter(Boolean).join(' ')
+    : '';
+  if (shouldUseManualAddress && (streetName || areaName)) {
     const addressError = validateManualAddress(streetName, areaName);
     if (addressError) {
       return {
@@ -462,7 +467,7 @@ async function estimateDeliveryZone({
     }
   }
   let sourceText = manualText;
-  let sourceLabel = areaName || streetName || '';
+  let sourceLabel = shouldUseManualAddress ? (areaName || streetName || '') : '';
   let resolvedAddress = null;
 
     if (sourceText) {
@@ -852,22 +857,9 @@ function applyBusinessResolvedAddress(estimate) {
   }
 
   /*
-   * Switch to the address panel so the client can review
-   * and correct the converted address.
+   * Keep shared-location mode active. The resolved address is saved
+   * for review, but coordinates remain the estimate source of truth.
    */
-  if (activeLocTab !== 'manual') {
-    const manualButton = all('.loc-tab').find(
-      button =>
-        button
-          .getAttribute('onclick')
-          ?.includes("'manual'")
-    );
-
-    window.switchLocTab(
-      'manual',
-      manualButton
-    );
-  }
  }
 
 

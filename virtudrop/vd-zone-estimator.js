@@ -430,9 +430,14 @@ export async function estimateDeliveryZone({
     zonesLoaded: false,
     locationError: ''
   };
-  const manualText = [houseNumber, streetName, areaName].filter(Boolean).join(' ');
+  const hasCoordinateInput = Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude));
+  const hasMapsInput = Boolean(mapsLink);
+  const shouldUseManualAddress = !hasCoordinateInput && !hasMapsInput;
+  const manualText = shouldUseManualAddress
+    ? [houseNumber, streetName, areaName].filter(Boolean).join(' ')
+    : '';
 
-  if (streetName || areaName) {
+  if (shouldUseManualAddress && (streetName || areaName)) {
     const addressError = validateManualAddress(streetName, areaName);
     if (addressError) {
       return {
@@ -451,7 +456,7 @@ export async function estimateDeliveryZone({
   }
 
     let sourceText = manualText;
-    let sourceLabel = areaName || streetName || '';
+    let sourceLabel = shouldUseManualAddress ? (areaName || streetName || '') : '';
     let resolvedAddress = null;
 
     if (sourceText) {
