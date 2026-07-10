@@ -184,16 +184,6 @@
     .cod-amount { margin-top: 1rem; display: none; }
     .cod-amount.show { display: block; animation: fadeInUp 0.3s ease; }
 
-    .pickup-fee-callout {
-      margin-top: 0.75rem; padding: 1rem 1.1rem;
-      background: #fff8f0; border: 2px solid #e07a3a; border-radius: 10px;
-      color: #7a4a1a; line-height: 1.45;
-    }
-    .pickup-fee-callout strong {
-      display: block; font-size: 1.15rem; color: #1a1a1a; margin-bottom: 0.15rem;
-    }
-    .pickup-fee-callout span { display: block; font-size: 0.92rem; font-weight: 600; }
-
     /* ── Submit ── */
     .submit-section { margin-top: 1.5rem; }
     .submit-btn {
@@ -291,6 +281,12 @@
           <span class="error-text" id="custPhoneErr">Please enter the phone number in this format: XXX-XXXX.</span>
           <span style="font-size:0.8rem; color:#6a6a6a; margin-top:0.3rem;">Your tracking link will be sent to this number via WhatsApp.</span>
         </div>
+
+        <div class="field">
+          <label for="orderItem">What did you order? <span class="req">*</span></label>
+          <input class="input" type="text" id="orderItem" placeholder="e.g. Dress, shoes, skincare items" maxlength="200" />
+          <span class="error-text" id="orderItemErr">Please enter what you ordered.</span>
+        </div>
       </div>
 
       <!-- ── 2. Delivery Location ── -->
@@ -355,7 +351,7 @@
             <input type="radio" name="payment" value="cod" />
             <div class="payment-option-text">
               <h4>💵 Cash on Delivery</h4>
-              <p>I will pay the full amount (item + delivery fee) to the driver when my order arrives. Cash or LINX accepted.</p>
+              <p>I will pay the full amount (item + delivery fee) to the driver when my order arrives. Cash accepted.</p>
             </div>
           </label>
           <label class="payment-option" onclick="selectPayment(this, 'pkg-online')">
@@ -400,37 +396,6 @@
             </select>
             <span class="error-text" id="clientFeeSettlementErr">Please select how the delivery fee will be settled.</span>
           </div>
-        </div>
-      </div>
-
-      <div class="form-card">
-        <div class="card-label">Parcel Pickup</div>
-        <label style="display:flex; align-items:center; gap:0.65rem; cursor:pointer; font-weight:700;">
-          <input type="checkbox" id="pickupRequired" style="width:18px; height:18px; accent-color:#2a9d8f;" />
-          VirtuDrop should collect the parcel from the business
-        </label>
-        <p class="pickup-fee-callout">
-          <strong>TTD $20 pickup fee for 1-4 packages</strong>
-          <span>Pickup is free when collecting 5 or more packages.</span>
-        </p>
-        <div id="pickupDetails" style="display:none; margin-top:1rem;">
-          <div class="addr-grid">
-            <div class="field"><label for="pickupContactName">Pickup Contact <span class="req">*</span></label><input class="input" id="pickupContactName" type="text" /></div>
-            <div class="field"><label for="pickupContactPhone">Pickup Phone <span class="req">*</span></label><input class="input" id="pickupContactPhone" type="tel" placeholder="868-XXX-XXXX" /></div>
-          </div>
-          <div class="field"><label for="pickupBusinessName">Business Name <span class="opt">(optional)</span></label><input class="input" id="pickupBusinessName" type="text" /></div>
-          <div class="addr-grid">
-            <div class="field"><label for="pickupStreetName">Pickup Street Name <span class="req">*</span></label><input class="input" id="pickupStreetName" type="text" placeholder="Street, road or building" /></div>
-            <div class="field"><label for="pickupAreaName">Pickup Area <span class="req">*</span></label><input class="input" id="pickupAreaName" type="text" placeholder="Community or area" /></div>
-          </div>
-          <p style="font-size:0.78rem; color:#6a6a6a; margin:-0.25rem 0 0.85rem;">Pickup is available only in primary and extended delivery zones.</p>
-          <div class="addr-grid">
-            <div class="field"><label for="pickupWindow">Available Window <span class="req">*</span></label><input class="input" id="pickupWindow" type="text" placeholder="e.g. 9 AM–11 AM" /></div>
-            <div class="field"><label for="pickupParcelCount">Number of Parcels <span class="req">*</span></label><input class="input" id="pickupParcelCount" type="number" min="1" step="1" value="1" /></div>
-          </div>
-          <div class="field" id="pickupFeeSettlementBlock"><label for="pickupFeeSettlement">Pickup Fee Settlement <span class="req">*</span></label><select class="input" id="pickupFeeSettlement"><option value="deduct_from_remittance">Deduct from remittance</option><option value="pay_separately">Pay separately</option></select></div>
-          <div class="field"><label for="pickupInstructions">Pickup Instructions <span class="opt">(optional)</span></label><textarea class="input" id="pickupInstructions"></textarea></div>
-          <span class="error-text" id="pickupErr">Complete the required pickup information.</span>
         </div>
       </div>
 
@@ -496,7 +461,7 @@
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
     import { estimateDeliveryZone, formatEstimateRows } from './vd-zone-estimator.js?v=20260709-location-debug-1';
-    import { calculateOrderMoney, financialRequestFields, validateManualAddress, validatePickupLocation } from './vd-order-money.js?v=20260624-split-cod-1';
+    import { calculateOrderMoney, financialRequestFields, validateManualAddress } from './vd-order-money.js?v=20260624-split-cod-1';
 
     const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnbXp6YXZ4aHVhcmxhY252bm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Mjk4NTksImV4cCI6MjA5NDIwNTg1OX0.7-YKlwLrhUYUYbiii93ZvgX01TxVephApDNCP50Rl54';
@@ -808,9 +773,7 @@
             paymentType: payment,
             packageValue,
             clientFeeSettlement: document.getElementById('clientFeeSettlement').value || null,
-            pickupRequired: document.getElementById('pickupRequired').checked,
-            pickupParcelCount: Number(document.getElementById('pickupParcelCount').value || 1),
-            pickupFeeSettlement: document.getElementById('pickupFeeSettlement').value || null
+            pickupRequired: false
           }));
         } catch (error) {
           console.warn('Estimate error:', error);
@@ -847,15 +810,6 @@
       });
     });
     document.getElementById('clientFeeSettlement')?.addEventListener('change', updateEstimate);
-    document.getElementById('pickupRequired')?.addEventListener('change', event => {
-      document.getElementById('pickupDetails').style.display = event.target.checked ? 'block' : 'none';
-      updateEstimate();
-    });
-    document.getElementById('pickupParcelCount')?.addEventListener('input', event => {
-      document.getElementById('pickupFeeSettlementBlock').style.display = Number(event.target.value || 1) >= 5 ? 'none' : 'block';
-      updateEstimate();
-    });
-    document.getElementById('pickupFeeSettlement')?.addEventListener('change', updateEstimate);
 
     function clearErrors() {
       document.querySelectorAll('.error-text').forEach(e => e.classList.remove('show'));
@@ -901,6 +855,7 @@
       const gpsResult = document.getElementById('gpsResult');
       const streetName = document.getElementById('streetName').value.trim();
       const areaName = document.getElementById('areaName').value.trim();
+      const orderItem = document.getElementById('orderItem').value.trim();
       const notes = document.getElementById('custNotes').value.trim();
       const payment = document.querySelector('input[name="payment"]:checked');
       const codAmount = Number(document.getElementById('codAmount').value);
@@ -917,6 +872,14 @@
 
       if (phoneDigits.length !== 7) {
         showErr('custPhone', 'custPhoneErr', 'Please enter a valid Trinidad & Tobago phone number in the format XXX-XXXX.');
+        ok = false;
+      }
+
+      if (orderItem.length < 2) {
+        showErr('orderItem', 'orderItemErr', 'Please enter what you ordered.');
+        ok = false;
+      } else if (orderItem.length > 200) {
+        showErr('orderItem', 'orderItemErr', 'Please keep what you ordered under 200 characters.');
         ok = false;
       }
 
@@ -958,24 +921,6 @@
         showErr('clientFeeSettlement', 'clientFeeSettlementErr', 'Please select how the delivery fee will be settled.');
         ok = false;
       }
-      if (document.getElementById('pickupRequired').checked) {
-        const pickupCount = Number(document.getElementById('pickupParcelCount').value);
-        const pickupLocationError = validatePickupLocation(
-          document.getElementById('pickupStreetName').value,
-          document.getElementById('pickupAreaName').value
-        );
-        const pickupComplete = document.getElementById('pickupContactName').value.trim().length >= 2
-          && document.getElementById('pickupContactPhone').value.replace(/\D/g, '').length >= 7
-          && !pickupLocationError
-          && document.getElementById('pickupWindow').value.trim().length >= 3
-          && Number.isInteger(pickupCount) && pickupCount > 0;
-        if (!pickupComplete) {
-          document.getElementById('pickupErr').textContent = pickupLocationError || 'Complete the required pickup information.';
-          document.getElementById('pickupErr').classList.add('show');
-          ok = false;
-        }
-      }
-
       if (notes.length > 500) {
         showErr('custNotes', 'custNotesErr', 'Please keep notes under 500 characters.');
         ok = false;
@@ -1047,9 +992,7 @@
         packageValue: paymentValue === 'cod' || paymentValue === 'cod-client-delivery' ? Number(document.getElementById('codAmount').value) : 0,
         deliveryFee: estimate?.fee ?? null,
         clientFeeSettlement: document.getElementById('clientFeeSettlement').value || null,
-        pickupRequired: document.getElementById('pickupRequired').checked,
-        pickupParcelCount: Number(document.getElementById('pickupParcelCount').value || 1),
-        pickupFeeSettlement: document.getElementById('pickupFeeSettlement').value || null
+        pickupRequired: false
       });
       const requestData = {
         business_client_id: businessClient.id,
@@ -1063,14 +1006,10 @@
         pricing_rate_band: estimate?.rateBand || (estimate?.status === 'remote' ? 'remote' : null),
         quote_status: estimate?.fee === null ? 'required' : 'not_required',
         ...financialRequestFields(money),
-        pickup_contact_name: money.pickupRequired ? document.getElementById('pickupContactName').value.trim() : null,
-        pickup_contact_phone: money.pickupRequired ? document.getElementById('pickupContactPhone').value.trim() : null,
-        pickup_business_name: money.pickupRequired ? document.getElementById('pickupBusinessName').value.trim() : null,
-        pickup_street_name: money.pickupRequired ? document.getElementById('pickupStreetName').value.trim() : null,
-        pickup_area_name: money.pickupRequired ? document.getElementById('pickupAreaName').value.trim() : null,
-        pickup_window: money.pickupRequired ? document.getElementById('pickupWindow').value.trim() : null,
-        pickup_instructions: money.pickupRequired ? document.getElementById('pickupInstructions').value.trim() : null,
-        customer_notes: document.getElementById('custNotes').value.trim() || null
+        customer_notes: [
+          'Ordered: ' + document.getElementById('orderItem').value.trim(),
+          document.getElementById('custNotes').value.trim()
+        ].filter(Boolean).join('\n') || null
       };
 
       try {
