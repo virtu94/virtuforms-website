@@ -777,20 +777,23 @@ function formatEstimateRows({ estimate, paymentType, packageValue }) {
 function currentEstimateInput() {
   const gpsResult = el('#gpsResult');
   const hasGps = gpsResult?.dataset.lat && gpsResult?.dataset.lng;
-  const useSharedLocation = activeLocTab !== 'manual';
   const mapsLink = el('#mapsLink')?.value.trim() || '';
-  const useMapsLink = useSharedLocation && Boolean(mapsLink);
+  const houseNumber = el('#houseNum')?.value.trim() || '';
+  const streetName = el('#streetName')?.value.trim() || '';
+  const areaName = el('#areaName')?.value.trim() || '';
+  const useManualAddress = activeLocTab === 'manual' || Boolean(streetName || areaName);
+  const useMapsLink = !useManualAddress && Boolean(mapsLink);
   return {
     supabase,
     businessClientId: business?.id || null,
     businessName: business?.business_name || '',
     businessSlug: business?.slug || '',
-    houseNumber: useSharedLocation ? '' : (el('#houseNum')?.value.trim() || ''),
-    streetName: useSharedLocation ? '' : (el('#streetName')?.value.trim() || ''),
-    areaName: useSharedLocation ? '' : (el('#areaName')?.value.trim() || ''),
+    houseNumber: useManualAddress ? houseNumber : '',
+    streetName: useManualAddress ? streetName : '',
+    areaName: useManualAddress ? areaName : '',
     mapsLink: useMapsLink ? mapsLink : '',
-    latitude: useSharedLocation && !useMapsLink && hasGps ? Number(gpsResult.dataset.lat) : null,
-    longitude: useSharedLocation && !useMapsLink && hasGps ? Number(gpsResult.dataset.lng) : null
+    latitude: !useManualAddress && !useMapsLink && hasGps ? Number(gpsResult.dataset.lat) : null,
+    longitude: !useManualAddress && !useMapsLink && hasGps ? Number(gpsResult.dataset.lng) : null
   };
 }
 
@@ -800,7 +803,6 @@ function hasEstimateLocation(input) {
 }
 
 function clearSharedLocationForManualEdit() {
-  if (activeLocTab !== 'manual') return;
   const gpsResult = el('#gpsResult');
   if (gpsResult) {
     delete gpsResult.dataset.lat;
@@ -2999,7 +3001,10 @@ window.switchLocTab = function(tab, btn) {
   const area = el('#areaName');
   if (street) street.required = tab === 'manual';
   if (area) area.required = tab === 'manual';
-  if (tab === 'manual') updateBizEstimate();
+  if (tab === 'manual') {
+    clearSharedLocationForManualEdit();
+    updateBizEstimate();
+  }
 };
 
 

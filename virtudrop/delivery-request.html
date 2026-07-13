@@ -459,7 +459,7 @@
   <script src="vd-modal.js"></script>
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-    import { estimateDeliveryZone, formatEstimateRows } from './vd-zone-estimator.js?v=20260713-manual-estimate-1';
+    import { estimateDeliveryZone, formatEstimateRows } from './vd-zone-estimator.js?v=20260713-manual-priority-1';
     import { calculateOrderMoney, financialRequestFields, validateManualAddress, validatePickupLocation } from './vd-order-money.js?v=20260624-split-cod-1';
 
     const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
@@ -500,6 +500,7 @@
       document.querySelectorAll('.loc-panel').forEach(p => p.classList.remove('active'));
       document.getElementById('loc-' + tab).classList.add('active');
       activeLocTab = tab;
+      if (tab === 'manual') clearSharedLocationForManualEdit();
       clearErrors();
     };
 
@@ -588,7 +589,10 @@
     function estimateInput() {
       const gpsResult = document.getElementById('gpsResult');
       const hasGps = gpsResult.dataset.lat && gpsResult.dataset.lng;
-      const useSharedLocation = activeLocTab !== 'manual';
+      const houseNumber = document.getElementById('houseNum').value.trim();
+      const streetName = document.getElementById('streetName').value.trim();
+      const areaName = document.getElementById('areaName').value.trim();
+      const useManualAddress = activeLocTab === 'manual' || Boolean(streetName || areaName);
       const clientSelect = document.getElementById('clientSelect');
       const selectedClientOption = clientSelect.options[clientSelect.selectedIndex];
       return {
@@ -596,12 +600,12 @@
         businessClientId: clientSelect.value === 'other' ? null : clientSelect.value,
         businessName: clientSelect.value === 'other' ? '' : (selectedClientOption?.textContent || ''),
         businessSlug: '',
-        houseNumber: useSharedLocation ? '' : document.getElementById('houseNum').value.trim(),
-        streetName: useSharedLocation ? '' : document.getElementById('streetName').value.trim(),
-        areaName: useSharedLocation ? '' : document.getElementById('areaName').value.trim(),
-        mapsLink: useSharedLocation && !hasGps ? document.getElementById('mapsLink').value.trim() : '',
-        latitude: useSharedLocation && hasGps ? Number(gpsResult.dataset.lat) : null,
-        longitude: useSharedLocation && hasGps ? Number(gpsResult.dataset.lng) : null
+        houseNumber: useManualAddress ? houseNumber : '',
+        streetName: useManualAddress ? streetName : '',
+        areaName: useManualAddress ? areaName : '',
+        mapsLink: !useManualAddress && !hasGps ? document.getElementById('mapsLink').value.trim() : '',
+        latitude: !useManualAddress && hasGps ? Number(gpsResult.dataset.lat) : null,
+        longitude: !useManualAddress && hasGps ? Number(gpsResult.dataset.lng) : null
       };
     }
 
@@ -611,7 +615,6 @@
     }
 
     function clearSharedLocationForManualEdit() {
-      if (activeLocTab !== 'manual') return;
       const gpsResult = document.getElementById('gpsResult');
       if (gpsResult) {
         delete gpsResult.dataset.lat;
