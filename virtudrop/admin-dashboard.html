@@ -1116,6 +1116,8 @@
                   <th>Order ID</th>
                   <th>Client</th>
                   <th>Customer</th>
+                  <th>Package</th>
+                  <th>Zone / Address</th>
                   <th>Status</th>
                   <th>Collect</th>
                   <th>Current Driver</th>
@@ -1125,7 +1127,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr><td colspan="9">Loading driver assignments...</td></tr>
+                <tr><td colspan="11">Loading driver assignments...</td></tr>
               </tbody>
             </table>
           </div>
@@ -1911,6 +1913,17 @@
         || order.maps_link
         || order.area_name
         || 'Address pending';
+    }
+
+    function orderDeliveryZoneText(order) {
+      if (order.zone_status === 'pending' || order.order_status === 'zone_pending') return 'Zone pending';
+      const zone = zones.find(item => item.id === order.zone_id);
+      if (zone?.code) return "Zone " + zone.code;
+      return order.zone_code ? "Zone " + order.zone_code : "Zone confirmed";
+    }
+
+    function orderPackageAssignmentText(order) {
+      return order.customer_notes || order.external_item_number || 'Package';
     }
 
     function labelCanvasRoundRect(ctx, x, y, width, height, radius) {
@@ -5523,6 +5536,8 @@
             </td>
             <td>${escapeHtml(clientName(order))}</td>
             <td><div class="td-name">${escapeHtml(order.customer_name || '—')}</div><div class="td-sub">${escapeHtml(order.customer_phone || '')}</div></td>
+            <td><div class="td-name">${escapeHtml(orderPackageAssignmentText(order))}</div></td>
+            <td><div class="td-name">${escapeHtml(orderDeliveryZoneText(order))}</div><div class="td-sub">${escapeHtml(orderLabelAddress(order))}</div></td>
             <td><span class="badge ${collected ? 'badge-active' : isAssigned ? 'badge-confirmed' : 'badge-pending'}">${escapeHtml(status)}</span></td>
             <td>${moneyFull(driverCollects(order))}${order.redelivery_fee > 0 ? `<div class="td-sub">Includes ${moneyFull(order.redelivery_fee)} redelivery</div>` : ''}</td>
             <td>${isAssigned ? escapeHtml(driverName(order.assigned_driver_id)) : 'Unassigned'}</td>
@@ -5530,7 +5545,7 @@
             <td>${controls}</td>
             <td><button class="btn btn-primary btn-sm" onclick="assignDriver('${order.id}')">${isAssigned ? 'Change Driver' : 'Assign'}</button></td>
           </tr>`;
-      }).join('') || '<tr><td colspan="9">No parcels are currently available for driver assignment or reassignment.</td></tr>';
+      }).join('') || '<tr><td colspan="11">No parcels are currently available for driver assignment or reassignment.</td></tr>';
       syncDriverAssignBulkControls();
     }
 
@@ -5761,7 +5776,7 @@
 
     function clearStaticAdminData() {
       document.querySelector('#panel-all-orders tbody').innerHTML = '<tr><td colspan="7">Loading orders...</td></tr>';
-      document.querySelector('#panel-driver-assign tbody').innerHTML = '<tr><td colspan="9">Loading driver assignments...</td></tr>';
+      document.querySelector('#panel-driver-assign tbody').innerHTML = '<tr><td colspan="11">Loading driver assignments...</td></tr>';
       document.getElementById('parcelCheckinBody').innerHTML = '<tr><td colspan="7">Loading parcel records...</td></tr>';
       document.getElementById('pickupManagementBody').innerHTML = '<tr><td colspan="7">Loading pickup requests...</td></tr>';
       document.getElementById('deliverySchedulingBody').innerHTML = '<tr><td colspan="7">Loading delivery schedules...</td></tr>';
