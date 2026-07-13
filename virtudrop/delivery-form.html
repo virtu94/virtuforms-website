@@ -460,7 +460,7 @@
   <script src="vd-modal.js"></script>
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-    import { estimateDeliveryZone, formatEstimateRows } from './vd-zone-estimator.js?v=20260713-manual-priority-1';
+    import { estimateDeliveryZone, formatEstimateRows } from './vd-zone-estimator.js?v=20260713-manual-mode-1';
     import { calculateOrderMoney, financialRequestFields, validateManualAddress } from './vd-order-money.js?v=20260624-split-cod-1';
 
     const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
@@ -469,6 +469,7 @@
 
     const paymentMap = { cod: 'cod', 'cod-client-delivery': 'cod', 'pkg-online': 'delivery_only', 'all-online': 'prepaid' };
     let activeLocTab = 'share';
+    let manualLocationMode = false;
     let selectedPayment = '';
     let businessClient = null;
     let estimateDebounceTimer = null;
@@ -546,6 +547,7 @@
       document.querySelectorAll('.loc-panel').forEach(p => p.classList.remove('active'));
       document.getElementById('loc-' + tab).classList.add('active');
       activeLocTab = tab;
+      manualLocationMode = tab === 'manual';
       if (tab === 'manual') clearSharedLocationForManualEdit();
       clearErrors();
       updateEstimate();
@@ -554,6 +556,7 @@
     window.useGPS = function() {
       const el = document.getElementById('gpsResult');
       activeLocTab = 'share';
+      manualLocationMode = false;
       el.className = 'gps-result success';
       el.textContent = 'Detecting your location...';
       el.style.display = 'block';
@@ -614,7 +617,7 @@
       const houseNumber = document.getElementById('houseNum').value.trim();
       const streetName = document.getElementById('streetName').value.trim();
       const areaName = document.getElementById('areaName').value.trim();
-      const useManualAddress = activeLocTab === 'manual' || Boolean(streetName || areaName);
+      const useManualAddress = manualLocationMode || activeLocTab === 'manual' || Boolean(streetName || areaName);
       return {
         supabase,
         businessClientId: businessClient?.id || null,
@@ -635,11 +638,16 @@
     }
 
     function clearSharedLocationForManualEdit() {
+      manualLocationMode = true;
       const gpsResult = document.getElementById('gpsResult');
       if (gpsResult) {
         delete gpsResult.dataset.lat;
         delete gpsResult.dataset.lng;
+        gpsResult.textContent = '';
+        gpsResult.style.display = 'none';
       }
+      const mapsInput = document.getElementById('mapsLink');
+      if (mapsInput) mapsInput.value = '';
       latestEstimate = null;
     }
 
@@ -811,6 +819,10 @@
 
     ['mapsLink', 'houseNum', 'streetName', 'areaName', 'codAmount'].forEach(id => {
       document.getElementById(id)?.addEventListener('input', () => {
+        if (id === 'mapsLink') {
+          manualLocationMode = false;
+          activeLocTab = 'share';
+        }
         if (id === 'streetName' || id === 'areaName') {
           clearSharedLocationForManualEdit();
           const street = document.getElementById('streetName').value;

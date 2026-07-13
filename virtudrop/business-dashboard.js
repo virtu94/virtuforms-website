@@ -781,7 +781,7 @@ function currentEstimateInput() {
   const houseNumber = el('#houseNum')?.value.trim() || '';
   const streetName = el('#streetName')?.value.trim() || '';
   const areaName = el('#areaName')?.value.trim() || '';
-  const useManualAddress = activeLocTab === 'manual' || Boolean(streetName || areaName);
+  const useManualAddress = manualLocationMode || activeLocTab === 'manual' || Boolean(streetName || areaName);
   const useMapsLink = !useManualAddress && Boolean(mapsLink);
   return {
     supabase,
@@ -803,12 +803,17 @@ function hasEstimateLocation(input) {
 }
 
 function clearSharedLocationForManualEdit() {
+  manualLocationMode = true;
   const gpsResult = el('#gpsResult');
   if (gpsResult) {
     delete gpsResult.dataset.lat;
     delete gpsResult.dataset.lng;
     delete gpsResult.dataset.resolvedMapsLink;
+    gpsResult.textContent = '';
+    gpsResult.style.display = 'none';
   }
+  const mapsInput = el('#mapsLink');
+  if (mapsInput) mapsInput.value = '';
   latestBizEstimate = null;
 }
 
@@ -1114,6 +1119,7 @@ let orders = [];
 let remittanceRecords = [];
 let remittancePeriod = 'week';
 let activeLocTab = 'share';
+let manualLocationMode = false;
 let isSubmittingBusinessOrder = false;
 
 const panelTitles = {
@@ -2986,6 +2992,7 @@ window.resetOrderForm = function() {
 
 window.switchLocTab = function(tab, btn) {
   activeLocTab = tab;
+  manualLocationMode = tab === 'manual';
   all('.loc-panel').forEach(panel => panel.style.display = 'none');
   all('.loc-tab').forEach(button => {
     button.style.background = 'transparent';
@@ -3012,6 +3019,7 @@ window.useCurrentLocation = function() {
   const result = el('#gpsResult');
   if (!result) return;
   activeLocTab = 'share';
+  manualLocationMode = false;
   window.switchLocTab('share', document.querySelector('.loc-tab'));
   if (el('#mapsLink')) el('#mapsLink').value = '';
   if (!navigator.geolocation) {
@@ -3227,6 +3235,8 @@ function bindUi() {
     const id = event.target?.id;
     if (id === "mapsLink" || id === "areaName" || id === "streetName" || id === "houseNum" || id === "codAmount") {
       if (id === "mapsLink") {
+        manualLocationMode = false;
+        activeLocTab = 'share';
         const gpsResult = el("#gpsResult");
         if (gpsResult) {
           delete gpsResult.dataset.lat;
