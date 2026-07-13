@@ -471,18 +471,7 @@ export async function estimateDeliveryZone({
   if (shouldUseManualAddress && (streetName || areaName)) {
     const addressError = validateManualAddress(streetName, areaName);
     if (addressError) {
-      return {
-        status: 'unknown',
-        fee: null,
-        zoneCode: '',
-        zoneName: '',
-        region: '',
-        matchedArea: '',
-        sourceText: manualText,
-        label: 'Valid street required',
-        debug: { ...debug, source: 'manual', addressFound: false },
-        message: addressError
-      };
+      debug.locationError = addressError;
     }
   }
 
