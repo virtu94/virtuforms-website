@@ -1015,6 +1015,12 @@
           </select>
           <input class="filter-input" id="parcelCheckinSearch" type="search" placeholder="Search order, client or customer" oninput="renderParcelCheckin()" />
         </div>
+        <div class="bulk-toolbar" id="parcelCheckinBulkToolbar">
+          <label><input id="parcelCheckinSelectAll" type="checkbox" onchange="toggleParcelCheckinVisibleBulk(this.checked)"> Select all visible</label>
+          <button class="btn btn-primary btn-sm" type="button" onclick="markSelectedParcelsReceived()">Mark Selected Received</button>
+          <button class="btn btn-ghost btn-sm" type="button" onclick="clearParcelCheckinSelection()">Clear</button>
+          <span class="bulk-count" id="parcelCheckinBulkCount">0 selected</span>
+        </div>
         <div class="card">
           <div class="table-wrap">
             <table>
@@ -1059,6 +1065,12 @@
           <p>Review the customer location, choose the delivery zone, and set the delivery fee before assigning a driver.</p>
         </div>
 
+        <div class="bulk-toolbar" id="zoneConfirmBulkToolbar">
+          <label><input id="zoneConfirmSelectAll" type="checkbox" onchange="toggleZoneConfirmVisibleBulk(this.checked)"> Select all visible</label>
+          <button class="btn btn-primary btn-sm" type="button" onclick="confirmSelectedZones()">Confirm Selected Zones</button>
+          <button class="btn btn-ghost btn-sm" type="button" onclick="clearZoneConfirmSelection()">Clear</button>
+          <span class="bulk-count" id="zoneConfirmBulkCount">0 selected</span>
+        </div>
         <div class="card" data-live-empty="true">
           <p>Loading pending zone orders...</p>
         </div>
@@ -1074,10 +1086,28 @@
           <select class="filter-select" id="manifestStatusFilter" onchange="renderManifests()"><option value="active">Current Manifests</option><option value="draft">Draft</option><option value="ready">Ready</option><option value="collected">Collected by Driver</option><option value="closed">Closed</option><option value="all">All Manifests</option></select>
           <input class="filter-input" id="manifestSearch" type="search" placeholder="Search order or customer" oninput="renderManifests()" />
         </div>
+        <div class="bulk-toolbar" id="manifestBulkToolbar">
+          <label><input id="manifestSelectAll" type="checkbox" onchange="toggleManifestVisibleBulk(this.checked)"> Select all visible</label>
+          <select class="filter-select" id="manifestBulkAction">
+            <option value="">Choose manifest action</option>
+            <option value="ready">Mark selected ready</option>
+            <option value="collected">Confirm selected driver collection</option>
+            <option value="close">Close selected eligible manifests</option>
+          </select>
+          <button class="btn btn-primary btn-sm" type="button" onclick="runManifestBulkAction()">Apply</button>
+          <button class="btn btn-ghost btn-sm" type="button" onclick="clearManifestSelection()">Clear</button>
+          <span class="bulk-count" id="manifestBulkCount">0 selected</span>
+        </div>
         <div id="manifestList"><div class="card">Select a driver to manage their manifest.</div></div>
         <div class="card" style="margin-top:1rem;">
           <div class="card-title">Parcels Ready for Sorting</div>
           <div class="td-sub" style="margin-bottom:0.75rem;">Use this only for received parcels that still need to be marked sorted before driver assignment.</div>
+          <div class="bulk-toolbar" id="sortingBulkToolbar">
+            <label><input id="sortingSelectAll" type="checkbox" onchange="toggleSortingVisibleBulk(this.checked)"> Select all visible</label>
+            <button class="btn btn-primary btn-sm" type="button" onclick="markSelectedOrdersSorted()">Mark Selected Sorted</button>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="clearSortingSelection()">Clear</button>
+            <span class="bulk-count" id="sortingBulkCount">0 selected</span>
+          </div>
           <div class="table-wrap"><table>
             <thead><tr><th>Order</th><th>Client / Customer</th><th>Delivery Area</th><th>Parcels</th><th>Zone</th><th>Action</th></tr></thead>
             <tbody id="sortingQueueBody"><tr><td colspan="6">Loading sorting queue...</td></tr></tbody>
@@ -1864,6 +1894,14 @@
     let deliveryManifests = [];
     let allOrdersBulkSelection = new Set();
     let allOrdersVisibleIds = [];
+    let parcelCheckinSelection = new Set();
+    let parcelCheckinVisibleIds = [];
+    let zoneConfirmSelection = new Set();
+    let zoneConfirmVisibleIds = [];
+    let sortingSelection = new Set();
+    let sortingVisibleIds = [];
+    let manifestSelection = new Set();
+    let manifestVisibleIds = [];
     let driverAssignSelection = new Set();
     let driverAssignVisibleIds = [];
     let appSettings = {
@@ -1960,10 +1998,14 @@
         || 'Address pending';
     }
 
+    function packageDetailsFromNotes(notesValue) {
+      const notes = String(notesValue || "");
+      const packageMatch = notes.match(/^Package:\s*(.*)$/im);
+      return packageMatch ? packageMatch[1].trim() : "";
+    }
+
     function orderPackageDetails(order) {
-      const notes = String(order?.customer_notes || "");
-      const packageMatch = notes.match(/^Package:\s*(.*)$/m);
-      return (packageMatch ? packageMatch[1].trim() : notes.trim()) || "";
+      return packageDetailsFromNotes(order?.customer_notes);
     }
 
     function orderItemPackageHtml(order) {
@@ -1982,7 +2024,7 @@
     }
 
     function orderPackageAssignmentText(order) {
-      return orderPackageDetails(order) || "Package";
+      return String(order?.external_item_number || "").trim() || orderPackageDetails(order) || "Package";
     }
 
     function labelCanvasRoundRect(ctx, x, y, width, height, radius) {
@@ -4146,6 +4188,253 @@
       }
     };
 
+
+    function selectedVisibleIds(selection, visibleIds) {
+      const visible = new Set(visibleIds);
+      return [...selection].filter(id => visible.has(id));
+    }
+
+    function syncBulkCheckboxes(selector, selection) {
+      document.querySelectorAll(selector).forEach(input => {
+        input.checked = selection.has(input.value);
+      });
+    }
+
+    function updateBulkCount(countId, selectAllId, selection, visibleIds) {
+      const selected = selectedVisibleIds(selection, visibleIds);
+      const count = document.getElementById(countId);
+      const selectAll = document.getElementById(selectAllId);
+      if (count) count.textContent = `${selected.length} selected`;
+      if (selectAll) {
+        selectAll.checked = visibleIds.length > 0 && selected.length === visibleIds.length;
+        selectAll.indeterminate = selected.length > 0 && selected.length < visibleIds.length;
+      }
+      return selected;
+    }
+
+    function syncParcelCheckinBulkControls() {
+      updateBulkCount('parcelCheckinBulkCount', 'parcelCheckinSelectAll', parcelCheckinSelection, parcelCheckinVisibleIds);
+      syncBulkCheckboxes('.parcel-checkin-bulk-check', parcelCheckinSelection);
+    }
+
+    window.toggleParcelCheckinBulk = function(orderId, checked) {
+      if (checked) parcelCheckinSelection.add(orderId);
+      else parcelCheckinSelection.delete(orderId);
+      syncParcelCheckinBulkControls();
+    };
+
+    window.toggleParcelCheckinVisibleBulk = function(checked) {
+      parcelCheckinVisibleIds.forEach(orderId => checked ? parcelCheckinSelection.add(orderId) : parcelCheckinSelection.delete(orderId));
+      syncParcelCheckinBulkControls();
+    };
+
+    window.clearParcelCheckinSelection = function() {
+      parcelCheckinSelection.clear();
+      syncParcelCheckinBulkControls();
+    };
+
+    window.markSelectedParcelsReceived = function() {
+      const selectedIds = selectedVisibleIds(parcelCheckinSelection, parcelCheckinVisibleIds)
+        .filter(orderId => orders.find(order => order.id === orderId)?.parcel_status === 'awaiting_parcel');
+      if (!selectedIds.length) return showToast('Select at least one awaiting parcel.');
+      showModal('Mark Parcels Received', `Mark ${selectedIds.length} selected parcel(s) as received?`, async () => {
+        let updated = 0;
+        const failed = [];
+        for (const orderId of selectedIds) {
+          const order = orders.find(item => item.id === orderId);
+          try {
+            const { error } = await supabase.rpc('admin_mark_parcel_received', {
+              p_order_id: orderId,
+              p_parcel_count: Number(order?.pickup_parcel_count || 1),
+              p_weight_lbs: null,
+              p_condition: 'good',
+              p_notes: 'Bulk check-in by admin'
+            });
+            if (error) throw error;
+            updated += 1;
+          } catch (error) {
+            failed.push(`${order?.order_number || orderId}: ${error.message || 'failed'}`);
+          }
+        }
+        if (failed.length) window.vdNotify('Some Parcels Not Received', `${updated} updated. ${failed.slice(0, 3).join(' | ')}${failed.length > 3 ? ' ...' : ''}`, 'warning');
+        else showToast(`${updated} parcel(s) marked received.`);
+        clearParcelCheckinSelection();
+        await loadData();
+      });
+    };
+
+    function syncZoneConfirmBulkControls() {
+      updateBulkCount('zoneConfirmBulkCount', 'zoneConfirmSelectAll', zoneConfirmSelection, zoneConfirmVisibleIds);
+      syncBulkCheckboxes('.zone-confirm-bulk-check', zoneConfirmSelection);
+    }
+
+    window.toggleZoneConfirmBulk = function(orderId, checked) {
+      if (checked) zoneConfirmSelection.add(orderId);
+      else zoneConfirmSelection.delete(orderId);
+      syncZoneConfirmBulkControls();
+    };
+
+    window.toggleZoneConfirmVisibleBulk = function(checked) {
+      zoneConfirmVisibleIds.forEach(orderId => checked ? zoneConfirmSelection.add(orderId) : zoneConfirmSelection.delete(orderId));
+      syncZoneConfirmBulkControls();
+    };
+
+    window.clearZoneConfirmSelection = function() {
+      zoneConfirmSelection.clear();
+      syncZoneConfirmBulkControls();
+    };
+
+    function readZoneCardValues(orderId) {
+      const card = document.querySelector(`.zone-card[data-order-id="${orderId}"]`);
+      if (!card) throw new Error('Card not found.');
+      const zoneId = card.querySelector('.zone-select')?.value || '';
+      const zone = zones.find(item => item.id === zoneId);
+      const fee = Number(card.querySelector('.fee-input')?.value || 0);
+      const driverPay = Number(card.querySelector('.driver-pay-input')?.value || 0);
+      const overrideReason = card.querySelector('.override-reason-input')?.value.trim() || '';
+      const baselineFee = Number(card.dataset.baselineFee || 40);
+      const isRemoteQuote = card.dataset.rateBand === 'remote';
+      const isOverride = Math.abs(fee - baselineFee) > 0.009;
+      if (!zone) throw new Error('Select a zone.');
+      if (!Number.isFinite(fee) || fee < 0) throw new Error('Enter a valid delivery fee.');
+      if (!Number.isFinite(driverPay) || driverPay < 0) throw new Error('Enter a valid driver pay amount.');
+      if ((isOverride || isRemoteQuote) && !overrideReason) throw new Error(isRemoteQuote ? 'Enter a remote quote reason.' : 'Enter an override reason.');
+      return { zone, zoneId, fee, driverPay, overrideReason, isOverride: isOverride || isRemoteQuote };
+    }
+
+    window.confirmSelectedZones = function() {
+      const selectedIds = selectedVisibleIds(zoneConfirmSelection, zoneConfirmVisibleIds);
+      if (!selectedIds.length) return showToast('Select at least one zone order.');
+      const invalid = [];
+      selectedIds.forEach(orderId => {
+        const order = orders.find(item => item.id === orderId);
+        try { readZoneCardValues(orderId); }
+        catch (error) { invalid.push(`${order?.order_number || orderId}: ${error.message}`); }
+      });
+      if (invalid.length) return window.vdNotify('Selected Zones Need Review', invalid.slice(0, 4).join(' | '), 'warning');
+      showModal('Confirm Selected Zones', `Confirm zones for ${selectedIds.length} selected order(s)?`, async () => {
+        let updated = 0;
+        const failed = [];
+        for (const orderId of selectedIds) {
+          const order = orders.find(item => item.id === orderId);
+          try {
+            const values = readZoneCardValues(orderId);
+            await saveZoneConfirmation(orderId, values.zoneId, values.fee, values.driverPay, values.overrideReason, values.isOverride);
+            updated += 1;
+          } catch (error) {
+            failed.push(`${order?.order_number || orderId}: ${error.message || 'failed'}`);
+          }
+        }
+        if (failed.length) window.vdNotify('Some Zones Not Confirmed', `${updated} confirmed. ${failed.slice(0, 3).join(' | ')}${failed.length > 3 ? ' ...' : ''}`, 'warning');
+        else showToast(`${updated} zone(s) confirmed.`);
+        clearZoneConfirmSelection();
+        await loadData();
+      });
+    };
+
+    function syncSortingBulkControls() {
+      updateBulkCount('sortingBulkCount', 'sortingSelectAll', sortingSelection, sortingVisibleIds);
+      syncBulkCheckboxes('.sorting-bulk-check', sortingSelection);
+    }
+
+    window.toggleSortingBulk = function(orderId, checked) {
+      if (checked) sortingSelection.add(orderId);
+      else sortingSelection.delete(orderId);
+      syncSortingBulkControls();
+    };
+
+    window.toggleSortingVisibleBulk = function(checked) {
+      sortingVisibleIds.forEach(orderId => checked ? sortingSelection.add(orderId) : sortingSelection.delete(orderId));
+      syncSortingBulkControls();
+    };
+
+    window.clearSortingSelection = function() {
+      sortingSelection.clear();
+      syncSortingBulkControls();
+    };
+
+    window.markSelectedOrdersSorted = function() {
+      const selectedIds = selectedVisibleIds(sortingSelection, sortingVisibleIds);
+      if (!selectedIds.length) return showToast('Select at least one parcel to sort.');
+      showModal('Mark Selected Sorted', `Mark ${selectedIds.length} selected parcel(s) sorted?`, async () => {
+        let updated = 0;
+        const failed = [];
+        for (const orderId of selectedIds) {
+          const order = orders.find(item => item.id === orderId);
+          try {
+            const { error } = await supabase.rpc('admin_mark_order_sorted', { p_order_id: orderId });
+            if (error) throw error;
+            updated += 1;
+          } catch (error) {
+            failed.push(`${order?.order_number || orderId}: ${error.message || 'failed'}`);
+          }
+        }
+        if (failed.length) window.vdNotify('Some Parcels Not Sorted', `${updated} sorted. ${failed.slice(0, 3).join(' | ')}${failed.length > 3 ? ' ...' : ''}`, 'warning');
+        else showToast(`${updated} parcel(s) marked sorted.`);
+        clearSortingSelection();
+        await loadData();
+      });
+    };
+
+    function syncManifestBulkControls() {
+      updateBulkCount('manifestBulkCount', 'manifestSelectAll', manifestSelection, manifestVisibleIds);
+      syncBulkCheckboxes('.manifest-bulk-check', manifestSelection);
+    }
+
+    window.toggleManifestBulk = function(manifestId, checked) {
+      if (checked) manifestSelection.add(manifestId);
+      else manifestSelection.delete(manifestId);
+      syncManifestBulkControls();
+    };
+
+    window.toggleManifestVisibleBulk = function(checked) {
+      manifestVisibleIds.forEach(manifestId => checked ? manifestSelection.add(manifestId) : manifestSelection.delete(manifestId));
+      syncManifestBulkControls();
+    };
+
+    window.clearManifestSelection = function() {
+      manifestSelection.clear();
+      syncManifestBulkControls();
+    };
+
+    window.runManifestBulkAction = function() {
+      const action = document.getElementById('manifestBulkAction')?.value || '';
+      const selectedIds = selectedVisibleIds(manifestSelection, manifestVisibleIds);
+      if (!action) return showToast('Choose a manifest action.');
+      if (!selectedIds.length) return showToast('Select at least one manifest.');
+      const selectedManifests = selectedIds.map(id => deliveryManifests.find(item => item.id === id)).filter(Boolean);
+      const valid = selectedManifests.filter(manifest => {
+        if (action === 'ready') return manifest.status === 'draft';
+        if (action === 'collected') return manifest.status === 'ready';
+        if (action === 'close') return manifest.status === 'collected' && manifest.close_summary?.can_close;
+        return false;
+      });
+      if (!valid.length) return showToast('No selected manifests are eligible for that action.');
+      const label = action === 'ready' ? 'mark ready' : action === 'collected' ? 'confirm driver collection for' : 'close';
+      showModal('Update Selected Manifests', `Apply ${label} to ${valid.length} selected manifest(s)?`, async () => {
+        let updated = 0;
+        const failed = [];
+        for (const manifest of valid) {
+          try {
+            if (action === 'close') {
+              const { error } = await supabase.rpc('admin_close_delivery_manifest', { p_manifest_id: manifest.id, p_notes: null });
+              if (error) throw error;
+            } else {
+              const { error } = await supabase.rpc('admin_set_manifest_status', { p_manifest_id: manifest.id, p_status: action });
+              if (error) throw error;
+            }
+            updated += 1;
+          } catch (error) {
+            failed.push(`${manifest.manifest_number}: ${error.message || 'failed'}`);
+          }
+        }
+        if (failed.length) window.vdNotify('Some Manifests Not Updated', `${updated} updated. ${failed.slice(0, 3).join(' | ')}${failed.length > 3 ? ' ...' : ''}`, 'warning');
+        else showToast(`${updated} manifest(s) updated.`);
+        clearManifestSelection();
+        await loadData();
+      });
+    };
+
     function parcelStatusBadge(order) {
       if (order.parcel_status === 'parcel_received') return '<span class="badge badge-confirmed">Received</span>';
       if (order.parcel_status === 'awaiting_parcel') return '<span class="badge badge-pending">Awaiting Parcel</span>';
@@ -4168,9 +4457,10 @@
           .some(value => String(value || '').toLowerCase().includes(search));
       });
 
+      parcelCheckinVisibleIds = rows.map(order => order.id);
       body.innerHTML = rows.map(order => `
         <tr>
-          <td class="td-id">${escapeHtml(order.order_number)}</td>
+          <td class="td-id"><label class="bulk-order-check"><input class="parcel-checkin-bulk-check" type="checkbox" value="${order.id}" ${parcelCheckinSelection.has(order.id) ? 'checked' : ''} onchange="toggleParcelCheckinBulk('${order.id}', this.checked)"><span>${escapeHtml(order.order_number)}</span></label></td>
           <td><div class="td-name">${escapeHtml(clientName(order))}</div><div class="td-sub">${escapeHtml(order.customer_name || '')} · ${escapeHtml(order.customer_phone || '')}</div></td>
           <td><div class="td-name">${escapeHtml(String(order.checked_in_parcel_count || order.pickup_parcel_count || 1))} parcel(s)</div><div class="td-sub">${order.parcel_weight_lbs ? `${escapeHtml(String(order.parcel_weight_lbs))} lbs · ` : ''}${escapeHtml(order.parcel_condition || 'Not checked')}</div></td>
           <td>${order.pickup_required ? `<div class="td-name">Required · ${moneyFull(order.pickup_fee)}</div><div class="td-sub">${escapeHtml(order.pickup_address || [order.pickup_business_name, order.pickup_street_name, order.pickup_area_name].filter(Boolean).join(', '))}</div>` : 'Client drop-off'}</td>
@@ -4182,6 +4472,7 @@
           </div></td>
         </tr>
       `).join('') || '<tr><td colspan="7">No parcel records match this view.</td></tr>';
+      syncParcelCheckinBulkControls();
     };
 
     window.openParcelCheckin = function(orderId) {
@@ -4479,7 +4770,9 @@
         business_client_id: order.business_client_id || null,
         customer_name: document.getElementById('adminEditCustomerName')?.value.trim() || '',
         customer_phone: document.getElementById('adminEditCustomerPhone')?.value.trim() || '',
-        external_item_number: document.getElementById('adminEditItemNumber')?.value.trim() || null,
+        external_item_number: document.getElementById('adminEditItemNumber')?.value.trim()
+          || packageDetailsFromNotes(document.getElementById('adminEditCustomerNotes')?.value)
+          || null,
         house_number: document.getElementById('adminEditHouse')?.value.trim() || null,
         street_name: document.getElementById('adminEditStreet')?.value.trim() || null,
         area_name: document.getElementById('adminEditArea')?.value.trim() || null,
@@ -4702,7 +4995,7 @@
         <div class="payment-modal-form" style="text-align:left;">
           <label>Customer Name<input id="adminEditCustomerName" value="${escapeHtml(order.customer_name || '')}"></label>
           <label>Customer Phone<input id="adminEditCustomerPhone" value="${escapeHtml(order.customer_phone || '')}"></label>
-          <label>Item / Reference<input id="adminEditItemNumber" value="${escapeHtml(order.external_item_number || '')}"></label>
+          <label>Item / Reference<input id="adminEditItemNumber" value="${escapeHtml(order.external_item_number || orderPackageDetails(order) || '')}"></label>
           <label>Payment Arrangement<select id="adminEditPaymentArrangement" onchange="syncAdminOrderEditForm()">
             ${adminEditSelect([
               ['cod_customer_pays', 'Customer pays package + delivery'],
@@ -5030,8 +5323,10 @@
         && ['parcel_received', 'legacy_untracked'].includes(o.parcel_status)
       );
 
+      zoneConfirmVisibleIds = pending.map(order => order.id);
       if (!pending.length) {
         panel.insertAdjacentHTML('beforeend', '<div class="card" data-live-empty="true"><p>No orders are waiting for zone confirmation.</p></div>');
+        syncZoneConfirmBulkControls();
         return;
       }
 
@@ -5059,7 +5354,7 @@
           <div class="zone-card" data-order-id="${order.id}" data-baseline-fee="${suggestedFee.toFixed(2)}" data-rate-band="${order.pricing_rate_band || 'standard'}">
             <div>
               <div style="display:flex; gap:0.8rem; align-items:center; margin-bottom:0.4rem;">
-                <div class="zone-card-order">${order.order_number}</div>
+                <label class="bulk-order-check"><input class="zone-confirm-bulk-check" type="checkbox" value="${order.id}" ${zoneConfirmSelection.has(order.id) ? 'checked' : ''} onchange="toggleZoneConfirmBulk('${order.id}', this.checked)"><span class="zone-card-order">${order.order_number}</span></label>
                 <span class="badge badge-pending">Pending</span>
                 <span class="badge badge-confirmed">${rateLabel}</span>
               </div>
@@ -5101,6 +5396,7 @@
         `);
       });
       applyZoneSuggestions();
+      syncZoneConfirmBulkControls();
     }
 
     function manifestStatusBadge(status) {
@@ -5135,10 +5431,12 @@
       const body = document.getElementById('sortingQueueBody');
       if (!body) return;
       const sortable = orders.filter(order => !isCancelledOrder(order) && order.parcel_status === 'parcel_received' && order.zone_status === 'confirmed');
+      sortingVisibleIds = sortable.map(order => order.id);
       body.innerHTML = sortable.map(order => {
         const zone = zones.find(item => item.id === order.zone_id);
-        return `<tr><td class="td-id">${escapeHtml(order.order_number)}</td><td><div class="td-name">${escapeHtml(clientName(order))}</div><div class="td-sub">${escapeHtml(order.customer_name || "")}</div>${orderItemPackageHtml(order)}</td><td>${escapeHtml(orderLabelAddress(order))}</td><td>${escapeHtml(String(order.checked_in_parcel_count || 1))}</td><td><span class="badge badge-confirmed">${escapeHtml(zone?.code ? `Zone ${zone.code}` : order.pricing_rate_band || 'Confirmed')}</span></td><td><button class="btn btn-primary btn-sm" onclick="markOrderSorted('${order.id}')">Mark Sorted</button></td></tr>`;
+        return `<tr><td class="td-id"><label class="bulk-order-check"><input class="sorting-bulk-check" type="checkbox" value="${order.id}" ${sortingSelection.has(order.id) ? 'checked' : ''} onchange="toggleSortingBulk('${order.id}', this.checked)"><span>${escapeHtml(order.order_number)}</span></label></td><td><div class="td-name">${escapeHtml(clientName(order))}</div><div class="td-sub">${escapeHtml(order.customer_name || "")}</div>${orderItemPackageHtml(order)}</td><td>${escapeHtml(orderLabelAddress(order))}</td><td>${escapeHtml(String(order.checked_in_parcel_count || 1))}</td><td><span class="badge badge-confirmed">${escapeHtml(zone?.code ? `Zone ${zone.code}` : order.pricing_rate_band || 'Confirmed')}</span></td><td><button class="btn btn-primary btn-sm" onclick="markOrderSorted('${order.id}')">Mark Sorted</button></td></tr>`;
       }).join('') || '<tr><td colspan="6">No received, zone-confirmed parcels are waiting to be sorted.</td></tr>';
+      syncSortingBulkControls();
     };
 
     window.markOrderSorted = async function(orderId) {
@@ -5161,6 +5459,9 @@
       const filter = document.getElementById('manifestStatusFilter')?.value || 'active';
       const search = String(document.getElementById('manifestSearch')?.value || '').trim().toLowerCase();
       if (!selectedDriverId) {
+        manifestVisibleIds = [];
+        manifestSelection.clear();
+        syncManifestBulkControls();
         list.innerHTML = '<div class="card"><strong>Select a driver to manage a manifest.</strong><div class="td-sub" style="margin-top:0.5rem;">After selecting a driver, you will see their assigned orders and can mark the manifest ready, confirm driver collection, or close it.</div></div>';
         return;
       }
@@ -5176,10 +5477,11 @@
         return [manifest.manifest_number, manifest.driver_name, ...(manifest.orders || []).flatMap(order => [order.order_number, order.customer_name, order.customer_phone, order.external_item_number, order.customer_notes])]
           .some(value => String(value || '').toLowerCase().includes(search));
       });
+      manifestVisibleIds = rows.map(manifest => manifest.id);
       list.innerHTML = rows.map(manifest => `
         <div class="card" style="margin-bottom:1rem;" data-manifest-id="${manifest.id}">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap; margin-bottom:1rem;">
-            <div><div class="td-id" style="font-size:1rem;">${escapeHtml(manifest.manifest_number)}</div><div class="td-name">${escapeHtml(manifest.driver_name || 'Driver')} · ${new Date(manifest.route_date + 'T12:00:00').toLocaleDateString('en-TT')}</div><div class="td-sub">${(manifest.orders || []).length} parcel order(s)</div></div>
+            <div><label class="bulk-order-check"><input class="manifest-bulk-check" type="checkbox" value="${manifest.id}" ${manifestSelection.has(manifest.id) ? 'checked' : ''} onchange="toggleManifestBulk('${manifest.id}', this.checked)"><span class="td-id" style="font-size:1rem;">${escapeHtml(manifest.manifest_number)}</span></label><div class="td-name">${escapeHtml(manifest.driver_name || 'Driver')} · ${new Date(manifest.route_date + 'T12:00:00').toLocaleDateString('en-TT')}</div><div class="td-sub">${(manifest.orders || []).length} parcel order(s)</div></div>
             <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">${manifestStatusBadge(manifest.status)}<button class="btn btn-ghost btn-sm" onclick="printManifest('${manifest.id}')">Print</button>${manifest.status === 'draft' ? `<button class="btn btn-primary btn-sm" onclick="setManifestStatus('${manifest.id}', 'ready')">Mark Ready</button>` : ''}${manifest.status === 'ready' ? `<button class="btn btn-primary btn-sm" onclick="setManifestStatus('${manifest.id}', 'collected')">Confirm Driver Collection</button>` : ''}${manifest.status === 'collected' && manifest.close_summary?.can_close ? `<button class="btn btn-primary btn-sm" onclick="closeDeliveryManifest('${manifest.id}')">Close Manifest</button>` : ''}</div>
           </div>
           ${manifestCloseSummaryHtml(manifest)}
@@ -5190,6 +5492,7 @@
         </div>`).join('') || (deliveryManifests.length
           ? '<div class="card">No manifests match the selected driver, status, or search.</div>'
           : '<div class="card"><strong>No manifests have been created yet.</strong><div class="td-sub" style="margin-top:0.5rem;">Sort a received parcel, then assign it to a driver. Existing assignments require database migration 20260624_010_manifest_backfill.sql.</div></div>');
+      syncManifestBulkControls();
     };
 
     window.setManifestStatus = function(manifestId, status) {
