@@ -668,6 +668,51 @@
       word-break: normal;
       overflow-wrap: break-word;
     }
+    #panel-driver-assign table {
+      table-layout: fixed;
+      min-width: 1040px;
+    }
+    #panel-driver-assign th,
+    #panel-driver-assign td {
+      padding-left: 0.55rem;
+      padding-right: 0.55rem;
+    }
+    #panel-driver-assign th:nth-child(1), #panel-driver-assign td:nth-child(1) { width: 105px; }
+    #panel-driver-assign th:nth-child(2), #panel-driver-assign td:nth-child(2) { width: 120px; }
+    #panel-driver-assign th:nth-child(3), #panel-driver-assign td:nth-child(3) { width: 145px; }
+    #panel-driver-assign th:nth-child(4), #panel-driver-assign td:nth-child(4) { width: 150px; }
+    #panel-driver-assign th:nth-child(5), #panel-driver-assign td:nth-child(5) { width: 180px; }
+    #panel-driver-assign th:nth-child(6), #panel-driver-assign td:nth-child(6) { width: 105px; }
+    #panel-driver-assign th:nth-child(7), #panel-driver-assign td:nth-child(7) { width: 90px; }
+    #panel-driver-assign th:nth-child(8), #panel-driver-assign td:nth-child(8) { width: 115px; }
+    #panel-driver-assign th:nth-child(9), #panel-driver-assign td:nth-child(9) { width: 150px; }
+    #panel-driver-assign th:nth-child(10), #panel-driver-assign td:nth-child(10) { width: 155px; }
+    #panel-driver-assign th:nth-child(11), #panel-driver-assign td:nth-child(11) { width: 80px; }
+    #panel-driver-assign td.driver-package-cell,
+    #panel-driver-assign td.driver-zone-cell,
+    #panel-driver-assign td.driver-customer-cell {
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      line-height: 1.35;
+    }
+    #panel-driver-assign .driver-package-cell .td-name {
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      font-weight: 600;
+    }
+    #panel-driver-assign .driver-zone-cell .td-sub {
+      white-space: normal;
+      overflow-wrap: break-word;
+      word-break: normal;
+    }
+    #panel-driver-assign .driver-select,
+    #panel-driver-assign .transfer-reason,
+    #panel-driver-assign .route-date {
+      width: 100% !important;
+      min-width: 0;
+    }
     .zone-card,
     .account-card,
     .pending-strip {
@@ -1915,15 +1960,29 @@
         || 'Address pending';
     }
 
+    function orderPackageDetails(order) {
+      const notes = String(order?.customer_notes || "");
+      const packageMatch = notes.match(/^Package:\s*(.*)$/m);
+      return (packageMatch ? packageMatch[1].trim() : notes.trim()) || "";
+    }
+
+    function orderItemPackageHtml(order) {
+      const item = String(order?.external_item_number || "").trim();
+      const details = orderPackageDetails(order);
+      const itemHtml = item ? "<div class=\"td-sub\">Item: " + escapeHtml(item) + "</div>" : "";
+      const packageHtml = details && details !== item ? "<div class=\"td-sub\">Package: " + escapeHtml(details) + "</div>" : "";
+      return itemHtml + packageHtml;
+    }
+
     function orderDeliveryZoneText(order) {
       if (order.zone_status === 'pending' || order.order_status === 'zone_pending') return 'Zone pending';
-      const zone = zones.find(item => item.id === order.zone_id);
-      if (zone?.code) return "Zone " + zone.code;
-      return order.zone_code ? "Zone " + order.zone_code : "Zone confirmed";
+      const zone = zones.find(item => item.id === (order.zone_id || order.confirmed_zone_id));
+      const code = zone?.code || order.zone_code || order.confirmed_zone_code || '';
+      return code ? "Zone " + String(code).toUpperCase() : "Zone not set";
     }
 
     function orderPackageAssignmentText(order) {
-      return order.customer_notes || order.external_item_number || 'Package';
+      return orderPackageDetails(order) || "Package";
     }
 
     function labelCanvasRoundRect(ctx, x, y, width, height, radius) {
@@ -5078,7 +5137,7 @@
       const sortable = orders.filter(order => !isCancelledOrder(order) && order.parcel_status === 'parcel_received' && order.zone_status === 'confirmed');
       body.innerHTML = sortable.map(order => {
         const zone = zones.find(item => item.id === order.zone_id);
-        return `<tr><td class="td-id">${escapeHtml(order.order_number)}</td><td><div class="td-name">${escapeHtml(clientName(order))}</div><div class="td-sub">${escapeHtml(order.customer_name || '')}</div></td><td>${escapeHtml(orderLabelAddress(order))}</td><td>${escapeHtml(String(order.checked_in_parcel_count || 1))}</td><td><span class="badge badge-confirmed">${escapeHtml(zone?.code ? `Zone ${zone.code}` : order.pricing_rate_band || 'Confirmed')}</span></td><td><button class="btn btn-primary btn-sm" onclick="markOrderSorted('${order.id}')">Mark Sorted</button></td></tr>`;
+        return `<tr><td class="td-id">${escapeHtml(order.order_number)}</td><td><div class="td-name">${escapeHtml(clientName(order))}</div><div class="td-sub">${escapeHtml(order.customer_name || "")}</div>${orderItemPackageHtml(order)}</td><td>${escapeHtml(orderLabelAddress(order))}</td><td>${escapeHtml(String(order.checked_in_parcel_count || 1))}</td><td><span class="badge badge-confirmed">${escapeHtml(zone?.code ? `Zone ${zone.code}` : order.pricing_rate_band || 'Confirmed')}</span></td><td><button class="btn btn-primary btn-sm" onclick="markOrderSorted('${order.id}')">Mark Sorted</button></td></tr>`;
       }).join('') || '<tr><td colspan="6">No received, zone-confirmed parcels are waiting to be sorted.</td></tr>';
     };
 
@@ -5114,7 +5173,7 @@
         if (filter === 'active' && !['draft', 'ready', 'collected'].includes(manifest.status)) return false;
         if (!['active', 'all'].includes(filter) && manifest.status !== filter) return false;
         if (!search) return true;
-        return [manifest.manifest_number, manifest.driver_name, ...(manifest.orders || []).flatMap(order => [order.order_number, order.customer_name, order.customer_phone, order.external_item_number])]
+        return [manifest.manifest_number, manifest.driver_name, ...(manifest.orders || []).flatMap(order => [order.order_number, order.customer_name, order.customer_phone, order.external_item_number, order.customer_notes])]
           .some(value => String(value || '').toLowerCase().includes(search));
       });
       list.innerHTML = rows.map(manifest => `
@@ -5125,7 +5184,7 @@
           </div>
           ${manifestCloseSummaryHtml(manifest)}
           <div class="table-wrap"><table><thead><tr><th>Sequence</th><th>Zone</th><th>Order</th><th>Customer</th><th>Address</th><th>Parcels</th><th>Collect</th><th>Delivery</th><th>Cash</th>${manifest.status === 'draft' ? '<th>Action</th>' : ''}</tr></thead><tbody>
-            ${(manifest.orders || []).map(order => `<tr><td>${order.route_sequence}</td><td>${escapeHtml(order.zone_code ? `Zone ${order.zone_code}` : '—')}</td><td class="td-id">${escapeHtml(order.order_number)}</td><td><div class="td-name">${escapeHtml(order.customer_name || '')}</div><div class="td-sub">${escapeHtml(order.customer_phone || '')}</div>${order.external_item_number ? `<div class="td-sub">Item: ${escapeHtml(order.external_item_number)}</div>` : ''}</td><td>${escapeHtml(orderLabelAddress(order))}</td><td>${escapeHtml(String(order.parcel_count || 1))}</td><td>${moneyFull(order.amount_to_collect)}</td><td><div class="td-sub">${escapeHtml(String(order.order_status || '').replaceAll('_', ' '))}</div><div class="td-sub">${escapeHtml(String(order.parcel_status || '').replaceAll('_', ' '))}</div>${order.delivery_return_required ? '<div class="td-sub" style="color:#b42318;">Return required</div>' : ''}</td><td>${Number(order.amount_to_collect || 0) > 0 && order.order_status === 'delivered' ? escapeHtml(order.reconciliation_status || 'unreconciled') : '—'}</td>${manifest.status === 'draft' ? `<td><button class="btn btn-ghost btn-sm" onclick="removeManifestOrder('${manifest.id}', '${order.id}')">Remove</button></td>` : ''}</tr>`).join('') || `<tr><td colspan="${manifest.status === 'draft' ? 10 : 9}">No parcels on this manifest.</td></tr>`}
+            ${(manifest.orders || []).map(order => `<tr><td>${order.route_sequence}</td><td>${escapeHtml(order.zone_code ? `Zone ${order.zone_code}` : '—')}</td><td class="td-id">${escapeHtml(order.order_number)}</td><td><div class="td-name">${escapeHtml(order.customer_name || '')}</div><div class="td-sub">${escapeHtml(order.customer_phone || '')}</div>${orderItemPackageHtml(order)}</td><td>${escapeHtml(orderLabelAddress(order))}</td><td>${escapeHtml(String(order.parcel_count || 1))}</td><td>${moneyFull(order.amount_to_collect)}</td><td><div class="td-sub">${escapeHtml(String(order.order_status || '').replaceAll('_', ' '))}</div><div class="td-sub">${escapeHtml(String(order.parcel_status || '').replaceAll('_', ' '))}</div>${order.delivery_return_required ? '<div class="td-sub" style="color:#b42318;">Return required</div>' : ''}</td><td>${Number(order.amount_to_collect || 0) > 0 && order.order_status === 'delivered' ? escapeHtml(order.reconciliation_status || 'unreconciled') : '—'}</td>${manifest.status === 'draft' ? `<td><button class="btn btn-ghost btn-sm" onclick="removeManifestOrder('${manifest.id}', '${order.id}')">Remove</button></td>` : ''}</tr>`).join('') || `<tr><td colspan="${manifest.status === 'draft' ? 10 : 9}">No parcels on this manifest.</td></tr>`}
           </tbody></table></div>
           ${manifest.handed_to_driver_at ? `<div class="td-sub" style="margin-top:0.75rem;">Handover confirmed ${new Date(manifest.handed_to_driver_at).toLocaleString('en-TT')}</div>` : ''}
         </div>`).join('') || (deliveryManifests.length
@@ -5191,10 +5250,10 @@
     window.printManifest = function(manifestId) {
       const manifest = deliveryManifests.find(item => item.id === manifestId);
       if (!manifest) return showToast('Manifest not found.');
-      const rows = (manifest.orders || []).map(order => `<tr><td>${order.route_sequence}</td><td>${escapeHtml(order.zone_code || '')}</td><td>${escapeHtml(order.order_number)}</td><td>${escapeHtml(order.customer_name || '')}</td><td>${escapeHtml(order.customer_phone || '')}</td><td>${escapeHtml(orderLabelAddress(order))}</td><td>${moneyFull(order.amount_to_collect)}</td></tr>`).join('');
+      const rows = (manifest.orders || []).map(order => `<tr><td>${order.route_sequence}</td><td>${escapeHtml(order.zone_code || '')}</td><td>${escapeHtml(order.order_number)}</td><td>${escapeHtml(order.customer_name || '')}</td><td>${escapeHtml(order.customer_phone || "")}</td><td>${escapeHtml(order.external_item_number || "")}${orderPackageDetails(order) ? `<br>${escapeHtml(orderPackageDetails(order))}` : ""}</td><td>${escapeHtml(orderLabelAddress(order))}</td><td>${moneyFull(order.amount_to_collect)}</td></tr>`).join('');
       const popup = window.open('', '_blank', 'width=1000,height=760');
       if (!popup) return showToast('Allow popups to print the manifest.');
-      popup.document.write(`<!doctype html><html><head><title>${escapeHtml(manifest.manifest_number)}</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#172b28}h1{margin-bottom:4px}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #bbb;padding:8px;text-align:left;font-size:12px}th{background:#edf5f4}.sign{margin-top:45px;display:flex;justify-content:space-between}.line{width:42%;border-top:1px solid #333;padding-top:6px}</style></head><body><h1>VirtuDrop Delivery Manifest</h1><div><strong>${escapeHtml(manifest.manifest_number)}</strong></div><div>Driver: ${escapeHtml(manifest.driver_name || '')}</div><div>Route date: ${escapeHtml(manifest.route_date)}</div><table><thead><tr><th>#</th><th>Zone</th><th>Order</th><th>Customer</th><th>Phone</th><th>Address</th><th>Collect</th></tr></thead><tbody>${rows}</tbody></table><div class="sign"><div class="line">Admin handover</div><div class="line">Driver received</div></div><script>window.onload=()=>window.print();<\/script></body></html>`);
+      popup.document.write(`<!doctype html><html><head><title>${escapeHtml(manifest.manifest_number)}</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#172b28}h1{margin-bottom:4px}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #bbb;padding:8px;text-align:left;font-size:12px}th{background:#edf5f4}.sign{margin-top:45px;display:flex;justify-content:space-between}.line{width:42%;border-top:1px solid #333;padding-top:6px}</style></head><body><h1>VirtuDrop Delivery Manifest</h1><div><strong>${escapeHtml(manifest.manifest_number)}</strong></div><div>Driver: ${escapeHtml(manifest.driver_name || '')}</div><div>Route date: ${escapeHtml(manifest.route_date)}</div><table><thead><tr><th>#</th><th>Zone</th><th>Order</th><th>Customer</th><th>Phone</th><th>Item / Package</th><th>Address</th><th>Collect</th></tr></thead><tbody>${rows}</tbody></table><div class="sign"><div class="line">Admin handover</div><div class="line">Driver received</div></div><script>window.onload=()=>window.print();<\/script></body></html>`);
       popup.document.close();
     };
 
@@ -5535,9 +5594,9 @@
               </label>
             </td>
             <td>${escapeHtml(clientName(order))}</td>
-            <td><div class="td-name">${escapeHtml(order.customer_name || '—')}</div><div class="td-sub">${escapeHtml(order.customer_phone || '')}</div></td>
-            <td><div class="td-name">${escapeHtml(orderPackageAssignmentText(order))}</div></td>
-            <td><div class="td-name">${escapeHtml(orderDeliveryZoneText(order))}</div><div class="td-sub">${escapeHtml(orderLabelAddress(order))}</div></td>
+            <td class="driver-customer-cell"><div class="td-name">${escapeHtml(order.customer_name || '—')}</div><div class="td-sub">${escapeHtml(order.customer_phone || '')}</div></td>
+            <td class="driver-package-cell"><div class="td-name">${escapeHtml(orderPackageAssignmentText(order))}</div></td>
+            <td class="driver-zone-cell"><div class="td-name">${escapeHtml(orderDeliveryZoneText(order))}</div><div class="td-sub">${escapeHtml(orderLabelAddress(order))}</div></td>
             <td><span class="badge ${collected ? 'badge-active' : isAssigned ? 'badge-confirmed' : 'badge-pending'}">${escapeHtml(status)}</span></td>
             <td>${moneyFull(driverCollects(order))}${order.redelivery_fee > 0 ? `<div class="td-sub">Includes ${moneyFull(order.redelivery_fee)} redelivery</div>` : ''}</td>
             <td>${isAssigned ? escapeHtml(driverName(order.assigned_driver_id)) : 'Unassigned'}</td>
