@@ -630,6 +630,16 @@
         (Number.isFinite(input.latitude) && Number.isFinite(input.longitude)));
     }
 
+    function clearSharedLocationForManualEdit() {
+      if (activeLocTab !== 'manual') return;
+      const gpsResult = document.getElementById('gpsResult');
+      if (gpsResult) {
+        delete gpsResult.dataset.lat;
+        delete gpsResult.dataset.lng;
+      }
+      latestEstimate = null;
+    }
+
     function renderRows(target, rows) {
       target.innerHTML = rows.map(([k, v]) => `
         <div style="display:flex; justify-content:space-between; font-size:0.84rem; padding:0.3rem 0; border-bottom:1px solid rgba(255,255,255,0.06); gap:1rem;">
@@ -799,6 +809,7 @@
     ['mapsLink', 'houseNum', 'streetName', 'areaName', 'codAmount'].forEach(id => {
       document.getElementById(id)?.addEventListener('input', () => {
         if (id === 'streetName' || id === 'areaName') {
+          clearSharedLocationForManualEdit();
           const street = document.getElementById('streetName').value;
           const area = document.getElementById('areaName').value;
           const message = validateManualAddress(street, area);

@@ -810,6 +810,17 @@ function hasEstimateLocation(input) {
     (Number.isFinite(input.latitude) && Number.isFinite(input.longitude)));
 }
 
+function clearSharedLocationForManualEdit() {
+  if (activeLocTab !== 'manual') return;
+  const gpsResult = el('#gpsResult');
+  if (gpsResult) {
+    delete gpsResult.dataset.lat;
+    delete gpsResult.dataset.lng;
+    delete gpsResult.dataset.resolvedMapsLink;
+  }
+  latestBizEstimate = null;
+}
+
 function renderEstimateBreakdown(target, rows) {
   if (!target) return;
   target.innerHTML = rows.map(([key, value]) => `
@@ -3238,6 +3249,7 @@ function bindUi() {
         if (area) area.value = "";
       }
       if (id === "streetName" || id === "areaName") {
+        clearSharedLocationForManualEdit();
         const message = validateManualAddress(el("#streetName")?.value, el("#areaName")?.value);
         const error = el("#streetNameErr");
         if (error) {
