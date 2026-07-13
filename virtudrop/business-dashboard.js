@@ -985,11 +985,13 @@ function promptBusinessManualLocationIfNeeded(estimate) {
         debug: { source: 'timeout', hasCoordinates: false, addressFound: false, zonesLoaded: false }
       });
       const previousEstimate = latestBizEstimate;
-      const displayEstimate = estimate.status === 'unknown' && estimate.fee === null && previousEstimate?.fee !== null
+      const isManualAddressInput = Boolean(estimateInput.streetName || estimateInput.areaName);
+      const shouldReusePreviousEstimate = !isManualAddressInput && estimate.status === 'unknown' && estimate.fee === null && previousEstimate?.fee !== null;
+      const displayEstimate = shouldReusePreviousEstimate
         ? previousEstimate
         : estimate;
       latestBizEstimate = displayEstimate;
-      applyBusinessResolvedAddress(displayEstimate);
+      if (!shouldReusePreviousEstimate) applyBusinessResolvedAddress(displayEstimate);
       promptBusinessManualLocationIfNeeded(displayEstimate);
 
       if (amountEl) {

@@ -754,11 +754,13 @@
         try {
           const estimate = await withEstimateTimeout(estimateDeliveryZone(input));
           const previousEstimate = latestEstimate;
-          const displayEstimate = estimate.status === 'unknown' && estimate.fee === null && previousEstimate?.fee !== null
+          const isManualAddressInput = Boolean(input.streetName || input.areaName);
+          const shouldReusePreviousEstimate = !isManualAddressInput && estimate.status === 'unknown' && estimate.fee === null && previousEstimate?.fee !== null;
+          const displayEstimate = shouldReusePreviousEstimate
             ? previousEstimate
             : estimate;
           latestEstimate = displayEstimate;
-          applyResolvedAddress(displayEstimate);
+          if (!shouldReusePreviousEstimate) applyResolvedAddress(displayEstimate);
           promptManualLocationIfNeeded(displayEstimate);
 
           if (displayEstimate.fee !== null) {
