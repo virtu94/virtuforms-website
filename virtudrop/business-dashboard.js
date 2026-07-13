@@ -187,10 +187,23 @@ function zoneAreaVariants(area) {
   ].map(normaliseZoneText).filter(value => value.length >= 3))];
 }
 
-function areaMatches(input, area) {
+function zoneAreaAliasNames(area = {}) {
+  return (area.zone_area_aliases || area.aliases || [])
+    .flatMap(alias => [alias.match_value || alias.alias_name, alias.street_hint])
+    .filter(Boolean);
+}
+
+function areaSearchVariants(area) {
+  return [
+    ...zoneAreaVariants(typeof area === 'string' ? area : area?.area_name),
+    ...zoneAreaAliasNames(area).flatMap(value => zoneAreaVariants(value))
+  ];
+}
+
+function textMatchesAnyAreaVariant(input, variants) {
   const text = normaliseZoneText(input);
   if (!text) return false;
-  return zoneAreaVariants(area).some(target => {
+  return variants.some(target => {
     if (!target) return false;
     if (text.includes(target)) return true;
     const targetTokens = target.split(' ').filter(token => token.length > 2);
@@ -198,12 +211,27 @@ function areaMatches(input, area) {
   });
 }
 
+function areaMatches(input, area) {
+  return textMatchesAnyAreaVariant(input, areaSearchVariants(area));
+}
+
+function matchedZoneAreaAlias(input, area = {}) {
+  const text = normaliseZoneText(input);
+  if (!text) return null;
+  return (area.zone_area_aliases || area.aliases || []).find(alias =>
+    textMatchesAnyAreaVariant(text, [
+      ...zoneAreaVariants(alias.match_value || alias.alias_name),
+      ...zoneAreaVariants(alias.street_hint)
+    ])
+  ) || null;
+}
+
 async function loadEstimateZones() {
   if (!zonesPromise) {
     zonesPromise = (async () => {
       let result = await supabase
         .from('zones')
-        .select('id, code, name, region, active, zone_areas(area_name, rate_band)')
+        .select('id, code, name, region, active, zone_areas(id, area_name, rate_band, zone_area_aliases(alias_name, match_value, street_hint, active))')
         .eq('active', true)
         .order('code');
       if (result.error) {
@@ -342,8 +370,11 @@ async function geocodeAddress(address) {
 function matchZoneFromText(zones, text) {
   for (const zone of zones) {
     const areas = zone.zone_areas || [];
-    const matchedArea = areas.find(area => areaMatches(text, area.area_name));
-    if (matchedArea) return { zone, matchedArea };
+    const matchedArea = areas.find(area => areaMatches(text, area));
+    if (matchedArea) {
+      const matchedAlias = matchedZoneAreaAlias(text, matchedArea);
+      return { zone, matchedArea, matchedAlias };
+    }
   }
   return null;
 }
@@ -657,6 +688,13 @@ async function estimateDeliveryZone({
     ) {
       resolvedAddress.areaName =
         match.matchedArea.area_name;
+      if (!resolvedAddress.streetName && match.matchedAlias) {
+        resolvedAddress.streetName =
+          match.matchedAlias.street_hint ||
+          match.matchedAlias.alias_name ||
+          match.matchedAlias.match_value ||
+          '';
+      }
     }
 
     const estimate = {
@@ -946,24 +984,28 @@ function promptBusinessManualLocationIfNeeded(estimate) {
         message: 'Location lookup timed out. Try again or enter the address manually.',
         debug: { source: 'timeout', hasCoordinates: false, addressFound: false, zonesLoaded: false }
       });
-      latestBizEstimate = estimate;
-      applyBusinessResolvedAddress(estimate);
-      promptBusinessManualLocationIfNeeded(estimate);
+      const previousEstimate = latestBizEstimate;
+      const displayEstimate = estimate.status === 'unknown' && estimate.fee === null && previousEstimate?.fee !== null
+        ? previousEstimate
+        : estimate;
+      latestBizEstimate = displayEstimate;
+      applyBusinessResolvedAddress(displayEstimate);
+      promptBusinessManualLocationIfNeeded(displayEstimate);
 
       if (amountEl) {
-        amountEl.textContent = estimate.fee !== null
-          ? `$${Number(estimate.fee).toFixed(2)} TTD`
-          : estimate.status === 'unknown' ? 'Location Needed' : 'Quote Required';
+        amountEl.textContent = displayEstimate.fee !== null
+          ? `$${Number(displayEstimate.fee).toFixed(2)} TTD`
+          : displayEstimate.status === 'unknown' ? 'Location Needed' : 'Quote Required';
       }
 
       if (routeEl) {
-        routeEl.textContent = estimate.zoneCode
-          ? `${estimate.label} → ${estimate.zoneName} (${estimate.region})`
-          : estimate.message;
+        routeEl.textContent = displayEstimate.zoneCode
+          ? `${displayEstimate.label} → ${displayEstimate.zoneName} (${displayEstimate.region})`
+          : displayEstimate.message;
       }
 
       const pkgVal = paymentType === 'cod' || paymentType === 'cod-client-delivery' ? (Number(el('#codAmount')?.value) || 0) : 0;
-      renderEstimateBreakdown(breakdownEl, formatEstimateRows({ estimate, paymentType, packageValue: pkgVal }));
+      renderEstimateBreakdown(breakdownEl, formatEstimateRows({ estimate: displayEstimate, paymentType, packageValue: pkgVal }));
 
     } catch (err) {
       console.error('[VD Estimate] Error:', err);

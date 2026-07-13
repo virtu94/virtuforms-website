@@ -148,10 +148,23 @@ function areaVariants(area) {
   ].map(normalise).filter(value => value.length >= 3))];
 }
 
-function areaMatches(input, area) {
+function zoneAreaAliasNames(area = {}) {
+  return (area.zone_area_aliases || area.aliases || [])
+    .flatMap(alias => [alias.match_value || alias.alias_name, alias.street_hint])
+    .filter(Boolean);
+}
+
+function areaSearchVariants(area) {
+  return [
+    ...areaVariants(typeof area === 'string' ? area : area?.area_name),
+    ...zoneAreaAliasNames(area).flatMap(value => areaVariants(value))
+  ];
+}
+
+function textMatchesAnyAreaVariant(input, variants) {
   const text = normalise(input);
   if (!text) return false;
-  return areaVariants(area).some(target => {
+  return variants.some(target => {
     if (!target) return false;
     if (text.includes(target)) return true;
     const targetTokens = target.split(' ').filter(token => token.length > 2);
@@ -159,12 +172,27 @@ function areaMatches(input, area) {
   });
 }
 
+function areaMatches(input, area) {
+  return textMatchesAnyAreaVariant(input, areaSearchVariants(area));
+}
+
+function matchedZoneAreaAlias(input, area = {}) {
+  const text = normalise(input);
+  if (!text) return null;
+  return (area.zone_area_aliases || area.aliases || []).find(alias =>
+    textMatchesAnyAreaVariant(text, [
+      ...areaVariants(alias.match_value || alias.alias_name),
+      ...areaVariants(alias.street_hint)
+    ])
+  ) || null;
+}
+
 async function loadZones(supabase) {
   if (!zonesPromise) {
     zonesPromise = (async () => {
       let result = await supabase
         .from('zones')
-        .select('id, code, name, region, active, zone_areas(area_name, rate_band)')
+        .select('id, code, name, region, active, zone_areas(id, area_name, rate_band, zone_area_aliases(alias_name, match_value, street_hint, active))')
         .eq('active', true)
         .order('code');
 
@@ -328,8 +356,11 @@ async function geocodeAddress(address) {
 function matchZoneFromText(zones, text) {
   for (const zone of zones) {
     const areas = zone.zone_areas || [];
-    const matchedArea = areas.find(area => areaMatches(text, area.area_name));
-    if (matchedArea) return { zone, matchedArea };
+    const matchedArea = areas.find(area => areaMatches(text, area));
+    if (matchedArea) {
+      const matchedAlias = matchedZoneAreaAlias(text, matchedArea);
+      return { zone, matchedArea, matchedAlias };
+    }
   }
   return null;
 }
@@ -610,6 +641,9 @@ export async function estimateDeliveryZone({
 
     if (resolvedAddress && match?.matchedArea?.area_name) {
       resolvedAddress.areaName = match.matchedArea.area_name;
+      if (!resolvedAddress.streetName && match.matchedAlias) {
+        resolvedAddress.streetName = match.matchedAlias.street_hint || match.matchedAlias.alias_name || match.matchedAlias.match_value || '';
+      }
     }
 
     const estimate = {

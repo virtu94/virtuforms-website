@@ -753,23 +753,27 @@
       estimateDebounceTimer = setTimeout(async () => {
         try {
           const estimate = await withEstimateTimeout(estimateDeliveryZone(input));
-          latestEstimate = estimate;
-          applyResolvedAddress(estimate);
-          promptManualLocationIfNeeded(estimate);
+          const previousEstimate = latestEstimate;
+          const displayEstimate = estimate.status === 'unknown' && estimate.fee === null && previousEstimate?.fee !== null
+            ? previousEstimate
+            : estimate;
+          latestEstimate = displayEstimate;
+          applyResolvedAddress(displayEstimate);
+          promptManualLocationIfNeeded(displayEstimate);
 
-          if (estimate.fee !== null) {
-            estimateAmount.textContent = `$${Number(estimate.fee).toFixed(2)} TTD`;
-            estimateRoute.textContent = `${estimate.label} → ${estimate.zoneName} (${estimate.region})`;
+          if (displayEstimate.fee !== null) {
+            estimateAmount.textContent = `$${Number(displayEstimate.fee).toFixed(2)} TTD`;
+            estimateRoute.textContent = `${displayEstimate.label} → ${displayEstimate.zoneName} (${displayEstimate.region})`;
           } else {
-            estimateAmount.textContent = estimate.status === 'unknown' ? 'Location Needed' : 'Quote Required';
-            estimateRoute.textContent = estimate.zoneCode
-              ? `${estimate.label} → ${estimate.zoneName} (${estimate.region})`
-              : estimate.message;
+            estimateAmount.textContent = displayEstimate.status === 'unknown' ? 'Location Needed' : 'Quote Required';
+            estimateRoute.textContent = displayEstimate.zoneCode
+              ? `${displayEstimate.label} → ${displayEstimate.zoneName} (${displayEstimate.region})`
+              : displayEstimate.message;
           }
 
           const packageValue = payment === 'cod' || payment === 'cod-client-delivery' ? (Number(document.getElementById('codAmount').value) || 0) : 0;
           renderRows(estimateBreakdown, formatEstimateRows({
-            estimate,
+            estimate: displayEstimate,
             paymentType: payment,
             packageValue,
             clientFeeSettlement: document.getElementById('clientFeeSettlement').value || null,
