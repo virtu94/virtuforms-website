@@ -38,10 +38,7 @@ async function resolveGoogleLocation(payload) {
   }
 
   if (!data?.success) {
-    throw new Error(
-      data?.message ||
-      'The Google Maps location could not be resolved.'
-    );
+    return null;
   }
 
   return data;
@@ -3257,7 +3254,7 @@ function bindUi() {
         if (street) street.value = "";
         if (area) area.value = "";
       }
-      if (id === "streetName" || id === "areaName") {
+      if (id === "houseNum" || id === "streetName" || id === "areaName") {
         clearSharedLocationForManualEdit();
         const message = validateManualAddress(el("#streetName")?.value, el("#areaName")?.value);
         const error = el("#streetNameErr");

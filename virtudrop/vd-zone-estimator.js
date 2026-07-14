@@ -351,9 +351,7 @@ async function resolveGoogleLocation(supabase, payload) {
   }
 
   if (!data?.success) {
-    throw new Error(
-      data?.message || 'The location could not be resolved.'
-    );
+    return null;
   }
 
   return data;
