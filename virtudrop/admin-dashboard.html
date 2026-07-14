@@ -1450,6 +1450,12 @@
 
         <div class="card">
           <div class="card-title">💰 Driver Collection Records</div>
+          <div class="bulk-toolbar" id="accountingCollectionBulkToolbar">
+            <label><input id="accountingCollectionSelectAll" type="checkbox" onchange="toggleAccountingCollectionVisibleBulk(this.checked)"> Select visible unreconciled</label>
+            <button class="btn btn-primary btn-sm" type="button" onclick="openBulkDriverCashReceived()">Reconcile Selected</button>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="clearAccountingCollectionSelection()">Clear</button>
+            <span class="bulk-count" id="accountingCollectionBulkCount">0 selected</span>
+          </div>
           <div class="table-wrap">
             <table>
               <thead>
@@ -1903,6 +1909,8 @@
     let manifestSelection = new Set();
     let manifestVisibleIds = [];
     let driverAssignSelection = new Set();
+    let accountingCollectionSelection = new Set();
+    let accountingCollectionVisibleIds = [];
     let driverAssignVisibleIds = [];
     let appSettings = {
       daily_cutoff_time: '12:00',
@@ -2907,6 +2915,12 @@
       return `<span class="badge badge-failed">${escapeHtml(String(record.status || 'disputed').replaceAll('_', ' '))}</span>`;
     }
 
+    function canBulkReconcileCollection(order) {
+      return isDelivered(order)
+        && driverCollects(order) > 0
+        && driverCashRecordForOrder(order.id)?.status !== 'balanced';
+    }
+
     function selectedRemittanceOrders() {
       const clientId = document.getElementById('remitClientFilter')?.value || '';
       const period = document.getElementById('remitPeriodFilter')?.value || 'all';
@@ -3292,6 +3306,7 @@
       renderAccountingLedger();
 
       const accountingBody = document.getElementById('accountingRecordsBody');
+      accountingCollectionVisibleIds = collectionOrders.filter(canBulkReconcileCollection).map(order => order.id);
       if (accountingBody) {
         const selectedClientId = document.getElementById('acctClientFilter')?.value || '';
         const selectedClientName = selectedClientId ? clientsById.get(selectedClientId)?.business_name || 'selected client' : '';
@@ -3300,9 +3315,13 @@
           const expected = record ? amount(record.expected_amount) : driverCollects(order);
           const received = record ? amount(record.received_amount ?? record.amount) : null;
           const variance = record ? amount(record.variance_amount) : null;
+          const canBulkReconcile = canBulkReconcileCollection(order);
+          const orderCell = canBulkReconcile
+            ? '<label class="bulk-order-check"><input class="accounting-collection-bulk-check" type="checkbox" value="' + escapeHtml(order.id) + '" ' + (accountingCollectionSelection.has(order.id) ? 'checked' : '') + ' onchange="toggleAccountingCollectionBulk(this.value, this.checked)"><span>' + escapeHtml(order.order_number) + '</span></label>'
+            : escapeHtml(order.order_number);
           return `
           <tr>
-            <td class="td-id">${escapeHtml(order.order_number)}</td>
+            <td class="td-id">${orderCell}</td>
             <td><div class="td-name">${escapeHtml(clientName(order))}</div></td>
             <td><div class="td-name">${escapeHtml(order.customer_name || '—')}</div><div class="td-sub">${escapeHtml(order.customer_phone || '')}</div></td>
             <td class="accounting-total">${moneyFull(expected)}</td>
@@ -3324,6 +3343,7 @@
         `;}).join('') || `<tr><td colspan="11">No COD or delivery-fee collection orders found${selectedClientName ? ` for ${escapeHtml(selectedClientName)}` : ''} in the selected filters.</td></tr>`;
       }
 
+      syncAccountingCollectionBulkControls();
       renderClientPayouts(deliveredCollectable.filter(order => order.payment_type === 'cod' && order.remittance_status === 'ready'));
       renderRemittanceHistory();
     }
@@ -3730,6 +3750,79 @@
       XLSX.utils.book_append_sheet(workbook, worksheet, kind.slice(0, 28));
       XLSX.writeFile(workbook, `VirtuDrop-Accounting-${kind}-${new Date().toISOString().slice(0, 10)}.xlsx`);
     };
+
+    function selectedAccountingCollectionOrders() {
+      const selectedIds = selectedVisibleIds(accountingCollectionSelection, accountingCollectionVisibleIds);
+      return selectedIds
+        .map(orderId => orders.find(order => order.id === orderId))
+        .filter(Boolean)
+        .filter(canBulkReconcileCollection);
+    }
+
+    window.openBulkDriverCashReceived = function() {
+      const selectedOrders = selectedAccountingCollectionOrders();
+      if (!selectedOrders.length) {
+        showToast("Select at least one unreconciled delivered collection.");
+        return;
+      }
+      const totalExpected = selectedOrders.reduce((sum, order) => sum + driverCollects(order), 0);
+      const orderList = selectedOrders.slice(0, 8).map(order => escapeHtml(order.order_number)).join(", ");
+      const extraCount = selectedOrders.length > 8 ? " and " + (selectedOrders.length - 8) + " more" : "";
+      document.getElementById("modalTitle").textContent = "Reconcile Selected Collections";
+      document.getElementById("modalBody").innerHTML = `
+        <strong>${selectedOrders.length} collection${selectedOrders.length === 1 ? "" : "s"}</strong><br>
+        Orders: <strong>${orderList}${extraCount}</strong><br>
+        Expected from drivers: <strong>${moneyFull(totalExpected)}</strong>
+        <div class="payment-modal-form">
+          <label>Method
+            <select id="bulkDriverCashMethod">
+              <option value="cash">Cash</option>
+              <option value="linx">LINX</option>
+              <option value="bank_transfer">Bank Transfer</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+          <label>Reference / Note
+            <input id="bulkDriverCashReference" type="text" placeholder="Receipt, handover note, or reference" />
+          </label>
+          <label>Admin Notes
+            <textarea id="bulkDriverCashNotes" placeholder="Optional note applied to every selected reconciliation"></textarea>
+          </label>
+        </div>
+      `;
+      document.getElementById("modal").classList.add("show");
+      modalCb = async () => markBulkDriverCashReceived();
+    };
+
+    async function markBulkDriverCashReceived() {
+      const selectedOrders = selectedAccountingCollectionOrders();
+      if (!selectedOrders.length) {
+        showToast("Select at least one unreconciled delivered collection.");
+        return;
+      }
+      const method = document.getElementById("bulkDriverCashMethod")?.value || "cash";
+      const reference = document.getElementById("bulkDriverCashReference")?.value.trim() || null;
+      const notes = document.getElementById("bulkDriverCashNotes")?.value.trim() || null;
+      let reconciled = 0;
+      const failed = [];
+      for (const order of selectedOrders) {
+        const { error } = await supabase.rpc("admin_reconcile_order_collection", {
+          p_order_id: order.id,
+          p_received_amount: driverCollects(order),
+          p_handover_method: method,
+          p_reference: reference,
+          p_notes: notes
+        });
+        if (error) failed.push(order.order_number + ": " + (error.message || "failed"));
+        else reconciled += 1;
+      }
+      if (reconciled) showToast(reconciled + " collection" + (reconciled === 1 ? "" : "s") + " reconciled.");
+      if (failed.length) {
+        window.vdNotify("Some Collections Not Reconciled", failed.slice(0, 5).join(" | ") + (failed.length > 5 ? " | More errors omitted." : ""), "error");
+      }
+      accountingCollectionSelection.clear();
+      await loadData();
+    }
 
     window.openMarkDriverCashReceived = function(orderId) {
       const order = orders.find(item => item.id === orderId);
@@ -4211,6 +4304,27 @@
       }
       return selected;
     }
+
+    function syncAccountingCollectionBulkControls() {
+      updateBulkCount('accountingCollectionBulkCount', 'accountingCollectionSelectAll', accountingCollectionSelection, accountingCollectionVisibleIds);
+      syncBulkCheckboxes('.accounting-collection-bulk-check', accountingCollectionSelection);
+    }
+
+    window.toggleAccountingCollectionBulk = function(orderId, checked) {
+      if (checked) accountingCollectionSelection.add(orderId);
+      else accountingCollectionSelection.delete(orderId);
+      syncAccountingCollectionBulkControls();
+    };
+
+    window.toggleAccountingCollectionVisibleBulk = function(checked) {
+      accountingCollectionVisibleIds.forEach(orderId => checked ? accountingCollectionSelection.add(orderId) : accountingCollectionSelection.delete(orderId));
+      syncAccountingCollectionBulkControls();
+    };
+
+    window.clearAccountingCollectionSelection = function() {
+      accountingCollectionSelection.clear();
+      syncAccountingCollectionBulkControls();
+    };
 
     function syncParcelCheckinBulkControls() {
       updateBulkCount('parcelCheckinBulkCount', 'parcelCheckinSelectAll', parcelCheckinSelection, parcelCheckinVisibleIds);
