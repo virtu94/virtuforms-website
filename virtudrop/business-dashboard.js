@@ -8,23 +8,33 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 window.supabase = supabase;
 
 async function resolveGoogleLocation(payload) {
-  const { data, error } = await supabase.functions.invoke(
-    'resolve-google-location',
+  const response = await fetch(
+    SUPABASE_URL + '/functions/v1/resolve-google-location',
     {
-      body: payload
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify(payload)
     }
   );
 
-  if (error) {
-    console.error(
-      '[VirtuDrop Google Location] Edge Function error:',
-      error
-    );
+  let data = null;
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
+  }
 
-    throw new Error(
-      error.message ||
-      'The Google Maps location could not be resolved.'
+  if (!response.ok) {
+    const error = new Error(
+      data?.message ||
+      'Google location lookup returned HTTP ' + response.status + '.'
     );
+    error.status = response.status;
+    console.error('[VirtuDrop Google Location] Edge Function error:', error);
+    throw error;
   }
 
   if (!data?.success) {

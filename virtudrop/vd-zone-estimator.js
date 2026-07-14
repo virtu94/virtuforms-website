@@ -319,18 +319,35 @@ async function geocodeAddressWithOpenStreetMap(address) {
 }
 
 async function resolveGoogleLocation(supabase, payload) {
-  const { data, error } = await supabase.functions.invoke(
-    'resolve-google-location',
+  const functionsUrl = supabase?.functionsUrl ||
+    'https://vgmzzavxhuarlacnvnoz.supabase.co/functions/v1';
+  const response = await fetch(
+    functionsUrl + '/resolve-google-location',
     {
-      body: payload
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: 'sb_publishable_riDvZH96FeYGnF0bLYQErg_tlRv71CX'
+      },
+      body: JSON.stringify(payload)
     }
   );
 
-  if (error) {
-    console.error('Location Edge Function error:', error);
-    throw new Error(
-      error.message || 'The Google Maps location could not be resolved.'
+  let data = null;
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
+  }
+
+  if (!response.ok) {
+    const error = new Error(
+      data?.message ||
+      'Google location lookup returned HTTP ' + response.status + '.'
     );
+    error.status = response.status;
+    console.error('Location Edge Function error:', error);
+    throw error;
   }
 
   if (!data?.success) {
