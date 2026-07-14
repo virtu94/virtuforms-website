@@ -498,40 +498,8 @@ export async function estimateDeliveryZone({
 
     if (manualText) {
       debug.source = 'manual';
-
-      try {
-        resolvedAddress = await withTimeout(
-          resolveGoogleLocation(supabase, {
-            address: manualText
-          }),
-          15000,
-          null
-        );
-      } catch (error) {
-        console.warn('Google manual address resolution failed:', error);
-        debug.locationError = error?.message || 'Google manual address resolution failed.';
-      }
-
-      if (resolvedAddress) {
-        sourceText =
-          resolvedAddress.searchText ||
-          resolvedAddress.formattedAddress ||
-          manualText;
-
-        sourceLabel =
-          resolvedAddress.areaName ||
-          resolvedAddress.formattedAddress ||
-          sourceLabel;
-      } else {
-        sourceText = [
-          manualText,
-          await withTimeout(
-            geocodeAddress(manualText),
-            10000,
-            ''
-          )
-        ].filter(Boolean).join(' ');
-      }
+      sourceText = manualText;
+      sourceLabel = areaName || streetName || manualText;
     }
 
     if (
