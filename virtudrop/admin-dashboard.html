@@ -5693,6 +5693,13 @@
         || order.return_to_client_status === 'ready';
     }
 
+    function clientReturnMethodLabel(order) {
+      if (order.return_to_client_method === 'office_collection') return 'Client collecting via office';
+      if (order.return_to_client_method === 'client_dropoff') {
+        return order.return_to_client_dropoff_fee_type === 'paid' ? 'Paid drop-off to client' : 'Free drop-off to client';
+      }
+      return 'Client collection/return';
+    }
     function returnActionButtons(order) {
       if (order.delivery_return_required) return `<div class="finance-actions"><span class="badge badge-unpaid">Driver must return parcel</span><button class="btn btn-primary btn-sm" onclick="confirmHubReturn('${order.id}')">Confirm Hub Receipt</button></div>`;
       if (order.return_to_client_status === 'ready') {
@@ -5732,13 +5739,13 @@
           ? `Redelivery: ${new Date(order.scheduled_delivery_date + 'T12:00:00').toLocaleDateString('en-TT')}`
           : order.holding_type === 'extra_stock' ? 'Held as extra stock'
             : order.hold_until ? `Hold until ${new Date(order.hold_until + 'T12:00:00').toLocaleDateString('en-TT')}`
-              : order.return_to_client_status === 'ready' ? 'Ready for client collection/return' : 'Awaiting admin decision';
+              : order.return_to_client_status === 'ready' ? clientReturnMethodLabel(order) : 'Awaiting admin decision';
         return `<tr>
           <td><div class="td-id">${escapeHtml(order.order_number)}</div><div class="td-sub">Attempt ${escapeHtml(String(order.delivery_attempt_count || 1))}</div></td>
           <td><div class="td-name">${escapeHtml(clientName(order))}</div><div class="td-sub">${escapeHtml(order.customer_name || '')} · ${escapeHtml(order.customer_phone || '')}</div></td>
           <td><span class="badge badge-pending">${escapeHtml(outcomeLabels[order.delivery_outcome] || order.delivery_outcome || 'Undelivered')}</span>${order.delivery_outcome_notes ? `<div class="td-sub">${escapeHtml(order.delivery_outcome_notes)}</div>` : ''}</td>
           <td><div class="td-name">${escapeHtml(String(order.parcel_status || '').replaceAll('_', ' '))}</div><div class="td-sub">${order.delivery_returned_hub_at ? `Hub return ${new Date(order.delivery_returned_hub_at).toLocaleString('en-TT')}` : 'Not returned yet'}</div></td>
-          <td><div class="td-name">Redelivery: ${moneyFull(order.redelivery_fee)}</div><div class="td-sub">Payer: ${escapeHtml(payer)}</div>${order.return_to_client_fee > 0 ? `<div class="td-sub">Client return: ${moneyFull(order.return_to_client_fee)}</div>` : ''}</td>
+          <td><div class="td-name">Redelivery: ${moneyFull(order.redelivery_fee)}</div><div class="td-sub">Payer: ${escapeHtml(payer)}</div>${order.return_to_client_status ? `<div class="td-sub">Return method: ${escapeHtml(clientReturnMethodLabel(order))}</div>` : ''}${order.return_to_client_fee > 0 ? `<div class="td-sub">Client return: ${moneyFull(order.return_to_client_fee)}</div>` : ''}</td>
           <td><div class="td-name">${escapeHtml(schedule)}</div>${order.return_management_notes ? `<div class="td-sub">${escapeHtml(order.return_management_notes)}</div>` : ''}</td>
           <td>${returnActionButtons(order)}</td>
         </tr>`;
@@ -5814,28 +5821,48 @@
       });
     };
 
+    window.syncClientReturnOptions = function() {
+      const method = document.getElementById('clientReturnMethod')?.value || 'office_collection';
+      const feeTypeWrap = document.getElementById('clientReturnDropoffFeeWrap');
+      const settlementWrap = document.getElementById('clientReturnSettlementWrap');
+      const feeType = document.getElementById('clientReturnDropoffFee')?.value || 'free';
+      if (feeTypeWrap) feeTypeWrap.style.display = method === 'client_dropoff' ? '' : 'none';
+      if (settlementWrap) settlementWrap.style.display = method === 'client_dropoff' && feeType === 'paid' ? '' : 'none';
+    };
+
     window.prepareClientReturn = function(orderId) {
       const order = orders.find(item => item.id === orderId);
       if (!order) return showToast('Returned order not found.');
-      showModal(`Return ${order.order_number} to Client`, '', async () => {
-        const settlement = document.getElementById('clientReturnSettlement')?.value || '';
+      showModal('Return ' + order.order_number + ' to Client', '', async () => {
+        const method = document.getElementById('clientReturnMethod')?.value || 'office_collection';
+        const dropoffFeeType = method === 'client_dropoff' ? document.getElementById('clientReturnDropoffFee')?.value || 'free' : null;
+        const settlement = method === 'client_dropoff' && dropoffFeeType === 'paid'
+          ? document.getElementById('clientReturnSettlement')?.value || ''
+          : null;
         const notes = document.getElementById('clientReturnNotes')?.value.trim() || null;
         try {
-          const { error } = await supabase.rpc('admin_prepare_order_return_to_client', { p_order_id: orderId, p_settlement: settlement, p_notes: notes });
+          const { error } = await supabase.rpc('admin_prepare_order_return_to_client', {
+            p_order_id: orderId,
+            p_settlement: settlement,
+            p_notes: notes,
+            p_return_method: method,
+            p_dropoff_fee_type: dropoffFeeType
+          });
           if (error) throw error;
-          showToast(`${order.order_number} prepared for return to the client.`);
+          showToast(order.order_number + ' prepared for return to the client.');
           await loadData();
         } catch (error) {
           window.vdNotify('Client Return Not Prepared', error.message || 'Could not prepare this return.', 'error');
         }
       });
       document.getElementById('modalBody').innerHTML = `<div class="payment-modal-form" style="text-align:left;">
-        <p>The client return fee is <strong>TTD 20.00</strong>.</p>
-        <label>Fee Settlement<select id="clientReturnSettlement"><option value="deduct_from_remittance">Deduct from remittance</option><option value="pay_separately">Pay separately</option></select></label>
-        <label>Return Notes<textarea id="clientReturnNotes" placeholder="Collection arrangement or next-pickup instructions"></textarea></label>
+        <label>Return Method<select id="clientReturnMethod" onchange="syncClientReturnOptions()"><option value="office_collection">Collected via office</option><option value="client_dropoff">Dropped off to client</option></select></label>
+        <label id="clientReturnDropoffFeeWrap" style="display:none;">Drop-off Fee<select id="clientReturnDropoffFee" onchange="syncClientReturnOptions()"><option value="free">Free drop-off</option><option value="paid">Paid drop-off - TTD 20.00</option></select></label>
+        <label id="clientReturnSettlementWrap" style="display:none;">Fee Settlement<select id="clientReturnSettlement"><option value="deduct_from_remittance">Deduct from remittance</option><option value="pay_separately">Pay separately</option></select></label>
+        <label>Return Notes<textarea id="clientReturnNotes" placeholder="Office collection, drop-off arrangement, contact person, or timing"></textarea></label>
       </div>`;
+      syncClientReturnOptions();
     };
-
     window.completeClientReturn = function(orderId) {
       const order = orders.find(item => item.id === orderId);
       if (!order) return showToast('Returned order not found.');
