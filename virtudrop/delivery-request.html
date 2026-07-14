@@ -459,11 +459,11 @@
   <script src="vd-modal.js"></script>
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-    import { estimateDeliveryZone, formatEstimateRows } from './vd-zone-estimator.js?v=20260714-google-first-1';
+    import { estimateDeliveryZone, formatEstimateRows } from './vd-zone-estimator.js?v=20260714-google-first-publishable-key-1';
     import { calculateOrderMoney, financialRequestFields, validateManualAddress, validatePickupLocation } from './vd-order-money.js?v=20260624-split-cod-1';
 
     const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnbXp6YXZ4aHVhcmxhY252bm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2Mjk4NTksImV4cCI6MjA5NDIwNTg1OX0.7-YKlwLrhUYUYbiii93ZvgX01TxVephApDNCP50Rl54';
+    const SUPABASE_ANON_KEY = 'sb_publishable_riDvZH96FeYGnF0bLYQErg_tlRv71CX';
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const paymentMap = { cod: 'cod', 'cod-client-delivery': 'cod', 'pkg-online': 'delivery_only', 'all-online': 'prepaid' };
