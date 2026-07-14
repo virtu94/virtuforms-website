@@ -478,7 +478,8 @@ export async function estimateDeliveryZone({
   };
   const hasCoordinateInput = Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude));
   const hasMapsInput = Boolean(mapsLink);
-  const shouldUseManualAddress = !hasCoordinateInput && !hasMapsInput;
+  const hasManualInput = Boolean(streetName || areaName);
+  const shouldUseManualAddress = hasManualInput || (!hasCoordinateInput && !hasMapsInput);
   const manualText = shouldUseManualAddress
     ? [houseNumber, streetName, areaName].filter(Boolean).join(' ')
     : '';

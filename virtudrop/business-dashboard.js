@@ -483,7 +483,8 @@ async function estimateDeliveryZone({
   };
   const hasCoordinateInput = Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude));
   const hasMapsInput = Boolean(mapsLink);
-  const shouldUseManualAddress = !hasCoordinateInput && !hasMapsInput;
+  const hasManualInput = Boolean(streetName || areaName);
+  const shouldUseManualAddress = hasManualInput || (!hasCoordinateInput && !hasMapsInput);
   const manualText = shouldUseManualAddress
     ? [houseNumber, streetName, areaName].filter(Boolean).join(' ')
     : '';
@@ -2762,7 +2763,16 @@ function validateOrderForm(payload, raw) {
     issues.push('Select the payment type.');
   }
 
-  if (activeLocTab === 'manual') {
+  const hasManualDeliveryAddress = Boolean(
+    (payload.street_name || '').trim() ||
+    (payload.area_name || '').trim()
+  );
+  const shouldValidateManualAddress =
+    activeLocTab === 'manual' ||
+    manualLocationMode ||
+    hasManualDeliveryAddress;
+
+  if (shouldValidateManualAddress) {
     if ((payload.street_name || '').trim().length < 3) {
       markOrderInvalid('#streetName');
       issues.push('Enter the street or building name.');
@@ -2776,16 +2786,12 @@ function validateOrderForm(payload, raw) {
       markOrderInvalid('#streetName');
       issues.push(addressError);
     }
-  }
-
-  if (activeLocTab === 'share') {
-    if (!payload.maps_link && !payload.latitude) {
-      markOrderInvalid('#mapsLink');
-      issues.push('Paste a Google Maps link, use current location, or enter the address manually.');
-    } else if (payload.maps_link && !isValidMapsLink(payload.maps_link)) {
-      markOrderInvalid('#mapsLink');
-      issues.push('Paste a valid Google Maps link.');
-    }
+  } else if (!payload.maps_link && !payload.latitude) {
+    markOrderInvalid('#mapsLink');
+    issues.push('Paste a Google Maps link, use current location, or enter the address manually.');
+  } else if (payload.maps_link && !isValidMapsLink(payload.maps_link)) {
+    markOrderInvalid('#mapsLink');
+    issues.push('Paste a valid Google Maps link.');
   }
 
   if (['cod', 'cod-client-delivery'].includes(raw.paymentValue) && (!Number.isFinite(Number(payload.cod_amount)) || Number(payload.cod_amount) <= 0)) {
