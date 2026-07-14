@@ -455,41 +455,17 @@ input[type="number"].input {
       <div class="container">
         <div class="page-header">
           <h1>Delivery Cost Calculator</h1>
-          <p>Select your zones and service type to get an instant price estimate.</p>
+          <p>Select the delivery zone and area to get a public estimate.</p>
         </div>
 
         <div class="calc-wrapper">
 
-          <!-- ── Pickup Location ── -->
+          <!-- ── Delivery Location ── -->
           <div class="card">
-            <div class="card-title">📦 Pickup Location</div>
+            <div class="card-title">🏠 Delivery Location</div>
             <div class="zone-grid">
               <div class="zone-block">
-                <label for="pickupZone">Pickup Zone <span>(select first)</span></label>
-                <select class="input" id="pickupZone">
-                  <option value="">— Select zone —</option>
-                  <option value="A">Central</option>
-                  <option value="B">South</option>
-                  <option value="C">East</option>
-                  <option value="D">West</option>
-                </select>
-              </div>
-              <div class="zone-block" id="pickupAreaBlock">
-                <label for="pickupArea">Pickup Area <span>(select zone first)</span></label>
-                <select class="input" id="pickupArea" disabled>
-                  <option value="">— Select zone first —</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-
-          <!-- ── Drop-off Location ── -->
-          <div class="card">
-            <div class="card-title">🏠 Drop-off Location</div>
-            <div class="zone-grid">
-              <div class="zone-block">
-                <label for="dropZone">Drop-off Zone <span>(select first)</span></label>
+                <label for="dropZone">Delivery Zone <span>(select first)</span></label>
                 <select class="input" id="dropZone">
                   <option value="">— Select zone —</option>
                   <option value="A">Central</option>
@@ -499,7 +475,7 @@ input[type="number"].input {
                 </select>
               </div>
               <div class="zone-block" id="dropAreaBlock">
-                <label for="dropArea">Drop-off Area <span>(select zone first)</span></label>
+                <label for="dropArea">Delivery Area <span>(select zone first)</span></label>
                 <select class="input" id="dropArea" disabled>
                   <option value="">— Select zone first —</option>
                 </select>
@@ -507,48 +483,17 @@ input[type="number"].input {
             </div>
           </div>
 
-          <!-- ── Service Type ── -->
-          <div class="card">
-            <div class="card-title">🚚 Service Type</div>
-            <div class="service-options">
-
-              <div class="service-option" id="opt-standard">
-                <input type="radio" name="service" id="svc-standard" value="standard">
-                <label for="svc-standard">
-                  <span class="service-icon">📅</span>
-                  <span class="service-name">Standard Delivery</span>
-                  <span class="service-note">Primary areas $40 · Extended areas $50</span>
-                </label>
-              </div>
-
-              <div class="service-option contact-svc" id="opt-priority">
-                <input type="radio" name="service" id="svc-priority" value="priority">
-                <label for="svc-priority">
-                  <span class="service-icon">⚡</span>
-                  <span class="service-name">Priority Same-Day</span>
-                  <span class="service-note">Contact us · subject to availability</span>
-                </label>
-              </div>
-
-            </div>
-
-            <!-- Same-day/Direct notice shown below service selector -->
-            <div class="sameday-notice" id="contactNotice" style="display:none; margin-top:1.2rem;">
-              <span id="contactNoticeText"></span>
-            </div>
-          </div>
-
           <!-- ── Result ── -->
           <div>
             <div class="result-empty" id="resultEmpty">
               <span class="empty-icon">🧮</span>
-              Select your locations and service type above to see the delivery cost.
+              Select your delivery zone and area above to see the estimated delivery cost.
             </div>
             <div class="result-filled" id="resultFilled">
               <div class="result-label">Estimated Delivery Cost</div>
               <div id="resultPriceDisplay"></div>
               <div class="result-currency-note" id="resultCurrencyNote"></div>
-              <div class="result-breakdown" id="resultBreakdown"></div>
+              <div id="resultBreakdown" class="result-breakdown"></div>
               <div id="resultNotes"></div>
             </div>
           </div>
@@ -560,32 +505,27 @@ input[type="number"].input {
             <table class="pricing-table">
               <thead>
                 <tr>
-                  <th>Service Type</th>
+                  <th>Delivery Type</th>
                   <th>Primary Areas</th>
                   <th>Extended Areas</th>
                 </tr>
               </thead>
               <tbody>
                 <tr><td>Standard Delivery</td><td class="price-val">TTD $40</td><td class="price-val">TTD $50</td></tr>
-                <tr><td>Priority Same-Day</td><td class="contact-val">Contact Us</td><td class="contact-val">Contact Us</td></tr>
+                <tr><td>Remote / Special Route</td><td class="contact-val" colspan="2">Contact Us for Quote</td></tr>
               </tbody>
             </table>
-
-            
 
           </div>
 
         </div>
       </div>
     </section>
-
-      </div>
-    </section>
   </main>
 
   <footer class="footer">
     <div class="container">
-      <small>© 2026 VirtuDrop. Delivery pricing calculator for business clients and customers.</small>
+      <small>© 2026 VirtuDrop. Public delivery pricing calculator.</small>
     </div>
   </footer>
 
@@ -599,11 +539,9 @@ input[type="number"].input {
 
     let zoneAreas = {};
     let zoneNames = {};
-    let appSettings = { currency: 'TTD', same_day_enabled: true };
+    let appSettings = { currency: 'TTD' };
 
-    const pickupZone = document.getElementById('pickupZone');
     const dropZone = document.getElementById('dropZone');
-    const standardNote = document.querySelector('#opt-standard .service-note');
     const pricingRow = document.querySelector('.pricing-table tbody tr:first-child');
 
     function formatMoney(amount) {
@@ -634,7 +572,7 @@ input[type="number"].input {
         const option = document.createElement('option');
         option.value = area.name;
         option.dataset.rateBand = area.rateBand;
-        option.textContent = `${area.name}${area.rateBand === 'extended' ? ' - Extended $50' : ''}`;
+        option.textContent = area.name + (area.rateBand === 'extended' ? ' - Extended $50' : area.rateBand === 'remote' ? ' - Quote required' : '');
         sel.appendChild(option);
       });
     }
@@ -648,7 +586,8 @@ input[type="number"].input {
       return area ? { zone, area, rateBand } : null;
     }
 
-    function getStandardPrice(pickup, drop) {
+    function getStandardPrice(drop) {
+      if (drop.rateBand === 'remote') return null;
       return drop.rateBand === 'extended' ? 50 : 40;
     }
 
@@ -658,13 +597,10 @@ input[type="number"].input {
 
     function updatePricingReference() {
       const prices = getReferencePrices();
-      if (standardNote) {
-        standardNote.textContent = `Primary areas - $${formatMoney(prices.primary)} / Extended areas - $${formatMoney(prices.extended)}`;
-      }
       if (pricingRow) {
         const cells = pricingRow.querySelectorAll('td');
-        if (cells[1]) cells[1].textContent = `${appSettings.currency} $${formatMoney(prices.primary)}`;
-        if (cells[2]) cells[2].textContent = `${appSettings.currency} $${formatMoney(prices.extended)}`;
+        if (cells[1]) cells[1].textContent = appSettings.currency + ' $' + formatMoney(prices.primary);
+        if (cells[2]) cells[2].textContent = appSettings.currency + ' $' + formatMoney(prices.extended);
       }
     }
 
@@ -674,12 +610,11 @@ input[type="number"].input {
           .from('zones')
           .select('code, name, region, zone_areas(area_name, rate_band)')
           .eq('active', true)
-          .in('code', ['A', 'B', 'C', 'D'])
           .order('code', { ascending: true }),
         supabase
           .from('app_settings')
           .select('key, value')
-          .in('key', ['currency', 'same_day_enabled'])
+          .in('key', ['currency'])
       ]);
 
       if (zonesRes.error || settingsRes.error) {
@@ -710,7 +645,6 @@ input[type="number"].input {
         return settings;
       }, appSettings);
 
-      setSelectOptions(pickupZone, zones);
       setSelectOptions(dropZone, zones);
       updatePricingReference();
     }
@@ -722,39 +656,15 @@ input[type="number"].input {
       updateResult();
     }
 
-    function updateContactNotice() {
-      const service = document.querySelector('input[name="service"]:checked')?.value;
-      const notice = document.getElementById('contactNotice');
-      const text = document.getElementById('contactNoticeText');
-
-      if (service === 'priority') {
-        notice.style.display = 'block';
-        text.innerHTML = '<strong>Priority Same-Day:</strong> Subject to route availability. Package must be ready before 10:00 AM. Contact us to confirm whether it can be accommodated and to receive a quoted price. <a href="contact.html">Contact us here</a>.';
-      } else {
-        notice.style.display = 'none';
-      }
-    }
-
-    ['pickup', 'drop'].forEach(prefix => {
-      document.getElementById(prefix + 'Zone').addEventListener('change', () => onZoneChange(prefix));
-      document.getElementById(prefix + 'Area').addEventListener('change', updateResult);
-    });
-
-    document.querySelectorAll('input[name="service"]').forEach(radio => {
-      radio.addEventListener('change', () => {
-        updateContactNotice();
-        updateResult();
-      });
-    });
+    document.getElementById('dropZone').addEventListener('change', () => onZoneChange('drop'));
+    document.getElementById('dropArea').addEventListener('change', updateResult);
 
     function updateResult() {
-      const pickup = getLocationInfo('pickup');
       const drop = getLocationInfo('drop');
-      const service = document.querySelector('input[name="service"]:checked')?.value;
       const empty = document.getElementById('resultEmpty');
       const filled = document.getElementById('resultFilled');
 
-      if (!pickup || !drop || !service) {
+      if (!drop) {
         empty.style.display = 'block';
         filled.classList.remove('visible');
         return;
@@ -763,59 +673,45 @@ input[type="number"].input {
       empty.style.display = 'none';
       filled.classList.add('visible');
 
-      const notes = [];
+      const zoneLabel = zoneNames[drop.zone] || drop.zone;
+      const rateLabel = drop.rateBand === 'extended'
+        ? 'Extended delivery area'
+        : drop.rateBand === 'remote'
+          ? 'Remote / special route'
+          : 'Primary delivery area';
+      const basePrice = getStandardPrice(drop);
       let priceHTML = '';
       let currencyNote = 'Trinidad and Tobago Dollars (TTD)';
       let breakdownHTML = '';
-      const routeLabel = zoneNames[pickup.zone] + ' &rarr; ' + zoneNames[drop.zone];
-      const rateLabel = drop.rateBand === 'extended' ? 'Extended delivery area' : 'Primary delivery area';
+      const notes = [];
 
-      if (service === 'priority') {
+      if (basePrice === null) {
         priceHTML = '<div class="result-price-range">Contact Us</div>';
-        currencyNote = 'Price quoted per request - subject to availability';
+        currencyNote = 'This area requires confirmation and a quoted price';
         breakdownHTML = `
-          <div class="breakdown-row"><span class="breakdown-label">Pickup</span><span class="breakdown-value">${pickup.area}</span></div>
-          <div class="breakdown-row"><span class="breakdown-label">Drop-off</span><span class="breakdown-value">${drop.area}</span></div>
-          <div class="breakdown-row"><span class="breakdown-label">Route</span><span class="breakdown-value highlight">${routeLabel}</span></div>
-          <div class="breakdown-row"><span class="breakdown-label">Service</span><span class="breakdown-value">Priority Same-Day</span></div>
+          <div class="breakdown-row"><span class="breakdown-label">Delivery zone</span><span class="breakdown-value">${zoneLabel}</span></div>
+          <div class="breakdown-row"><span class="breakdown-label">Delivery area</span><span class="breakdown-value">${drop.area}</span></div>
           <div class="breakdown-divider"></div>
           <div class="breakdown-row"><span class="breakdown-label">Delivery price</span><span class="breakdown-value highlight">Contact us for quote</span></div>
         `;
-        notes.push('<strong>Priority Same-Day:</strong> Subject to availability. Package must be ready before 10:00 AM. Contact us to confirm whether it can be accommodated and to receive a quoted price.');
+        notes.push('Please contact VirtuDrop to confirm pricing for this area.');
       } else {
-        const basePrice = getStandardPrice(pickup, drop);
-
-        if (basePrice === null) {
-          priceHTML = '<div class="result-price-range">Contact Us</div>';
-          currencyNote = 'This route requires confirmation';
-          breakdownHTML = `
-            <div class="breakdown-row"><span class="breakdown-label">Pickup</span><span class="breakdown-value">${pickup.area}</span></div>
-            <div class="breakdown-row"><span class="breakdown-label">Drop-off</span><span class="breakdown-value">${drop.area}</span></div>
-            <div class="breakdown-row"><span class="breakdown-label">Route</span><span class="breakdown-value highlight">${routeLabel}</span></div>
-            <div class="breakdown-divider"></div>
-            <div class="breakdown-row"><span class="breakdown-label">Delivery price</span><span class="breakdown-value highlight">Contact us for quote</span></div>
-          `;
-          notes.push('Please contact VirtuDrop to confirm pricing for this route.');
-        } else {
-          priceHTML = `<div class="result-price"><span class="currency">${appSettings.currency} $</span>${formatMoney(basePrice)}</div>`;
-          breakdownHTML = `
-            <div class="breakdown-row"><span class="breakdown-label">Pickup</span><span class="breakdown-value">${pickup.area}</span></div>
-            <div class="breakdown-row"><span class="breakdown-label">Drop-off</span><span class="breakdown-value">${drop.area}</span></div>
-            <div class="breakdown-row"><span class="breakdown-label">Route</span><span class="breakdown-value highlight">${routeLabel}</span></div>
-            <div class="breakdown-row"><span class="breakdown-label">Service</span><span class="breakdown-value">Standard Delivery</span></div>
-            <div class="breakdown-divider"></div>
-            <div class="breakdown-row"><span class="breakdown-label">Rate band</span><span class="breakdown-value highlight">${rateLabel}</span></div>
-            <div class="breakdown-row"><span class="breakdown-label">Estimated cost</span><span class="breakdown-value highlight">${appSettings.currency} $${formatMoney(basePrice)}</span></div>
-          `;
-          notes.push('<strong>Standard Delivery:</strong> Delivery is scheduled on your zone\'s assigned days. Orders must be submitted by 8:00 PM daily.');
-        }
+        priceHTML = `<div class="result-price"><span class="currency">${appSettings.currency} $</span>${formatMoney(basePrice)}</div>`;
+        breakdownHTML = `
+          <div class="breakdown-row"><span class="breakdown-label">Delivery zone</span><span class="breakdown-value">${zoneLabel}</span></div>
+          <div class="breakdown-row"><span class="breakdown-label">Delivery area</span><span class="breakdown-value">${drop.area}</span></div>
+          <div class="breakdown-divider"></div>
+          <div class="breakdown-row"><span class="breakdown-label">Rate band</span><span class="breakdown-value highlight">${rateLabel}</span></div>
+          <div class="breakdown-row"><span class="breakdown-label">Estimated cost</span><span class="breakdown-value highlight">${appSettings.currency} $${formatMoney(basePrice)}</span></div>
+        `;
+        notes.push('<strong>Standard Delivery:</strong> Public estimates are based on listed delivery areas. Standard delivery takes 1-2 business days.');
       }
 
       document.getElementById('resultPriceDisplay').innerHTML = priceHTML;
       document.getElementById('resultCurrencyNote').textContent = currencyNote;
       document.getElementById('resultBreakdown').innerHTML = breakdownHTML;
       document.getElementById('resultNotes').innerHTML = notes.map(note =>
-        `<div class="result-note${note.includes('Contact us') || note.includes('Subject') ? ' contact-note' : ''}">${note}</div>`
+        '<div class="result-note' + (note.includes('Contact') ? ' contact-note' : '') + '">' + note + '</div>'
       ).join('');
     }
 
