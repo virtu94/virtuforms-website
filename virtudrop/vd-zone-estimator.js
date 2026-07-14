@@ -475,12 +475,46 @@ export async function estimateDeliveryZone({
     }
   }
 
-    let sourceText = manualText;
+    let sourceText = '';
     let sourceLabel = shouldUseManualAddress ? (areaName || streetName || '') : '';
     let resolvedAddress = null;
 
-    if (sourceText) {
+    if (manualText) {
       debug.source = 'manual';
+
+      try {
+        resolvedAddress = await withTimeout(
+          resolveGoogleLocation(supabase, {
+            address: manualText
+          }),
+          15000,
+          null
+        );
+      } catch (error) {
+        console.warn('Google manual address resolution failed:', error);
+        debug.locationError = error?.message || 'Google manual address resolution failed.';
+      }
+
+      if (resolvedAddress) {
+        sourceText =
+          resolvedAddress.searchText ||
+          resolvedAddress.formattedAddress ||
+          manualText;
+
+        sourceLabel =
+          resolvedAddress.areaName ||
+          resolvedAddress.formattedAddress ||
+          sourceLabel;
+      } else {
+        sourceText = [
+          manualText,
+          await withTimeout(
+            geocodeAddress(manualText),
+            10000,
+            ''
+          )
+        ].filter(Boolean).join(' ');
+      }
     }
 
     if (

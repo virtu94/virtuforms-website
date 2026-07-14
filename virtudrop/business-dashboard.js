@@ -486,12 +486,51 @@ async function estimateDeliveryZone({
       debug.locationError = addressError;
     }
   }
-  let sourceText = manualText;
+  let sourceText = '';
   let sourceLabel = shouldUseManualAddress ? (areaName || streetName || '') : '';
   let resolvedAddress = null;
 
-    if (sourceText) {
+    if (manualText) {
       debug.source = 'manual';
+
+      try {
+        resolvedAddress = await withTimeout(
+          resolveGoogleLocation({
+            address: manualText
+          }),
+          15000,
+          null
+        );
+      } catch (error) {
+        console.warn(
+          '[VirtuDrop Google Location] Manual address resolution failed:',
+          error
+        );
+        debug.locationError =
+          error?.message ||
+          'Google manual address resolution failed.';
+      }
+
+      if (resolvedAddress) {
+        sourceText =
+          resolvedAddress.searchText ||
+          resolvedAddress.formattedAddress ||
+          manualText;
+
+        sourceLabel =
+          resolvedAddress.areaName ||
+          resolvedAddress.formattedAddress ||
+          sourceLabel;
+      } else {
+        sourceText = [
+          manualText,
+          await withTimeout(
+            geocodeAddress(manualText),
+            10000,
+            ''
+          )
+        ].filter(Boolean).join(' ');
+      }
     }
 
     if (
@@ -790,7 +829,8 @@ function currentEstimateInput() {
 }
 
 function hasEstimateLocation(input) {
-  return Boolean(input.areaName || input.streetName || input.mapsLink ||
+  const hasManualAddress = Boolean(input.streetName && input.areaName);
+  return Boolean(hasManualAddress || input.mapsLink ||
     (Number.isFinite(input.latitude) && Number.isFinite(input.longitude)));
 }
 
