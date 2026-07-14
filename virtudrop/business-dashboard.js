@@ -533,7 +533,6 @@ async function estimateDeliveryZone({
           resolvedAddress.formattedAddress ||
           '';
       } else {
-        // Keep the existing OpenStreetMap service as a fallback.
         sourceText = await withTimeout(
           reverseGeocode(
             Number(latitude),
@@ -581,11 +580,8 @@ async function estimateDeliveryZone({
           resolvedAddress.formattedAddress ||
           '';
       } else {
-        /*
-         * Retain the old fallback for full Google Maps links
-         * that already contain readable coordinates.
-         */
         const coords = extractLatLngFromMapsUrl(mapsLink);
+        const readableMapsText = coords ? '' : extractTextFromMapsUrl(mapsLink);
 
         if (coords) {
           debug.hasCoordinates = true;
@@ -597,20 +593,16 @@ async function estimateDeliveryZone({
           ) || '';
 
           sourceLabel = sourceText;
-        } else {
-          sourceText = extractTextFromMapsUrl(mapsLink);
-          sourceLabel = sourceText;
-
-          if (sourceText) {
-            sourceText = [
-              sourceText,
-              await withTimeout(
-                geocodeAddress(sourceText),
-                10000,
-                ''
-              )
-            ].filter(Boolean).join(' ');
-          }
+        } else if (readableMapsText) {
+          sourceText = [
+            readableMapsText,
+            await withTimeout(
+              geocodeAddress(readableMapsText),
+              10000,
+              ''
+            )
+          ].filter(Boolean).join(' ');
+          sourceLabel = readableMapsText;
         }
       }
     }

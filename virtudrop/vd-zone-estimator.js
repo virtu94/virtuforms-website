@@ -515,7 +515,6 @@ export async function estimateDeliveryZone({
           resolvedAddress.formattedAddress ||
           '';
       } else {
-        // Temporary fallback to the existing OpenStreetMap lookup.
         sourceText = await withTimeout(
           reverseGeocode(Number(latitude), Number(longitude)),
           10000,
@@ -555,8 +554,8 @@ export async function estimateDeliveryZone({
           resolvedAddress.formattedAddress ||
           '';
       } else {
-        // Existing fallback for full Google Maps links.
         const coords = extractLatLngFromMapsUrl(mapsLink);
+        const readableMapsText = coords ? '' : extractTextFromMapsUrl(mapsLink);
 
         if (coords) {
           debug.hasCoordinates = true;
@@ -568,20 +567,16 @@ export async function estimateDeliveryZone({
           ) || '';
 
           sourceLabel = sourceText;
-        } else {
-          sourceText = extractTextFromMapsUrl(mapsLink);
-          sourceLabel = sourceText;
-
-          if (sourceText) {
-            sourceText = [
-              sourceText,
-              await withTimeout(
-                geocodeAddress(sourceText),
-                10000,
-                ''
-              )
-            ].filter(Boolean).join(' ');
-          }
+        } else if (readableMapsText) {
+          sourceText = [
+            readableMapsText,
+            await withTimeout(
+              geocodeAddress(readableMapsText),
+              10000,
+              ''
+            )
+          ].filter(Boolean).join(' ');
+          sourceLabel = readableMapsText;
         }
       }
     }
