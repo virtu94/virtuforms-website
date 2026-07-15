@@ -1911,9 +1911,10 @@ function businessEditPayloadFromForm(orderId) {
   };
   const notes = customerNotesParts(order);
   const itemText = el('#editPackageDesc')?.value.trim() || order.external_item_number || notes.packageText || '';
+  const extraNotes = el('#editCustomerNotes')?.value.trim() || '';
   const customerNotes = [
     `Package: ${itemText}`,
-    notes.extraNotes || ''
+    extraNotes
   ].filter(Boolean).join('\n');
   return {
     customer_name: el('#editCustomerName')?.value.trim() || '',
@@ -1961,6 +1962,12 @@ function validateBusinessEditPayload(payload, paymentOption) {
   }
   const packageLine = String(payload.customer_notes || '').match(/^Package:\s*(.*)$/m)?.[1] || '';
   if (packageLine.trim().length < 2) return 'Enter the package description.';
+  const extraNotes = String(payload.customer_notes || '')
+    .split('\n')
+    .filter(line => !line.trim().toLowerCase().startsWith('package:'))
+    .join('\n')
+    .trim();
+  if (extraNotes.length > 500) return 'Keep notes under 500 characters.';
   return '';
 }
 
@@ -1986,6 +1993,7 @@ window.openBusinessOrderEdit = function(orderId) {
       <label class="order-detail-item"><div class="order-detail-label">Area</div><input class="input" id="editAreaName" value="${escapeHtml(order.area_name || '')}"></label>
       ${order.maps_link || (order.latitude && order.longitude) ? `<label class="order-detail-item full"><div class="order-detail-label">Google Maps Pin / Link</div><input class="input" id="editMapsLink" value="${escapeHtml(order.maps_link || '')}"></label>` : ''}
       <label class="order-detail-item full"><div class="order-detail-label">Item</div><textarea class="input" id="editPackageDesc">${escapeHtml(notes.packageText || order.external_item_number || '')}</textarea></label>
+      <label class="order-detail-item full"><div class="order-detail-label">Notes</div><textarea class="input" id="editCustomerNotes" maxlength="500" placeholder="Delivery instructions, fragile items, alternate contact, or other customer notes">${escapeHtml(notes.extraNotes || '')}</textarea></label>
       <label class="order-detail-item"><div class="order-detail-label">Package Amount</div><input class="input" id="editPackageValue" type="number" min="0" step="0.01" value="${Number(order.package_value || order.cod_amount || 0).toFixed(2)}"></label>
       <label class="order-detail-item"><div class="order-detail-label">Delivery Cost</div><input class="input" id="editEstimatedFee" type="number" min="0" step="0.01" value="${order.estimated_fee ?? order.delivery_fee ?? ''}"></label>
       <label class="order-detail-item"><div class="order-detail-label">Payment Type</div><select class="input" id="editPaymentType" onchange="syncBusinessEditPayment()"><option value="cod" ${paymentOption === 'cod' ? 'selected' : ''}>Customer pays package + delivery</option><option value="cod-client-delivery" ${paymentOption === 'cod-client-delivery' ? 'selected' : ''}>Customer pays package, business pays delivery</option><option value="pkg-online" ${paymentOption === 'pkg-online' ? 'selected' : ''}>Customer pays delivery only</option><option value="all-online" ${paymentOption === 'all-online' ? 'selected' : ''}>Business pays delivery</option></select></label>
