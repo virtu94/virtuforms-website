@@ -2459,6 +2459,7 @@ function renderDeliveryLink() {
     const canReview = draft.status === 'customer_completed';
     const actions = '<div style="display:flex; gap:0.45rem; flex-wrap:wrap; margin-top:0.65rem;">'
       + '<button type="button" class="btn btn-ghost" style="padding:0.45rem 0.7rem; font-size:0.82rem;" onclick="copyDraftDeliveryLink(\'' + draft.id + '\')">Copy</button>'
+      + (draft.status === 'draft_created' ? '<button type="button" class="btn btn-primary" style="padding:0.45rem 0.7rem; font-size:0.82rem;" onclick="sendDraftDeliveryLinkWhatsApp(\'' + draft.id + '\')">WhatsApp</button>' : '')
       + (canReview ? '<button type="button" class="btn btn-primary" style="padding:0.45rem 0.7rem; font-size:0.82rem;" onclick="openDeliveryLinkReview(\'' + draft.id + '\')">Review</button>' : '')
       + (canCancel ? '<button type="button" class="btn btn-ghost" style="padding:0.45rem 0.7rem; font-size:0.82rem;" onclick="cancelDraftDeliveryLink(\'' + draft.id + '\')">Cancel</button>' : '')
       + '</div>';
@@ -3567,6 +3568,14 @@ window.copyDraftDeliveryLink = async function(draftId) {
   }
 };
 
+window.sendDraftDeliveryLinkWhatsApp = function(draftId) {
+  const draft = deliveryLinkDrafts.find(item => item.id === draftId);
+  if (!draft) return;
+  const link = deliveryDraftLink(draft.link_token);
+  const message = 'Please complete your delivery details for ' + (business?.business_name || 'this order') + ': ' + link;
+  window.open('https://wa.me/?text=' + encodeURIComponent(message), '_blank');
+};
+
 window.cancelDraftDeliveryLink = async function(draftId) {
   const draft = deliveryLinkDrafts.find(item => item.id === draftId);
   if (!draft) return;
@@ -3661,6 +3670,63 @@ function validateDeliveryLinkReviewDraft(draft) {
   return '';
 }
 
+function deliveryLinkDraftUpdatePayload(draft) {
+  return {
+    item_name: draft.item_name,
+    package_amount: draft.package_amount,
+    item_notes: draft.item_notes || null,
+    payment_option: draft.payment_option,
+    client_fee_settlement: draft.client_fee_settlement || null,
+    customer_name: draft.customer_name,
+    customer_phone: draft.customer_phone,
+    house_number: draft.house_number || null,
+    street_name: draft.street_name || null,
+    area_name: draft.area_name || null,
+    maps_link: draft.maps_link || null,
+    delivery_notes: draft.delivery_notes || null
+  };
+}
+
+async function persistDeliveryLinkReviewDraft(originalDraft, options = {}) {
+  const reviewedDraft = deliveryLinkDraftFromReviewForm(originalDraft);
+  const validation = validateDeliveryLinkReviewDraft(reviewedDraft);
+  if (validation) throw new Error(validation);
+  const { error } = await supabase
+    .from('business_delivery_link_drafts')
+    .update(deliveryLinkDraftUpdatePayload(reviewedDraft))
+    .eq('id', originalDraft.id)
+    .eq('business_client_id', business.id)
+    .eq('status', 'customer_completed');
+  if (error) throw error;
+  const index = deliveryLinkDrafts.findIndex(item => item.id === originalDraft.id);
+  if (index !== -1) deliveryLinkDrafts[index] = { ...deliveryLinkDrafts[index], ...deliveryLinkDraftUpdatePayload(reviewedDraft) };
+  renderDeliveryLink();
+  if (options.notify !== false) window.vdNotify('Review Saved', 'The delivery link review changes were saved.', 'success');
+  return deliveryLinkDrafts[index] || reviewedDraft;
+}
+
+window.saveDeliveryLinkReviewChanges = async function(draftId) {
+  const draft = deliveryLinkDrafts.find(item => item.id === draftId);
+  if (!draft) return;
+  const button = el('#saveDeliveryLinkReviewBtn');
+  const originalText = button?.textContent || 'Save Review Changes';
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'Saving...';
+  }
+  try {
+    const savedDraft = await persistDeliveryLinkReviewDraft(draft);
+    await refreshDeliveryLinkReviewEstimate(savedDraft);
+  } catch (error) {
+    window.vdNotify('Review Not Saved', error.message || 'Could not save review changes.', 'error');
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
+  }
+};
+
 async function refreshDeliveryLinkReviewEstimate(originalDraft) {
   const body = el('#deliveryLinkReviewEstimate');
   const submitBtn = el('#submitDeliveryLinkOrderBtn');
@@ -3679,7 +3745,7 @@ async function refreshDeliveryLinkReviewEstimate(originalDraft) {
   body.innerHTML = '<div style="background:#0d2b28; border-radius:12px; padding:1rem;"><div style="display:flex; justify-content:space-between; gap:0.8rem; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap;"><span style="font-size:0.74rem; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:rgba(255,255,255,0.52);">Estimate Calculator</span><span style="color:#14d4ae; font-size:1.35rem; font-weight:850;">' + escapeHtml(built.estimate?.fee !== null && built.estimate?.fee !== undefined ? moneyLabel(built.estimate.fee) : 'Quote Required') + '</span></div><div style="display:flex; flex-direction:column; gap:0.28rem;">' + rows.map(([key, value]) => '<div style="display:flex; justify-content:space-between; gap:1rem; border-top:1px solid rgba(255,255,255,0.08); padding-top:0.28rem; font-size:0.84rem;"><span style="color:rgba(255,255,255,0.55);">' + escapeHtml(key) + '</span><span style="color:#ffffff; font-weight:700; text-align:right; overflow-wrap:anywhere;">' + escapeHtml(value) + '</span></div>').join('') + '</div></div>';
   if (submitBtn) {
     submitBtn.disabled = false;
-    submitBtn.onclick = () => submitDeliveryLinkAsOrder(originalDraft.id, built.requestData);
+    submitBtn.onclick = () => submitDeliveryLinkAsOrder(originalDraft.id, built.requestData, draft);
   }
   return built;
 }
@@ -3713,7 +3779,7 @@ function ensureDeliveryLinkReviewModal() {
   overlay.innerHTML = '<div style="width:min(760px,100%); max-height:90vh; overflow:auto; background:#ffffff; border-radius:14px; box-shadow:0 18px 45px rgba(13,43,40,0.22); padding:1.4rem; border-top:4px solid #2a9d8f;">'
     + '<div style="display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; margin-bottom:1rem;"><div><div style="font-size:0.78rem; color:#2a9d8f; font-weight:800; text-transform:uppercase; letter-spacing:0.08em;">Pending Review</div><h2 style="margin:0.2rem 0 0; font-size:1.35rem; color:#0d2b28;">Delivery Link Submission</h2></div><button type="button" class="btn btn-ghost" style="padding:0.45rem 0.65rem;" onclick="closeDeliveryLinkReview()">Close</button></div>'
     + '<div id="deliveryLinkReviewBody" style="display:flex; flex-direction:column; gap:0.85rem;"></div>'
-    + '<div style="display:flex; justify-content:flex-end; gap:0.65rem; flex-wrap:wrap; margin-top:1.1rem;"><button type="button" class="btn btn-ghost" onclick="closeDeliveryLinkReview()">Cancel</button><button type="button" class="btn btn-primary" id="submitDeliveryLinkOrderBtn">Submit As Order</button></div>'
+    + '<div style="display:flex; justify-content:flex-end; gap:0.65rem; flex-wrap:wrap; margin-top:1.1rem;"><button type="button" class="btn btn-ghost" onclick="closeDeliveryLinkReview()">Cancel</button><button type="button" class="btn btn-ghost" id="saveDeliveryLinkReviewBtn">Save Review Changes</button><button type="button" class="btn btn-primary" id="submitDeliveryLinkOrderBtn">Submit As Order</button></div>'
     + '</div>';
   overlay.addEventListener('click', event => {
     if (event.target === overlay) closeDeliveryLinkReview();
@@ -3797,12 +3863,17 @@ window.openDeliveryLinkReview = async function(draftId) {
   const overlay = ensureDeliveryLinkReviewModal();
   const body = el('#deliveryLinkReviewBody');
   const submitBtn = el('#submitDeliveryLinkOrderBtn');
+  const saveBtn = el('#saveDeliveryLinkReviewBtn');
   const itemRows = draftItemsFor(draft.id).map(item => '<div style="padding:0.65rem 0.75rem; border:1px solid #edf3f2; border-radius:8px; background:#f8fbfa;"><strong>' + escapeHtml(item.item_name_snapshot) + '</strong><div style="font-size:0.8rem; color:#6a6a6a;">' + escapeHtml(moneyLabel(item.item_cost_snapshot) + ' x ' + item.quantity) + '</div></div>').join('');
   overlay.style.display = 'flex';
   if (submitBtn) {
     submitBtn.disabled = true;
     submitBtn.textContent = 'Submit As Order';
     submitBtn.onclick = null;
+  }
+  if (saveBtn) {
+    saveBtn.disabled = false;
+    saveBtn.onclick = () => saveDeliveryLinkReviewChanges(draft.id);
   }
   body.innerHTML = '<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:0.75rem;">'
     + '<label class="form-group" style="margin:0;"><span>Item / Package</span><input class="input" id="reviewItemName" value="' + escapeHtml(draft.item_name || '') + '"></label>'
@@ -3828,7 +3899,7 @@ window.openDeliveryLinkReview = async function(draftId) {
     if (estimateBox) estimateBox.innerHTML = '<div style="padding:0.85rem; background:#fff3f3; border-radius:8px; color:#8b2020;">' + escapeHtml(error.message || 'Could not calculate this estimate.') + '</div>';
   });
 };
-async function submitDeliveryLinkAsOrder(draftId, requestData) {
+async function submitDeliveryLinkAsOrder(draftId, requestData, reviewedDraft = null) {
   if (isSubmittingDeliveryLinkOrder) return;
   const draft = deliveryLinkDrafts.find(item => item.id === draftId);
   if (!draft) return;
@@ -3839,6 +3910,7 @@ async function submitDeliveryLinkAsOrder(draftId, requestData) {
     button.textContent = 'Submitting...';
   }
   try {
+    if (reviewedDraft) await persistDeliveryLinkReviewDraft(reviewedDraft, { notify: false });
     const { data, error } = await supabase.rpc('submit_delivery_request_v2', { request_data: requestData });
     if (error) throw error;
     const result = Array.isArray(data) ? data[0] : data;
