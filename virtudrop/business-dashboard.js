@@ -3726,8 +3726,7 @@ async function buildDeliveryLinkOrderPayload(draft) {
       draft.item_notes ? 'Item notes: ' + draft.item_notes : '',
       draft.delivery_notes ? 'Customer notes: ' + draft.delivery_notes : '',
       draft.internal_notes ? 'Internal link notes: ' + draft.internal_notes : ''
-    ].filter(Boolean).join('
-') || null
+    ].filter(Boolean).join('\\n') || null
   };
   return { estimate, money, requestData };
 }
