@@ -2583,6 +2583,158 @@ async function importCatalogCsv(file) {
   window.vdNotify('Catalog Imported', validRows.length + ' item' + (validRows.length === 1 ? '' : 's') + ' imported.', 'success');
 }
 
+function normaliseBulkPaymentOption(value) {
+  const text = String(value || '').trim().toLowerCase().replace(/[\s_]+/g, '-');
+  if (['cod', 'cash-on-delivery', 'customer-pays-package-and-delivery', 'customer-pays-package-delivery'].includes(text)) return 'cod';
+  if (['cod-client-delivery', 'customer-pays-package-only', 'business-pays-delivery'].includes(text)) return 'cod-client-delivery';
+  if (['pkg-online', 'package-paid-online', 'customer-already-paid-online', 'customer-pays-delivery-only'].includes(text)) return 'pkg-online';
+  if (['all-online', 'business-pays-all-online', 'business-pays-delivery-all-online', 'business-pays-all'].includes(text)) return 'all-online';
+  return '';
+}
+
+function validateBulkOrderImport(text) {
+  const rows = parseCatalogCsv(text);
+  if (!rows.length) return { validRows: [], issues: ['The CSV file is empty.'] };
+  const headers = rows[0].map(value => String(value || '').trim().toLowerCase());
+  const required = ['customer_name', 'customer_phone', 'item_name', 'package_amount', 'payment_option'];
+  const missing = required.filter(header => !headers.includes(header));
+  if (missing.length) return { validRows: [], issues: ['Missing required column(s): ' + missing.join(', ')] };
+
+  const indexOf = name => headers.indexOf(name);
+  const issues = [];
+  const validRows = [];
+  rows.slice(1).forEach((row, offset) => {
+    const rowNumber = offset + 2;
+    if (!row.some(value => String(value || '').trim())) return;
+    const get = name => {
+      const index = indexOf(name);
+      return index >= 0 ? String(row[index] || '').trim() : '';
+    };
+    const customerName = get('customer_name');
+    const phoneDigits = get('customer_phone').replace(/\D/g, '').replace(/^868/, '');
+    const streetName = get('street_name');
+    const areaName = get('area');
+    const mapsLink = get('maps_link');
+    const itemName = get('item_name');
+    const packageAmount = Number(get('package_amount').replace(/[$,]/g, ''));
+    const paymentOption = normaliseBulkPaymentOption(get('payment_option'));
+    const notes = get('notes');
+
+    if (customerName.length < 2) issues.push('Row ' + rowNumber + ': customer_name is required.');
+    if (phoneDigits.length !== 7) issues.push('Row ' + rowNumber + ': customer_phone must be a valid 7-digit Trinidad number.');
+    if (!streetName && !areaName && !mapsLink) issues.push('Row ' + rowNumber + ': enter street_name/area or maps_link.');
+    if (!itemName) issues.push('Row ' + rowNumber + ': item_name is required.');
+    if (!Number.isFinite(packageAmount) || packageAmount < 0) issues.push('Row ' + rowNumber + ': package_amount must be zero or higher.');
+    if (!paymentOption) issues.push('Row ' + rowNumber + ': payment_option is invalid.');
+
+    if (customerName.length >= 2 && phoneDigits.length === 7 && (streetName || areaName || mapsLink) && itemName && Number.isFinite(packageAmount) && packageAmount >= 0 && paymentOption) {
+      validRows.push({ rowNumber, customerName, phoneDigits, streetName, areaName, mapsLink, itemName, packageAmount, paymentOption, notes });
+    }
+  });
+  return { validRows, issues };
+}
+
+window.downloadBulkOrderTemplate = function() {
+  const rows = [
+    ['customer_name', 'customer_phone', 'street_name', 'area', 'maps_link', 'item_name', 'package_amount', 'payment_option', 'notes'],
+    ['Jane Customer', '555-1234', 'Bamboo Drive', 'Arima', '', 'Fruit basket', '150.00', 'cod', 'Call before delivery'],
+    ['Mark Customer', '555-9876', '', '', 'https://maps.app.goo.gl/example', 'Gift box', '225.00', 'pkg-online', 'Package already paid']
+  ];
+  const csv = rows.map(row => row.map(csvEscape).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = 'VirtuDrop-Bulk-Order-Template.csv';
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+};
+
+window.openBulkOrderUpload = function() {
+  el('#bulkOrderUploadInput')?.click();
+};
+
+async function importBulkOrdersCsv(file) {
+  if (!business?.id) return window.vdNotify('Bulk Orders Not Ready', 'Business account is still loading.', 'warning');
+  if (!file) return;
+  const summary = el('#bulkOrderImportSummary');
+  const text = await file.text();
+  const { validRows, issues } = validateBulkOrderImport(text);
+  if (issues.length) {
+    if (summary) summary.textContent = issues.slice(0, 5).join(' | ') + (issues.length > 5 ? ' | More errors omitted.' : '');
+    window.vdNotify('Bulk Import Needs Fixes', issues.slice(0, 5).join(' | ') + (issues.length > 5 ? ' | More errors omitted.' : ''), 'error');
+    return;
+  }
+  if (!validRows.length) return window.vdNotify('Bulk Import Empty', 'No order rows were found after the header.', 'warning');
+
+  if (summary) summary.textContent = 'Submitting ' + validRows.length + ' bulk order' + (validRows.length === 1 ? '' : 's') + '...';
+  let submitted = 0;
+  const failures = [];
+  for (const row of validRows) {
+    try {
+      const estimate = await estimateDeliveryZone({
+        supabase,
+        businessClientId: business.id,
+        businessName: business.business_name || '',
+        businessSlug: business.slug || '',
+        streetName: row.streetName,
+        areaName: row.areaName,
+        mapsLink: row.mapsLink
+      }).catch(error => {
+        console.warn('Bulk order estimate failed:', error);
+        return { fee: null, rateBand: null, status: 'unknown' };
+      });
+      const clientFeeSettlement = ['all-online', 'cod-client-delivery'].includes(row.paymentOption) ? 'pay_separately' : null;
+      const packageValue = ['cod', 'cod-client-delivery'].includes(row.paymentOption) ? row.packageAmount : 0;
+      const orderMoney = calculateOrderMoney({
+        paymentOption: row.paymentOption,
+        packageValue,
+        deliveryFee: estimate?.fee ?? null,
+        clientFeeSettlement,
+        pickupRequired: false,
+        pickupParcelCount: 1,
+        pickupFeeSettlement: null
+      });
+      const requestData = {
+        business_client_id: business.id,
+        customer_name: row.customerName,
+        customer_phone: '868-' + row.phoneDigits,
+        delivery_address: [row.streetName, row.areaName].filter(Boolean).join(', ') || row.mapsLink,
+        house_number: null,
+        street_name: row.streetName || null,
+        area_name: row.areaName || null,
+        maps_link: row.mapsLink || null,
+        latitude: null,
+        longitude: null,
+        payment_type: paymentMap[row.paymentOption],
+        cod_amount: orderMoney.packageValue,
+        package_value: orderMoney.packageValue,
+        estimated_fee: estimate?.fee ?? null,
+        pricing_rate_band: estimate?.rateBand || (estimate?.status === 'remote' ? 'remote' : null),
+        quote_status: estimate?.fee === null ? 'required' : 'not_required',
+        ...financialRequestFields(orderMoney),
+        customer_notes: ['Package: ' + row.itemName + (row.packageAmount ? ' - TTD ' + row.packageAmount.toFixed(2) : ''), row.notes].filter(Boolean).join('\n') || null
+      };
+      const { error } = await supabase.rpc('submit_delivery_request_v2', { request_data: requestData });
+      if (error) throw error;
+      submitted += 1;
+    } catch (error) {
+      failures.push('Row ' + row.rowNumber + ': ' + (error.message || 'failed'));
+    }
+  }
+  if (failures.length) {
+    if (summary) summary.textContent = submitted + ' submitted. ' + failures.slice(0, 3).join(' | ') + (failures.length > 3 ? ' | More errors omitted.' : '');
+    window.vdNotify('Some Bulk Orders Failed', summary?.textContent || 'Some rows failed.', 'warning');
+  } else {
+    if (summary) summary.textContent = submitted + ' bulk order' + (submitted === 1 ? '' : 's') + ' submitted.';
+    window.vdNotify('Bulk Orders Submitted', submitted + ' order' + (submitted === 1 ? '' : 's') + ' submitted.', 'success');
+  }
+  await loadBusinessData();
+  window.switchPanel('new-order');
+}
+
 function activeReportControls() {
   const activePanel = el('.panel.active') || document;
   return {
@@ -3440,6 +3592,14 @@ function bindUi() {
     const file = event.target.files?.[0];
     try {
       await importCatalogCsv(file);
+    } finally {
+      event.target.value = '';
+    }
+  });
+  el('#bulkOrderUploadInput')?.addEventListener('change', async event => {
+    const file = event.target.files?.[0];
+    try {
+      await importBulkOrdersCsv(file);
     } finally {
       event.target.value = '';
     }

@@ -1228,6 +1228,21 @@
           </div>
         </form>
       </div>
+
+      <div class="card" style="margin-top:1.2rem;">
+        <div style="display:flex; justify-content:space-between; gap:1rem; align-items:center; flex-wrap:wrap;">
+          <div>
+            <div class="card-title" style="margin-bottom:0.25rem;">Bulk Orders</div>
+            <div style="font-size:0.88rem; color:#6a6a6a;">Download the CSV template, fill in delivery rows, then upload to submit multiple orders.</div>
+          </div>
+          <div style="display:flex; gap:0.65rem; flex-wrap:wrap; align-items:center;">
+            <button type="button" class="btn btn-ghost" style="padding:0.75rem 1rem; font-size:0.86rem;" onclick="downloadBulkOrderTemplate()">Download Bulk Order Template</button>
+            <button type="button" class="btn btn-primary" style="padding:0.75rem 1rem; font-size:0.86rem;" onclick="openBulkOrderUpload()">Upload Bulk Orders</button>
+            <input id="bulkOrderUploadInput" type="file" accept=".csv,text/csv" style="display:none;" />
+          </div>
+        </div>
+        <div id="bulkOrderImportSummary" style="margin-top:0.9rem; font-size:0.84rem; color:#6a6a6a;">CSV columns: customer_name, customer_phone, street_name, area, maps_link, item_name, package_amount, payment_option, notes.</div>
+      </div>
     </div>
 
 
@@ -1822,6 +1837,6 @@
 
 <script src="vd-modal.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script type="module" src="business-dashboard.js?v=20260723-catalog-import-1"></script>
+  <script type="module" src="business-dashboard.js?v=20260723-bulk-orders-1"></script>
 </body>
 </html>
