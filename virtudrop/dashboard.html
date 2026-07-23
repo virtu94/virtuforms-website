@@ -32,6 +32,7 @@
       position: fixed;
       top: 0; left: 0;
       height: 100vh;
+      height: 100dvh;
       z-index: 200;
       transition: transform 0.3s ease;
     }
@@ -67,7 +68,7 @@
     .user-name { font-size: 0.95rem; font-weight: 600; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .user-plan { font-size: 0.75rem; color: #14d4ae; font-weight: 500; }
 
-    .sidebar-nav { flex: 1; padding: 1rem 0; overflow-y: auto; }
+    .sidebar-nav { flex: 1 1 auto; min-height: 0; padding: 1rem 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
     .nav-item {
       display: flex;
@@ -94,8 +95,10 @@
     .nav-badge { margin-left: auto; background: #14d4ae; color: #0d2b28; font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 10px; }
 
     .sidebar-footer {
-      padding: 1rem 1.5rem;
+      flex-shrink: 0;
+      padding: 1rem 1.5rem calc(1rem + env(safe-area-inset-bottom));
       border-top: 1px solid rgba(255,255,255,0.08);
+      background: #0d2b28;
     }
     .logout-btn {
       display: flex; align-items: center; gap: 0.8rem;
@@ -607,6 +610,14 @@
       color: #2a9d8f;
     }
 
+    .order-card-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      margin-top: 0.65rem;
+      align-items: center;
+    }
+
     /* Dark mode for order cards */
     body.dark-mode .order-card {
       background: #0f2420;
@@ -795,7 +806,7 @@
       .delivery-item { align-items: flex-start; }
       .delivery-status { width: 100%; margin-left: 52px; }
       .status-badge { white-space: normal; text-align: center; }
-      #clientLinkDisplay { min-width: 0 !important; width: 100%; }
+      #clientLinkDisplay { min-width: 0 !important; width: 100%; overflow-wrap: anywhere; word-break: break-word; }
       #panel-delivery-link .card > div > div[style*="display:flex"] { flex-direction: column; align-items: stretch !important; }
       .catalog-grid { grid-template-columns: 1fr; }
       #panel-remittance .card > div[style*="grid-template-columns:repeat(3,1fr)"] { grid-template-columns: 1fr !important; }
@@ -809,6 +820,8 @@
       .bottom-nav { overflow-x: auto; }
       .bottom-nav-item { min-width: 64px; }
       .form-actions .btn { min-height: 44px; }
+      .order-card-actions .order-detail-link { padding: 0.25rem 0; }
+      .sidebar { width: min(88vw, 320px); }
       .table-wrap table, div[style*="overflow-x:auto"] table { min-width: 560px; }
     }
 
@@ -1610,13 +1623,14 @@
                 <th>Order ID</th>
                 <th>Customer</th>
                 <th>Service</th>
+                <th>Amount</th>
                 <th>Date</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              <tr><td colspan="6" style="padding:1rem; color:#6a6a6a;">Loading active deliveries...</td></tr>
+              <tr><td colspan="7" style="padding:1rem; color:#6a6a6a;">Loading active deliveries...</td></tr>
             </tbody>
           </table>
         </div>
@@ -1673,7 +1687,7 @@
                 <th>Order ID</th>
                 <th>Customer</th>
                 <th>Service</th>
-                <th>Cost</th>
+                <th>Amount</th>
                 <th>Date</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -1912,6 +1926,6 @@
 
 <script src="vd-modal.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script type="module" src="business-dashboard.js?v=20260723-whatsapp-visible-1"></script>
+  <script type="module" src="business-dashboard.js?v=20260723-mobile-order-edit-1"></script>
 </body>
 </html>

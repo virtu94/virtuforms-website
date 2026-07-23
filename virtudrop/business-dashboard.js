@@ -1173,6 +1173,35 @@ function money(value) {
   return `TTD $${Number(value || 0).toFixed(2)}`;
 }
 
+function orderPackageAmount(order) {
+  return Number(order?.package_value ?? order?.cod_amount ?? 0);
+}
+
+function orderDeliveryCost(order) {
+  return Number(order?.delivery_fee ?? order?.estimated_fee ?? 0);
+}
+
+function orderFullAmount(order) {
+  return orderPackageAmount(order) + orderDeliveryCost(order);
+}
+
+function orderAmountSummary(order) {
+  const total = orderFullAmount(order);
+  const customerPays = Number(order?.driver_amount_to_collect ?? order?.customer_amount_due ?? 0);
+  const businessPays = Number(order?.client_amount_due ?? 0);
+  return { total, customerPays, businessPays };
+}
+
+function orderAmountSummaryHtml(order, compact = false) {
+  const amounts = orderAmountSummary(order);
+  const parts = [`Order total: <strong>${money(amounts.total)}</strong>`];
+  if (!compact) {
+    parts.push(`Customer pays: ${money(amounts.customerPays)}`);
+    if (amounts.businessPays > 0) parts.push(`Business pays: ${money(amounts.businessPays)}`);
+  }
+  return parts.join(compact ? ' · ' : '<br>');
+}
+
 function labelAddress(order) {
   return [order.house_number, order.street_name, order.area_name].filter(Boolean).join(', ')
     || order.delivery_address
@@ -1786,7 +1815,7 @@ function emptyRow(cols, message) {
   return `<tr><td colspan="${cols}" style="padding:1.2rem; color:#6a6a6a; text-align:center;">${escapeHtml(message)}</td></tr>`;
 }
 
-function orderTableRow(order, includeCost = false) {
+function orderTableRow(order) {
   const editButton = canBusinessEditOrder(order)
     ? `<button type="button" class="order-detail-link" onclick="event.stopPropagation(); openBusinessOrderEdit('${order.id}')">Edit</button>`
     : '';
@@ -1798,7 +1827,7 @@ function orderTableRow(order, includeCost = false) {
       <td><strong><button type="button" class="order-detail-link" onclick="event.stopPropagation(); openOrderDetails('${order.id}')">${escapeHtml(order.order_number)}</button></strong></td>
       <td><div class="business-customer-name">${escapeHtml(customerDisplayName(order))}</div><div class="business-order-location">${escapeHtml(orderLocationSummary(order))}</div></td>
       <td>${escapeHtml(paymentLabels[order.payment_type] || 'Delivery')}</td>
-      ${includeCost ? `<td>${money(order.delivery_fee)}</td>` : ''}
+      <td>${orderAmountSummaryHtml(order, true)}</td>
       <td>${formatDate(order.created_at)}</td>
       <td><span class="status-badge ${statusClass(order.order_status)}">${escapeHtml(deliveryOutcomeLabel(order))}</span></td>
       <td>
@@ -1826,11 +1855,12 @@ function orderCard(order) {
       </div>
       <div style="font-size:0.78rem; color:#6a6a6a; margin-top:0.35rem;">Parcel: ${escapeHtml(parcelStatusLabel(order.parcel_status))}</div>
       ${order.pickup_required ? `<div style="font-size:0.78rem; color:#2a6f68; margin-top:0.2rem;">${escapeHtml(pickupStatusLabel(order.pickup_status))}${order.pickup_scheduled_date ? ` · ${escapeHtml(formatDate(order.pickup_scheduled_date))}` : ''}</div>` : ''}
-      <div class="order-card-cost">
-        ${money(order.delivery_fee)} · <button type="button" class="order-detail-link" onclick="event.stopPropagation(); openOrderDetails('${order.id}')">View details</button>
-        · <button type="button" class="order-detail-link" onclick="event.stopPropagation(); printDeliveryLabel('${order.id}')">Print label</button>
-        ${canBusinessEditOrder(order) ? ` · <button type="button" class="order-detail-link" onclick="event.stopPropagation(); openBusinessOrderEdit('${order.id}')">Edit</button>` : ''}
-        ${canBusinessCancelOrder(order) ? ` · <button type="button" class="order-detail-link" style="color:#e05555;" onclick="event.stopPropagation(); cancelBusinessOrder('${order.id}')">Cancel order</button>` : ''}
+      <div class="order-card-cost">${orderAmountSummaryHtml(order, true)}</div>
+      <div class="order-card-actions">
+        <button type="button" class="order-detail-link" onclick="event.stopPropagation(); openOrderDetails('${order.id}')">View details</button>
+        <button type="button" class="order-detail-link" onclick="event.stopPropagation(); printDeliveryLabel('${order.id}')">Print label</button>
+        ${canBusinessEditOrder(order) ? `<button type="button" class="order-detail-link" onclick="event.stopPropagation(); openBusinessOrderEdit('${order.id}')">Edit</button>` : ''}
+        ${canBusinessCancelOrder(order) ? `<button type="button" class="order-detail-link" style="color:#e05555;" onclick="event.stopPropagation(); cancelBusinessOrder('${order.id}')">Cancel order</button>` : ''}
       </div>
     </div>
   `;
@@ -1862,8 +1892,9 @@ window.openOrderDetails = function(orderId) {
       ${detailItem('Area', escapeHtml(order.area_name || ''))}
       ${order.maps_link || (order.latitude && order.longitude) ? detailItem('Google Pin Location', map ? `<a class="order-detail-link" href="${escapeHtml(map)}" target="_blank" rel="noopener">Open location</a>` : escapeHtml(`${order.latitude}, ${order.longitude}`), true) : ''}
       ${detailItem('Item', escapeHtml(itemText), true)}
-      ${detailItem('Package Amount', escapeHtml(money(order.package_value || order.cod_amount)))}
-      ${detailItem('Delivery Cost', escapeHtml(money(order.delivery_fee ?? order.estimated_fee)))}
+      ${detailItem('Package Amount', escapeHtml(money(orderPackageAmount(order))))}
+      ${detailItem('Delivery Cost', escapeHtml(money(orderDeliveryCost(order))))}
+      ${detailItem('Order Total', orderAmountSummaryHtml(order), true)}
       ${detailItem('Payment Type', escapeHtml(payment))}
       ${order.delivery_fee_payer ? detailItem('Delivery Paid By', escapeHtml(order.delivery_fee_payer === 'client' ? 'Business client' : 'Customer')) : ''}
     </div>
@@ -1921,7 +1952,7 @@ function businessEditPayloadFromForm(orderId) {
   ].filter(Boolean).join('\n');
   return {
     customer_name: el('#editCustomerName')?.value.trim() || '',
-    customer_phone: order.customer_phone || '',
+    customer_phone: el('#editCustomerPhone')?.value.trim() || '',
     house_number: order.house_number || null,
     street_name: el('#editStreetName')?.value.trim() || null,
     area_name: el('#editAreaName')?.value.trim() || null,
@@ -1957,6 +1988,7 @@ function businessEditPayloadFromForm(orderId) {
 
 function validateBusinessEditPayload(payload, paymentOption) {
   if ((payload.customer_name || '').length < 2) return 'Enter the customer name.';
+  if (String(payload.customer_phone || '').replace(/\D/g, '').length < 7) return 'Enter a valid customer phone number.';
   if (!paymentOption) return 'Select the payment type.';
   if (paymentOption === 'cod' && Number(payload.package_value || 0) <= 0) return 'Enter the COD package amount.';
   if (!payload.maps_link && !payload.latitude) {
@@ -1992,6 +2024,7 @@ window.openBusinessOrderEdit = function(orderId) {
     </div>
     <div class="order-detail-grid">
       <label class="order-detail-item"><div class="order-detail-label">Customer Name</div><input class="input" id="editCustomerName" value="${escapeHtml(order.customer_name || '')}"></label>
+      <label class="order-detail-item"><div class="order-detail-label">Customer Phone</div><input class="input" id="editCustomerPhone" type="tel" inputmode="tel" value="${escapeHtml(order.customer_phone || '')}"></label>
       <label class="order-detail-item"><div class="order-detail-label">Street Name</div><input class="input" id="editStreetName" value="${escapeHtml(order.street_name || '')}"></label>
       <label class="order-detail-item"><div class="order-detail-label">Area</div><input class="input" id="editAreaName" value="${escapeHtml(order.area_name || '')}"></label>
       ${order.maps_link || (order.latitude && order.longitude) ? `<label class="order-detail-item full"><div class="order-detail-label">Google Maps Pin / Link</div><input class="input" id="editMapsLink" value="${escapeHtml(order.maps_link || '')}"></label>` : ''}
@@ -2178,7 +2211,7 @@ function renderActive() {
   const active = orders.filter(order => activeStatuses.includes(order.order_status));
   setText('#panel-active .section-sub', `${active.length} delivery${active.length === 1 ? '' : 'ies'} currently in progress.`);
   const tbody = el('#panel-active table tbody');
-  if (tbody) tbody.innerHTML = active.length ? active.map(order => orderTableRow(order)).join('') : emptyRow(6, 'No active deliveries right now.');
+  if (tbody) tbody.innerHTML = active.length ? active.map(order => orderTableRow(order)).join('') : emptyRow(7, 'No active deliveries right now.');
   const cards = el('#panel-active .order-cards');
   if (cards) cards.innerHTML = active.length ? active.map(orderCard).join('') : '<p style="color:#6a6a6a;">No active deliveries right now.</p>';
   const badge = el('[data-panel="active"] .nav-badge');
@@ -2188,7 +2221,7 @@ function renderActive() {
 function renderHistory() {
   const history = orders.filter(order => !activeStatuses.includes(order.order_status));
   const tbody = el('#panel-history table tbody');
-  if (tbody) tbody.innerHTML = history.length ? history.map(order => orderTableRow(order, true)).join('') : emptyRow(7, 'No completed or past deliveries yet.');
+  if (tbody) tbody.innerHTML = history.length ? history.map(order => orderTableRow(order)).join('') : emptyRow(7, 'No completed or past deliveries yet.');
   const cards = el('#panel-history .order-cards');
   if (cards) cards.innerHTML = history.length ? history.map(orderCard).join('') : '<p style="color:#6a6a6a;">No completed or past deliveries yet.</p>';
 }
@@ -4086,6 +4119,9 @@ window.switchPanel = function(id) {
   setText('#pageTitle', panelTitles[id] || id);
   closeSidebar();
   window.scrollTo(0, 0);
+  if (currentUser && business && ['active', 'history', 'delivery-link'].includes(id)) {
+    loadBusinessData().catch(error => console.warn('Business dashboard refresh failed:', error));
+  }
 };
 
 window.closeModal = function() {
