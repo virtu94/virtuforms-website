@@ -3189,21 +3189,43 @@ window.exportBusinessReport = function(type) {
   XLSX.writeFile(wb, `VirtuDrop-All-Data-${new Date().toISOString().slice(0, 10)}.xlsx`);
 };
 
+function renderDashboardSection(name, renderer) {
+  try {
+    renderer();
+  } catch (error) {
+    console.warn(name + ' render failed:', error);
+  }
+}
+
 function renderAll() {
-  renderOverview();
-  renderActive();
-  renderHistory();
-  renderCod();
-  renderRemittance();
-  renderFailed();
-  renderNotifications();
-  renderPlan();
-  renderSettings();
-  renderDeliveryLink();
-  renderCatalog();
-  renderOrderCatalogSelector();
-  renderLinkCatalogSelector();
+  renderDashboardSection('Overview', renderOverview);
+  renderDashboardSection('Active deliveries', renderActive);
+  renderDashboardSection('History', renderHistory);
+  renderDashboardSection('COD records', renderCod);
+  renderDashboardSection('Remittance', renderRemittance);
+  renderDashboardSection('Failed deliveries', renderFailed);
+  renderDashboardSection('Notifications', renderNotifications);
+  renderDashboardSection('Plan', renderPlan);
+  renderDashboardSection('Settings', renderSettings);
+  renderDashboardSection('Delivery links', renderDeliveryLink);
+  renderDashboardSection('Catalog', renderCatalog);
+  renderDashboardSection('Order catalog selector', renderOrderCatalogSelector);
+  renderDashboardSection('Link catalog selector', renderLinkCatalogSelector);
   loadNotificationBadge();
+}
+
+async function safeDataRequest(label, requestPromise, fallbackData = []) {
+  try {
+    const result = await requestPromise;
+    if (result?.error) {
+      console.warn(label + ' could not load:', result.error);
+      return { data: fallbackData, error: result.error };
+    }
+    return { data: result?.data ?? fallbackData, error: null };
+  } catch (error) {
+    console.warn(label + ' could not load:', error);
+    return { data: fallbackData, error };
+  }
 }
 
 async function loadDeliveryLinkDraftRows() {
@@ -3261,54 +3283,34 @@ async function loadBusinessData() {
   business = businessData;
   renderSidebarAccount();
 
-  const [{ data: orderData, error: orderError }, { data: remitData, error: remitError }, { data: catalogData, error: catalogError }, { data: draftData, error: draftError }, { data: draftItemData, error: draftItemError }] = await Promise.all([
-    supabase
-      .from('orders')
-      .select('id, order_number, external_item_number, financial_model_version, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, remittance_gross_amount, remittance_deductions_amount, remittance_net_amount, remittance_paid_amount, remittance_batch_id, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_business_name, pickup_street_name, pickup_area_name, pickup_maps_link, pickup_latitude, pickup_longitude, pickup_address, pickup_window, pickup_instructions, pickup_scheduled_date, pickup_scheduled_window, pickup_picked_up_at, pickup_arrived_hub_at, pickup_cancelled_at, pickup_cancellation_reason, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, delivery_outcome, delivery_attempt_count, last_delivery_attempt_at, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, redelivery_status, redelivery_fee, redelivery_fee_payer, redelivery_fee_settlement, redelivery_scheduled_at, redelivery_notes, return_disposition, holding_type, hold_until, return_to_client_status, return_to_client_fee, return_to_client_settlement, return_to_client_requested_at, return_to_client_completed_at, return_management_notes, zone_status, order_status, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, created_at, updated_at')
-      .eq('business_client_id', business.id)
-      .order('created_at', { ascending: false }),
-    supabase.rpc('business_list_my_remittances'),
-    supabase
+  renderAll();
+
+  const orderResult = await safeDataRequest('Business orders', supabase
+    .from('orders')
+    .select('id, order_number, external_item_number, financial_model_version, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, remittance_gross_amount, remittance_deductions_amount, remittance_net_amount, remittance_paid_amount, remittance_batch_id, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_business_name, pickup_street_name, pickup_area_name, pickup_maps_link, pickup_latitude, pickup_longitude, pickup_address, pickup_window, pickup_instructions, pickup_scheduled_date, pickup_scheduled_window, pickup_picked_up_at, pickup_arrived_hub_at, pickup_cancelled_at, pickup_cancellation_reason, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, delivery_outcome, delivery_attempt_count, last_delivery_attempt_at, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, redelivery_status, redelivery_fee, redelivery_fee_payer, redelivery_fee_settlement, redelivery_scheduled_at, redelivery_notes, return_disposition, holding_type, hold_until, return_to_client_status, return_to_client_fee, return_to_client_settlement, return_to_client_requested_at, return_to_client_completed_at, return_management_notes, zone_status, order_status, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, created_at, updated_at')
+    .eq('business_client_id', business.id)
+    .order('created_at', { ascending: false }));
+  orders = orderResult.data || [];
+  if (orderResult.error) window.vdNotify?.('Orders Not Loaded', orderResult.error.message || 'Orders could not load, but catalog and delivery links will still display.', 'warning');
+  renderAll();
+
+  const [remitResult, catalogResult, draftResult, draftItemResult] = await Promise.all([
+    safeDataRequest('Business remittance records', supabase.rpc('business_list_my_remittances')),
+    safeDataRequest('Business catalog', supabase
       .from('business_catalog_items')
       .select('id, business_client_id, item_name, item_cost, additional_notes, active, created_at, updated_at')
       .eq('business_client_id', business.id)
-      .order('item_name', { ascending: true }),
-    loadDeliveryLinkDraftRows(),
-    supabase
+      .order('item_name', { ascending: true })),
+    safeDataRequest('Delivery link drafts', loadDeliveryLinkDraftRows()),
+    safeDataRequest('Delivery link draft items', supabase
       .from('business_delivery_link_draft_items')
-      .select('id, draft_id, catalog_item_id, item_name_snapshot, item_cost_snapshot, quantity, additional_notes_snapshot, created_at')
+      .select('id, draft_id, catalog_item_id, item_name_snapshot, item_cost_snapshot, quantity, additional_notes_snapshot, created_at'))
   ]);
 
-  if (orderError) {
-    console.warn('Business orders could not load:', orderError);
-    orders = [];
-    window.vdNotify?.('Orders Not Loaded', orderError.message || 'Orders could not load, but catalog and delivery links will still display.', 'warning');
-  }
-  if (remitError) {
-    console.warn('Business remittance records could not load:', remitError);
-    remittanceRecords = [];
-  } else {
-    remittanceRecords = remitData || [];
-  }
-  if (catalogError) {
-    console.warn('Business catalog could not load:', catalogError);
-    catalogItems = [];
-  } else {
-    catalogItems = catalogData || [];
-  }
-  if (draftError) {
-    console.warn('Delivery link drafts could not load:', draftError);
-    deliveryLinkDrafts = [];
-  } else {
-    deliveryLinkDrafts = draftData || [];
-  }
-  if (draftItemError) {
-    console.warn('Delivery link draft items could not load:', draftItemError);
-    deliveryLinkDraftItems = [];
-  } else {
-    deliveryLinkDraftItems = draftItemData || [];
-  }
-  if (!orderError) orders = orderData || [];
+  remittanceRecords = remitResult.data || [];
+  catalogItems = catalogResult.data || [];
+  deliveryLinkDrafts = draftResult.data || [];
+  deliveryLinkDraftItems = draftItemResult.data || [];
   renderAll();
   syncBusinessReportDateInputs();
 }
