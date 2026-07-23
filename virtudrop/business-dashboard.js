@@ -2459,7 +2459,7 @@ function renderDeliveryLink() {
     const canReview = draft.status === 'customer_completed';
     const actions = '<div style="display:flex; gap:0.45rem; flex-wrap:wrap; margin-top:0.65rem;">'
       + '<button type="button" class="btn btn-ghost" style="padding:0.45rem 0.7rem; font-size:0.82rem;" onclick="copyDraftDeliveryLink(\'' + draft.id + '\')">Copy</button>'
-      + (draft.status === 'draft_created' ? '<button type="button" class="btn btn-primary" style="padding:0.45rem 0.7rem; font-size:0.82rem;" onclick="sendDraftDeliveryLinkWhatsApp(\'' + draft.id + '\')">WhatsApp</button>' : '')
+      + (['draft_created', 'customer_completed'].includes(draft.status) ? '<button type="button" class="btn btn-primary" style="padding:0.45rem 0.7rem; font-size:0.82rem;" onclick="sendDraftDeliveryLinkWhatsApp(\'' + draft.id + '\')">WhatsApp</button>' : '')
       + (canReview ? '<button type="button" class="btn btn-primary" style="padding:0.45rem 0.7rem; font-size:0.82rem;" onclick="openDeliveryLinkReview(\'' + draft.id + '\')">Review</button>' : '')
       + (canCancel ? '<button type="button" class="btn btn-ghost" style="padding:0.45rem 0.7rem; font-size:0.82rem;" onclick="cancelDraftDeliveryLink(\'' + draft.id + '\')">Cancel</button>' : '')
       + '</div>';
