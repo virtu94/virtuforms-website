@@ -1129,6 +1129,7 @@ let remittancePeriod = 'week';
 let activeLocTab = 'share';
 let manualLocationMode = false;
 let isSubmittingBusinessOrder = false;
+let isSubmittingDeliveryLinkOrder = false;
 
 const panelTitles = {
   overview: 'Overview',
@@ -2458,7 +2459,7 @@ function renderDeliveryLink() {
     const canReview = draft.status === 'customer_completed';
     const actions = '<div style="display:flex; gap:0.45rem; flex-wrap:wrap; margin-top:0.65rem;">'
       + '<button type="button" class="btn btn-ghost" style="padding:0.45rem 0.7rem; font-size:0.82rem;" onclick="copyDraftDeliveryLink(\'' + draft.id + '\')">Copy</button>'
-      + (canReview ? '<button type="button" class="btn btn-primary" style="padding:0.45rem 0.7rem; font-size:0.82rem;" onclick="window.vdNotify(\'Pending Review\', \'Review and submit-as-order will be added in the next step.\', \'info\')">Review</button>' : '')
+      + (canReview ? '<button type="button" class="btn btn-primary" style="padding:0.45rem 0.7rem; font-size:0.82rem;" onclick="openDeliveryLinkReview(\'' + draft.id + '\')">Review</button>' : '')
       + (canCancel ? '<button type="button" class="btn btn-ghost" style="padding:0.45rem 0.7rem; font-size:0.82rem;" onclick="cancelDraftDeliveryLink(\'' + draft.id + '\')">Cancel</button>' : '')
       + '</div>';
     return '<tr>'
@@ -3255,7 +3256,7 @@ async function loadBusinessData() {
       .order('item_name', { ascending: true }),
     supabase
       .from('business_delivery_link_drafts')
-      .select('id, business_client_id, link_token, status, item_name, package_amount, item_notes, payment_option, internal_notes, expires_at, customer_name, customer_phone, street_name, area_name, maps_link, delivery_notes, customer_completed_at, submitted_order_id, submitted_at, created_at, updated_at')
+      .select('id, business_client_id, link_token, status, item_name, package_amount, item_notes, payment_option, client_fee_settlement, internal_notes, expires_at, customer_name, customer_phone, house_number, street_name, area_name, maps_link, latitude, longitude, delivery_notes, customer_completed_at, submitted_order_id, submitted_at, created_at, updated_at')
       .eq('business_client_id', business.id)
       .order('created_at', { ascending: false }),
     supabase
@@ -3559,6 +3560,230 @@ window.cancelDraftDeliveryLink = async function(draftId) {
   window.switchPanel('delivery-link');
   window.vdNotify('Link Cancelled', 'The delivery link was cancelled.', 'success');
 };
+
+function deliveryLinkPaymentLabel(option) {
+  return {
+    cod: 'Customer pays package and delivery',
+    'pkg-online': 'Customer already paid package; customer pays delivery',
+    'cod-client-delivery': 'Customer pays package only; business pays delivery',
+    'all-online': 'Business pays delivery/all online'
+  }[option] || option || 'Not selected';
+}
+
+function draftItemsFor(draftId) {
+  return deliveryLinkDraftItems
+    .filter(item => item.draft_id === draftId)
+    .sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')));
+}
+
+function deliveryLinkEstimateInput(draft) {
+  const hasManualAddress = Boolean(draft.street_name || draft.area_name);
+  return {
+    supabase,
+    businessClientId: business?.id || draft.business_client_id || null,
+    businessName: business?.business_name || '',
+    businessSlug: business?.slug || '',
+    houseNumber: hasManualAddress ? draft.house_number || '' : '',
+    streetName: hasManualAddress ? draft.street_name || '' : '',
+    areaName: hasManualAddress ? draft.area_name || '' : '',
+    mapsLink: !hasManualAddress ? draft.maps_link || '' : '',
+    latitude: !hasManualAddress && Number.isFinite(Number(draft.latitude)) ? Number(draft.latitude) : null,
+    longitude: !hasManualAddress && Number.isFinite(Number(draft.longitude)) ? Number(draft.longitude) : null
+  };
+}
+
+function deliveryLinkLocationPayload(draft) {
+  const address = [draft.house_number, draft.street_name, draft.area_name].filter(Boolean).join(', ');
+  const hasGps = Number.isFinite(Number(draft.latitude)) && Number.isFinite(Number(draft.longitude));
+  return {
+    delivery_address: address || draft.maps_link || (hasGps ? 'GPS location submitted by customer' : ''),
+    house_number: draft.house_number || null,
+    street_name: draft.street_name || null,
+    area_name: draft.area_name || null,
+    maps_link: draft.maps_link || null,
+    latitude: hasGps ? Number(draft.latitude) : null,
+    longitude: hasGps ? Number(draft.longitude) : null
+  };
+}
+
+function deliveryLinkReviewRows({ draft, estimate, money }) {
+  const rows = [
+    ['Customer', draft.customer_name || '-'],
+    ['Phone', draft.customer_phone || '-'],
+    ['Address', deliveryLinkLocationPayload(draft).delivery_address || '-'],
+    ['Payment', deliveryLinkPaymentLabel(draft.payment_option)],
+    ['Package Amount', moneyLabel(draft.package_amount)],
+    ['Estimated Delivery Fee', estimate?.fee !== null && estimate?.fee !== undefined ? moneyLabel(estimate.fee) : 'Quote required'],
+    ['Customer Pays', moneyLabel(money.customerAmountDue)],
+    ['Driver Collects', moneyLabel(money.driverAmountToCollect)],
+    ['Business Amount Due', moneyLabel(money.clientAmountDue)],
+    ['Remittance Estimate', moneyLabel(money.clientRemittanceAmount)]
+  ];
+  if (estimate?.zoneCode) rows.splice(5, 0, ['Zone', estimate.zoneName + ' - ' + estimate.region]);
+  if (estimate?.businessRateApplied) rows.splice(6, 0, ['Business Rate', estimate.businessRateNote || 'Matched business rate']);
+  return rows;
+}
+
+function ensureDeliveryLinkReviewModal() {
+  let overlay = el('#deliveryLinkReviewOverlay');
+  if (overlay) return overlay;
+  overlay = document.createElement('div');
+  overlay.id = 'deliveryLinkReviewOverlay';
+  overlay.style.cssText = 'position:fixed; inset:0; z-index:9998; display:none; align-items:center; justify-content:center; padding:1.2rem; background:rgba(13,43,40,0.62);';
+  overlay.innerHTML = '<div style="width:min(760px,100%); max-height:90vh; overflow:auto; background:#ffffff; border-radius:14px; box-shadow:0 18px 45px rgba(13,43,40,0.22); padding:1.4rem; border-top:4px solid #2a9d8f;">'
+    + '<div style="display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; margin-bottom:1rem;"><div><div style="font-size:0.78rem; color:#2a9d8f; font-weight:800; text-transform:uppercase; letter-spacing:0.08em;">Pending Review</div><h2 style="margin:0.2rem 0 0; font-size:1.35rem; color:#0d2b28;">Delivery Link Submission</h2></div><button type="button" class="btn btn-ghost" style="padding:0.45rem 0.65rem;" onclick="closeDeliveryLinkReview()">Close</button></div>'
+    + '<div id="deliveryLinkReviewBody" style="display:flex; flex-direction:column; gap:0.85rem;"></div>'
+    + '<div style="display:flex; justify-content:flex-end; gap:0.65rem; flex-wrap:wrap; margin-top:1.1rem;"><button type="button" class="btn btn-ghost" onclick="closeDeliveryLinkReview()">Cancel</button><button type="button" class="btn btn-primary" id="submitDeliveryLinkOrderBtn">Submit As Order</button></div>'
+    + '</div>';
+  overlay.addEventListener('click', event => {
+    if (event.target === overlay) closeDeliveryLinkReview();
+  });
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+window.closeDeliveryLinkReview = function() {
+  const overlay = el('#deliveryLinkReviewOverlay');
+  if (overlay) overlay.style.display = 'none';
+};
+
+async function buildDeliveryLinkOrderPayload(draft) {
+  const estimateInput = deliveryLinkEstimateInput(draft);
+  if (!hasEstimateLocation(estimateInput)) throw new Error('Customer delivery location is missing. Ask the customer to complete the link again or create a new link.');
+  const estimate = await withTimeout(estimateDeliveryZone(estimateInput), 16000, {
+    status: 'unknown',
+    fee: null,
+    zoneCode: '',
+    zoneName: '',
+    region: '',
+    matchedArea: '',
+    sourceText: '',
+    resolvedAddress: null,
+    label: 'Location could not be identified',
+    message: 'Location lookup timed out. Try again or enter the address manually.',
+    debug: { source: 'timeout', hasCoordinates: false, addressFound: false, zonesLoaded: false }
+  });
+  const clientFeeSettlement = ['all-online', 'cod-client-delivery'].includes(draft.payment_option)
+    ? draft.client_fee_settlement || 'pay_separately'
+    : null;
+  const money = calculateOrderMoney({
+    paymentOption: draft.payment_option,
+    packageValue: draft.payment_option === 'cod' || draft.payment_option === 'cod-client-delivery' ? Number(draft.package_amount || 0) : 0,
+    deliveryFee: estimate?.fee ?? null,
+    clientFeeSettlement,
+    pickupRequired: false,
+    pickupParcelCount: 1,
+    pickupFeeSettlement: null
+  });
+  const requestData = {
+    business_client_id: business.id,
+    customer_name: draft.customer_name || '',
+    customer_phone: draft.customer_phone || '',
+    ...deliveryLinkLocationPayload(draft),
+    payment_type: paymentMap[draft.payment_option] || '',
+    cod_amount: money.packageValue,
+    package_value: money.packageValue,
+    estimated_fee: estimate?.fee ?? null,
+    pricing_rate_band: estimate?.rateBand || (estimate?.status === 'remote' ? 'remote' : null),
+    quote_status: estimate?.fee === null ? 'required' : 'not_required',
+    ...financialRequestFields(money),
+    pickup_required: false,
+    pickup_parcel_count: 1,
+    pickup_fee_settlement: null,
+    pickup_contact_name: null,
+    pickup_contact_phone: null,
+    pickup_business_name: null,
+    pickup_street_name: null,
+    pickup_area_name: null,
+    pickup_maps_link: null,
+    pickup_latitude: null,
+    pickup_longitude: null,
+    pickup_window: null,
+    pickup_instructions: null,
+    customer_notes: [
+      'Package: ' + (draft.item_name || 'Delivery link item'),
+      draft.item_notes ? 'Item notes: ' + draft.item_notes : '',
+      draft.delivery_notes ? 'Customer notes: ' + draft.delivery_notes : '',
+      draft.internal_notes ? 'Internal link notes: ' + draft.internal_notes : ''
+    ].filter(Boolean).join('
+') || null
+  };
+  return { estimate, money, requestData };
+}
+
+window.openDeliveryLinkReview = async function(draftId) {
+  const draft = deliveryLinkDrafts.find(item => item.id === draftId);
+  if (!draft) return window.vdNotify('Review Not Available', 'Delivery link draft not found.', 'error');
+  if (draft.status !== 'customer_completed') return window.vdNotify('Review Not Available', 'Only completed customer submissions can be reviewed.', 'warning');
+  const overlay = ensureDeliveryLinkReviewModal();
+  const body = el('#deliveryLinkReviewBody');
+  const submitBtn = el('#submitDeliveryLinkOrderBtn');
+  overlay.style.display = 'flex';
+  body.innerHTML = '<div style="padding:1rem; color:#6a6a6a;">Calculating estimate...</div>';
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Calculating...';
+  try {
+    const built = await buildDeliveryLinkOrderPayload(draft);
+    const itemRows = draftItemsFor(draft.id).map(item => '<div style="padding:0.65rem 0.75rem; border:1px solid #edf3f2; border-radius:8px; background:#f8fbfa;"><strong>' + escapeHtml(item.item_name_snapshot) + '</strong><div style="font-size:0.8rem; color:#6a6a6a;">' + escapeHtml(moneyLabel(item.item_cost_snapshot) + ' x ' + item.quantity) + '</div></div>').join('');
+    const rows = deliveryLinkReviewRows({ draft, estimate: built.estimate, money: built.money });
+    body.innerHTML = '<div style="padding:0.9rem; background:#f8fbfa; border:1px solid #dcecea; border-radius:10px;"><div style="font-weight:800; color:#1a1a1a; overflow-wrap:anywhere;">' + escapeHtml(draft.item_name) + '</div>' + (draft.item_notes ? '<div style="font-size:0.86rem; color:#6a6a6a; margin-top:0.25rem;">' + escapeHtml(draft.item_notes) + '</div>' : '') + (itemRows ? '<div style="display:grid; gap:0.5rem; margin-top:0.75rem;">' + itemRows + '</div>' : '') + '</div>'
+      + '<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:0.55rem;">' + rows.map(([key, value]) => '<div style="padding:0.75rem; border:1px solid #edf3f2; border-radius:8px;"><div style="font-size:0.74rem; color:#6a6a6a; font-weight:800; text-transform:uppercase; letter-spacing:0.04em;">' + escapeHtml(key) + '</div><div style="font-size:0.95rem; color:#0d2b28; font-weight:750; overflow-wrap:anywhere; margin-top:0.2rem;">' + escapeHtml(value) + '</div></div>').join('') + '</div>';
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Submit As Order';
+    submitBtn.onclick = () => submitDeliveryLinkAsOrder(draft.id, built.requestData);
+  } catch (error) {
+    body.innerHTML = '<div style="padding:1rem; background:#fff3f3; color:#8b2020; border-radius:10px;">' + escapeHtml(error.message || 'Could not prepare this delivery link for review.') + '</div>';
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submit As Order';
+  }
+};
+
+async function submitDeliveryLinkAsOrder(draftId, requestData) {
+  if (isSubmittingDeliveryLinkOrder) return;
+  const draft = deliveryLinkDrafts.find(item => item.id === draftId);
+  if (!draft) return;
+  isSubmittingDeliveryLinkOrder = true;
+  const button = el('#submitDeliveryLinkOrderBtn');
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'Submitting...';
+  }
+  try {
+    const { data, error } = await supabase.rpc('submit_delivery_request_v2', { request_data: requestData });
+    if (error) throw error;
+    const result = Array.isArray(data) ? data[0] : data;
+    let submittedOrderId = result?.id || result?.order_id || null;
+    if (!submittedOrderId && result?.order_number) {
+      const { data: orderRow } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('business_client_id', business.id)
+        .eq('order_number', result.order_number)
+        .maybeSingle();
+      submittedOrderId = orderRow?.id || null;
+    }
+    const { error: updateError } = await supabase
+      .from('business_delivery_link_drafts')
+      .update({ status: 'submitted_as_order', submitted_order_id: submittedOrderId, submitted_at: new Date().toISOString() })
+      .eq('id', draftId)
+      .eq('business_client_id', business.id)
+      .eq('status', 'customer_completed');
+    if (updateError) throw updateError;
+    window.closeDeliveryLinkReview();
+    await loadBusinessData();
+    window.switchPanel('delivery-link');
+    window.vdNotify('Order Submitted', 'Delivery link was converted into order ' + (result?.order_number || '') + '.', 'success');
+  } catch (error) {
+    console.error('Delivery link submit-as-order error:', error);
+    window.vdNotify('Order Not Submitted', error.message || 'Could not submit this delivery link as an order.', 'error');
+  } finally {
+    isSubmittingDeliveryLinkOrder = false;
+    if (button) {
+      button.disabled = false;
+      button.textContent = 'Submit As Order';
+    }
+  }
+}
 
 async function submitBusinessOrder(event) {
   event?.preventDefault?.();
