@@ -1753,10 +1753,6 @@ function businessTrackingBubble(order) {
     </div>`;
 }
 
-function deliveryLink() {
-  const base = window.location.origin + window.location.pathname.replace(/dashboard\.html$/, 'delivery-form.html');
-  return `${base}?business=${encodeURIComponent(business?.slug || '')}`;
-}
 
 function firstName() {
   return profile?.first_name || business?.business_name?.split(/\s+/)[0] || currentUser?.email?.split('@')[0] || 'there';
@@ -3863,21 +3859,13 @@ window.useEditPickupCurrentLocation = function() {
   });
 };
 
-window.copyLink = async function() {
-  const link = el('#clientLinkDisplay')?.textContent.trim() || deliveryLink();
-  await navigator.clipboard.writeText(link);
-  const confirm = el('#copyConfirm');
-  if (confirm) {
-    confirm.textContent = '✓ Link copied to clipboard!';
-    confirm.style.display = 'block';
-    setTimeout(() => confirm.style.display = 'none', 2500);
-  }
+window.copyLink = function() {
+  window.switchPanel?.('delivery-link');
+  window.vdNotify('Create Unique Link', 'Use Create Delivery Link to generate a customer-specific delivery link.', 'info');
 };
 
 window.shareLink = function() {
-  const link = el('#clientLinkDisplay')?.textContent.trim() || deliveryLink();
-  if (navigator.share) navigator.share({ title: 'VirtuDrop Delivery Link', url: link });
-  else window.copyLink();
+  window.copyLink();
 };
 
 window.filterRemit = function(period, btn) {
