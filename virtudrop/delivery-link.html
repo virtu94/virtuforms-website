@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Complete Delivery Details | VirtuDrop</title>
+  <meta name="description" content="Complete delivery details for a VirtuDrop business order.">
+  <link rel="icon" href="assets/logo.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.65; color: #17211f; background: #f5f8f7; min-height: 100vh; }
+    .header { background: #0d2b28; color: #fff; padding: 1.5rem; text-align: center; }
+    .logo { width: 44px; height: 44px; margin: 0 auto 0.5rem; border-radius: 50%; background: #2a9d8f; display: flex; align-items: center; justify-content: center; font-weight: 800; }
+    .header h1 { font-size: 1.35rem; line-height: 1.25; }
+    .header p { color: rgba(255,255,255,0.62); font-size: 0.9rem; margin-top: 0.2rem; }
+    .page { max-width: 680px; margin: 0 auto; padding: 2rem 1.2rem 4rem; }
+    .card { background: #fff; border: 1px solid #e4eeec; border-radius: 12px; padding: 1.35rem; box-shadow: 0 8px 24px rgba(13,43,40,0.06); margin-bottom: 1rem; }
+    .label { color: #2a9d8f; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 1rem; }
+    .summary-title { font-size: 1.15rem; font-weight: 800; color: #0d2b28; overflow-wrap: anywhere; }
+    .summary-sub { color: #5c6b68; font-size: 0.9rem; margin-top: 0.25rem; }
+    .line { display: flex; justify-content: space-between; gap: 1rem; padding: 0.55rem 0; border-top: 1px solid #edf3f2; font-size: 0.9rem; }
+    .line span:first-child { color: #6a7572; }
+    .line span:last-child { font-weight: 700; text-align: right; }
+    .items { display: grid; gap: 0.55rem; margin-top: 0.9rem; }
+    .item { border: 1px solid #edf3f2; background: #f8fbfa; border-radius: 8px; padding: 0.75rem; }
+    .item strong { display: block; color: #17211f; overflow-wrap: anywhere; }
+    .item small { color: #66736f; }
+    .field { display: flex; flex-direction: column; gap: 0.38rem; margin-bottom: 1rem; }
+    .field label { font-size: 0.9rem; font-weight: 700; }
+    .req { color: #c24135; }
+    .opt { color: #8a9693; font-weight: 500; }
+    .input { width: 100%; border: 2px solid #dce7e5; border-radius: 10px; padding: 0.85rem 0.95rem; font: inherit; background: #fff; color: #17211f; }
+    .input:focus { outline: none; border-color: #2a9d8f; box-shadow: 0 0 0 3px rgba(42,157,143,0.12); }
+    .input.has-error { border-color: #c24135; }
+    textarea.input { min-height: 92px; resize: vertical; }
+    .error-text { display: none; color: #b42318; font-size: 0.8rem; font-weight: 700; }
+    .error-text.show { display: block; }
+    .phone-row { display: flex; }
+    .phone-prefix { padding: 0.85rem 0.95rem; border: 2px solid #dce7e5; border-right: 0; border-radius: 10px 0 0 10px; background: #f5f8f7; font-weight: 800; }
+    .phone-row .input { border-radius: 0 10px 10px 0; }
+    .loc-tabs { display: flex; background: #edf7f5; border-radius: 10px; padding: 4px; margin-bottom: 1rem; }
+    .loc-tab { flex: 1; border: 0; border-radius: 8px; padding: 0.68rem; background: transparent; color: #43504d; font: inherit; font-weight: 800; cursor: pointer; }
+    .loc-tab.active { background: #0d2b28; color: #fff; }
+    .loc-panel { display: none; }
+    .loc-panel.active { display: block; }
+    .gps-btn { width: 100%; border: 2px solid #2a9d8f; border-radius: 10px; padding: 0.9rem; background: #edf7f5; color: #207d73; font: inherit; font-weight: 800; cursor: pointer; margin-bottom: 0.85rem; }
+    .gps-result { display: none; border-radius: 8px; padding: 0.75rem 0.9rem; margin-bottom: 0.8rem; font-size: 0.88rem; }
+    .gps-result.success { display: block; background: #e6f4f1; color: #0d2b28; }
+    .gps-result.error { display: block; background: #fff1ef; color: #8d2d24; }
+    .divider { text-align: center; color: #8a9693; font-size: 0.82rem; margin: 0.7rem 0; }
+    .addr-grid { display: grid; grid-template-columns: 0.8fr 1.5fr; gap: 0.75rem; }
+    .btn { width: 100%; border: 0; border-radius: 10px; padding: 1rem; background: #2a9d8f; color: #fff; font: inherit; font-weight: 800; cursor: pointer; }
+    .btn:disabled { opacity: 0.62; cursor: wait; }
+    .note { color: #66736f; font-size: 0.84rem; margin-top: 0.75rem; text-align: center; }
+    .state { text-align: center; padding: 2rem 1.2rem; }
+    .state h2 { color: #0d2b28; font-size: 1.55rem; margin-bottom: 0.5rem; }
+    .state p { color: #5c6b68; }
+    .hidden { display: none; }
+    @media (max-width: 520px) {
+      .card { padding: 1.1rem; }
+      .addr-grid { grid-template-columns: 1fr; }
+      .line { flex-direction: column; gap: 0.15rem; }
+      .line span:last-child { text-align: left; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="logo">VD</div>
+    <h1>Complete Delivery Details</h1>
+    <p id="headerSub">Loading delivery link...</p>
+  </header>
+
+  <main class="page">
+    <div id="loadingState" class="card state">
+      <h2>Loading</h2>
+      <p>Checking this delivery link.</p>
+    </div>
+
+    <div id="unavailableState" class="card state hidden">
+      <h2>Link unavailable</h2>
+      <p id="unavailableMessage">This delivery link is no longer available.</p>
+    </div>
+
+    <div id="successState" class="card state hidden">
+      <h2>Details submitted</h2>
+      <p>The business will review your delivery details before submitting the order to VirtuDrop.</p>
+    </div>
+
+    <form id="deliveryLinkForm" class="hidden">
+      <section class="card">
+        <div class="label">Order Summary</div>
+        <div class="summary-title" id="businessName">Business</div>
+        <div class="summary-sub" id="itemName">Item/package</div>
+        <div id="catalogItems" class="items"></div>
+        <div class="line"><span>Package amount</span><span id="packageAmount">TTD 0.00</span></div>
+        <div class="line"><span>Payment instruction</span><span id="paymentInstruction">-</span></div>
+        <div class="summary-sub" id="itemNotes"></div>
+      </section>
+
+      <section class="card">
+        <div class="label">Your Details</div>
+        <div class="field">
+          <label for="customerName">Full Name <span class="req">*</span></label>
+          <input class="input" id="customerName" type="text" autocomplete="name" maxlength="120" placeholder="Full name">
+          <span class="error-text" id="customerNameErr">Enter your name.</span>
+        </div>
+        <div class="field">
+          <label for="customerPhone">WhatsApp / Phone Number <span class="req">*</span></label>
+          <div class="phone-row">
+            <span class="phone-prefix">868</span>
+            <input class="input" id="customerPhone" type="tel" autocomplete="tel" maxlength="8" placeholder="XXX-XXXX">
+          </div>
+          <span class="error-text" id="customerPhoneErr">Enter a valid 7-digit phone number.</span>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="label">Delivery Location</div>
+        <div class="loc-tabs">
+          <button class="loc-tab active" type="button" data-tab="share">Share Location</button>
+          <button class="loc-tab" type="button" data-tab="manual">Enter Address</button>
+        </div>
+        <div class="loc-panel active" id="locShare">
+          <button class="gps-btn" type="button" id="gpsButton">Use My Current Location</button>
+          <div class="gps-result" id="gpsResult"></div>
+          <div class="divider">or paste a Google Maps link</div>
+          <div class="field">
+            <label for="mapsLink">Google Maps Link</label>
+            <input class="input" id="mapsLink" type="url" placeholder="https://maps.google.com/...">
+            <span class="error-text" id="mapsLinkErr">Use current location, paste a valid Google Maps link, or enter your address manually.</span>
+          </div>
+        </div>
+        <div class="loc-panel" id="locManual">
+          <div class="addr-grid">
+            <div class="field">
+              <label for="houseNumber">House / Apt # <span class="opt">(optional)</span></label>
+              <input class="input" id="houseNumber" type="text" maxlength="40" placeholder="15A">
+            </div>
+            <div class="field">
+              <label for="streetName">Street Name <span class="req">*</span></label>
+              <input class="input" id="streetName" type="text" maxlength="160" placeholder="Street, road, building, or landmark">
+              <span class="error-text" id="streetNameErr">Enter the street name.</span>
+            </div>
+          </div>
+          <div class="field">
+            <label for="areaName">Area / Community <span class="req">*</span></label>
+            <input class="input" id="areaName" type="text" maxlength="100" placeholder="Area or community">
+            <span class="error-text" id="areaNameErr">Enter the delivery area.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="label">Delivery Notes</div>
+        <div class="field">
+          <label for="deliveryNotes">Notes <span class="opt">(optional)</span></label>
+          <textarea class="input" id="deliveryNotes" maxlength="500" placeholder="Gate code, landmark, preferred delivery note, etc."></textarea>
+        </div>
+        <button class="btn" id="submitButton" type="submit">Submit Delivery Details</button>
+        <div class="note">Submitting this does not create the final order. The business must review and submit it.</div>
+      </section>
+    </form>
+  </main>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+    const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_riDvZH96FeYGnF0bLYQErg_tlRv71CX';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const token = new URLSearchParams(window.location.search).get('token') || '';
+    let activeLocTab = 'share';
+
+    const paymentLabels = {
+      cod: 'Pay package and delivery to the driver.',
+      'pkg-online': 'Package is paid. Pay delivery only if requested by the driver.',
+      'cod-client-delivery': 'Pay package amount to the driver. The business handles delivery separately.',
+      'all-online': 'No payment should be collected by the driver.'
+    };
+
+    const $ = selector => document.querySelector(selector);
+    const money = value => 'TTD ' + (Number(value || 0)).toFixed(2);
+    const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+
+    function showOnly(id) {
+      ['loadingState', 'unavailableState', 'successState', 'deliveryLinkForm'].forEach(stateId => {
+        $('#' + stateId)?.classList.toggle('hidden', stateId !== id);
+      });
+    }
+
+    function showError(inputId, errorId) {
+      $('#' + inputId)?.classList.add('has-error');
+      $('#' + errorId)?.classList.add('show');
+    }
+
+    function clearErrors() {
+      document.querySelectorAll('.has-error').forEach(input => input.classList.remove('has-error'));
+      document.querySelectorAll('.error-text.show').forEach(error => error.classList.remove('show'));
+    }
+
+    function isValidMapsLink(value) {
+      if (!value) return false;
+      try {
+        const url = new URL(value);
+        return /(^|\.)google\./i.test(url.hostname) || /(^|\.)goo\.gl$/i.test(url.hostname) || /(^|\.)maps\.app\.goo\.gl$/i.test(url.hostname);
+      } catch {
+        return false;
+      }
+    }
+
+    function selectedLocationPayload() {
+      const gpsResult = $('#gpsResult');
+      const hasGps = gpsResult?.dataset.lat && gpsResult?.dataset.lng;
+      if (activeLocTab === 'manual') {
+        return {
+          house_number: $('#houseNumber').value.trim(),
+          street_name: $('#streetName').value.trim(),
+          area_name: $('#areaName').value.trim(),
+          maps_link: '',
+          latitude: null,
+          longitude: null
+        };
+      }
+      return {
+        house_number: '',
+        street_name: '',
+        area_name: '',
+        maps_link: hasGps ? '' : $('#mapsLink').value.trim(),
+        latitude: hasGps ? Number(gpsResult.dataset.lat) : null,
+        longitude: hasGps ? Number(gpsResult.dataset.lng) : null
+      };
+    }
+
+    function validate() {
+      clearErrors();
+      const issues = [];
+      if ($('#customerName').value.trim().length < 2) {
+        showError('customerName', 'customerNameErr');
+        issues.push('name');
+      }
+      const phoneDigits = $('#customerPhone').value.replace(/\D/g, '');
+      if (phoneDigits.length !== 7) {
+        showError('customerPhone', 'customerPhoneErr');
+        issues.push('phone');
+      }
+      const location = selectedLocationPayload();
+      if (activeLocTab === 'manual') {
+        if (location.street_name.length < 3) {
+          showError('streetName', 'streetNameErr');
+          issues.push('street');
+        }
+        if (location.area_name.length < 2) {
+          showError('areaName', 'areaNameErr');
+          issues.push('area');
+        }
+      } else if (!location.latitude && !location.maps_link) {
+        showError('mapsLink', 'mapsLinkErr');
+        issues.push('location');
+      } else if (location.maps_link && !isValidMapsLink(location.maps_link)) {
+        showError('mapsLink', 'mapsLinkErr');
+        issues.push('maps');
+      }
+      return issues.length === 0;
+    }
+
+    function setLinkData(draft) {
+      $('#headerSub').textContent = 'Delivery details requested by ' + (draft.business_name || 'the business');
+      $('#businessName').textContent = draft.business_name || 'Business';
+      $('#itemName').textContent = draft.item_name || 'Item/package';
+      $('#packageAmount').textContent = money(draft.package_amount);
+      $('#paymentInstruction').textContent = paymentLabels[draft.payment_option] || 'Payment arrangement set by the business.';
+      $('#itemNotes').textContent = draft.item_notes || '';
+      const items = Array.isArray(draft.items) ? draft.items : [];
+      $('#catalogItems').innerHTML = items.map(item => (
+        '<div class="item"><strong>' + escapeHtml(item.item_name) + '</strong><small>' +
+        escapeHtml(money(item.item_cost) + ' x ' + (item.quantity || 1) + (item.additional_notes ? ' - ' + item.additional_notes : '')) +
+        '</small></div>'
+      )).join('');
+    }
+
+    async function loadDraft() {
+      if (!token) {
+        $('#unavailableMessage').textContent = 'This delivery link is missing its token.';
+        showOnly('unavailableState');
+        return;
+      }
+      const { data, error } = await supabase.rpc('public_get_delivery_link_draft', { p_token: token });
+      if (error || !data?.found) {
+        $('#unavailableMessage').textContent = error?.message || data?.message || 'This delivery link is no longer available.';
+        showOnly('unavailableState');
+        return;
+      }
+      setLinkData(data);
+      showOnly('deliveryLinkForm');
+    }
+
+    document.querySelectorAll('.loc-tab').forEach(button => {
+      button.addEventListener('click', () => {
+        activeLocTab = button.dataset.tab;
+        document.querySelectorAll('.loc-tab').forEach(tab => tab.classList.toggle('active', tab === button));
+        $('#locShare').classList.toggle('active', activeLocTab === 'share');
+        $('#locManual').classList.toggle('active', activeLocTab === 'manual');
+        clearErrors();
+      });
+    });
+
+    $('#gpsButton').addEventListener('click', () => {
+      const result = $('#gpsResult');
+      if (!navigator.geolocation) {
+        result.className = 'gps-result error';
+        result.textContent = 'Current location is not available in this browser.';
+        return;
+      }
+      result.className = 'gps-result success';
+      result.textContent = 'Requesting your current location...';
+      navigator.geolocation.getCurrentPosition(
+        position => {
+          result.dataset.lat = String(position.coords.latitude);
+          result.dataset.lng = String(position.coords.longitude);
+          result.className = 'gps-result success';
+          result.textContent = 'Location captured. You can submit the form now.';
+          $('#mapsLink').value = '';
+        },
+        error => {
+          const needsSecureOrigin = location.protocol !== 'https:' && !['localhost', '127.0.0.1'].includes(location.hostname);
+          result.className = 'gps-result error';
+          result.textContent = needsSecureOrigin
+            ? 'Current location needs HTTPS. Paste a Google Maps link or enter your address manually.'
+            : 'Could not access location' + (error?.message ? ': ' + error.message : '') + '.';
+        },
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+      );
+    });
+
+    $('#customerPhone').addEventListener('input', event => {
+      const digits = event.target.value.replace(/\D/g, '').slice(0, 7);
+      event.target.value = digits.length > 3 ? digits.slice(0, 3) + '-' + digits.slice(3) : digits;
+    });
+
+    $('#mapsLink').addEventListener('input', () => {
+      const result = $('#gpsResult');
+      delete result.dataset.lat;
+      delete result.dataset.lng;
+      result.className = 'gps-result';
+      result.textContent = '';
+    });
+
+    $('#deliveryLinkForm').addEventListener('submit', async event => {
+      event.preventDefault();
+      if (!validate()) return;
+      const button = $('#submitButton');
+      button.disabled = true;
+      button.textContent = 'Submitting...';
+      const locationPayload = selectedLocationPayload();
+      const payload = {
+        customer_name: $('#customerName').value.trim(),
+        customer_phone: '868-' + $('#customerPhone').value.replace(/\D/g, ''),
+        ...locationPayload,
+        delivery_notes: $('#deliveryNotes').value.trim()
+      };
+      const { error } = await supabase.rpc('public_complete_delivery_link_draft', {
+        p_token: token,
+        p_customer_data: payload
+      });
+      if (error) {
+        button.disabled = false;
+        button.textContent = 'Submit Delivery Details';
+        $('#unavailableMessage').textContent = error.message || 'Could not submit these delivery details.';
+        showOnly('unavailableState');
+        return;
+      }
+      showOnly('successState');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    loadDraft();
+  </script>
+</body>
+</html>
