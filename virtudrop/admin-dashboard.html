@@ -822,10 +822,6 @@
         <span class="nav-icon">↩</span> Returns &amp; Redelivery
         <span class="nav-badge alert">0</span>
       </button>
-      <button class="nav-item" data-panel="delivery-scheduling">
-        <span class="nav-icon">📅</span> Delivery Scheduling
-        <span class="nav-badge alert">0</span>
-      </button>
       <button class="nav-item" data-panel="driver-assign">
         <span class="nav-icon">🚚</span> Driver Assignment
         <span class="nav-badge alert">8</span>
@@ -1138,31 +1134,6 @@
             <tbody id="returnManagementBody"><tr><td colspan="7">Loading returned parcels...</td></tr></tbody>
           </table></div>
         </div>
-      </div>
-
-      <div class="panel" id="panel-delivery-scheduling">
-        <div class="section-heading">
-          <h2>Delivery Scheduling</h2>
-          <p>Review automatically calculated delivery cycles and manage exceptional service dates.</p>
-        </div>
-        <div class="card" style="margin-bottom:1rem;">
-          <div class="card-title">Service Date Override</div>
-          <div class="filter-bar" style="margin-bottom:0;">
-            <input class="filter-input" id="serviceOverrideDate" type="date" />
-            <select class="filter-select" id="serviceOverrideAvailable"><option value="false">Closed / No Deliveries</option><option value="true">Open for Deliveries</option></select>
-            <input class="filter-input" id="serviceOverrideReason" type="text" maxlength="180" placeholder="Holiday or operational reason" />
-            <button class="btn btn-primary btn-sm" type="button" onclick="saveServiceDateOverride()">Save Service Date</button>
-          </div>
-          <div id="serviceDateOverrides" style="margin-top:0.85rem; color:var(--grey); font-size:0.84rem;">No service-date overrides loaded.</div>
-        </div>
-        <div class="filter-bar">
-          <select class="filter-select" id="scheduleFilter" onchange="renderDeliveryScheduling()"><option value="active">Active Orders</option><option value="needs_review">Needs Review</option><option value="all">All Orders</option></select>
-          <input class="filter-input" id="scheduleSearch" type="search" placeholder="Search order, client or customer" oninput="renderDeliveryScheduling()" />
-        </div>
-        <div class="card"><div class="table-wrap"><table>
-          <thead><tr><th>Order</th><th>Client / Customer</th><th>Parcel</th><th>Calculated Cycle</th><th>Source</th><th>Change Schedule</th><th>Actions</th></tr></thead>
-          <tbody id="deliverySchedulingBody"><tr><td colspan="7">Loading delivery schedules...</td></tr></tbody>
-        </table></div></div>
       </div>
 
       <!-- ════════ DRIVER ASSIGNMENT ════════ -->
@@ -1869,7 +1840,6 @@
       'zone-confirm': 'Zone Confirmation',
       'sorting-manifests': 'Sorting & Manifests',
       'returns-redelivery': 'Returns & Redelivery',
-      'delivery-scheduling': 'Delivery Scheduling',
       'driver-assign': 'Driver Assignment',
       'driver-import': 'Active Delivery Import',
       'cod-mgmt': 'Accounting',
@@ -1896,7 +1866,6 @@
     let accountingTransactions = [];
     let driverFinanceRecords = [];
     let editingAccountingTransactionId = null;
-    let serviceDateOverrides = [];
     let deliveryManifests = [];
     let allOrdersBulkSelection = new Set();
     let allOrdersVisibleIds = [];
@@ -2829,8 +2798,6 @@
       const activePickups = orders.filter(order => !isCancelledOrder(order) && order.pickup_required && ['requested', 'assigned', 'picked_up'].includes(order.pickup_status)).length;
       if (pickupBadge) pickupBadge.textContent = activePickups;
       const scheduleReview = orders.filter(order => order.scheduled_delivery_date && order.scheduled_delivery_date < today && !['delivered', 'cancelled', 'rejected'].includes(order.order_status)).length;
-      const scheduleBadge = document.querySelector('[data-panel="delivery-scheduling"] .nav-badge');
-      if (scheduleBadge) scheduleBadge.textContent = scheduleReview;
       const sortingCount = orders.filter(order => !isCancelledOrder(order) && order.parcel_status === 'parcel_received' && order.zone_status === 'confirmed').length;
       const draftManifestCount = deliveryManifests.filter(manifest => manifest.status === 'draft').length;
       const manifestBadge = document.querySelector('[data-panel="sorting-manifests"] .nav-badge');
@@ -6171,98 +6138,6 @@
       });
     };
 
-    function renderServiceDateOverrides() {
-      const target = document.getElementById('serviceDateOverrides');
-      if (!target) return;
-      target.innerHTML = serviceDateOverrides.length
-        ? serviceDateOverrides.map(item => `<span class="badge ${item.is_service_day ? 'badge-confirmed' : 'badge-unpaid'}" style="margin:0 0.4rem 0.35rem 0;">${escapeHtml(item.service_date)} · ${item.is_service_day ? 'Open' : 'Closed'} · ${escapeHtml(item.reason)}</span>`).join('')
-        : 'No service-date overrides. Sundays remain closed and Monday–Saturday remain open by default.';
-    }
-
-    window.renderDeliveryScheduling = function() {
-      const body = document.getElementById('deliverySchedulingBody');
-      if (!body) return;
-      const filter = document.getElementById('scheduleFilter')?.value || 'active';
-      const search = String(document.getElementById('scheduleSearch')?.value || '').trim().toLowerCase();
-      const today = new Date().toISOString().slice(0, 10);
-      const terminal = ['delivered', 'cancelled', 'rejected'];
-      const rows = orders.filter(order => {
-        if (isCancelledOrder(order)) return false;
-        if (filter === 'active' && terminal.includes(order.order_status)) return false;
-        if (filter === 'needs_review' && !(order.scheduled_delivery_date && order.scheduled_delivery_date < today && !terminal.includes(order.order_status))) return false;
-        if (!search) return true;
-        return [order.order_number, clientName(order), order.customer_name, order.customer_phone, order.external_item_number, order.customer_notes, order.delivery_address, order.area_name].some(value => String(value || '').toLowerCase().includes(search));
-      }).sort((a, b) => String(a.scheduled_delivery_date || '9999').localeCompare(String(b.scheduled_delivery_date || '9999')));
-
-      body.innerHTML = rows.map(order => {
-        const overdue = order.scheduled_delivery_date && order.scheduled_delivery_date < today && !terminal.includes(order.order_status);
-        return `
-          <tr data-schedule-order-id="${order.id}">
-            <td><div class="td-id">${escapeHtml(order.order_number)}</div><div class="td-sub">Submitted ${new Date(order.created_at).toLocaleString('en-TT', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' })}</div></td>
-            <td><div class="td-name">${escapeHtml(clientName(order))}</div><div class="td-sub">${escapeHtml(order.customer_name || '')}</div></td>
-            <td><div class="td-name">${escapeHtml(String(order.parcel_status || 'awaiting_parcel').replaceAll('_', ' '))}</div><div class="td-sub">${escapeHtml(String(order.zone_status || 'pending').replaceAll('_', ' '))}</div></td>
-            <td><div class="td-name">${order.scheduled_delivery_date ? new Date(order.scheduled_delivery_date + 'T12:00:00').toLocaleDateString('en-TT') : 'Not calculated'}</div>${overdue ? '<span class="badge badge-unpaid">Needs Review</span>' : ''}</td>
-            <td><span class="badge ${order.delivery_schedule_source === 'admin' ? 'badge-pending' : 'badge-confirmed'}">${escapeHtml(order.delivery_schedule_source || 'automatic')}</span>${order.delivery_schedule_override_reason ? `<div class="td-sub">${escapeHtml(order.delivery_schedule_override_reason)}</div>` : ''}</td>
-            <td><input class="filter-input schedule-date-input" type="date" value="${order.scheduled_delivery_date || today}" style="width:155px;"><input class="filter-input schedule-reason-input" type="text" maxlength="180" placeholder="Reason if changing date" style="width:190px; margin-top:0.35rem;"></td>
-            <td><div class="finance-actions"><button class="btn btn-primary btn-sm" onclick="saveOrderSchedule('${order.id}')">Save Schedule</button><button class="btn btn-ghost btn-sm" onclick="recalculateOrderSchedule('${order.id}')">Recalculate</button></div></td>
-          </tr>`;
-      }).join('') || '<tr><td colspan="7">No orders match this schedule view.</td></tr>';
-      renderServiceDateOverrides();
-    };
-
-    window.saveOrderSchedule = function(orderId) {
-      const order = orders.find(item => item.id === orderId);
-      const row = document.querySelector(`tr[data-schedule-order-id="${orderId}"]`);
-      const date = row?.querySelector('.schedule-date-input')?.value || '';
-      const reason = row?.querySelector('.schedule-reason-input')?.value.trim() || '';
-      if (!order || !row) return showToast('Order schedule not found.');
-      if (!date) return showToast('Select a delivery date.');
-      if (date !== order.scheduled_delivery_date && reason.length < 3) return showToast('Enter a reason for changing the delivery date.');
-      showModal('Save Delivery Schedule', `Schedule ${order.order_number} for ${date}?`, async () => {
-        try {
-          const { error } = await supabase.rpc('admin_set_order_delivery_schedule', { p_order_id: orderId, p_delivery_date: date, p_reason: reason || null });
-          if (error) throw error;
-          showToast(`${order.order_number} schedule saved.`);
-          await loadData();
-        } catch (error) {
-          console.error('Schedule update error:', error);
-          window.vdNotify('Schedule Not Saved', error.message || 'Could not update the delivery schedule.', 'error');
-        }
-      });
-    };
-
-    window.recalculateOrderSchedule = function(orderId) {
-      const order = orders.find(item => item.id === orderId);
-      if (!order) return showToast('Order schedule not found.');
-      showModal('Recalculate Schedule', `Return ${order.order_number} to the automatic delivery-cycle calculation?`, async () => {
-        try {
-          const { error } = await supabase.rpc('admin_recalculate_order_delivery_schedule', { p_order_id: orderId });
-          if (error) throw error;
-          showToast(`${order.order_number} schedule recalculated.`);
-          await loadData();
-        } catch (error) {
-          window.vdNotify('Schedule Not Recalculated', error.message || 'Could not recalculate the delivery schedule.', 'error');
-        }
-      });
-    };
-
-    window.saveServiceDateOverride = async function() {
-      const date = document.getElementById('serviceOverrideDate')?.value || '';
-      const isServiceDay = document.getElementById('serviceOverrideAvailable')?.value === 'true';
-      const reason = document.getElementById('serviceOverrideReason')?.value.trim() || '';
-      if (!date) return showToast('Select a service date.');
-      if (reason.length < 3) return showToast('Enter a reason for this service-date override.');
-      try {
-        const { error } = await supabase.rpc('admin_set_delivery_service_date', { p_service_date: date, p_is_service_day: isServiceDay, p_reason: reason });
-        if (error) throw error;
-        showToast(`${date} marked ${isServiceDay ? 'open' : 'closed'} for deliveries.`);
-        document.getElementById('serviceOverrideReason').value = '';
-        await loadData();
-      } catch (error) {
-        window.vdNotify('Service Date Not Saved', error.message || 'Could not save the service-date override.', 'error');
-      }
-    };
-
     function showZoneMessage(message, showLoginButton = false) {
       const zonePanel = document.getElementById('panel-zone-confirm');
       zonePanel.querySelectorAll('.zone-card, .card[data-live-empty]').forEach(card => card.remove());
@@ -6282,7 +6157,6 @@
       document.querySelector('#panel-driver-assign tbody').innerHTML = '<tr><td colspan="11">Loading driver assignments...</td></tr>';
       document.getElementById('parcelCheckinBody').innerHTML = '<tr><td colspan="7">Loading parcel records...</td></tr>';
       document.getElementById('pickupManagementBody').innerHTML = '<tr><td colspan="7">Loading pickup requests...</td></tr>';
-      document.getElementById('deliverySchedulingBody').innerHTML = '<tr><td colspan="7">Loading delivery schedules...</td></tr>';
       document.getElementById('sortingQueueBody').innerHTML = '<tr><td colspan="6">Loading sorting queue...</td></tr>';
       document.getElementById('manifestList').innerHTML = '<div class="card">Loading delivery manifests...</div>';
       document.getElementById('accountingRecordsBody').innerHTML = '<tr><td colspan="11">Loading accounting records...</td></tr>';
@@ -6326,7 +6200,6 @@
       const driverRows = Array.isArray(snapshot.drivers) ? snapshot.drivers : [];
       const profileRows = Array.isArray(snapshot.profiles) ? snapshot.profiles : [];
       const settingsRows = Array.isArray(snapshot.app_settings) ? snapshot.app_settings : [];
-      serviceDateOverrides = Array.isArray(snapshot.delivery_service_dates) ? snapshot.delivery_service_dates : [];
       appSettings = { ...appSettings, ...Object.fromEntries(settingsRows.map(row => [row.key, row.value])) };
 
       if (manifestsRes.error) {
@@ -6374,7 +6247,6 @@
       renderAllOrders();
       renderParcelCheckin();
       renderPickupManagement();
-      renderDeliveryScheduling();
       renderSortingQueue();
       renderManifests();
       renderReturnManagement();
@@ -6890,10 +6762,9 @@
       const message = escapeHtml(error.message || 'Could not load admin dashboard data.');
       showZoneMessage(message);
       document.querySelector('#panel-all-orders tbody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
-      document.querySelector('#panel-driver-assign tbody').innerHTML = `<tr><td colspan="9">${message}</td></tr>`;
+      document.querySelector('#panel-driver-assign tbody').innerHTML = `<tr><td colspan="11">${message}</td></tr>`;
       document.getElementById('parcelCheckinBody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
       document.getElementById('pickupManagementBody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
-      document.getElementById('deliverySchedulingBody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
       document.getElementById('sortingQueueBody').innerHTML = `<tr><td colspan="6">${message}</td></tr>`;
       document.getElementById('returnManagementBody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
       document.getElementById('accountingRecordsBody').innerHTML = `<tr><td colspan="11">${message}</td></tr>`;
