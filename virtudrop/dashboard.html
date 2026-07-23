@@ -225,6 +225,12 @@
       margin-bottom: 1.2rem;
       display: flex; align-items: center; gap: 0.5rem;
     }
+    .catalog-grid {
+      display: grid;
+      grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.4fr);
+      gap: 1.2rem;
+      align-items: start;
+    }
 
     /* ── Delivery items ── */
     .delivery-item {
@@ -791,6 +797,7 @@
       .status-badge { white-space: normal; text-align: center; }
       #clientLinkDisplay { min-width: 0 !important; width: 100%; }
       #panel-delivery-link .card > div > div[style*="display:flex"] { flex-direction: column; align-items: stretch !important; }
+      .catalog-grid { grid-template-columns: 1fr; }
       #panel-remittance .card > div[style*="grid-template-columns:repeat(3,1fr)"] { grid-template-columns: 1fr !important; }
       .modal { width: calc(100vw - 2rem); padding: 1.6rem; }
     }
@@ -930,6 +937,9 @@
     </button>
     <button class="nav-item" data-panel="delivery-link">
       <span class="nav-icon">🔗</span> My Delivery Link
+    </button>
+    <button class="nav-item" data-panel="catalog">
+      <span class="nav-icon">🧾</span> Catalog
     </button>
     <button class="nav-item" data-panel="active">
       <span class="nav-icon">🚚</span> Active Deliveries
@@ -1217,6 +1227,76 @@
             <button type="reset" class="btn btn-ghost" onclick="resetOrderForm()">🔄 Clear Form</button>
           </div>
         </form>
+      </div>
+    </div>
+
+
+    <!-- CATALOG -->
+    <div class="panel" id="panel-catalog">
+      <div class="section-heading">
+        Catalog
+        <div class="section-sub">Manage the items and package values your business uses for delivery orders.</div>
+      </div>
+
+      <div class="catalog-grid">
+        <div class="card">
+          <div class="card-title">Add / Edit Item</div>
+          <form id="catalogItemForm">
+            <input type="hidden" id="catalogItemId" />
+            <div class="form-group">
+              <label for="catalogItemName">Item Name</label>
+              <input class="input" id="catalogItemName" type="text" maxlength="140" placeholder="e.g. Fruit basket" required />
+            </div>
+            <div class="form-group">
+              <label for="catalogItemCost">Item Cost / Package Value (TTD)</label>
+              <input class="input" id="catalogItemCost" type="number" min="0" step="0.01" placeholder="0.00" required />
+            </div>
+            <div class="form-group">
+              <label for="catalogItemNotes">Additional Notes <span>(optional)</span></label>
+              <textarea class="input" id="catalogItemNotes" maxlength="500" placeholder="Size, color, handling notes, SKU, etc."></textarea>
+            </div>
+            <div class="form-group">
+              <label for="catalogItemActive">Status</label>
+              <select class="input" id="catalogItemActive">
+                <option value="true">Active</option>
+                <option value="false">Inactive</option>
+              </select>
+            </div>
+            <div class="form-actions" style="justify-content:flex-start; margin-top:1rem;">
+              <button type="submit" class="btn btn-primary" id="catalogSaveBtn">Save Item</button>
+              <button type="button" class="btn btn-ghost" onclick="resetCatalogForm()">Clear</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; gap:0.9rem; align-items:center; flex-wrap:wrap; margin-bottom:1rem;">
+            <div class="card-title" style="margin-bottom:0;">Catalog Items</div>
+            <div style="display:flex; gap:0.65rem; flex-wrap:wrap; align-items:center;">
+              <input class="input" id="catalogSearch" type="search" placeholder="Search catalog" style="width:220px;" oninput="renderCatalog()" />
+              <select class="input" id="catalogStatusFilter" style="width:150px;" onchange="renderCatalog()">
+                <option value="active">Active</option>
+                <option value="all">All</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+              <thead>
+                <tr>
+                  <th style="text-align:left; padding:0.8rem 1rem; font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6a6a6a; border-bottom:2px solid #f0f0f0;">Item</th>
+                  <th style="text-align:right; padding:0.8rem 1rem; font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6a6a6a; border-bottom:2px solid #f0f0f0;">Cost</th>
+                  <th style="text-align:left; padding:0.8rem 1rem; font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6a6a6a; border-bottom:2px solid #f0f0f0;">Status</th>
+                  <th style="text-align:right; padding:0.8rem 1rem; font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6a6a6a; border-bottom:2px solid #f0f0f0;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="catalogItemsBody">
+                <tr><td colspan="4" style="padding:1rem; color:#6a6a6a;">Loading catalog...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1739,6 +1819,6 @@
 
 <script src="vd-modal.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script type="module" src="business-dashboard.js?v=20260714-manual-validation-1"></script>
+  <script type="module" src="business-dashboard.js?v=20260723-catalog-1"></script>
 </body>
 </html>

@@ -1120,6 +1120,7 @@ let profile = null;
 let business = null;
 let orders = [];
 let remittanceRecords = [];
+let catalogItems = [];
 let remittancePeriod = 'week';
 let activeLocTab = 'share';
 let manualLocationMode = false;
@@ -1129,6 +1130,7 @@ const panelTitles = {
   overview: 'Overview',
   'new-order': 'New Order',
   'delivery-link': 'My Delivery Link',
+  catalog: 'Catalog',
   active: 'Active Deliveries',
   history: 'Order History',
   'cod-records': 'COD Records',
@@ -2340,6 +2342,110 @@ function renderDeliveryLink() {
   if (display) display.textContent = deliveryLink();
 }
 
+function catalogStatusBadge(item) {
+  const cls = item.active ? 'delivered' : 'cancelled';
+  return '<span class="status-badge ' + cls + '">' + (item.active ? 'Active' : 'Inactive') + '</span>';
+}
+
+function renderCatalog() {
+  const body = el('#catalogItemsBody');
+  if (!body) return;
+  const search = String(el('#catalogSearch')?.value || '').trim().toLowerCase();
+  const status = el('#catalogStatusFilter')?.value || 'active';
+  const rows = catalogItems
+    .filter(item => {
+      if (status === 'active' && !item.active) return false;
+      if (status === 'inactive' && item.active) return false;
+      if (!search) return true;
+      return [item.item_name, item.additional_notes].some(value => String(value || '').toLowerCase().includes(search));
+    })
+    .sort((a, b) => String(a.item_name || '').localeCompare(String(b.item_name || '')));
+
+  body.innerHTML = rows.map(item => {
+    const notes = item.additional_notes ? '<div style="font-size:0.78rem; color:#6a6a6a; margin-top:0.2rem;">' + escapeHtml(item.additional_notes) + '</div>' : '';
+    return '<tr data-catalog-item-id="' + item.id + '">'
+      + '<td style="padding:0.9rem 1rem; border-bottom:1px solid #f0f0f0; vertical-align:top;"><div style="font-weight:700; color:#1a1a1a;">' + escapeHtml(item.item_name) + '</div>' + notes + '</td>'
+      + '<td style="padding:0.9rem 1rem; border-bottom:1px solid #f0f0f0; text-align:right; vertical-align:top; font-weight:700;">' + money(item.item_cost) + '</td>'
+      + '<td style="padding:0.9rem 1rem; border-bottom:1px solid #f0f0f0; vertical-align:top;">' + catalogStatusBadge(item) + '</td>'
+      + '<td style="padding:0.9rem 1rem; border-bottom:1px solid #f0f0f0; text-align:right; vertical-align:top; white-space:nowrap;">'
+      + '<button type="button" class="btn btn-ghost" style="padding:0.45rem 0.75rem; font-size:0.82rem;" onclick="editCatalogItem(\'' + item.id + '\')">Edit</button> '
+      + '<button type="button" class="btn btn-ghost" style="padding:0.45rem 0.75rem; font-size:0.82rem;" onclick="toggleCatalogItem(\'' + item.id + '\')">' + (item.active ? 'Deactivate' : 'Activate') + '</button>'
+      + '</td></tr>';
+  }).join('') || '<tr><td colspan="4" style="padding:1rem; color:#6a6a6a;">No catalog items match this view.</td></tr>';
+}
+
+window.renderCatalog = renderCatalog;
+
+function resetCatalogForm() {
+  const form = el('#catalogItemForm');
+  form?.reset();
+  if (el('#catalogItemId')) el('#catalogItemId').value = '';
+  if (el('#catalogItemActive')) el('#catalogItemActive').value = 'true';
+  setText('#catalogSaveBtn', 'Save Item');
+}
+
+window.resetCatalogForm = resetCatalogForm;
+
+window.editCatalogItem = function(itemId) {
+  const item = catalogItems.find(row => row.id === itemId);
+  if (!item) return;
+  if (el('#catalogItemId')) el('#catalogItemId').value = item.id;
+  if (el('#catalogItemName')) el('#catalogItemName').value = item.item_name || '';
+  if (el('#catalogItemCost')) el('#catalogItemCost').value = Number(item.item_cost || 0).toFixed(2);
+  if (el('#catalogItemNotes')) el('#catalogItemNotes').value = item.additional_notes || '';
+  if (el('#catalogItemActive')) el('#catalogItemActive').value = item.active ? 'true' : 'false';
+  setText('#catalogSaveBtn', 'Update Item');
+  window.switchPanel('catalog');
+};
+
+window.toggleCatalogItem = async function(itemId) {
+  const item = catalogItems.find(row => row.id === itemId);
+  if (!item) return;
+  const { error } = await supabase
+    .from('business_catalog_items')
+    .update({ active: !item.active })
+    .eq('id', itemId)
+    .eq('business_client_id', business.id);
+  if (error) {
+    window.vdNotify('Catalog Not Updated', error.message || 'Could not update catalog item.', 'error');
+    return;
+  }
+  await loadBusinessData();
+  window.switchPanel('catalog');
+};
+
+async function saveCatalogItem(event) {
+  event.preventDefault();
+  if (!business?.id) return window.vdNotify('Catalog Not Ready', 'Business account is still loading.', 'warning');
+  const itemId = el('#catalogItemId')?.value || '';
+  const itemName = el('#catalogItemName')?.value.trim() || '';
+  const itemCost = Number(el('#catalogItemCost')?.value || 0);
+  const additionalNotes = el('#catalogItemNotes')?.value.trim() || null;
+  const active = el('#catalogItemActive')?.value !== 'false';
+  if (!itemName) return window.vdNotify('Catalog Item Required', 'Enter an item name.', 'warning');
+  if (!Number.isFinite(itemCost) || itemCost < 0) return window.vdNotify('Catalog Cost Required', 'Enter a valid item cost.', 'warning');
+
+  const payload = {
+    business_client_id: business.id,
+    item_name: itemName,
+    item_cost: itemCost,
+    additional_notes: additionalNotes,
+    active
+  };
+  const request = itemId
+    ? supabase.from('business_catalog_items').update(payload).eq('id', itemId).eq('business_client_id', business.id)
+    : supabase.from('business_catalog_items').insert(payload);
+  const { error } = await request;
+  if (error) {
+    window.vdNotify('Catalog Not Saved', error.message || 'Could not save catalog item.', 'error');
+    return;
+  }
+  resetCatalogForm();
+  await loadBusinessData();
+  window.switchPanel('catalog');
+  window.vdNotify('Catalog Saved', itemName + ' was saved.', 'success');
+}
+
 function activeReportControls() {
   const activePanel = el('.panel.active') || document;
   return {
@@ -2587,6 +2693,7 @@ function renderAll() {
   renderPlan();
   renderSettings();
   renderDeliveryLink();
+  renderCatalog();
   loadNotificationBadge();
 }
 
@@ -2626,13 +2733,18 @@ async function loadBusinessData() {
   business = businessData;
   renderSidebarAccount();
 
-  const [{ data: orderData, error: orderError }, { data: remitData, error: remitError }] = await Promise.all([
+  const [{ data: orderData, error: orderError }, { data: remitData, error: remitError }, { data: catalogData, error: catalogError }] = await Promise.all([
     supabase
       .from('orders')
       .select('id, order_number, external_item_number, financial_model_version, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, remittance_gross_amount, remittance_deductions_amount, remittance_net_amount, remittance_paid_amount, remittance_batch_id, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_business_name, pickup_street_name, pickup_area_name, pickup_maps_link, pickup_latitude, pickup_longitude, pickup_address, pickup_window, pickup_instructions, pickup_scheduled_date, pickup_scheduled_window, pickup_picked_up_at, pickup_arrived_hub_at, pickup_cancelled_at, pickup_cancellation_reason, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, delivery_outcome, delivery_attempt_count, last_delivery_attempt_at, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, redelivery_status, redelivery_fee, redelivery_fee_payer, redelivery_fee_settlement, redelivery_scheduled_at, redelivery_notes, return_disposition, holding_type, hold_until, return_to_client_status, return_to_client_fee, return_to_client_settlement, return_to_client_requested_at, return_to_client_completed_at, return_management_notes, zone_status, order_status, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, created_at, updated_at')
       .eq('business_client_id', business.id)
       .order('created_at', { ascending: false }),
-    supabase.rpc('business_list_my_remittances')
+    supabase.rpc('business_list_my_remittances'),
+    supabase
+      .from('business_catalog_items')
+      .select('id, business_client_id, item_name, item_cost, additional_notes, active, created_at, updated_at')
+      .eq('business_client_id', business.id)
+      .order('item_name', { ascending: true })
   ]);
 
   if (orderError) throw orderError;
@@ -2641,6 +2753,12 @@ async function loadBusinessData() {
     remittanceRecords = [];
   } else {
     remittanceRecords = remitData || [];
+  }
+  if (catalogError) {
+    console.warn('Business catalog could not load:', catalogError);
+    catalogItems = [];
+  } else {
+    catalogItems = catalogData || [];
   }
   orders = orderData || [];
   renderAll();
@@ -3180,6 +3298,7 @@ function bindUi() {
   all('[data-panel]').forEach(button => {
     button.addEventListener('click', () => window.switchPanel(button.dataset.panel));
   });
+  el('#catalogItemForm')?.addEventListener('submit', saveCatalogItem);
 
   el('#mobileMenuBtn')?.addEventListener('click', () => {
     el('#sidebar')?.classList.add('open');
