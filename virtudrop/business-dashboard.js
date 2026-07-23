@@ -2446,6 +2446,143 @@ async function saveCatalogItem(event) {
   window.vdNotify('Catalog Saved', itemName + ' was saved.', 'success');
 }
 
+function csvEscape(value) {
+  const text = String(value ?? '');
+  return /[",\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+}
+
+function parseCatalogCsv(text) {
+  const rows = [];
+  let row = [];
+  let field = '';
+  let inQuotes = false;
+  const input = String(text || '').replace(/^\uFEFF/, '');
+
+  for (let index = 0; index < input.length; index += 1) {
+    const char = input[index];
+    const next = input[index + 1];
+    if (inQuotes) {
+      if (char === '"' && next === '"') {
+        field += '"';
+        index += 1;
+      } else if (char === '"') {
+        inQuotes = false;
+      } else {
+        field += char;
+      }
+    } else if (char === '"') {
+      inQuotes = true;
+    } else if (char === ',') {
+      row.push(field);
+      field = '';
+    } else if (char === '\n') {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = '';
+    } else if (char !== '\r') {
+      field += char;
+    }
+  }
+  row.push(field);
+  if (row.some(value => String(value).trim() !== '')) rows.push(row);
+  return rows;
+}
+
+function normaliseCatalogActive(value) {
+  const text = String(value ?? '').trim().toLowerCase();
+  if (!text) return true;
+  if (['true', 'yes', 'y', 'active', '1'].includes(text)) return true;
+  if (['false', 'no', 'n', 'inactive', '0'].includes(text)) return false;
+  return null;
+}
+
+function validateCatalogImport(text) {
+  const rows = parseCatalogCsv(text);
+  if (!rows.length) return { validRows: [], issues: ['The CSV file is empty.'] };
+  const headers = rows[0].map(value => String(value || '').trim().toLowerCase());
+  const required = ['item_name', 'item_cost'];
+  const missing = required.filter(header => !headers.includes(header));
+  if (missing.length) return { validRows: [], issues: ['Missing required column(s): ' + missing.join(', ')] };
+
+  const indexOf = name => headers.indexOf(name);
+  const nameIndex = indexOf('item_name');
+  const costIndex = indexOf('item_cost');
+  const notesIndex = indexOf('additional_notes');
+  const activeIndex = indexOf('active');
+  const issues = [];
+  const validRows = [];
+
+  rows.slice(1).forEach((row, offset) => {
+    const rowNumber = offset + 2;
+    if (!row.some(value => String(value || '').trim())) return;
+    const itemName = String(row[nameIndex] || '').trim();
+    const itemCost = Number(String(row[costIndex] || '').replace(/[$,]/g, '').trim());
+    const additionalNotes = notesIndex >= 0 ? String(row[notesIndex] || '').trim() : '';
+    const active = activeIndex >= 0 ? normaliseCatalogActive(row[activeIndex]) : true;
+
+    if (!itemName) issues.push('Row ' + rowNumber + ': item_name is required.');
+    if (!Number.isFinite(itemCost) || itemCost < 0) issues.push('Row ' + rowNumber + ': item_cost must be zero or higher.');
+    if (active === null) issues.push('Row ' + rowNumber + ': active must be true/false, yes/no, or active/inactive.');
+    if (itemName && Number.isFinite(itemCost) && itemCost >= 0 && active !== null) {
+      validRows.push({
+        business_client_id: business.id,
+        item_name: itemName,
+        item_cost: itemCost,
+        additional_notes: additionalNotes || null,
+        active
+      });
+    }
+  });
+
+  return { validRows, issues };
+}
+
+window.downloadCatalogTemplate = function() {
+  const sampleRows = [
+    ['item_name', 'item_cost', 'additional_notes', 'active'],
+    ['Fruit basket', '150.00', 'Medium basket', 'active'],
+    ['Gift box', '225.00', 'Handle with care', 'true']
+  ];
+  const csv = sampleRows.map(row => row.map(csvEscape).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = 'VirtuDrop-Catalog-Template.csv';
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+};
+
+window.openCatalogUpload = function() {
+  el('#catalogUploadInput')?.click();
+};
+
+async function importCatalogCsv(file) {
+  if (!business?.id) return window.vdNotify('Catalog Not Ready', 'Business account is still loading.', 'warning');
+  if (!file) return;
+  const text = await file.text();
+  const { validRows, issues } = validateCatalogImport(text);
+  if (issues.length) {
+    window.vdNotify('Catalog Import Needs Fixes', issues.slice(0, 5).join(' | ') + (issues.length > 5 ? ' | More errors omitted.' : ''), 'error');
+    return;
+  }
+  if (!validRows.length) {
+    window.vdNotify('Catalog Import Empty', 'No catalog rows were found after the header.', 'warning');
+    return;
+  }
+  const { error } = await supabase.from('business_catalog_items').insert(validRows);
+  if (error) {
+    window.vdNotify('Catalog Import Failed', error.message || 'Could not import catalog items.', 'error');
+    return;
+  }
+  await loadBusinessData();
+  window.switchPanel('catalog');
+  window.vdNotify('Catalog Imported', validRows.length + ' item' + (validRows.length === 1 ? '' : 's') + ' imported.', 'success');
+}
+
 function activeReportControls() {
   const activePanel = el('.panel.active') || document;
   return {
@@ -3299,6 +3436,14 @@ function bindUi() {
     button.addEventListener('click', () => window.switchPanel(button.dataset.panel));
   });
   el('#catalogItemForm')?.addEventListener('submit', saveCatalogItem);
+  el('#catalogUploadInput')?.addEventListener('change', async event => {
+    const file = event.target.files?.[0];
+    try {
+      await importCatalogCsv(file);
+    } finally {
+      event.target.value = '';
+    }
+  });
 
   el('#mobileMenuBtn')?.addEventListener('click', () => {
     el('#sidebar')?.classList.add('open');

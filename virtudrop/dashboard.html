@@ -1273,6 +1273,9 @@
           <div style="display:flex; justify-content:space-between; gap:0.9rem; align-items:center; flex-wrap:wrap; margin-bottom:1rem;">
             <div class="card-title" style="margin-bottom:0;">Catalog Items</div>
             <div style="display:flex; gap:0.65rem; flex-wrap:wrap; align-items:center;">
+              <button type="button" class="btn btn-ghost" style="padding:0.7rem 1rem; font-size:0.85rem;" onclick="downloadCatalogTemplate()">Download Template</button>
+              <button type="button" class="btn btn-ghost" style="padding:0.7rem 1rem; font-size:0.85rem;" onclick="openCatalogUpload()">Upload CSV</button>
+              <input id="catalogUploadInput" type="file" accept=".csv,text/csv" style="display:none;" />
               <input class="input" id="catalogSearch" type="search" placeholder="Search catalog" style="width:220px;" oninput="renderCatalog()" />
               <select class="input" id="catalogStatusFilter" style="width:150px;" onchange="renderCatalog()">
                 <option value="active">Active</option>
@@ -1819,6 +1822,6 @@
 
 <script src="vd-modal.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script type="module" src="business-dashboard.js?v=20260723-catalog-1"></script>
+  <script type="module" src="business-dashboard.js?v=20260723-catalog-import-1"></script>
 </body>
 </html>
