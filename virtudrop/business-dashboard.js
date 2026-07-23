@@ -3627,6 +3627,67 @@ function deliveryLinkLocationPayload(draft) {
   };
 }
 
+function deliveryLinkDraftFromReviewForm(originalDraft) {
+  const phoneDigits = el('#reviewCustomerPhone')?.value.replace(/\D/g, '') || '';
+  const mapsLink = el('#reviewMapsLink')?.value.trim() || '';
+  const latitude = el('#reviewLatitude')?.value.trim() || '';
+  const longitude = el('#reviewLongitude')?.value.trim() || '';
+  const paymentOption = el('#reviewPaymentOption')?.value || originalDraft.payment_option;
+  return {
+    ...originalDraft,
+    customer_name: el('#reviewCustomerName')?.value.trim() || '',
+    customer_phone: phoneDigits.length === 7 ? '868-' + phoneDigits : el('#reviewCustomerPhone')?.value.trim() || '',
+    house_number: el('#reviewHouseNumber')?.value.trim() || null,
+    street_name: el('#reviewStreetName')?.value.trim() || null,
+    area_name: el('#reviewAreaName')?.value.trim() || null,
+    maps_link: mapsLink || null,
+    latitude: latitude === '' ? null : Number(latitude),
+    longitude: longitude === '' ? null : Number(longitude),
+    payment_option: paymentOption,
+    package_amount: Number(el('#reviewPackageAmount')?.value || 0),
+    client_fee_settlement: ['all-online', 'cod-client-delivery'].includes(paymentOption) ? el('#reviewClientFeeSettlement')?.value || 'pay_separately' : null,
+    delivery_notes: el('#reviewDeliveryNotes')?.value.trim() || null,
+    item_notes: el('#reviewItemNotes')?.value.trim() || originalDraft.item_notes || null,
+    item_name: el('#reviewItemName')?.value.trim() || originalDraft.item_name || 'Delivery link item'
+  };
+}
+
+function validateDeliveryLinkReviewDraft(draft) {
+  if (!draft.customer_name || draft.customer_name.length < 2) return 'Enter the customer name.';
+  if (String(draft.customer_phone || '').replace(/\D/g, '').length < 7) return 'Enter a valid customer phone number.';
+  if (!draft.item_name || draft.item_name.length < 2) return 'Enter item/package details.';
+  if (!Number.isFinite(Number(draft.package_amount)) || Number(draft.package_amount) < 0) return 'Enter a valid package amount.';
+  if (!draft.payment_option) return 'Select the payment arrangement.';
+  const estimateInput = deliveryLinkEstimateInput(draft);
+  if (!hasEstimateLocation(estimateInput)) return 'Enter a street and area, Google Maps link, or GPS coordinates.';
+  return '';
+}
+
+async function refreshDeliveryLinkReviewEstimate(originalDraft) {
+  const body = el('#deliveryLinkReviewEstimate');
+  const submitBtn = el('#submitDeliveryLinkOrderBtn');
+  if (!body) return null;
+  const draft = deliveryLinkDraftFromReviewForm(originalDraft);
+  const validation = validateDeliveryLinkReviewDraft(draft);
+  if (validation) {
+    body.innerHTML = '<div style="padding:0.85rem; background:#fff8f0; border:1px solid #f3d7b6; border-radius:8px; color:#7a4a1a;">' + escapeHtml(validation) + '</div>';
+    if (submitBtn) submitBtn.disabled = true;
+    return null;
+  }
+  body.innerHTML = '<div style="padding:0.85rem; color:#6a6a6a;">Calculating estimate...</div>';
+  if (submitBtn) submitBtn.disabled = true;
+  const built = await buildDeliveryLinkOrderPayload(draft);
+  const rows = deliveryLinkReviewRows({ draft, estimate: built.estimate, money: built.money });
+  body.innerHTML = '<div style="background:#0d2b28; border-radius:12px; padding:1rem;"><div style="display:flex; justify-content:space-between; gap:0.8rem; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap;"><span style="font-size:0.74rem; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:rgba(255,255,255,0.52);">Estimate Calculator</span><span style="color:#14d4ae; font-size:1.35rem; font-weight:850;">' + escapeHtml(built.estimate?.fee !== null && built.estimate?.fee !== undefined ? moneyLabel(built.estimate.fee) : 'Quote Required') + '</span></div><div style="display:flex; flex-direction:column; gap:0.28rem;">' + rows.map(([key, value]) => '<div style="display:flex; justify-content:space-between; gap:1rem; border-top:1px solid rgba(255,255,255,0.08); padding-top:0.28rem; font-size:0.84rem;"><span style="color:rgba(255,255,255,0.55);">' + escapeHtml(key) + '</span><span style="color:#ffffff; font-weight:700; text-align:right; overflow-wrap:anywhere;">' + escapeHtml(value) + '</span></div>').join('') + '</div></div>';
+  if (submitBtn) {
+    submitBtn.disabled = false;
+    submitBtn.onclick = () => submitDeliveryLinkAsOrder(originalDraft.id, built.requestData);
+  }
+  return built;
+}
+
+window.refreshDeliveryLinkReviewEstimate = refreshDeliveryLinkReviewEstimate;
+
 function deliveryLinkReviewRows({ draft, estimate, money }) {
   const rows = [
     ['Customer', draft.customer_name || '-'],
@@ -3738,26 +3799,39 @@ window.openDeliveryLinkReview = async function(draftId) {
   const overlay = ensureDeliveryLinkReviewModal();
   const body = el('#deliveryLinkReviewBody');
   const submitBtn = el('#submitDeliveryLinkOrderBtn');
+  const itemRows = draftItemsFor(draft.id).map(item => '<div style="padding:0.65rem 0.75rem; border:1px solid #edf3f2; border-radius:8px; background:#f8fbfa;"><strong>' + escapeHtml(item.item_name_snapshot) + '</strong><div style="font-size:0.8rem; color:#6a6a6a;">' + escapeHtml(moneyLabel(item.item_cost_snapshot) + ' x ' + item.quantity) + '</div></div>').join('');
   overlay.style.display = 'flex';
-  body.innerHTML = '<div style="padding:1rem; color:#6a6a6a;">Calculating estimate...</div>';
-  submitBtn.disabled = true;
-  submitBtn.textContent = 'Calculating...';
-  try {
-    const built = await buildDeliveryLinkOrderPayload(draft);
-    const itemRows = draftItemsFor(draft.id).map(item => '<div style="padding:0.65rem 0.75rem; border:1px solid #edf3f2; border-radius:8px; background:#f8fbfa;"><strong>' + escapeHtml(item.item_name_snapshot) + '</strong><div style="font-size:0.8rem; color:#6a6a6a;">' + escapeHtml(moneyLabel(item.item_cost_snapshot) + ' x ' + item.quantity) + '</div></div>').join('');
-    const rows = deliveryLinkReviewRows({ draft, estimate: built.estimate, money: built.money });
-    body.innerHTML = '<div style="padding:0.9rem; background:#f8fbfa; border:1px solid #dcecea; border-radius:10px;"><div style="font-weight:800; color:#1a1a1a; overflow-wrap:anywhere;">' + escapeHtml(draft.item_name) + '</div>' + (draft.item_notes ? '<div style="font-size:0.86rem; color:#6a6a6a; margin-top:0.25rem;">' + escapeHtml(draft.item_notes) + '</div>' : '') + (itemRows ? '<div style="display:grid; gap:0.5rem; margin-top:0.75rem;">' + itemRows + '</div>' : '') + '</div>'
-      + '<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:0.55rem;">' + rows.map(([key, value]) => '<div style="padding:0.75rem; border:1px solid #edf3f2; border-radius:8px;"><div style="font-size:0.74rem; color:#6a6a6a; font-weight:800; text-transform:uppercase; letter-spacing:0.04em;">' + escapeHtml(key) + '</div><div style="font-size:0.95rem; color:#0d2b28; font-weight:750; overflow-wrap:anywhere; margin-top:0.2rem;">' + escapeHtml(value) + '</div></div>').join('') + '</div>';
-    submitBtn.disabled = false;
-    submitBtn.textContent = 'Submit As Order';
-    submitBtn.onclick = () => submitDeliveryLinkAsOrder(draft.id, built.requestData);
-  } catch (error) {
-    body.innerHTML = '<div style="padding:1rem; background:#fff3f3; color:#8b2020; border-radius:10px;">' + escapeHtml(error.message || 'Could not prepare this delivery link for review.') + '</div>';
+  if (submitBtn) {
     submitBtn.disabled = true;
     submitBtn.textContent = 'Submit As Order';
+    submitBtn.onclick = null;
   }
+  body.innerHTML = '<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:0.75rem;">'
+    + '<label class="form-group" style="margin:0;"><span>Item / Package</span><input class="input" id="reviewItemName" value="' + escapeHtml(draft.item_name || '') + '"></label>'
+    + '<label class="form-group" style="margin:0;"><span>Package Amount (TTD)</span><input class="input" id="reviewPackageAmount" type="number" min="0" step="0.01" value="' + escapeHtml(Number(draft.package_amount || 0).toFixed(2)) + '"></label>'
+    + '<label class="form-group" style="margin:0;"><span>Customer Name</span><input class="input" id="reviewCustomerName" value="' + escapeHtml(draft.customer_name || '') + '"></label>'
+    + '<label class="form-group" style="margin:0;"><span>Customer Phone</span><input class="input" id="reviewCustomerPhone" value="' + escapeHtml(draft.customer_phone || '') + '"></label>'
+    + '<label class="form-group" style="margin:0;"><span>House / Apt #</span><input class="input" id="reviewHouseNumber" value="' + escapeHtml(draft.house_number || '') + '"></label>'
+    + '<label class="form-group" style="margin:0;"><span>Street Name</span><input class="input" id="reviewStreetName" value="' + escapeHtml(draft.street_name || '') + '"></label>'
+    + '<label class="form-group" style="margin:0;"><span>Area / Community</span><input class="input" id="reviewAreaName" value="' + escapeHtml(draft.area_name || '') + '"></label>'
+    + '<label class="form-group" style="margin:0;"><span>Google Maps Link</span><input class="input" id="reviewMapsLink" value="' + escapeHtml(draft.maps_link || '') + '"></label>'
+    + '<label class="form-group" style="margin:0;"><span>Latitude</span><input class="input" id="reviewLatitude" type="number" step="any" value="' + escapeHtml(draft.latitude ?? '') + '"></label>'
+    + '<label class="form-group" style="margin:0;"><span>Longitude</span><input class="input" id="reviewLongitude" type="number" step="any" value="' + escapeHtml(draft.longitude ?? '') + '"></label>'
+    + '<label class="form-group" style="margin:0;"><span>Payment Arrangement</span><select class="input" id="reviewPaymentOption"><option value="pkg-online" ' + (draft.payment_option === 'pkg-online' ? 'selected' : '') + '>Customer already paid package; customer pays delivery</option><option value="cod" ' + (draft.payment_option === 'cod' ? 'selected' : '') + '>Customer pays package and delivery</option><option value="cod-client-delivery" ' + (draft.payment_option === 'cod-client-delivery' ? 'selected' : '') + '>Customer pays package only; business pays delivery</option><option value="all-online" ' + (draft.payment_option === 'all-online' ? 'selected' : '') + '>Business pays delivery/all online</option></select></label>'
+    + '<label class="form-group" style="margin:0;"><span>Business Fee Settlement</span><select class="input" id="reviewClientFeeSettlement"><option value="pay_separately" ' + (draft.client_fee_settlement !== 'deduct_from_remittance' ? 'selected' : '') + '>Pay separately</option><option value="deduct_from_remittance" ' + (draft.client_fee_settlement === 'deduct_from_remittance' ? 'selected' : '') + '>Deduct from remittance</option></select></label>'
+    + '</div>'
+    + (itemRows ? '<div style="display:grid; gap:0.5rem; margin-top:0.8rem;">' + itemRows + '</div>' : '')
+    + '<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:0.75rem; margin-top:0.75rem;"><label class="form-group" style="margin:0;"><span>Item Notes</span><textarea class="input" id="reviewItemNotes">' + escapeHtml(draft.item_notes || '') + '</textarea></label><label class="form-group" style="margin:0;"><span>Delivery Notes</span><textarea class="input" id="reviewDeliveryNotes">' + escapeHtml(draft.delivery_notes || '') + '</textarea></label></div>'
+    + '<div style="display:flex; justify-content:flex-start; margin-top:0.85rem;"><button type="button" class="btn btn-primary" style="padding:0.65rem 0.9rem;" onclick="refreshDeliveryLinkReviewEstimate(deliveryLinkDrafts.find(item => item.id === \'' + draft.id + '\'))">Recalculate Estimate</button></div>'
+    + '<div id="deliveryLinkReviewEstimate" style="margin-top:0.85rem;"></div>';
+  ['reviewItemName', 'reviewPackageAmount', 'reviewCustomerName', 'reviewCustomerPhone', 'reviewHouseNumber', 'reviewStreetName', 'reviewAreaName', 'reviewMapsLink', 'reviewLatitude', 'reviewLongitude', 'reviewPaymentOption', 'reviewClientFeeSettlement', 'reviewItemNotes', 'reviewDeliveryNotes'].forEach(id => {
+    el('#' + id)?.addEventListener('change', () => refreshDeliveryLinkReviewEstimate(draft));
+  });
+  refreshDeliveryLinkReviewEstimate(draft).catch(error => {
+    const estimateBox = el('#deliveryLinkReviewEstimate');
+    if (estimateBox) estimateBox.innerHTML = '<div style="padding:0.85rem; background:#fff3f3; border-radius:8px; color:#8b2020;">' + escapeHtml(error.message || 'Could not calculate this estimate.') + '</div>';
+  });
 };
-
 async function submitDeliveryLinkAsOrder(draftId, requestData) {
   if (isSubmittingDeliveryLinkOrder) return;
   const draft = deliveryLinkDrafts.find(item => item.id === draftId);
