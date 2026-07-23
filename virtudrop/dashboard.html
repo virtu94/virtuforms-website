@@ -1072,6 +1072,18 @@
               <input class="input" type="tel" id="recipientPhone" placeholder="XXX-XXXX" maxlength="8" required />
             </div>
             <div class="form-group full">
+              <label for="orderCatalogSearch">Catalog Items <span>(optional)</span></label>
+              <div style="padding:1rem; background:#f8fbfa; border:1px solid #dcecea; border-radius:10px;">
+                <div style="display:flex; gap:0.65rem; flex-wrap:wrap; align-items:center; margin-bottom:0.85rem;">
+                  <input class="input" id="orderCatalogSearch" type="search" placeholder="Search active catalog items" style="flex:1; min-width:220px;" oninput="renderOrderCatalogSelector()" />
+                  <button type="button" class="btn btn-ghost" style="padding:0.7rem 1rem; font-size:0.86rem;" onclick="clearOrderCatalogSelection()">Clear Items</button>
+                </div>
+                <div id="orderCatalogSelector" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:0.65rem;"></div>
+                <div id="orderCatalogSelected" style="margin-top:0.9rem; display:flex; flex-direction:column; gap:0.55rem;"></div>
+                <div id="orderCatalogTotal" style="margin-top:0.85rem; font-size:0.9rem; font-weight:700; color:#0d2b28;">No catalog items selected.</div>
+              </div>
+            </div>
+            <div class="form-group full">
               <label for="packageDesc">Package Description <span>(required)</span></label>
               <input class="input" type="text" id="packageDesc" placeholder="e.g. Clothing items, 2 bags" required />
             </div>
@@ -1839,6 +1851,6 @@
 
 <script src="vd-modal.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script type="module" src="business-dashboard.js?v=20260723-catalog-buttons-1"></script>
+  <script type="module" src="business-dashboard.js?v=20260723-order-catalog-1"></script>
 </body>
 </html>

@@ -1121,6 +1121,7 @@ let business = null;
 let orders = [];
 let remittanceRecords = [];
 let catalogItems = [];
+let orderCatalogSelection = new Map();
 let remittancePeriod = 'week';
 let activeLocTab = 'share';
 let manualLocationMode = false;
@@ -2376,6 +2377,96 @@ function renderCatalog() {
 
 window.renderCatalog = renderCatalog;
 
+
+function selectedCatalogItems() {
+  return [...orderCatalogSelection.entries()]
+    .map(([itemId, quantity]) => {
+      const item = catalogItems.find(row => row.id === itemId && row.active);
+      return item ? { item, quantity: Math.max(Number(quantity) || 1, 1) } : null;
+    })
+    .filter(Boolean);
+}
+
+function orderCatalogTotal() {
+  return selectedCatalogItems().reduce((sum, entry) => sum + Number(entry.item.item_cost || 0) * entry.quantity, 0);
+}
+
+function syncOrderCatalogFields() {
+  const selected = selectedCatalogItems();
+  const total = orderCatalogTotal();
+  const packageDesc = el('#packageDesc');
+  const codAmount = el('#codAmount');
+  const totalEl = el('#orderCatalogTotal');
+
+  if (selected.length) {
+    const description = selected.map(entry => entry.item.item_name + (entry.quantity > 1 ? ' x' + entry.quantity : '')).join(', ');
+    if (packageDesc) packageDesc.value = description;
+    if (codAmount) codAmount.value = total.toFixed(2);
+    if (totalEl) totalEl.textContent = 'Selected catalog total: ' + money(total);
+  } else if (totalEl) {
+    totalEl.textContent = 'No catalog items selected.';
+  }
+
+  if (typeof window.vdSyncBusinessAmountField === 'function') window.vdSyncBusinessAmountField();
+  updateBizEstimate();
+}
+
+function renderOrderCatalogSelector() {
+  const target = el('#orderCatalogSelector');
+  const selectedTarget = el('#orderCatalogSelected');
+  if (!target || !selectedTarget) return;
+  const search = String(el('#orderCatalogSearch')?.value || '').trim().toLowerCase();
+  const available = catalogItems
+    .filter(item => item.active)
+    .filter(item => !search || [item.item_name, item.additional_notes].some(value => String(value || '').toLowerCase().includes(search)))
+    .sort((a, b) => String(a.item_name || '').localeCompare(String(b.item_name || '')))
+    .slice(0, 18);
+
+  target.innerHTML = available.map(item => {
+    const selected = orderCatalogSelection.has(item.id);
+    return '<button type="button" class="btn" style="justify-content:space-between; padding:0.75rem 0.85rem; border-color:' + (selected ? '#2a9d8f' : '#dcecea') + '; background:' + (selected ? '#e8f5f3' : '#ffffff') + '; color:#0d2b28; text-align:left;" onclick="toggleOrderCatalogItem(\'' + item.id + '\')">'
+      + '<span style="min-width:0;"><span style="display:block; font-weight:700; overflow-wrap:anywhere;">' + escapeHtml(item.item_name) + '</span><span style="display:block; font-size:0.78rem; color:#6a6a6a;">' + money(item.item_cost) + '</span></span>'
+      + '<span style="font-weight:800; color:#2a9d8f;">' + (selected ? '✓' : '+') + '</span>'
+      + '</button>';
+  }).join('') || '<div style="padding:0.8rem; color:#6a6a6a; background:#fff; border:1px solid #edf3f2; border-radius:8px;">No active catalog items found.</div>';
+
+  const selected = selectedCatalogItems();
+  selectedTarget.innerHTML = selected.map(entry => {
+    const item = entry.item;
+    return '<div style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; padding:0.65rem 0.75rem; background:#ffffff; border:1px solid #dcecea; border-radius:8px; flex-wrap:wrap;">'
+      + '<div style="font-weight:700; color:#1a1a1a;">' + escapeHtml(item.item_name) + '<div style="font-size:0.78rem; color:#6a6a6a; font-weight:500;">' + money(item.item_cost) + ' each</div></div>'
+      + '<div style="display:flex; align-items:center; gap:0.5rem;"><label style="font-size:0.78rem; color:#6a6a6a;">Qty</label><input class="input" type="number" min="1" step="1" value="' + entry.quantity + '" style="width:82px; padding:0.55rem 0.65rem;" onchange="setOrderCatalogQuantity(\'' + item.id + '\', this.value)" oninput="setOrderCatalogQuantity(\'' + item.id + '\', this.value)"><button type="button" class="btn btn-ghost" style="padding:0.45rem 0.65rem; font-size:0.82rem;" onclick="removeOrderCatalogItem(\'' + item.id + '\')">Remove</button></div>'
+      + '</div>';
+  }).join('');
+  syncOrderCatalogFields();
+}
+
+window.renderOrderCatalogSelector = renderOrderCatalogSelector;
+
+window.toggleOrderCatalogItem = function(itemId) {
+  if (orderCatalogSelection.has(itemId)) orderCatalogSelection.delete(itemId);
+  else orderCatalogSelection.set(itemId, 1);
+  renderOrderCatalogSelector();
+};
+
+window.setOrderCatalogQuantity = function(itemId, value) {
+  if (!orderCatalogSelection.has(itemId)) return;
+  const quantity = Math.max(parseInt(value, 10) || 1, 1);
+  orderCatalogSelection.set(itemId, quantity);
+  renderOrderCatalogSelector();
+};
+
+window.removeOrderCatalogItem = function(itemId) {
+  orderCatalogSelection.delete(itemId);
+  renderOrderCatalogSelector();
+};
+
+window.clearOrderCatalogSelection = function() {
+  orderCatalogSelection.clear();
+  if (el('#orderCatalogSearch')) el('#orderCatalogSearch').value = '';
+  renderOrderCatalogSelector();
+};
+
 function resetCatalogForm() {
   const form = el('#catalogItemForm');
   form?.reset();
@@ -2983,6 +3074,7 @@ function renderAll() {
   renderSettings();
   renderDeliveryLink();
   renderCatalog();
+  renderOrderCatalogSelector();
   loadNotificationBadge();
 }
 
@@ -3407,6 +3499,9 @@ window.resetOrderForm = function() {
   }
   if (el('#pickupLatitude')) el('#pickupLatitude').value = '';
   if (el('#pickupLongitude')) el('#pickupLongitude').value = '';
+  orderCatalogSelection.clear();
+  if (el('#orderCatalogSearch')) el('#orderCatalogSearch').value = '';
+  renderOrderCatalogSelector();
   const street = el('#streetName');
   const area = el('#areaName');
   if (street) street.required = false;
