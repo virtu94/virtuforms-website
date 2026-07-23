@@ -1336,24 +1336,87 @@
     <div class="panel" id="panel-delivery-link">
       <div class="section-heading">
         My Delivery Link
-        <div class="section-sub">Share this link with your customers so they can submit delivery requests directly.</div>
+        <div class="section-sub">Create item-specific customer links, then review completed submissions before they become live orders.</div>
       </div>
-      <div class="card">
-        <div style="margin-bottom:1.5rem;">
-          <div style="font-size:0.8rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#2a9d8f; margin-bottom:0.6rem;">Your Unique Link</div>
-          <div style="display:flex; gap:0.8rem; align-items:center; flex-wrap:wrap;">
-            <div id="clientLinkDisplay" style="flex:1; padding:0.9rem 1.2rem; background:#f0f9f8; border:2px solid #2a9d8f; border-radius:10px; font-family:'Courier New',monospace; font-size:0.92rem; color:#0d2b28; word-break:break-all; min-width:200px;">Loading delivery link...</div>
-            <button onclick="copyLink()" style="padding:0.8rem 1.4rem; background:#2a9d8f; border:none; border-radius:10px; color:#fff; font-family:'Inter',sans-serif; font-size:0.9rem; font-weight:600; cursor:pointer; white-space:nowrap; transition:background 0.2s;" onmouseover="this.style.background='#238277'" onmouseout="this.style.background='#2a9d8f'">📋 Copy Link</button>
-            <button onclick="shareLink()" style="padding:0.8rem 1.4rem; background:#0d2b28; border:none; border-radius:10px; color:#fff; font-family:'Inter',sans-serif; font-size:0.9rem; font-weight:600; cursor:pointer; white-space:nowrap; transition:background 0.2s;" onmouseover="this.style.background='#1a4a44'" onmouseout="this.style.background='#0d2b28'">📤 Share</button>
+
+      <div class="catalog-grid">
+        <div class="card">
+          <div class="card-title">Create Delivery Link</div>
+          <form id="deliveryLinkDraftForm">
+            <div class="form-group">
+              <label for="linkCatalogSearch">Catalog Items <span>(optional)</span></label>
+              <div style="padding:1rem; background:#f8fbfa; border:1px solid #dcecea; border-radius:10px;">
+                <div style="display:flex; gap:0.65rem; flex-wrap:wrap; align-items:center; margin-bottom:0.85rem;">
+                  <input class="input" id="linkCatalogSearch" type="search" placeholder="Search active catalog items" style="flex:1; min-width:210px;" oninput="renderLinkCatalogSelector()" />
+                  <button type="button" class="btn btn-ghost" style="padding:0.65rem 0.9rem; font-size:0.84rem;" onclick="clearLinkCatalogSelection()">Clear</button>
+                </div>
+                <div id="linkCatalogSelector" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:0.65rem;"></div>
+                <div id="linkCatalogSelected" style="margin-top:0.9rem; display:flex; flex-direction:column; gap:0.55rem;"></div>
+                <div id="linkCatalogTotal" style="margin-top:0.85rem; font-size:0.9rem; font-weight:700; color:#0d2b28;">No catalog items selected.</div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="linkManualItemName">Manual Item / Package Details</label>
+              <input class="input" id="linkManualItemName" type="text" maxlength="180" placeholder="Use this if not selecting from catalog" />
+            </div>
+            <div class="form-group">
+              <label for="linkPackageAmount">Package Amount (TTD)</label>
+              <input class="input" id="linkPackageAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+            </div>
+            <div class="form-group">
+              <label for="linkItemNotes">Item Notes <span>(optional)</span></label>
+              <textarea class="input" id="linkItemNotes" maxlength="500" placeholder="Size, color, handling notes, etc."></textarea>
+            </div>
+            <div class="form-group">
+              <label for="linkPaymentOption">Payment Arrangement</label>
+              <select class="input" id="linkPaymentOption" required>
+                <option value="">— Select —</option>
+                <option value="pkg-online">Customer already paid online; customer pays delivery only</option>
+                <option value="cod">Customer pays package and delivery</option>
+                <option value="cod-client-delivery">Customer pays package only; business pays delivery</option>
+                <option value="all-online">Business pays delivery/all online</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="linkInternalNotes">Internal Notes <span>(not shown to customer)</span></label>
+              <textarea class="input" id="linkInternalNotes" maxlength="500" placeholder="Reference, customer context, special business notes"></textarea>
+            </div>
+            <div class="form-actions" style="justify-content:flex-start; margin-top:1rem;">
+              <button type="submit" class="btn btn-primary" id="createDeliveryLinkBtn">Create Delivery Link</button>
+              <button type="button" class="btn btn-ghost" onclick="resetDeliveryLinkDraftForm()">Clear</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; gap:0.9rem; align-items:center; flex-wrap:wrap; margin-bottom:1rem;">
+            <div class="card-title" style="margin-bottom:0;">Delivery Links</div>
+            <select class="input" id="deliveryLinkStatusFilter" style="width:190px;" onchange="renderDeliveryLink()">
+              <option value="active">Active / Pending Review</option>
+              <option value="draft_created">Waiting on Customer</option>
+              <option value="customer_completed">Pending Review</option>
+              <option value="submitted_as_order">Submitted as Order</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="expired">Expired</option>
+              <option value="all">All</option>
+            </select>
           </div>
-          <div id="copyConfirm" style="display:none; margin-top:0.6rem; font-size:0.85rem; color:#2a9d8f; font-weight:600;">✓ Link copied to clipboard!</div>
-        </div>
-        <div style="padding:1.2rem; background:#f8f9fa; border-radius:12px; font-size:0.9rem; color:#4a4a4a; line-height:1.8;">
-          <strong style="color:#1a1a1a;">How it works:</strong><br>
-          Share this link with your customers via WhatsApp, Instagram, Facebook or email. When they open it, a delivery form is pre-loaded with your business details. They fill in their name, phone number, delivery address and payment info, and the order appears in your dashboard automatically.
-        </div>
-        <div style="margin-top:1rem; padding:0.9rem 1.2rem; background:#fff8f0; border-left:3px solid #e07a3a; border-radius:8px; font-size:0.88rem; color:#7a4a1a;">
-          ⚠️ Keep your link private. Only share it with customers you intend to deliver to. All orders submitted through your link are charged to your account.
+          <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+              <thead>
+                <tr>
+                  <th style="text-align:left; padding:0.8rem 1rem; font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6a6a6a; border-bottom:2px solid #f0f0f0;">Link / Item</th>
+                  <th style="text-align:right; padding:0.8rem 1rem; font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6a6a6a; border-bottom:2px solid #f0f0f0;">Amount</th>
+                  <th style="text-align:left; padding:0.8rem 1rem; font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6a6a6a; border-bottom:2px solid #f0f0f0;">Status</th>
+                  <th style="text-align:right; padding:0.8rem 1rem; font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#6a6a6a; border-bottom:2px solid #f0f0f0;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="deliveryLinkDraftsBody">
+                <tr><td colspan="4" style="padding:1rem; color:#6a6a6a;">Loading delivery links...</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -1851,6 +1914,6 @@
 
 <script src="vd-modal.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script type="module" src="business-dashboard.js?v=20260723-order-catalog-1"></script>
+  <script type="module" src="business-dashboard.js?v=20260723-link-drafts-1"></script>
 </body>
 </html>

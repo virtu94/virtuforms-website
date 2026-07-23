@@ -1121,7 +1121,10 @@ let business = null;
 let orders = [];
 let remittanceRecords = [];
 let catalogItems = [];
+let deliveryLinkDrafts = [];
+let deliveryLinkDraftItems = [];
 let orderCatalogSelection = new Map();
+let linkCatalogSelection = new Map();
 let remittancePeriod = 'week';
 let activeLocTab = 'share';
 let manualLocationMode = false;
@@ -2338,9 +2341,134 @@ function renderSettings() {
   if (phone) phone.value = profile?.phone || '';
 }
 
+function deliveryDraftLink(token) {
+  const base = window.location.origin + window.location.pathname.replace(/dashboard\.html$/, 'delivery-link.html');
+  return base + '?token=' + encodeURIComponent(token || '');
+}
+
+function deliveryLinkStatusBadge(status) {
+  const labels = {
+    draft_created: 'Waiting on Customer',
+    customer_completed: 'Pending Review',
+    submitted_as_order: 'Submitted as Order',
+    cancelled: 'Cancelled',
+    expired: 'Expired'
+  };
+  const cls = status === 'customer_completed' ? 'pending'
+    : status === 'submitted_as_order' ? 'delivered'
+      : status === 'cancelled' || status === 'expired' ? 'cancelled'
+        : 'picked-up';
+  return '<span class="status-badge ' + cls + '">' + escapeHtml(labels[status] || status || 'Draft') + '</span>';
+}
+
+function selectedLinkCatalogItems() {
+  return [...linkCatalogSelection.entries()]
+    .map(([itemId, quantity]) => {
+      const item = catalogItems.find(row => row.id === itemId && row.active);
+      return item ? { item, quantity: Math.max(Number(quantity) || 1, 1) } : null;
+    })
+    .filter(Boolean);
+}
+
+function linkCatalogTotal() {
+  return selectedLinkCatalogItems().reduce((sum, entry) => sum + Number(entry.item.item_cost || 0) * entry.quantity, 0);
+}
+
+function syncLinkCatalogFields() {
+  const selected = selectedLinkCatalogItems();
+  const total = linkCatalogTotal();
+  const manualName = el('#linkManualItemName');
+  const amount = el('#linkPackageAmount');
+  const totalEl = el('#linkCatalogTotal');
+  if (selected.length) {
+    if (manualName) manualName.value = selected.map(entry => entry.item.item_name + (entry.quantity > 1 ? ' x' + entry.quantity : '')).join(', ');
+    if (amount) amount.value = total.toFixed(2);
+    if (totalEl) totalEl.textContent = 'Selected link total: ' + money(total);
+  } else if (totalEl) {
+    totalEl.textContent = 'No catalog items selected.';
+  }
+}
+
+function renderLinkCatalogSelector() {
+  const target = el('#linkCatalogSelector');
+  const selectedTarget = el('#linkCatalogSelected');
+  if (!target || !selectedTarget) return;
+  const search = String(el('#linkCatalogSearch')?.value || '').trim().toLowerCase();
+  const available = catalogItems
+    .filter(item => item.active)
+    .filter(item => !search || [item.item_name, item.additional_notes].some(value => String(value || '').toLowerCase().includes(search)))
+    .sort((a, b) => String(a.item_name || '').localeCompare(String(b.item_name || '')))
+    .slice(0, 18);
+
+  target.innerHTML = available.map(item => {
+    const selected = linkCatalogSelection.has(item.id);
+    return '<button type="button" class="btn" style="justify-content:space-between; padding:0.7rem 0.8rem; border-color:' + (selected ? '#2a9d8f' : '#dcecea') + '; background:' + (selected ? '#e8f5f3' : '#ffffff') + '; color:#0d2b28; text-align:left;" onclick="toggleLinkCatalogItem(\'' + item.id + '\')">'
+      + '<span style="min-width:0;"><span style="display:block; font-weight:700; overflow-wrap:anywhere;">' + escapeHtml(item.item_name) + '</span><span style="display:block; font-size:0.78rem; color:#6a6a6a;">' + money(item.item_cost) + '</span></span>'
+      + '<span style="font-weight:800; color:#2a9d8f;">' + (selected ? '✓' : '+') + '</span>'
+      + '</button>';
+  }).join('') || '<div style="padding:0.8rem; color:#6a6a6a; background:#fff; border:1px solid #edf3f2; border-radius:8px;">No active catalog items found.</div>';
+
+  selectedTarget.innerHTML = selectedLinkCatalogItems().map(entry => {
+    const item = entry.item;
+    return '<div style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; padding:0.65rem 0.75rem; background:#ffffff; border:1px solid #dcecea; border-radius:8px; flex-wrap:wrap;">'
+      + '<div style="font-weight:700; color:#1a1a1a;">' + escapeHtml(item.item_name) + '<div style="font-size:0.78rem; color:#6a6a6a; font-weight:500;">' + money(item.item_cost) + ' each</div></div>'
+      + '<div style="display:flex; align-items:center; gap:0.5rem;"><label style="font-size:0.78rem; color:#6a6a6a;">Qty</label><input class="input" type="number" min="1" step="1" value="' + entry.quantity + '" style="width:82px; padding:0.55rem 0.65rem;" onchange="setLinkCatalogQuantity(\'' + item.id + '\', this.value)" oninput="setLinkCatalogQuantity(\'' + item.id + '\', this.value)"><button type="button" class="btn btn-ghost" style="padding:0.45rem 0.65rem; font-size:0.82rem;" onclick="removeLinkCatalogItem(\'' + item.id + '\')">Remove</button></div>'
+      + '</div>';
+  }).join('');
+  syncLinkCatalogFields();
+}
+
+window.renderLinkCatalogSelector = renderLinkCatalogSelector;
+window.toggleLinkCatalogItem = function(itemId) {
+  if (linkCatalogSelection.has(itemId)) linkCatalogSelection.delete(itemId);
+  else linkCatalogSelection.set(itemId, 1);
+  renderLinkCatalogSelector();
+};
+window.setLinkCatalogQuantity = function(itemId, value) {
+  if (!linkCatalogSelection.has(itemId)) return;
+  linkCatalogSelection.set(itemId, Math.max(parseInt(value, 10) || 1, 1));
+  renderLinkCatalogSelector();
+};
+window.removeLinkCatalogItem = function(itemId) {
+  linkCatalogSelection.delete(itemId);
+  renderLinkCatalogSelector();
+};
+window.clearLinkCatalogSelection = function() {
+  linkCatalogSelection.clear();
+  if (el('#linkCatalogSearch')) el('#linkCatalogSearch').value = '';
+  renderLinkCatalogSelector();
+};
+
+function resetDeliveryLinkDraftForm() {
+  el('#deliveryLinkDraftForm')?.reset();
+  linkCatalogSelection.clear();
+  if (el('#linkCatalogSearch')) el('#linkCatalogSearch').value = '';
+  renderLinkCatalogSelector();
+}
+window.resetDeliveryLinkDraftForm = resetDeliveryLinkDraftForm;
+
 function renderDeliveryLink() {
-  const display = el('#clientLinkDisplay');
-  if (display) display.textContent = deliveryLink();
+  renderLinkCatalogSelector();
+  const body = el('#deliveryLinkDraftsBody');
+  if (!body) return;
+  const filter = el('#deliveryLinkStatusFilter')?.value || 'active';
+  const activeStatuses = ['draft_created', 'customer_completed'];
+  const rows = deliveryLinkDrafts
+    .filter(draft => filter === 'all' || (filter === 'active' ? activeStatuses.includes(draft.status) : draft.status === filter))
+    .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+  body.innerHTML = rows.map(draft => {
+    const link = deliveryDraftLink(draft.link_token);
+    const canCancel = draft.status === 'draft_created' || draft.status === 'customer_completed';
+    const canReview = draft.status === 'customer_completed';
+    return '<tr>'
+      + '<td style="padding:0.9rem 1rem; border-bottom:1px solid #f0f0f0; vertical-align:top;"><div style="font-weight:700; color:#1a1a1a;">' + escapeHtml(draft.item_name) + '</div><div style="font-size:0.78rem; color:#6a6a6a; word-break:break-all; margin-top:0.2rem;">' + escapeHtml(link) + '</div></td>'
+      + '<td style="padding:0.9rem 1rem; border-bottom:1px solid #f0f0f0; text-align:right; vertical-align:top; font-weight:700;">' + money(draft.package_amount) + '</td>'
+      + '<td style="padding:0.9rem 1rem; border-bottom:1px solid #f0f0f0; vertical-align:top;">' + deliveryLinkStatusBadge(draft.status) + (draft.customer_name ? '<div style="font-size:0.78rem; color:#6a6a6a; margin-top:0.25rem;">' + escapeHtml(draft.customer_name) + '</div>' : '') + '</td>'
+      + '<td style="padding:0.9rem 1rem; border-bottom:1px solid #f0f0f0; text-align:right; vertical-align:top; white-space:nowrap;"><button type="button" class="btn btn-ghost" style="padding:0.45rem 0.7rem; font-size:0.82rem;" onclick="copyDraftDeliveryLink(\'' + draft.id + '\')">Copy</button> '
+      + (canReview ? '<button type="button" class="btn btn-primary" style="padding:0.45rem 0.7rem; font-size:0.82rem;" onclick="window.vdNotify(\'Pending Review\', \'Review and submit-as-order will be added in the next step.\', \'info\')">Review</button> ' : '')
+      + (canCancel ? '<button type="button" class="btn btn-ghost" style="padding:0.45rem 0.7rem; font-size:0.82rem;" onclick="cancelDraftDeliveryLink(\'' + draft.id + '\')">Cancel</button>' : '')
+      + '</td></tr>';
+  }).join('') || '<tr><td colspan="4" style="padding:1rem; color:#6a6a6a;">No delivery links match this view.</td></tr>';
 }
 
 function catalogStatusBadge(item) {
@@ -3075,6 +3203,7 @@ function renderAll() {
   renderDeliveryLink();
   renderCatalog();
   renderOrderCatalogSelector();
+  renderLinkCatalogSelector();
   loadNotificationBadge();
 }
 
@@ -3114,7 +3243,7 @@ async function loadBusinessData() {
   business = businessData;
   renderSidebarAccount();
 
-  const [{ data: orderData, error: orderError }, { data: remitData, error: remitError }, { data: catalogData, error: catalogError }] = await Promise.all([
+  const [{ data: orderData, error: orderError }, { data: remitData, error: remitError }, { data: catalogData, error: catalogError }, { data: draftData, error: draftError }, { data: draftItemData, error: draftItemError }] = await Promise.all([
     supabase
       .from('orders')
       .select('id, order_number, external_item_number, financial_model_version, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, client_fee_settlement, cod_amount, package_value, estimated_fee, delivery_fee, pricing_rate_band, customer_amount_due, driver_amount_to_collect, client_amount_due, client_remittance_amount, remittance_gross_amount, remittance_deductions_amount, remittance_net_amount, remittance_paid_amount, remittance_batch_id, pickup_required, pickup_parcel_count, pickup_fee, pickup_fee_settlement, pickup_contact_name, pickup_contact_phone, pickup_business_name, pickup_street_name, pickup_area_name, pickup_maps_link, pickup_latitude, pickup_longitude, pickup_address, pickup_window, pickup_instructions, pickup_scheduled_date, pickup_scheduled_window, pickup_picked_up_at, pickup_arrived_hub_at, pickup_cancelled_at, pickup_cancellation_reason, parcel_status, parcel_received_at, checked_in_parcel_count, parcel_weight_lbs, parcel_condition, parcel_checkin_notes, pickup_status, payment_status, remittance_status, scheduled_delivery_date, delivery_outcome, delivery_attempt_count, last_delivery_attempt_at, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, redelivery_status, redelivery_fee, redelivery_fee_payer, redelivery_fee_settlement, redelivery_scheduled_at, redelivery_notes, return_disposition, holding_type, hold_until, return_to_client_status, return_to_client_fee, return_to_client_settlement, return_to_client_requested_at, return_to_client_completed_at, return_management_notes, zone_status, order_status, tracking_token, customer_notes, driver_notes, admin_notes, rejection_reason, payment_confirmed_at, created_at, updated_at')
@@ -3125,7 +3254,15 @@ async function loadBusinessData() {
       .from('business_catalog_items')
       .select('id, business_client_id, item_name, item_cost, additional_notes, active, created_at, updated_at')
       .eq('business_client_id', business.id)
-      .order('item_name', { ascending: true })
+      .order('item_name', { ascending: true }),
+    supabase
+      .from('business_delivery_link_drafts')
+      .select('id, business_client_id, link_token, status, item_name, package_amount, item_notes, payment_option, internal_notes, expires_at, customer_name, customer_phone, street_name, area_name, maps_link, delivery_notes, customer_completed_at, submitted_order_id, submitted_at, created_at, updated_at')
+      .eq('business_client_id', business.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('business_delivery_link_draft_items')
+      .select('id, draft_id, catalog_item_id, item_name_snapshot, item_cost_snapshot, quantity, additional_notes_snapshot, created_at')
   ]);
 
   if (orderError) throw orderError;
@@ -3140,6 +3277,18 @@ async function loadBusinessData() {
     catalogItems = [];
   } else {
     catalogItems = catalogData || [];
+  }
+  if (draftError) {
+    console.warn('Delivery link drafts could not load:', draftError);
+    deliveryLinkDrafts = [];
+  } else {
+    deliveryLinkDrafts = draftData || [];
+  }
+  if (draftItemError) {
+    console.warn('Delivery link draft items could not load:', draftItemError);
+    deliveryLinkDraftItems = [];
+  } else {
+    deliveryLinkDraftItems = draftItemData || [];
   }
   orders = orderData || [];
   renderAll();
@@ -3339,6 +3488,79 @@ function validateOrderForm(payload, raw) {
 
   return '';
 }
+
+async function createDeliveryLinkDraft(event) {
+  event.preventDefault();
+  if (!business?.id) return window.vdNotify('Link Not Ready', 'Business account is still loading.', 'warning');
+  const selected = selectedLinkCatalogItems();
+  const itemName = el('#linkManualItemName')?.value.trim() || '';
+  const packageAmount = Number(el('#linkPackageAmount')?.value || 0);
+  const paymentOption = el('#linkPaymentOption')?.value || '';
+  const itemNotes = el('#linkItemNotes')?.value.trim() || null;
+  const internalNotes = el('#linkInternalNotes')?.value.trim() || null;
+  if (!itemName) return window.vdNotify('Link Not Created', 'Enter item/package details or select catalog items.', 'warning');
+  if (!Number.isFinite(packageAmount) || packageAmount < 0) return window.vdNotify('Link Not Created', 'Enter a valid package amount.', 'warning');
+  if (!paymentOption) return window.vdNotify('Link Not Created', 'Select the payment arrangement.', 'warning');
+  const clientFeeSettlement = ['all-online', 'cod-client-delivery'].includes(paymentOption) ? 'pay_separately' : null;
+  const { data, error } = await supabase
+    .from('business_delivery_link_drafts')
+    .insert({
+      business_client_id: business.id,
+      item_name: itemName,
+      package_amount: packageAmount,
+      item_notes: itemNotes,
+      payment_option: paymentOption,
+      client_fee_settlement: clientFeeSettlement,
+      internal_notes: internalNotes,
+      status: 'draft_created'
+    })
+    .select('id, link_token')
+    .single();
+  if (error) return window.vdNotify('Link Not Created', error.message || 'Could not create delivery link.', 'error');
+  if (selected.length) {
+    const itemRows = selected.map(entry => ({
+      draft_id: data.id,
+      catalog_item_id: entry.item.id,
+      item_name_snapshot: entry.item.item_name,
+      item_cost_snapshot: entry.item.item_cost,
+      quantity: entry.quantity,
+      additional_notes_snapshot: entry.item.additional_notes || null
+    }));
+    const { error: itemError } = await supabase.from('business_delivery_link_draft_items').insert(itemRows);
+    if (itemError) window.vdNotify('Link Created, Items Not Saved', itemError.message || 'Catalog item snapshots could not be saved.', 'warning');
+  }
+  resetDeliveryLinkDraftForm();
+  await loadBusinessData();
+  window.switchPanel('delivery-link');
+  window.vdNotify('Delivery Link Created', 'Link copied to your list. Use Copy to send it to the customer.', 'success');
+}
+
+window.copyDraftDeliveryLink = async function(draftId) {
+  const draft = deliveryLinkDrafts.find(item => item.id === draftId);
+  if (!draft) return;
+  const link = deliveryDraftLink(draft.link_token);
+  try {
+    await navigator.clipboard.writeText(link);
+    window.vdNotify('Link Copied', 'Delivery link copied to clipboard.', 'success');
+  } catch {
+    window.prompt('Copy delivery link:', link);
+  }
+};
+
+window.cancelDraftDeliveryLink = async function(draftId) {
+  const draft = deliveryLinkDrafts.find(item => item.id === draftId);
+  if (!draft) return;
+  if (!window.confirm('Cancel this delivery link? The customer will no longer be able to submit it.')) return;
+  const { error } = await supabase
+    .from('business_delivery_link_drafts')
+    .update({ status: 'cancelled' })
+    .eq('id', draftId)
+    .eq('business_client_id', business.id);
+  if (error) return window.vdNotify('Link Not Cancelled', error.message || 'Could not cancel delivery link.', 'error');
+  await loadBusinessData();
+  window.switchPanel('delivery-link');
+  window.vdNotify('Link Cancelled', 'The delivery link was cancelled.', 'success');
+};
 
 async function submitBusinessOrder(event) {
   event?.preventDefault?.();
@@ -3699,6 +3921,7 @@ function bindUi() {
       event.target.value = '';
     }
   });
+  el('#deliveryLinkDraftForm')?.addEventListener('submit', createDeliveryLinkDraft);
 
   el('#mobileMenuBtn')?.addEventListener('click', () => {
     el('#sidebar')?.classList.add('open');
