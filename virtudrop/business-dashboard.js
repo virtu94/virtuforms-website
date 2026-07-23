@@ -3630,8 +3630,6 @@ function deliveryLinkLocationPayload(draft) {
 function deliveryLinkDraftFromReviewForm(originalDraft) {
   const phoneDigits = el('#reviewCustomerPhone')?.value.replace(/\D/g, '') || '';
   const mapsLink = el('#reviewMapsLink')?.value.trim() || '';
-  const latitude = el('#reviewLatitude')?.value.trim() || '';
-  const longitude = el('#reviewLongitude')?.value.trim() || '';
   const paymentOption = el('#reviewPaymentOption')?.value || originalDraft.payment_option;
   return {
     ...originalDraft,
@@ -3641,8 +3639,8 @@ function deliveryLinkDraftFromReviewForm(originalDraft) {
     street_name: el('#reviewStreetName')?.value.trim() || null,
     area_name: el('#reviewAreaName')?.value.trim() || null,
     maps_link: mapsLink || null,
-    latitude: latitude === '' ? null : Number(latitude),
-    longitude: longitude === '' ? null : Number(longitude),
+    latitude: originalDraft.latitude ?? null,
+    longitude: originalDraft.longitude ?? null,
     payment_option: paymentOption,
     package_amount: Number(el('#reviewPackageAmount')?.value || 0),
     client_fee_settlement: ['all-online', 'cod-client-delivery'].includes(paymentOption) ? el('#reviewClientFeeSettlement')?.value || 'pay_separately' : null,
@@ -3815,8 +3813,6 @@ window.openDeliveryLinkReview = async function(draftId) {
     + '<label class="form-group" style="margin:0;"><span>Street Name</span><input class="input" id="reviewStreetName" value="' + escapeHtml(draft.street_name || '') + '"></label>'
     + '<label class="form-group" style="margin:0;"><span>Area / Community</span><input class="input" id="reviewAreaName" value="' + escapeHtml(draft.area_name || '') + '"></label>'
     + '<label class="form-group" style="margin:0;"><span>Google Maps Link</span><input class="input" id="reviewMapsLink" value="' + escapeHtml(draft.maps_link || '') + '"></label>'
-    + '<label class="form-group" style="margin:0;"><span>Latitude</span><input class="input" id="reviewLatitude" type="number" step="any" value="' + escapeHtml(draft.latitude ?? '') + '"></label>'
-    + '<label class="form-group" style="margin:0;"><span>Longitude</span><input class="input" id="reviewLongitude" type="number" step="any" value="' + escapeHtml(draft.longitude ?? '') + '"></label>'
     + '<label class="form-group" style="margin:0;"><span>Payment Arrangement</span><select class="input" id="reviewPaymentOption"><option value="pkg-online" ' + (draft.payment_option === 'pkg-online' ? 'selected' : '') + '>Customer already paid package; customer pays delivery</option><option value="cod" ' + (draft.payment_option === 'cod' ? 'selected' : '') + '>Customer pays package and delivery</option><option value="cod-client-delivery" ' + (draft.payment_option === 'cod-client-delivery' ? 'selected' : '') + '>Customer pays package only; business pays delivery</option><option value="all-online" ' + (draft.payment_option === 'all-online' ? 'selected' : '') + '>Business pays delivery/all online</option></select></label>'
     + '<label class="form-group" style="margin:0;"><span>Business Fee Settlement</span><select class="input" id="reviewClientFeeSettlement"><option value="pay_separately" ' + (draft.client_fee_settlement !== 'deduct_from_remittance' ? 'selected' : '') + '>Pay separately</option><option value="deduct_from_remittance" ' + (draft.client_fee_settlement === 'deduct_from_remittance' ? 'selected' : '') + '>Deduct from remittance</option></select></label>'
     + '</div>'
@@ -3824,7 +3820,7 @@ window.openDeliveryLinkReview = async function(draftId) {
     + '<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:0.75rem; margin-top:0.75rem;"><label class="form-group" style="margin:0;"><span>Item Notes</span><textarea class="input" id="reviewItemNotes">' + escapeHtml(draft.item_notes || '') + '</textarea></label><label class="form-group" style="margin:0;"><span>Delivery Notes</span><textarea class="input" id="reviewDeliveryNotes">' + escapeHtml(draft.delivery_notes || '') + '</textarea></label></div>'
     + '<div style="display:flex; justify-content:flex-start; margin-top:0.85rem;"><button type="button" class="btn btn-primary" style="padding:0.65rem 0.9rem;" onclick="refreshDeliveryLinkReviewEstimate(deliveryLinkDrafts.find(item => item.id === \'' + draft.id + '\'))">Recalculate Estimate</button></div>'
     + '<div id="deliveryLinkReviewEstimate" style="margin-top:0.85rem;"></div>';
-  ['reviewItemName', 'reviewPackageAmount', 'reviewCustomerName', 'reviewCustomerPhone', 'reviewHouseNumber', 'reviewStreetName', 'reviewAreaName', 'reviewMapsLink', 'reviewLatitude', 'reviewLongitude', 'reviewPaymentOption', 'reviewClientFeeSettlement', 'reviewItemNotes', 'reviewDeliveryNotes'].forEach(id => {
+  ['reviewItemName', 'reviewPackageAmount', 'reviewCustomerName', 'reviewCustomerPhone', 'reviewHouseNumber', 'reviewStreetName', 'reviewAreaName', 'reviewMapsLink', 'reviewPaymentOption', 'reviewClientFeeSettlement', 'reviewItemNotes', 'reviewDeliveryNotes'].forEach(id => {
     el('#' + id)?.addEventListener('change', () => refreshDeliveryLinkReviewEstimate(draft));
   });
   refreshDeliveryLinkReviewEstimate(draft).catch(error => {
