@@ -3206,6 +3206,25 @@ function renderAll() {
   loadNotificationBadge();
 }
 
+async function loadDeliveryLinkDraftRows() {
+  const fullSelect = 'id, business_client_id, link_token, status, item_name, package_amount, item_notes, payment_option, client_fee_settlement, internal_notes, expires_at, customer_name, customer_phone, house_number, street_name, area_name, maps_link, latitude, longitude, delivery_notes, customer_completed_at, submitted_order_id, submitted_at, created_at, updated_at';
+  const fallbackSelect = 'id, business_client_id, link_token, status, item_name, package_amount, item_notes, payment_option, internal_notes, expires_at, customer_name, customer_phone, street_name, area_name, maps_link, delivery_notes, customer_completed_at, submitted_order_id, submitted_at, created_at, updated_at';
+  let result = await supabase
+    .from('business_delivery_link_drafts')
+    .select(fullSelect)
+    .eq('business_client_id', business.id)
+    .order('created_at', { ascending: false });
+  if (result.error && /client_fee_settlement|house_number|latitude|longitude|schema cache/i.test(result.error.message || '')) {
+    console.warn('Delivery link draft query used fallback columns:', result.error);
+    result = await supabase
+      .from('business_delivery_link_drafts')
+      .select(fallbackSelect)
+      .eq('business_client_id', business.id)
+      .order('created_at', { ascending: false });
+  }
+  return result;
+}
+
 async function loadBusinessData() {
   const { data: authData } = await supabase.auth.getUser();
   currentUser = authData?.user;
@@ -3254,17 +3273,17 @@ async function loadBusinessData() {
       .select('id, business_client_id, item_name, item_cost, additional_notes, active, created_at, updated_at')
       .eq('business_client_id', business.id)
       .order('item_name', { ascending: true }),
-    supabase
-      .from('business_delivery_link_drafts')
-      .select('id, business_client_id, link_token, status, item_name, package_amount, item_notes, payment_option, client_fee_settlement, internal_notes, expires_at, customer_name, customer_phone, house_number, street_name, area_name, maps_link, latitude, longitude, delivery_notes, customer_completed_at, submitted_order_id, submitted_at, created_at, updated_at')
-      .eq('business_client_id', business.id)
-      .order('created_at', { ascending: false }),
+    loadDeliveryLinkDraftRows(),
     supabase
       .from('business_delivery_link_draft_items')
       .select('id, draft_id, catalog_item_id, item_name_snapshot, item_cost_snapshot, quantity, additional_notes_snapshot, created_at')
   ]);
 
-  if (orderError) throw orderError;
+  if (orderError) {
+    console.warn('Business orders could not load:', orderError);
+    orders = [];
+    window.vdNotify?.('Orders Not Loaded', orderError.message || 'Orders could not load, but catalog and delivery links will still display.', 'warning');
+  }
   if (remitError) {
     console.warn('Business remittance records could not load:', remitError);
     remittanceRecords = [];
@@ -3289,7 +3308,7 @@ async function loadBusinessData() {
   } else {
     deliveryLinkDraftItems = draftItemData || [];
   }
-  orders = orderData || [];
+  if (!orderError) orders = orderData || [];
   renderAll();
   syncBusinessReportDateInputs();
 }
@@ -4307,5 +4326,9 @@ window.markNotifRead = async function(notifId) {
 bindUi();
 loadBusinessData().catch(error => {
   console.error('Business dashboard load error:', error);
-  showDashboardLoadError();
+  showDashboardLoadError(error?.message || undefined);
+  const catalogBody = el('#catalogItemsBody');
+  if (catalogBody) catalogBody.innerHTML = '<tr><td colspan="4" style="padding:1rem; color:#e05555;">Catalog could not load. Check that the catalog database migration has been applied.</td></tr>';
+  const linkBody = el('#deliveryLinkDraftsBody');
+  if (linkBody) linkBody.innerHTML = '<tr><td colspan="3" style="padding:1rem; color:#e05555;">Delivery links could not load. Check that the delivery-link database migration has been applied.</td></tr>';
 });
