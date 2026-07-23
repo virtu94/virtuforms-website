@@ -2456,15 +2456,17 @@ function renderDeliveryLink() {
     const link = deliveryDraftLink(draft.link_token);
     const canCancel = draft.status === 'draft_created' || draft.status === 'customer_completed';
     const canReview = draft.status === 'customer_completed';
+    const actions = '<div style="display:flex; gap:0.45rem; flex-wrap:wrap; margin-top:0.65rem;">'
+      + '<button type="button" class="btn btn-ghost" style="padding:0.45rem 0.7rem; font-size:0.82rem;" onclick="copyDraftDeliveryLink(\'' + draft.id + '\')">Copy</button>'
+      + (canReview ? '<button type="button" class="btn btn-primary" style="padding:0.45rem 0.7rem; font-size:0.82rem;" onclick="window.vdNotify(\'Pending Review\', \'Review and submit-as-order will be added in the next step.\', \'info\')">Review</button>' : '')
+      + (canCancel ? '<button type="button" class="btn btn-ghost" style="padding:0.45rem 0.7rem; font-size:0.82rem;" onclick="cancelDraftDeliveryLink(\'' + draft.id + '\')">Cancel</button>' : '')
+      + '</div>';
     return '<tr>'
-      + '<td style="padding:0.9rem 1rem; border-bottom:1px solid #f0f0f0; vertical-align:top;"><div style="font-weight:700; color:#1a1a1a;">' + escapeHtml(draft.item_name) + '</div><div style="font-size:0.78rem; color:#6a6a6a; word-break:break-all; margin-top:0.2rem;">' + escapeHtml(link) + '</div></td>'
+      + '<td style="padding:0.9rem 1rem; border-bottom:1px solid #f0f0f0; vertical-align:top;"><div style="font-weight:700; color:#1a1a1a;">' + escapeHtml(draft.item_name) + '</div><div style="font-size:0.78rem; color:#6a6a6a; word-break:break-all; margin-top:0.2rem;">' + escapeHtml(link) + '</div>' + actions + '</td>'
       + '<td style="padding:0.9rem 1rem; border-bottom:1px solid #f0f0f0; text-align:right; vertical-align:top; font-weight:700;">' + money(draft.package_amount) + '</td>'
       + '<td style="padding:0.9rem 1rem; border-bottom:1px solid #f0f0f0; vertical-align:top;">' + deliveryLinkStatusBadge(draft.status) + (draft.customer_name ? '<div style="font-size:0.78rem; color:#6a6a6a; margin-top:0.25rem;">' + escapeHtml(draft.customer_name) + '</div>' : '') + '</td>'
-      + '<td style="padding:0.9rem 1rem; border-bottom:1px solid #f0f0f0; text-align:right; vertical-align:top; white-space:nowrap;"><button type="button" class="btn btn-ghost" style="padding:0.45rem 0.7rem; font-size:0.82rem;" onclick="copyDraftDeliveryLink(\'' + draft.id + '\')">Copy</button> '
-      + (canReview ? '<button type="button" class="btn btn-primary" style="padding:0.45rem 0.7rem; font-size:0.82rem;" onclick="window.vdNotify(\'Pending Review\', \'Review and submit-as-order will be added in the next step.\', \'info\')">Review</button> ' : '')
-      + (canCancel ? '<button type="button" class="btn btn-ghost" style="padding:0.45rem 0.7rem; font-size:0.82rem;" onclick="cancelDraftDeliveryLink(\'' + draft.id + '\')">Cancel</button>' : '')
-      + '</td></tr>';
-  }).join('') || '<tr><td colspan="4" style="padding:1rem; color:#6a6a6a;">No delivery links match this view.</td></tr>';
+      + '</tr>';
+  }).join('') || '<tr><td colspan="3" style="padding:1rem; color:#6a6a6a;">No delivery links match this view.</td></tr>';
 }
 
 function catalogStatusBadge(item) {
