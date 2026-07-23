@@ -3791,6 +3791,13 @@ async function submitDeliveryLinkAsOrder(draftId, requestData) {
     if (updateError) throw updateError;
     window.closeDeliveryLinkReview();
     await loadBusinessData();
+    const submittedOrder = orders.find(order =>
+      (submittedOrderId && order.id === submittedOrderId) ||
+      (result?.order_number && order.order_number === result.order_number)
+    );
+    if (submittedOrder && window.confirm('Print delivery label for ' + submittedOrder.order_number + '?')) {
+      printDeliveryLabel(submittedOrder.id);
+    }
     window.switchPanel('delivery-link');
     window.vdNotify('Order Submitted', 'Delivery link was converted into order ' + (result?.order_number || '') + '.', 'success');
   } catch (error) {
