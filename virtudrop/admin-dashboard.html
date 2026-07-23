@@ -687,7 +687,7 @@
     #panel-driver-assign th:nth-child(8), #panel-driver-assign td:nth-child(8) { width: 115px; }
     #panel-driver-assign th:nth-child(9), #panel-driver-assign td:nth-child(9) { width: 150px; }
     #panel-driver-assign th:nth-child(10), #panel-driver-assign td:nth-child(10) { width: 155px; }
-    #panel-driver-assign th:nth-child(11), #panel-driver-assign td:nth-child(11) { width: 80px; }
+    #panel-driver-assign th:nth-child(11), #panel-driver-assign td:nth-child(11) { width: 160px; }
     #panel-driver-assign td.driver-package-cell,
     #panel-driver-assign td.driver-zone-cell,
     #panel-driver-assign td.driver-customer-cell {
@@ -1150,6 +1150,7 @@
           </select>
           <input class="filter-input" id="driverAssignBulkDate" type="date" onchange="applyBulkDateToSelected()" />
           <button class="btn btn-primary btn-sm" type="button" onclick="assignSelectedDrivers()">Assign Selected Items</button>
+          <button class="btn btn-ghost btn-sm" type="button" onclick="removeSelectedDrivers()">Remove Selected Drivers</button>
           <button class="btn btn-ghost btn-sm" type="button" onclick="clearDriverAssignSelection()">Clear</button>
           <span class="bulk-count" id="driverAssignBulkCount">0 selected</span>
         </div>
@@ -4747,6 +4748,12 @@
       }
     };
 
+    function canRemoveDriverAssignment(order) {
+      return Boolean(order?.assigned_driver_id)
+        && !['delivered', 'cancelled', 'rejected'].includes(order.order_status)
+        && !['delivered', 'returned_to_client'].includes(order.parcel_status);
+    }
+
     function renderAllOrders() {
       const tbody = document.querySelector('#panel-all-orders tbody');
       const statusFilter = document.getElementById('orderStatusFilter')?.value || '';
@@ -4787,6 +4794,7 @@
               ${order.order_status === 'cancelled'
                 ? '<span class="badge badge-unpaid">Cancelled</span>'
                 : `<button class="btn btn-danger btn-sm" onclick="openAdminOrderCancel('${order.id}')">Cancel Order</button>`}
+              ${canRemoveDriverAssignment(order) ? `<button class="btn btn-ghost btn-sm" onclick="removeDriverFromOrder('${order.id}')">Remove Driver</button>` : ''}
               <button class="btn btn-ghost btn-sm" onclick="openCustomerTrackingWhatsApp('${order.id}')">Customer</button>
               <button class="btn btn-ghost btn-sm" onclick="whatsappClient('${order.id}')">Client</button>
             </div>
@@ -5973,6 +5981,32 @@
       });
     };
 
+    window.removeSelectedDrivers = function() {
+      const visible = new Set(driverAssignVisibleIds);
+      const selectedOrders = [...driverAssignSelection]
+        .filter(orderId => visible.has(orderId))
+        .map(orderId => orders.find(item => item.id === orderId))
+        .filter(order => order && order.assigned_driver_id);
+
+      if (!selectedOrders.length) return showToast('Select at least one assigned order.');
+
+      showModal(
+        'Remove Selected Drivers',
+        `Remove drivers from ${selectedOrders.length} selected order(s)? They will stay sorted and unassigned until you assign new drivers.`,
+        async () => {
+          try {
+            await clearDriverAssignment(selectedOrders.map(order => order.id));
+            showToast(`${selectedOrders.length} selected order(s) are now unassigned.`);
+            clearDriverAssignSelection();
+            await loadData();
+            showPanel('driver-assign');
+          } catch (error) {
+            window.vdNotify('Drivers Not Removed', error.message || 'Could not remove the selected driver assignments.', 'error');
+          }
+        }
+      );
+    };
+
     function renderDriverAssign() {
       const tbody = document.querySelector('#panel-driver-assign tbody');
       const manageable = orders.filter(order => {
@@ -5980,9 +6014,7 @@
         const unassigned = !order.assigned_driver_id
           && order.zone_status === 'confirmed'
           && ['sorted', 'redelivery_scheduled'].includes(order.parcel_status);
-        const assigned = order.assigned_driver_id
-          && ['assigned', 'handed_to_driver'].includes(order.parcel_status)
-          && !['delivered', 'cancelled', 'rejected'].includes(order.order_status);
+        const assigned = canRemoveDriverAssignment(order);
         return unassigned || assigned;
       });
       driverAssignVisibleIds = manageable.map(order => order.id);
@@ -6013,7 +6045,7 @@
             <td>${isAssigned ? escapeHtml(driverName(order.assigned_driver_id)) : 'Unassigned'}</td>
             <td><select class="filter-select driver-select" style="width:180px;" onchange="markDriverAssignRowSelected('${order.id}')">${isAssigned ? transferDriverOptions(order.assigned_driver_id) : driverOptions()}</select></td>
             <td>${controls}</td>
-            <td><button class="btn btn-primary btn-sm" onclick="assignDriver('${order.id}')">${isAssigned ? 'Change Driver' : 'Assign'}</button></td>
+            <td><div style="display:flex; gap:0.4rem; flex-wrap:wrap;"><button class="btn btn-primary btn-sm" onclick="assignDriver('${order.id}')">${isAssigned ? 'Change Driver' : 'Assign'}</button>${canRemoveDriverAssignment(order) ? `<button class="btn btn-ghost btn-sm" onclick="removeDriverFromOrder('${order.id}')">Remove</button>` : ''}</div></td>
           </tr>`;
       }).join('') || '<tr><td colspan="11">No parcels are currently available for driver assignment or reassignment.</td></tr>';
       syncDriverAssignBulkControls();
@@ -6369,6 +6401,38 @@
       if (rpcResult.error) throw rpcResult.error;
       return rpcResult.data;
     }
+
+    async function clearDriverAssignment(orderIds) {
+      const ids = Array.isArray(orderIds) ? orderIds : [orderIds];
+      const { data, error } = await supabase.rpc('admin_bulk_order_action', {
+        p_order_ids: ids,
+        p_action: 'clear_driver',
+        p_payload: {}
+      });
+      if (error) throw error;
+      return data;
+    }
+
+    window.removeDriverFromOrder = function(orderId) {
+      const order = orders.find(o => o.id === orderId);
+      if (!order) return showToast('Order not found.');
+      if (!order.assigned_driver_id) return showToast('This order is already unassigned.');
+
+      showModal(
+        'Remove Driver',
+        `Remove ${driverName(order.assigned_driver_id)} from ${order.order_number}? The order will stay sorted and unassigned until you assign another driver.`,
+        async () => {
+          try {
+            await clearDriverAssignment(orderId);
+            showToast(`${order.order_number} is now unassigned.`);
+            await loadData();
+            showPanel('driver-assign');
+          } catch (error) {
+            window.vdNotify('Driver Not Removed', error.message || 'Could not remove this driver assignment.', 'error');
+          }
+        }
+      );
+    };
 
     window.assignDriver = function(orderId) {
       const order = orders.find(o => o.id === orderId);
