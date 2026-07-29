@@ -3888,6 +3888,11 @@
       return [...clientsById.values()].find(client => client.profile_id === profileId) || null;
     }
 
+    function accountPhone(profile) {
+      const businessClient = profile?.role === 'business' ? businessClientForProfile(profile.id) : null;
+      return String(profile?.phone || businessClient?.phone || '').trim();
+    }
+
     function businessAccountFinanceSummary(clientId) {
       const clientOrders = orders.filter(order => order.business_client_id === clientId);
       const clientOrderIds = new Set(clientOrders.map(order => order.id));
@@ -3917,10 +3922,11 @@
       const accounts = allProfiles.filter(profile => ['admin', 'business', 'driver'].includes(profile.role));
       const filtered = accounts.filter(profile => {
         const name = accountDisplayName(profile).toLowerCase();
+        const phone = accountPhone(profile).toLowerCase();
         const status = String(profile.status || 'pending').toLowerCase();
         if (roleFilter && profile.role !== roleFilter) return false;
         if (statusFilter && status !== statusFilter) return false;
-        if (search && !name.includes(search)) return false;
+        if (search && !name.includes(search) && !phone.includes(search)) return false;
         return true;
       });
 
@@ -3953,6 +3959,7 @@
         const name = accountDisplayName(profile);
         const role = profile.role === 'business' ? 'Business' : profile.role === 'driver' ? 'Driver' : 'Admin';
         const status = String(profile.status || 'pending').toLowerCase();
+        const phone = accountPhone(profile);
         const isSelf = currentProfile?.id === profile.id;
         const lockedClass = status === 'locked' ? ' locked' : '';
         const approveButton = status === 'pending'
@@ -3991,6 +3998,9 @@
             <div class="acc-info">
               <div class="acc-name">${escapeHtml(name)}</div>
               <div class="acc-meta">${role}${isSelf ? ' · Current admin' : ''}</div>
+              <div class="acc-meta">${phone
+                ? `Phone: <a href="tel:${escapeHtml(phone.replace(/[^\d+]/g, ''))}">${escapeHtml(phone)}</a>`
+                : 'Phone: Not provided'}</div>
               <div style="margin-top:0.3rem;">${accountStatusBadge(status)}</div>
               ${financeSummary}
             </div>
