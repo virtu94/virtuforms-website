@@ -713,6 +713,9 @@
       width: 100% !important;
       min-width: 0;
     }
+    .driver-zone-filter { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.85rem; }
+    .driver-zone-filter-label { color: var(--grey); font-size: 0.82rem; font-weight: 700; margin-right: 0.15rem; }
+    .driver-zone-filter .btn[aria-pressed="true"] { background: var(--teal); border-color: var(--teal); color: #fff; }
     .zone-card,
     .account-card,
     .pending-strip {
@@ -1140,7 +1143,16 @@
       <div class="panel" id="panel-driver-assign">
         <div class="section-heading">
           <h2>Driver Assignment</h2>
-          <p>Assign unassigned parcels or change the driver responsible for an active delivery.</p>
+          <p>Filter deliveries by their confirmed zone, then assign a driver to all selected items in that zone.</p>
+        </div>
+
+        <div class="driver-zone-filter" id="driverAssignZoneFilter" aria-label="Filter deliveries by confirmed zone">
+          <span class="driver-zone-filter-label">Confirmed zone:</span>
+          <button class="btn btn-ghost btn-sm" type="button" data-driver-zone="all" aria-pressed="true" onclick="setDriverAssignZoneFilter('all')">All <span data-zone-count="all"></span></button>
+          <button class="btn btn-ghost btn-sm" type="button" data-driver-zone="A" aria-pressed="false" onclick="setDriverAssignZoneFilter('A')">Zone A <span data-zone-count="A"></span></button>
+          <button class="btn btn-ghost btn-sm" type="button" data-driver-zone="B" aria-pressed="false" onclick="setDriverAssignZoneFilter('B')">Zone B <span data-zone-count="B"></span></button>
+          <button class="btn btn-ghost btn-sm" type="button" data-driver-zone="C" aria-pressed="false" onclick="setDriverAssignZoneFilter('C')">Zone C <span data-zone-count="C"></span></button>
+          <button class="btn btn-ghost btn-sm" type="button" data-driver-zone="D" aria-pressed="false" onclick="setDriverAssignZoneFilter('D')">Zone D <span data-zone-count="D"></span></button>
         </div>
 
         <div class="bulk-toolbar" id="driverAssignBulkToolbar">
@@ -1879,6 +1891,7 @@
     let manifestSelection = new Set();
     let manifestVisibleIds = [];
     let driverAssignSelection = new Set();
+    let driverAssignZoneFilter = 'all';
     let accountingCollectionSelection = new Set();
     let accountingCollectionVisibleIds = [];
     let driverAssignVisibleIds = [];
@@ -1992,6 +2005,14 @@
       const itemHtml = item ? "<div class=\"td-sub\">Item: " + escapeHtml(item) + "</div>" : "";
       const packageHtml = details && details !== item ? "<div class=\"td-sub\">Package: " + escapeHtml(details) + "</div>" : "";
       return itemHtml + packageHtml;
+    }
+
+    function orderDeliveryZoneCode(order) {
+      const zone = zones.find(item => item.id === (order.zone_id || order.confirmed_zone_id));
+      return String(zone?.code || order.zone_code || order.confirmed_zone_code || '')
+        .replace(/^zone\s*/i, '')
+        .trim()
+        .toUpperCase();
     }
 
     function orderDeliveryZoneText(order) {
@@ -6017,9 +6038,14 @@
       );
     };
 
+    window.setDriverAssignZoneFilter = function(zoneCode) {
+      driverAssignZoneFilter = ['A', 'B', 'C', 'D'].includes(zoneCode) ? zoneCode : 'all';
+      renderDriverAssign();
+    };
+
     function renderDriverAssign() {
       const tbody = document.querySelector('#panel-driver-assign tbody');
-      const manageable = orders.filter(order => {
+      const allManageable = orders.filter(order => {
         if (isCancelledOrder(order)) return false;
         const unassigned = !order.assigned_driver_id
           && order.zone_status === 'confirmed'
@@ -6027,6 +6053,20 @@
         const assigned = canRemoveDriverAssignment(order);
         return unassigned || assigned;
       });
+      const zoneCounts = { all: allManageable.length, A: 0, B: 0, C: 0, D: 0 };
+      allManageable.forEach(order => {
+        const code = orderDeliveryZoneCode(order);
+        if (Object.prototype.hasOwnProperty.call(zoneCounts, code)) zoneCounts[code] += 1;
+      });
+      document.querySelectorAll('#driverAssignZoneFilter [data-driver-zone]').forEach(button => {
+        const code = button.dataset.driverZone;
+        button.setAttribute('aria-pressed', String(code === driverAssignZoneFilter));
+        const count = button.querySelector('[data-zone-count]');
+        if (count) count.textContent = '(' + (zoneCounts[code] || 0) + ')';
+      });
+      const manageable = driverAssignZoneFilter === 'all'
+        ? allManageable
+        : allManageable.filter(order => orderDeliveryZoneCode(order) === driverAssignZoneFilter);
       driverAssignVisibleIds = manageable.map(order => order.id);
       tbody.innerHTML = manageable.map(order => {
         const isAssigned = Boolean(order.assigned_driver_id);
