@@ -2008,7 +2008,7 @@
     }
 
     function orderDeliveryZoneCode(order) {
-      const zone = zones.find(item => item.id === (order.zone_id || order.confirmed_zone_id));
+      const zone = zones.find(item => item.id === (order.confirmed_zone_id || order.zone_id));
       return String(zone?.code || order.zone_code || order.confirmed_zone_code || '')
         .replace(/^zone\s*/i, '')
         .trim()
@@ -2017,7 +2017,7 @@
 
     function orderDeliveryZoneText(order) {
       if (order.zone_status === 'pending' || order.order_status === 'zone_pending') return 'Zone pending';
-      const zone = zones.find(item => item.id === (order.zone_id || order.confirmed_zone_id));
+      const zone = zones.find(item => item.id === (order.confirmed_zone_id || order.zone_id));
       const code = zone?.code || order.zone_code || order.confirmed_zone_code || '';
       return code ? "Zone " + String(code).toUpperCase() : "Zone not set";
     }
@@ -4951,6 +4951,7 @@
         customer_notes: document.getElementById('adminEditCustomerNotes')?.value.trim() || null,
         driver_notes: document.getElementById('adminEditDriverNotes')?.value.trim() || null,
         admin_note: document.getElementById('adminEditAdminNote')?.value.trim() || null,
+        confirmed_zone_id: document.getElementById('adminEditConfirmedZone')?.value || null,
         zone_status: document.getElementById('adminEditZoneStatus')?.value || null,
         order_status: document.getElementById('adminEditOrderStatus')?.value || null,
         parcel_status: document.getElementById('adminEditParcelStatus')?.value || null,
@@ -5173,6 +5174,7 @@
             ['confirmed', 'Confirmed'],
             ['rejected', 'Rejected']
           ], order.zone_status || '')}</select></label>
+          <label>Confirmed Delivery Zone<select id="adminEditConfirmedZone"><option value="">— Select confirmed zone —</option>${adminEditSelect(zones.map(zone => [zone.id, 'Zone ' + zone.code + ' — ' + (zone.name || zone.code)]), order.confirmed_zone_id || order.zone_id || '')}</select></label>
           <label>Scheduled Delivery Date<input id="adminEditScheduledDate" type="date" value="${escapeHtml(order.scheduled_delivery_date || '')}"></label>
           <label>House / Apt<input id="adminEditHouse" value="${escapeHtml(order.house_number || '')}"></label>
           <label>Street / Building<input id="adminEditStreet" value="${escapeHtml(order.street_name || '')}"></label>
@@ -5261,6 +5263,10 @@
         window.vdNotify('Order Not Updated', 'Enter the customer phone number.', 'warning');
         return;
       }
+      if (payload.zone_status === 'confirmed' && !payload.confirmed_zone_id) {
+        window.vdNotify('Order Not Updated', 'Select the confirmed delivery zone.', 'warning');
+        return;
+      }
       if (payload.pickup_required) {
         if (!payload.pickup_contact_name || payload.pickup_contact_name.length < 2) {
           window.vdNotify('Order Not Updated', 'Enter the pickup contact name.', 'warning');
@@ -5283,6 +5289,13 @@
           p_request_data: payload
         });
         if (error) throw error;
+        if (payload.confirmed_zone_id) {
+          const { error: zoneError } = await supabase.from('orders').update({
+            confirmed_zone_id: payload.confirmed_zone_id,
+            zone_status: 'confirmed'
+          }).eq('id', orderId);
+          if (zoneError) throw zoneError;
+        }
         showToast('Order updated.');
         await loadData();
       } catch (error) {
@@ -5436,12 +5449,17 @@
     function renderZoneConfirm() {
       const panel = document.getElementById('panel-zone-confirm');
       panel.querySelectorAll('.zone-card').forEach(card => card.remove());
-      const pending = orders.filter(o =>
-        !isCancelledOrder(o)
-        &&
-        (o.zone_status === 'pending' || o.order_status === 'zone_pending')
-        && ['parcel_received', 'legacy_untracked'].includes(o.parcel_status)
-      );
+      const pending = orders.filter(o => {
+        if (isCancelledOrder(o)) return false;
+        const needsFirstConfirmation =
+          (o.zone_status === 'pending' || o.order_status === 'zone_pending')
+          && ['parcel_received', 'legacy_untracked'].includes(o.parcel_status);
+        const needsZoneRecovery =
+          o.zone_status === 'confirmed'
+          && !orderDeliveryZoneCode(o)
+          && ['parcel_received', 'sorted', 'redelivery_scheduled'].includes(o.parcel_status);
+        return needsFirstConfirmation || needsZoneRecovery;
+      });
 
       zoneConfirmVisibleIds = pending.map(order => order.id);
       if (!pending.length) {
@@ -5553,7 +5571,7 @@
       const sortable = orders.filter(order => !isCancelledOrder(order) && order.parcel_status === 'parcel_received' && order.zone_status === 'confirmed');
       sortingVisibleIds = sortable.map(order => order.id);
       body.innerHTML = sortable.map(order => {
-        const zone = zones.find(item => item.id === order.zone_id);
+        const zone = zones.find(item => item.id === (order.confirmed_zone_id || order.zone_id));
         return `<tr><td class="td-id"><label class="bulk-order-check"><input class="sorting-bulk-check" type="checkbox" value="${order.id}" ${sortingSelection.has(order.id) ? 'checked' : ''} onchange="toggleSortingBulk('${order.id}', this.checked)"><span>${escapeHtml(order.order_number)}</span></label></td><td><div class="td-name">${escapeHtml(clientName(order))}</div><div class="td-sub">${escapeHtml(order.customer_name || "")}</div>${orderItemPackageHtml(order)}</td><td>${escapeHtml(orderLabelAddress(order))}</td><td>${escapeHtml(String(order.checked_in_parcel_count || 1))}</td><td><span class="badge badge-confirmed">${escapeHtml(zone?.code ? `Zone ${zone.code}` : order.pricing_rate_band || 'Confirmed')}</span></td><td><button class="btn btn-primary btn-sm" onclick="markOrderSorted('${order.id}')">Mark Sorted</button></td></tr>`;
       }).join('') || '<tr><td colspan="6">No received, zone-confirmed parcels are waiting to be sorted.</td></tr>';
       syncSortingBulkControls();
@@ -6372,6 +6390,7 @@
         .update({
           zone_status: 'confirmed',
           order_status: 'confirmed',
+          confirmed_zone_id: zoneId,
           delivery_fee: fee,
           driver_delivery_pay: driverPay,
           driver_delivery_pay_set_by: currentProfile?.id || null,
