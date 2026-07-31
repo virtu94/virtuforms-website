@@ -1981,6 +1981,12 @@
       return `TTD ${n.toFixed(2).replace('.00', '')}`;
     }
 
+    function todayDateInputValue() {
+      const now = new Date();
+      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+      return now.toISOString().slice(0, 10);
+    }
+
     function orderLabelAddress(order) {
       return [order.house_number, order.street_name, order.area_name].filter(Boolean).join(', ')
         || order.delivery_address
@@ -4202,8 +4208,14 @@
         <strong>${escapeHtml(row.client)}</strong><br>
         Gross COD: <strong>${moneyFull(row.gross)}</strong><br>
         Deductions: <strong>${moneyFull(row.deductions)}</strong><br>
-        Net to pay: <strong>${moneyFull(row.payout)}</strong>
+        Total balance: <strong>${moneyFull(row.payout)}</strong>
         <div class="payment-modal-form">
+          <label>Remittance Date
+            <input id="remitPaidDate" type="date" value="${todayDateInputValue()}" />
+          </label>
+          <label>Amount Remitted
+            <input id="remitPaidAmount" type="number" min="0.01" max="${Number(row.payout).toFixed(2)}" step="0.01" value="${Number(row.payout).toFixed(2)}" placeholder="0.00" />
+          </label>
           <label>Method
             <select id="remitPaidMethod">
               <option value="bank_transfer">Bank Transfer</option>
@@ -4230,10 +4242,27 @@
         return;
       }
 
+      const remittedAmount = Number(document.getElementById('remitPaidAmount')?.value || 0);
+      const remittedDate = document.getElementById('remitPaidDate')?.value || '';
+      if (!remittedDate) {
+        window.vdNotify('Remittance Date Required', 'Enter the date this remittance was paid.', 'error');
+        return;
+      }
+      if (!Number.isFinite(remittedAmount) || remittedAmount <= 0) {
+        window.vdNotify('Amount Required', 'Enter an amount remitted greater than zero.', 'error');
+        return;
+      }
+      if (remittedAmount > amount(row.payout) + 0.009) {
+        window.vdNotify('Amount Too High', 'The remitted amount cannot exceed the current total balance.', 'error');
+        return;
+      }
+
       const { error } = await supabase.rpc('admin_create_remittance_batch', {
         p_business_client_id: clientId,
         p_order_ids: row.orderIds,
         p_method: document.getElementById('remitPaidMethod')?.value || 'bank_transfer',
+        p_paid_date: remittedDate,
+        p_remitted_amount: remittedAmount,
         p_reference: document.getElementById('remitPaidReference')?.value.trim() || null,
         p_notes: document.getElementById('remitPaidNotes')?.value.trim() || null
       });
