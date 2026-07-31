@@ -574,6 +574,28 @@
     .modal h3 { font-size: 1.1rem; font-weight: 700; color: var(--black); margin-bottom: 0.6rem; }
     .modal p  { font-size: 0.9rem; color: var(--grey); line-height: 1.6; margin-bottom: 1.5rem; }
     .modal-actions { display: flex; gap: 0.8rem; justify-content: flex-end; }
+    .order-notes-list { display: grid; gap: 0.85rem; margin: 1rem 0 1.5rem; }
+    .order-note-block {
+      border: 1px solid var(--grey-mid);
+      border-radius: 8px;
+      background: var(--grey-light);
+      padding: 0.85rem;
+    }
+    .order-note-title {
+      color: var(--teal-dark);
+      font-size: 0.76rem;
+      font-weight: 800;
+      letter-spacing: 0.4px;
+      margin-bottom: 0.35rem;
+      text-transform: uppercase;
+    }
+    .order-note-text {
+      color: var(--black);
+      font-size: 0.9rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
 
     @media (max-width: 968px) {
       .sidebar { transform: translateX(-100%); }
@@ -1788,7 +1810,7 @@
       <h3 id="modalTitle">Confirm Action</h3>
       <div id="modalBody">Are you sure?</div>
       <div class="modal-actions">
-        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-ghost" id="modalCancel" onclick="closeModal()">Cancel</button>
         <button class="btn btn-primary" id="modalConfirm">Confirm</button>
       </div>
     </div>
@@ -1950,6 +1972,7 @@
       document.getElementById('modalTitle').textContent = title;
       document.getElementById('modalBody').textContent = body;
       document.getElementById('modalConfirm').textContent = 'Confirm';
+      document.getElementById('modalCancel').style.display = '';
       document.getElementById('modal').classList.add('show');
       modalCb = cb;
     }
@@ -1957,6 +1980,9 @@
 
     window.closeModal = function() {
       document.getElementById('modal').classList.remove('show');
+      document.getElementById('modalBody').textContent = 'Are you sure?';
+      document.getElementById('modalConfirm').textContent = 'Confirm';
+      document.getElementById('modalCancel').style.display = '';
       modalCb = null;
     };
 
@@ -2031,6 +2057,35 @@
     function orderPackageAssignmentText(order) {
       return String(order?.external_item_number || "").trim() || orderPackageDetails(order) || "Package";
     }
+
+    function orderNotesModalHtml(order) {
+      const noteSections = [
+        ["Customer Notes", order?.customer_notes],
+        ["Admin Notes", order?.admin_notes],
+        ["Driver Notes", order?.driver_notes],
+        ["Delivery Outcome Notes", order?.delivery_outcome_notes],
+        ["Parcel Check-in Notes", order?.parcel_checkin_notes],
+        ["Redelivery Notes", order?.redelivery_notes],
+        ["Return Notes", order?.return_management_notes]
+      ].filter(([, value]) => String(value || "").trim());
+
+      if (!noteSections.length) return "<p>No notes have been saved on this order.</p>";
+
+      return "<div class=\"order-notes-list\">" + noteSections.map(([label, value]) =>
+        "<div class=\"order-note-block\"><div class=\"order-note-title\">" + escapeHtml(label) + "</div><div class=\"order-note-text\">" + escapeHtml(String(value).trim()) + "</div></div>"
+      ).join("") + "</div>";
+    }
+
+    window.showDriverAssignmentNotes = function(orderId) {
+      const order = orders.find(item => item.id === orderId);
+      if (!order) return showToast("Order details are not loaded yet.");
+      document.getElementById("modalTitle").textContent = "Order Notes - " + (order.order_number || "Delivery");
+      document.getElementById("modalBody").innerHTML = orderNotesModalHtml(order);
+      document.getElementById("modalConfirm").textContent = "Close";
+      document.getElementById("modalCancel").style.display = "none";
+      document.getElementById("modal").classList.add("show");
+      modalCb = null;
+    };
 
     function labelCanvasRoundRect(ctx, x, y, width, height, radius) {
       const r = Math.min(radius, width / 2, height / 2);
@@ -6142,7 +6197,7 @@
             <td>${isAssigned ? escapeHtml(driverName(order.assigned_driver_id)) : 'Unassigned'}</td>
             <td><select class="filter-select driver-select" style="width:180px;" onchange="markDriverAssignRowSelected('${order.id}')">${isAssigned ? transferDriverOptions(order.assigned_driver_id) : driverOptions()}</select></td>
             <td>${controls}</td>
-            <td><div style="display:flex; gap:0.4rem; flex-wrap:wrap;"><button class="btn btn-primary btn-sm" onclick="assignDriver('${order.id}')">${isAssigned ? 'Change Driver' : 'Assign'}</button>${canRemoveDriverAssignment(order) ? `<button class="btn btn-ghost btn-sm" onclick="removeDriverFromOrder('${order.id}')">Remove</button>` : ''}</div></td>
+            <td><div style="display:flex; gap:0.4rem; flex-wrap:wrap;"><button class="btn btn-primary btn-sm" onclick="assignDriver('${order.id}')">${isAssigned ? 'Change Driver' : 'Assign'}</button><button class="btn btn-ghost btn-sm" type="button" onclick="showDriverAssignmentNotes('${order.id}')">Notes</button>${canRemoveDriverAssignment(order) ? `<button class="btn btn-ghost btn-sm" onclick="removeDriverFromOrder('${order.id}')">Remove</button>` : ''}</div></td>
           </tr>`;
       }).join('') || '<tr><td colspan="11">No parcels are currently available for driver assignment or reassignment.</td></tr>';
       syncDriverAssignBulkControls();
