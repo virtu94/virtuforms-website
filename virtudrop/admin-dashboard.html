@@ -2877,7 +2877,7 @@
         (o.zone_status === 'pending' || o.order_status === 'zone_pending')
         && ['parcel_received', 'legacy_untracked'].includes(o.parcel_status)
       ).length;
-      const unassigned = orders.filter(o => !isCancelledOrder(o) && o.zone_status === 'confirmed' && ['sorted', 'redelivery_scheduled'].includes(o.parcel_status) && !o.assigned_driver_id).length;
+      const unassigned = orders.filter(o => isDriverAssignmentManageable(o) && !o.assigned_driver_id).length;
       const today = new Date().toISOString().slice(0, 10);
       const todayOrders = orders.filter(o => (o.created_at || '').slice(0, 10) === today).length;
 
@@ -4874,8 +4874,16 @@
 
     function canRemoveDriverAssignment(order) {
       return Boolean(order?.assigned_driver_id)
-        && !['delivered', 'cancelled', 'rejected'].includes(order.order_status)
-        && !['delivered', 'returned_to_client'].includes(order.parcel_status);
+        && isDriverAssignmentManageable(order);
+    }
+
+    function isDriverAssignmentManageable(order) {
+      if (!order || isCancelledOrder(order)) return false;
+      if (['delivered', 'cancelled', 'rejected'].includes(order.order_status)) return false;
+      if (['delivered', 'returned_to_client'].includes(order.parcel_status)) return false;
+      if (order.assigned_driver_id) return ['assigned', 'handed_to_driver'].includes(order.parcel_status);
+      return order.zone_status === 'confirmed'
+        && ['sorted', 'redelivery_scheduled'].includes(order.parcel_status);
     }
 
     function renderAllOrders() {
@@ -6156,14 +6164,7 @@
 
     function renderDriverAssign() {
       const tbody = document.querySelector('#panel-driver-assign tbody');
-      const allManageable = orders.filter(order => {
-        if (isCancelledOrder(order)) return false;
-        const unassigned = !order.assigned_driver_id
-          && order.zone_status === 'confirmed'
-          && ['sorted', 'redelivery_scheduled'].includes(order.parcel_status);
-        const assigned = canRemoveDriverAssignment(order);
-        return unassigned || assigned;
-      });
+      const allManageable = orders.filter(isDriverAssignmentManageable);
       const zoneCounts = { all: allManageable.length, A: 0, B: 0, C: 0, D: 0 };
       allManageable.forEach(order => {
         const code = orderDeliveryZoneCode(order);
