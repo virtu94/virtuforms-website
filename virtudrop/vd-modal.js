@@ -22,15 +22,15 @@
         border-radius: 14px;
         box-shadow: 0 18px 45px rgba(13, 43, 40, 0.22);
         padding: 2rem;
-        border-top: 4px solid #2a9d8f;
+        border-top: 4px solid #1F8F52;
         font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
       .vd-notify-card.error { border-top-color: #e05555; }
       .vd-notify-card.warning { border-top-color: #e07a3a; }
-      .vd-notify-card.success { border-top-color: #2a9d8f; }
+      .vd-notify-card.success { border-top-color: #1F8F52; }
       .vd-notify-title {
         margin: 0 0 0.75rem;
-        color: #0d2b28;
+        color: #122C2A;
         font-size: 1.35rem;
         line-height: 1.25;
         font-weight: 800;
@@ -49,7 +49,7 @@
       .vd-notify-btn {
         border: 0;
         border-radius: 10px;
-        background: #2a9d8f;
+        background: #1F8F52;
         color: #ffffff;
         padding: 0.8rem 1.35rem;
         font: inherit;
@@ -57,7 +57,7 @@
         cursor: pointer;
         min-width: 92px;
       }
-      .vd-notify-btn:hover { background: #238277; }
+      .vd-notify-btn:hover { background: #176B42; }
       @media (max-width: 520px) {
         .vd-notify-card { padding: 1.5rem; border-radius: 12px; }
         .vd-notify-actions { display: block; }

@@ -1,5 +1,6 @@
 export const PAYMENT_ARRANGEMENTS = Object.freeze({
   cod: 'cod_customer_pays',
+  'cod-client-delivery': 'cod_client_pays_delivery',
   'pkg-online': 'delivery_only_customer_pays',
   'all-online': 'client_pays_delivery'
 });
@@ -81,12 +82,13 @@ export function calculateOrderMoney({
   const packageAmount = Math.max(Number(packageValue) || 0, 0);
   const fee = deliveryFee === null || deliveryFee === undefined ? null : Math.max(Number(deliveryFee) || 0, 0);
   const pickupFee = pickupRequired && Number(pickupParcelCount || 1) < 5 ? 20 : 0;
-  const clientPaysDelivery = arrangement === 'client_pays_delivery';
+  const clientPaysDelivery = arrangement === 'client_pays_delivery' || arrangement === 'cod_client_pays_delivery';
 
   let customerAmountDue = null;
   let driverAmountToCollect = null;
   if (fee !== null) {
     if (arrangement === 'cod_customer_pays') customerAmountDue = packageAmount + fee;
+    else if (arrangement === 'cod_client_pays_delivery') customerAmountDue = packageAmount;
     else if (arrangement === 'delivery_only_customer_pays') customerAmountDue = fee;
     else customerAmountDue = 0;
     driverAmountToCollect = customerAmountDue;
@@ -106,7 +108,7 @@ export function calculateOrderMoney({
     customerAmountDue,
     driverAmountToCollect,
     clientAmountDue: pickupFee + (clientPaysDelivery ? (fee || 0) : 0),
-    clientRemittanceAmount: arrangement === 'cod_customer_pays' ? packageAmount : 0
+    clientRemittanceAmount: ['cod_customer_pays', 'cod_client_pays_delivery'].includes(arrangement) ? packageAmount : 0
   };
 }
 

@@ -109,7 +109,7 @@
       .vd-track-spinner {
         width: 36px; height: 36px;
         border: 3px solid #e0e0e0;
-        border-top-color: #2a9d8f;
+        border-top-color: #1F8F52;
         border-radius: 50%;
         animation: vdTrackSpin 0.7s linear infinite;
         margin: 0 auto 1rem;
@@ -127,11 +127,11 @@
         color: #8b2020;
         line-height: 1.7;
       }
-      .vd-track-error a { color: #2a9d8f; font-weight: 600; text-decoration: none; }
+      .vd-track-error a { color: #1F8F52; font-weight: 600; text-decoration: none; }
 
       /* ── Status card (mirrors track.html .status-card) ── */
       .vd-track-status-card {
-        background: #0d2b28;
+        background: #122C2A;
         padding: 2rem;
       }
 
@@ -151,14 +151,14 @@
       }
       .vd-track-order-id-value {
         font-size: 1.1rem; font-weight: 700;
-        color: #14d4ae; font-family: 'Courier New', monospace;
+        color: #6FD39A; font-family: 'Courier New', monospace;
       }
 
       .vd-track-status-badge {
         padding: 0.4rem 1rem; border-radius: 20px;
         font-size: 0.82rem; font-weight: 700;
       }
-      .vd-track-status-badge.received    { background: rgba(42,157,143,0.2);  color: #14d4ae; }
+      .vd-track-status-badge.received    { background: rgba(31,143,82,0.2);  color: #6FD39A; }
       .vd-track-status-badge.collected   { background: rgba(255,193,7,0.2);   color: #ffc107; }
       .vd-track-status-badge.out         { background: rgba(33,150,243,0.2);  color: #64b5f6; }
       .vd-track-status-badge.delivered   { background: rgba(76,175,80,0.2);   color: #81c784; }
@@ -178,7 +178,7 @@
       }
       .vd-track-prog-fill {
         position: absolute; top: 14px; left: 14px;
-        height: 2px; background: linear-gradient(90deg, #14d4ae, #2a9d8f);
+        height: 2px; background: linear-gradient(90deg, #6FD39A, #1F8F52);
         z-index: 1; transition: width 0.6s ease;
       }
       .vd-track-prog-step {
@@ -193,13 +193,13 @@
         font-size: 0.7rem; margin-bottom: 0.5rem;
         transition: all 0.4s ease;
       }
-      .vd-track-prog-dot.done    { background: #14d4ae; border-color: #14d4ae; color: #0d2b28; font-weight: 700; }
-      .vd-track-prog-dot.current { background: #2a9d8f; border-color: #2a9d8f; color: #ffffff; font-weight: 700;
+      .vd-track-prog-dot.done    { background: #6FD39A; border-color: #6FD39A; color: #122C2A; font-weight: 700; }
+      .vd-track-prog-dot.current { background: #1F8F52; border-color: #1F8F52; color: #ffffff; font-weight: 700;
                                    animation: vdTrackPulse 1.5s ease-in-out infinite; }
       @keyframes vdTrackPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.75;transform:scale(1.1)} }
 
       .vd-track-prog-label { font-size: 0.65rem; color: rgba(255,255,255,0.45); line-height: 1.3; max-width: 60px; }
-      .vd-track-prog-label.done    { color: #14d4ae; font-weight: 600; }
+      .vd-track-prog-label.done    { color: #6FD39A; font-weight: 600; }
       .vd-track-prog-label.current { color: #ffffff;  font-weight: 600; }
 
       /* Detail rows */
@@ -212,7 +212,7 @@
       .vd-track-detail-row:last-child { border-bottom: none; }
       .vd-track-detail-key   { color: rgba(255,255,255,0.45); }
       .vd-track-detail-value { color: #ffffff; font-weight: 600; text-align: right; }
-      .vd-track-detail-value.accent { color: #14d4ae; }
+      .vd-track-detail-value.accent { color: #6FD39A; }
 
       /* Footer bar */
       .vd-track-footer {
@@ -232,7 +232,7 @@
       .vd-track-footer-btn {
         display: inline-flex; align-items: center; gap: 0.4rem;
         padding: 0.65rem 1.2rem;
-        background: #2a9d8f; color: #ffffff;
+        background: #1F8F52; color: #ffffff;
         border: none; border-radius: 8px;
         font-family: inherit; font-size: 0.88rem; font-weight: 700;
         cursor: pointer; text-decoration: none;
@@ -240,12 +240,12 @@
         white-space: nowrap;
         flex-shrink: 0;
       }
-      .vd-track-footer-btn:hover { background: #238277; }
+      .vd-track-footer-btn:hover { background: #176B42; }
       .vd-track-footer-btn.ghost {
-        background: transparent; color: #2a9d8f;
-        border: 2px solid #2a9d8f;
+        background: transparent; color: #1F8F52;
+        border: 2px solid #1F8F52;
       }
-      .vd-track-footer-btn.ghost:hover { background: #f0f9f8; }
+      .vd-track-footer-btn.ghost:hover { background: #F1F7F3; }
 
       /* ── Mobile ────────────────────────────────────────────── */
       @media (max-width: 520px) {
@@ -408,7 +408,7 @@
         <button class="vd-track-close" onclick="document.getElementById('vdTrackOverlay').classList.remove('show')" aria-label="Close">✕</button>
         <div class="vd-track-loading">
           <div class="vd-track-spinner"></div>
-          <p style="font-weight:600; color:#0d2b28;">Looking up your order…</p>
+          <p style="font-weight:600; color:#122C2A;">Looking up your order…</p>
         </div>
       `);
       overlay.classList.add('show');
@@ -474,7 +474,7 @@
       <button class="vd-track-close" onclick="document.getElementById('vdTrackOverlay').classList.remove('show')" aria-label="Close">✕</button>
       <div class="vd-track-loading">
         <div class="vd-track-spinner"></div>
-        <p style="font-weight:600; color:#0d2b28;">Loading order details…</p>
+        <p style="font-weight:600; color:#122C2A;">Loading order details…</p>
       </div>
     `);
     overlay.classList.add('show');

@@ -893,7 +893,7 @@ function applyBusinessResolvedAddress(estimate) {
       String(resolved.longitude);
 
     gpsResult.style.display = 'block';
-    gpsResult.style.background = '#e8f5f3';
+    gpsResult.style.background = '#E8F3EC';
 
     gpsResult.textContent =
       `📍 Address identified: ` +
@@ -1064,10 +1064,10 @@ window.vdSyncBusinessAmountField = function() {
       document.body.style.background = '#f4f8f7';
       document.body.innerHTML = `
         <div style="min-height:100vh; display:flex; align-items:center; justify-content:center; background:#f4f8f7; padding:1.5rem; font-family:Inter, Arial, sans-serif;">
-          <div style="width:min(440px,100%); background:#fff; border-radius:14px; box-shadow:0 12px 35px rgba(13,43,40,0.14); padding:2rem; text-align:center; border-top:4px solid #2a9d8f;">
-            <h1 style="margin:0 0 0.8rem; color:#0d2b28; font-size:1.6rem;">Please log in again</h1>
+          <div style="width:min(440px,100%); background:#fff; border-radius:14px; box-shadow:0 12px 35px rgba(13,43,40,0.14); padding:2rem; text-align:center; border-top:4px solid #1F8F52;">
+            <h1 style="margin:0 0 0.8rem; color:#122C2A; font-size:1.6rem;">Please log in again</h1>
             <p style="margin:0 0 1.4rem; color:#4a4a4a; line-height:1.6;">Your business dashboard session has ended. Log back in to view protected information.</p>
-            <button style="border:0; border-radius:10px; background:#2a9d8f; color:#fff; padding:0.85rem 1.4rem; font-weight:700; cursor:pointer;" onclick="window.location.href='auth.html?returnTo=dashboard.html'">Log In</button>
+            <button style="border:0; border-radius:10px; background:#1F8F52; color:#fff; padding:0.85rem 1.4rem; font-weight:700; cursor:pointer;" onclick="window.location.href='auth.html?returnTo=dashboard.html'">Log In</button>
           </div>
         </div>
       `;
@@ -1081,11 +1081,11 @@ window.vdSyncBusinessAmountField = function() {
       document.body.innerHTML = `
         <div style="min-height:100vh; display:flex; align-items:center; justify-content:center; background:#f4f8f7; padding:1.5rem; font-family:Inter, Arial, sans-serif;">
           <div style="width:min(480px,100%); background:#fff; border-radius:8px; box-shadow:0 12px 35px rgba(13,43,40,0.14); padding:2rem; text-align:center; border-top:4px solid #c94b4b;">
-            <h1 style="margin:0 0 0.8rem; color:#0d2b28; font-size:1.55rem;">Dashboard unavailable</h1>
+            <h1 style="margin:0 0 0.8rem; color:#122C2A; font-size:1.55rem;">Dashboard unavailable</h1>
             <p style="margin:0 0 1.4rem; color:#4a4a4a; line-height:1.6;">${escapeHtml(message)}</p>
             <div style="display:flex; justify-content:center; gap:0.75rem; flex-wrap:wrap;">
-              <button id="dashboardReloadBtn" type="button" style="border:0; border-radius:8px; background:#2a9d8f; color:#fff; padding:0.8rem 1.3rem; font-weight:700; cursor:pointer;">Reload</button>
-              <button id="dashboardErrorLogoutBtn" type="button" style="border:1px solid #cbdad8; border-radius:8px; background:#fff; color:#0d2b28; padding:0.8rem 1.3rem; font-weight:700; cursor:pointer;">Log Out</button>
+              <button id="dashboardReloadBtn" type="button" style="border:0; border-radius:8px; background:#1F8F52; color:#fff; padding:0.8rem 1.3rem; font-weight:700; cursor:pointer;">Reload</button>
+              <button id="dashboardErrorLogoutBtn" type="button" style="border:1px solid #cbdad8; border-radius:8px; background:#fff; color:#122C2A; padding:0.8rem 1.3rem; font-weight:700; cursor:pointer;">Log Out</button>
             </div>
           </div>
         </div>
@@ -2198,9 +2198,9 @@ function renderOverview() {
     usageCard.innerHTML = `
       <div class="card-title">📦 Account Status</div>
       <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:0.8rem; font-size:0.9rem;">
-        <div><div style="color:#6a6a6a;">Pending Remittance</div><strong style="color:#2a9d8f;">${money(pendingRemittance)}</strong></div>
+        <div><div style="color:#6a6a6a;">Pending Remittance</div><strong style="color:#1F8F52;">${money(pendingRemittance)}</strong></div>
         <div><div style="color:#6a6a6a;">Remitted</div><strong>${money(remittedTotal)}</strong></div>
-        <div><div style="color:#6a6a6a;">Fees Owed</div><strong style="color:${clientFeesDue > 0 ? '#e07a3a' : '#0d2b28'};">${money(clientFeesDue)}</strong></div>
+        <div><div style="color:#6a6a6a;">Fees Owed</div><strong style="color:${clientFeesDue > 0 ? '#e07a3a' : '#122C2A'};">${money(clientFeesDue)}</strong></div>
         <div><div style="color:#6a6a6a;">Status</div><strong>${escapeHtml(business?.status || 'active')}</strong></div>
       </div>
     `;
@@ -2238,11 +2238,11 @@ function renderCod() {
           : order.order_status === 'delivered' ? 'Awaiting Reconciliation' : 'Pending Collection';
     return `
       <tr>
-        <td style="padding:0.9rem 1rem; font-family:'Courier New',monospace; font-size:0.85rem; color:#2a9d8f;">${escapeHtml(order.order_number)}</td>
+        <td style="padding:0.9rem 1rem; font-family:'Courier New',monospace; font-size:0.85rem; color:#1F8F52;">${escapeHtml(order.order_number)}</td>
         <td style="padding:0.9rem 1rem;"><span class="business-customer-name">${escapeHtml(order.customer_name)}</span></td>
         <td style="padding:0.9rem 1rem; text-align:right;">${money(packageAmount)}</td>
         <td style="padding:0.9rem 1rem; text-align:right;">${money(deliveryFee)}</td>
-        <td style="padding:0.9rem 1rem; text-align:right; font-weight:700; color:#2a9d8f;">${money(collected)}</td>
+        <td style="padding:0.9rem 1rem; text-align:right; font-weight:700; color:#1F8F52;">${money(collected)}</td>
         <td style="padding:0.9rem 1rem;">${formatDate(order.created_at)}</td>
         <td style="padding:0.9rem 1rem; text-align:center;"><span style="padding:0.3rem 0.8rem; background:#fff3cd; color:#856404; border-radius:20px; font-size:0.78rem; font-weight:700;">${status}</span></td>
       </tr>
@@ -2258,7 +2258,7 @@ function renderCod() {
   const summary = el('#panel-cod-records .card > div:last-child');
   if (summary) {
     summary.innerHTML = `
-      <div style="font-size:0.9rem; color:#4a4a4a;">Total COD / delivery fee this month: <strong style="color:#0d2b28; font-size:1.1rem;">${money(total)}</strong></div>
+      <div style="font-size:0.9rem; color:#4a4a4a;">Total COD / delivery fee this month: <strong style="color:#122C2A; font-size:1.1rem;">${money(total)}</strong></div>
       <div style="font-size:0.9rem; color:#4a4a4a;">Still pending: <strong style="color:#e07a3a;">${money(pending)}</strong></div>
     `;
   }
@@ -2291,8 +2291,8 @@ function renderRemittance() {
         <td style="padding:0.9rem 1rem; border-bottom:1px solid #f5f5f5; font-size:0.82rem; color:#6a6a6a;">${escapeHtml((record.order_numbers || record.order_ids || []).length ? (record.order_numbers || record.order_ids || []).join(', ') : 'Linked orders')}</td>
         <td style="padding:0.9rem 1rem; border-bottom:1px solid #f5f5f5; text-align:right;">${money(record.gross_amount ?? record.amount)}</td>
         <td style="padding:0.9rem 1rem; border-bottom:1px solid #f5f5f5; text-align:right; color:#e07a3a;">${money(record.deductions_amount)}</td>
-        <td style="padding:0.9rem 1rem; border-bottom:1px solid #f5f5f5; text-align:right; font-weight:700; color:#2a9d8f;">${money(record.net_amount ?? record.amount)}</td>
-        <td style="padding:0.9rem 1rem; border-bottom:1px solid #f5f5f5;"><span style="padding:0.25rem 0.7rem; background:#e8f5f3; color:#2a9d8f; border-radius:10px; font-size:0.78rem; font-weight:700;">${escapeHtml(String(record.method || '').replaceAll('_', ' '))}</span></td>
+        <td style="padding:0.9rem 1rem; border-bottom:1px solid #f5f5f5; text-align:right; font-weight:700; color:#1F8F52;">${money(record.net_amount ?? record.amount)}</td>
+        <td style="padding:0.9rem 1rem; border-bottom:1px solid #f5f5f5;"><span style="padding:0.25rem 0.7rem; background:#E8F3EC; color:#1F8F52; border-radius:10px; font-size:0.78rem; font-weight:700;">${escapeHtml(String(record.method || '').replaceAll('_', ' '))}</span></td>
         <td style="padding:0.9rem 1rem; border-bottom:1px solid #f5f5f5; font-size:0.85rem; color:#6a6a6a;">${escapeHtml(record.reference || '—')}</td>
         <td style="padding:0.9rem 1rem; border-bottom:1px solid #f5f5f5; text-align:center;"><span style="padding:0.3rem 0.8rem; background:#d4edda; color:#155724; border-radius:20px; font-size:0.78rem; font-weight:700;">${escapeHtml(record.status || 'paid')}</span></td>
       </tr>
@@ -2306,13 +2306,13 @@ function renderFailed() {
   if (!tbody) return;
   tbody.innerHTML = failed.length ? failed.map(order => `
     <tr>
-      <td style="padding:0.9rem 1rem; font-family:'Courier New',monospace; font-size:0.85rem; color:#2a9d8f;">${escapeHtml(order.order_number)}</td>
+      <td style="padding:0.9rem 1rem; font-family:'Courier New',monospace; font-size:0.85rem; color:#1F8F52;">${escapeHtml(order.order_number)}</td>
       <td style="padding:0.9rem 1rem;"><span class="business-customer-name">${escapeHtml(order.customer_name)}</span></td>
       <td style="padding:0.9rem 1rem;">${escapeHtml(order.area_name || '—')}</td>
       <td style="padding:0.9rem 1rem;">${formatDate(order.updated_at || order.created_at)}</td>
       <td style="padding:0.9rem 1rem; font-size:0.88rem; color:#6a6a6a;">${escapeHtml(order.delivery_outcome_notes || 'Contact VirtuDrop to confirm next steps')}${order.redelivery_requested_date ? ` · Preferred date: ${escapeHtml(formatDate(order.redelivery_requested_date))}` : ''}</td>
       <td style="padding:0.9rem 1rem; text-align:center;"><span style="padding:0.3rem 0.8rem; background:#fde8e8; color:#8b2020; border-radius:20px; font-size:0.78rem; font-weight:700;">${escapeHtml(deliveryOutcomeLabel(order))}</span></td>
-      <td style="padding:0.9rem 1rem; text-align:center;"><a href="contact.html" style="color:#2a9d8f; font-weight:700;">Contact</a></td>
+      <td style="padding:0.9rem 1rem; text-align:center;"><a href="contact.html" style="color:#1F8F52; font-weight:700;">Contact</a></td>
     </tr>
   `).join('') : emptyRow(7, 'No failed or rescheduled deliveries.');
 }
@@ -2432,9 +2432,9 @@ function renderLinkCatalogSelector() {
 
   target.innerHTML = available.map(item => {
     const selected = linkCatalogSelection.has(item.id);
-    return '<button type="button" class="btn" style="justify-content:space-between; padding:0.7rem 0.8rem; border-color:' + (selected ? '#2a9d8f' : '#dcecea') + '; background:' + (selected ? '#e8f5f3' : '#ffffff') + '; color:#0d2b28; text-align:left;" onclick="toggleLinkCatalogItem(\'' + item.id + '\')">'
+    return '<button type="button" class="btn" style="justify-content:space-between; padding:0.7rem 0.8rem; border-color:' + (selected ? '#1F8F52' : '#dcecea') + '; background:' + (selected ? '#E8F3EC' : '#ffffff') + '; color:#122C2A; text-align:left;" onclick="toggleLinkCatalogItem(\'' + item.id + '\')">'
       + '<span style="min-width:0;"><span style="display:block; font-weight:700; overflow-wrap:anywhere;">' + escapeHtml(item.item_name) + '</span><span style="display:block; font-size:0.78rem; color:#6a6a6a;">' + money(item.item_cost) + '</span></span>'
-      + '<span style="font-weight:800; color:#2a9d8f;">' + (selected ? '✓' : '+') + '</span>'
+      + '<span style="font-weight:800; color:#1F8F52;">' + (selected ? '✓' : '+') + '</span>'
       + '</button>';
   }).join('') || '<div style="padding:0.8rem; color:#6a6a6a; background:#fff; border:1px solid #edf3f2; border-radius:8px;">No active catalog items found.</div>';
 
@@ -2585,9 +2585,9 @@ function renderOrderCatalogSelector() {
 
   target.innerHTML = available.map(item => {
     const selected = orderCatalogSelection.has(item.id);
-    return '<button type="button" class="btn" style="justify-content:space-between; padding:0.75rem 0.85rem; border-color:' + (selected ? '#2a9d8f' : '#dcecea') + '; background:' + (selected ? '#e8f5f3' : '#ffffff') + '; color:#0d2b28; text-align:left;" onclick="toggleOrderCatalogItem(\'' + item.id + '\')">'
+    return '<button type="button" class="btn" style="justify-content:space-between; padding:0.75rem 0.85rem; border-color:' + (selected ? '#1F8F52' : '#dcecea') + '; background:' + (selected ? '#E8F3EC' : '#ffffff') + '; color:#122C2A; text-align:left;" onclick="toggleOrderCatalogItem(\'' + item.id + '\')">'
       + '<span style="min-width:0;"><span style="display:block; font-weight:700; overflow-wrap:anywhere;">' + escapeHtml(item.item_name) + '</span><span style="display:block; font-size:0.78rem; color:#6a6a6a;">' + money(item.item_cost) + '</span></span>'
-      + '<span style="font-weight:800; color:#2a9d8f;">' + (selected ? '✓' : '+') + '</span>'
+      + '<span style="font-weight:800; color:#1F8F52;">' + (selected ? '✓' : '+') + '</span>'
       + '</button>';
   }).join('') || '<div style="padding:0.8rem; color:#6a6a6a; background:#fff; border:1px solid #edf3f2; border-radius:8px;">No active catalog items found.</div>';
 
@@ -3775,7 +3775,7 @@ async function refreshDeliveryLinkReviewEstimate(originalDraft) {
   if (submitBtn) submitBtn.disabled = true;
   const built = await buildDeliveryLinkOrderPayload(draft);
   const rows = deliveryLinkReviewRows({ draft, estimate: built.estimate, money: built.money });
-  body.innerHTML = '<div style="background:#0d2b28; border-radius:12px; padding:1rem;"><div style="display:flex; justify-content:space-between; gap:0.8rem; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap;"><span style="font-size:0.74rem; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:rgba(255,255,255,0.52);">Estimate Calculator</span><span style="color:#14d4ae; font-size:1.35rem; font-weight:850;">' + escapeHtml(built.estimate?.fee !== null && built.estimate?.fee !== undefined ? moneyLabel(built.estimate.fee) : 'Quote Required') + '</span></div><div style="display:flex; flex-direction:column; gap:0.28rem;">' + rows.map(([key, value]) => '<div style="display:flex; justify-content:space-between; gap:1rem; border-top:1px solid rgba(255,255,255,0.08); padding-top:0.28rem; font-size:0.84rem;"><span style="color:rgba(255,255,255,0.55);">' + escapeHtml(key) + '</span><span style="color:#ffffff; font-weight:700; text-align:right; overflow-wrap:anywhere;">' + escapeHtml(value) + '</span></div>').join('') + '</div></div>';
+  body.innerHTML = '<div style="background:#122C2A; border-radius:12px; padding:1rem;"><div style="display:flex; justify-content:space-between; gap:0.8rem; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap;"><span style="font-size:0.74rem; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:rgba(255,255,255,0.52);">Estimate Calculator</span><span style="color:#6FD39A; font-size:1.35rem; font-weight:850;">' + escapeHtml(built.estimate?.fee !== null && built.estimate?.fee !== undefined ? moneyLabel(built.estimate.fee) : 'Quote Required') + '</span></div><div style="display:flex; flex-direction:column; gap:0.28rem;">' + rows.map(([key, value]) => '<div style="display:flex; justify-content:space-between; gap:1rem; border-top:1px solid rgba(255,255,255,0.08); padding-top:0.28rem; font-size:0.84rem;"><span style="color:rgba(255,255,255,0.55);">' + escapeHtml(key) + '</span><span style="color:#ffffff; font-weight:700; text-align:right; overflow-wrap:anywhere;">' + escapeHtml(value) + '</span></div>').join('') + '</div></div>';
   if (submitBtn) {
     submitBtn.disabled = false;
     submitBtn.onclick = () => submitDeliveryLinkAsOrder(originalDraft.id, built.requestData, draft);
@@ -3809,8 +3809,8 @@ function ensureDeliveryLinkReviewModal() {
   overlay = document.createElement('div');
   overlay.id = 'deliveryLinkReviewOverlay';
   overlay.style.cssText = 'position:fixed; inset:0; z-index:9998; display:none; align-items:center; justify-content:center; padding:1.2rem; background:rgba(13,43,40,0.62);';
-  overlay.innerHTML = '<div style="width:min(760px,100%); max-height:90vh; overflow:auto; background:#ffffff; border-radius:14px; box-shadow:0 18px 45px rgba(13,43,40,0.22); padding:1.4rem; border-top:4px solid #2a9d8f;">'
-    + '<div style="display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; margin-bottom:1rem;"><div><div style="font-size:0.78rem; color:#2a9d8f; font-weight:800; text-transform:uppercase; letter-spacing:0.08em;">Pending Review</div><h2 style="margin:0.2rem 0 0; font-size:1.35rem; color:#0d2b28;">Delivery Link Submission</h2></div><button type="button" class="btn btn-ghost" style="padding:0.45rem 0.65rem;" onclick="closeDeliveryLinkReview()">Close</button></div>'
+  overlay.innerHTML = '<div style="width:min(760px,100%); max-height:90vh; overflow:auto; background:#ffffff; border-radius:14px; box-shadow:0 18px 45px rgba(13,43,40,0.22); padding:1.4rem; border-top:4px solid #1F8F52;">'
+    + '<div style="display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; margin-bottom:1rem;"><div><div style="font-size:0.78rem; color:#1F8F52; font-weight:800; text-transform:uppercase; letter-spacing:0.08em;">Pending Review</div><h2 style="margin:0.2rem 0 0; font-size:1.35rem; color:#122C2A;">Delivery Link Submission</h2></div><button type="button" class="btn btn-ghost" style="padding:0.45rem 0.65rem;" onclick="closeDeliveryLinkReview()">Close</button></div>'
     + '<div id="deliveryLinkReviewBody" style="display:flex; flex-direction:column; gap:0.85rem;"></div>'
     + '<div style="display:flex; justify-content:flex-end; gap:0.65rem; flex-wrap:wrap; margin-top:1.1rem;"><button type="button" class="btn btn-ghost" onclick="closeDeliveryLinkReview()">Cancel</button><button type="button" class="btn btn-ghost" id="saveDeliveryLinkReviewBtn">Save Review Changes</button><button type="button" class="btn btn-primary" id="submitDeliveryLinkOrderBtn">Submit As Order</button></div>'
     + '</div>';
@@ -4169,7 +4169,7 @@ window.switchLocTab = function(tab, btn) {
   const panel = el('#loc-' + tab);
   if (panel) panel.style.display = 'block';
   if (btn) {
-    btn.style.background = '#0d2b28';
+    btn.style.background = '#122C2A';
     btn.style.color = '#ffffff';
   }
   const street = el('#streetName');
@@ -4197,7 +4197,7 @@ window.useCurrentLocation = function() {
     return;
   }
   result.style.display = 'block';
-  result.style.background = '#e8f5f3';
+  result.style.background = '#E8F3EC';
   result.textContent = '📍 Detecting your location...';
   navigator.geolocation.getCurrentPosition(
     async position => {
@@ -4254,7 +4254,7 @@ function capturePickupLocation({ resultSelector, latSelector, lngSelector }) {
     return;
   }
   result.style.display = 'block';
-  result.style.background = '#e8f5f3';
+  result.style.background = '#E8F3EC';
   result.textContent = '📍 Detecting pickup location...';
   navigator.geolocation.getCurrentPosition(
     position => {
@@ -4308,9 +4308,9 @@ window.filterRemit = function(period, btn) {
     button.style.borderColor = '#e0e0e0';
   });
   if (btn) {
-    btn.style.background = '#2a9d8f';
+    btn.style.background = '#1F8F52';
     btn.style.color = '#fff';
-    btn.style.borderColor = '#2a9d8f';
+    btn.style.borderColor = '#1F8F52';
   }
   renderRemittance();
 };
@@ -4488,13 +4488,13 @@ async function loadNotificationBadge() {
         .limit(20);
       if (notifs?.length) {
         card.innerHTML = notifs.map(n => `
-          <div style="display:flex; gap:0.8rem; align-items:flex-start; padding:0.9rem; border-radius:10px; background:${n.read ? '#f8f9fa' : '#f0f9f8'}; margin-bottom:0.6rem; border-left:3px solid ${n.read ? '#e0e0e0' : '#2a9d8f'};">
+          <div style="display:flex; gap:0.8rem; align-items:flex-start; padding:0.9rem; border-radius:10px; background:${n.read ? '#f8f9fa' : '#F1F7F3'}; margin-bottom:0.6rem; border-left:3px solid ${n.read ? '#e0e0e0' : '#1F8F52'};">
             <span style="font-size:1.1rem; flex-shrink:0;">${n.type === 'error' ? '❌' : n.type === 'warning' ? '⚠️' : '📬'}</span>
             <div style="flex:1;">
               <div style="font-size:0.88rem; color:#1a1a1a; font-weight:${n.read ? '400' : '600'}; line-height:1.5;">${escapeHtml(n.message)}</div>
               <div style="font-size:0.75rem; color:#aaa; margin-top:0.2rem;">${formatDateTime(n.created_at)}</div>
             </div>
-            ${!n.read ? `<button onclick="markNotifRead('${n.id}')" style="font-size:0.75rem; color:#2a9d8f; background:none; border:none; cursor:pointer; white-space:nowrap; padding:0;">Mark read</button>` : ''}
+            ${!n.read ? `<button onclick="markNotifRead('${n.id}')" style="font-size:0.75rem; color:#1F8F52; background:none; border:none; cursor:pointer; white-space:nowrap; padding:0;">Mark read</button>` : ''}
           </div>
         `).join('');
       }

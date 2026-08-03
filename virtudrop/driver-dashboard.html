@@ -12,11 +12,12 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
-      --teal-dark:   #0d2b28;
-      --teal-mid:    #2a9d8f;
-      --teal-bright: #14d4ae;
-      --teal-pale:   #f0f9f8;
-      --teal-light:  #e8f5f3;
+      --teal-dark:   #122C2A;
+      --navy:        #1A1A2A;
+      --teal-mid:    #1F8F52;
+      --teal-bright: #6FD39A;
+      --teal-pale:   #F1F7F3;
+      --teal-light:  #E8F3EC;
       --orange:      #e07a3a;
       --orange-pale: #fff8f0;
       --red:         #e05555;
@@ -42,20 +43,22 @@
 
     /* ── Top bar ── */
     .topbar {
-      background: var(--teal-dark); padding: 0 1.5rem;
+      background: linear-gradient(90deg, var(--teal-dark) 0%, var(--navy) 100%); padding: 0 1.5rem;
       height: 64px; display: flex; align-items: center;
       justify-content: space-between; gap: 1rem;
       position: sticky; top: 0; z-index: 5000;
     }
     .topbar-brand { display: flex; align-items: center; gap: 0.8rem; }
+    .brand-logo { height: 45px; width: auto; flex-shrink: 0; }
     .brand-mark {
-      width: 36px; height: 36px; background: var(--teal-mid);
+      width: 45px; height: 45px; background: var(--teal-mid);
       border-radius: 8px; display: flex; align-items: center;
       justify-content: center; font-weight: 800; font-size: 0.88rem;
       color: var(--white); flex-shrink: 0;
     }
-    .brand-name { font-size: 1rem; font-weight: 700; color: var(--white); }
-    .brand-name span { font-weight: 400; color: var(--teal-bright); font-size: 0.82rem; margin-left: 0.4rem; }
+    .brand-name { font-size: 1rem; font-weight: 700; color: var(--white); line-height: 1.18; }
+    .brand-name span { display: block; font-weight: 500; color: var(--teal-bright); font-size: 0.78rem; margin-left: 0; }
+    .brand-name small { display: block; margin-top: 0.18rem; color: #C8D4D3; font-size: 0.6rem; font-weight: 500; }
 
     .topbar-driver {
       display: flex; align-items: center; gap: 0.8rem;
@@ -252,7 +255,7 @@
 
     .driver-update-box textarea:focus {
       border-color: var(--teal-mid);
-      box-shadow: 0 0 0 3px rgba(42,157,143,0.12);
+      box-shadow: 0 0 0 3px rgba(31,143,82,0.12);
     }
 
     .driver-update-actions {
@@ -338,7 +341,7 @@
       border: 2px solid transparent; text-align: center;
     }
     .bottom-btn.primary { background: var(--teal-mid); color: var(--white); border-color: var(--teal-mid); }
-    .bottom-btn.primary:hover { background: #238277; }
+    .bottom-btn.primary:hover { background: #176B42; }
     .bottom-btn.ghost   { background: var(--grey-light); color: var(--grey); border-color: var(--grey-mid); }
     .bottom-btn.ghost:hover { border-color: var(--teal-mid); color: var(--teal-mid); }
 
@@ -374,7 +377,7 @@
       border: 2px solid transparent;
     }
     .modal-btn.confirm  { background: var(--teal-mid); color: var(--white); border-color: var(--teal-mid); }
-    .modal-btn.confirm:hover  { background: #238277; }
+    .modal-btn.confirm:hover  { background: #176B42; }
     .modal-btn.danger   { background: var(--red-pale); color: var(--red); border-color: var(--red); }
     .modal-btn.danger:hover   { background: var(--red); color: var(--white); }
     .modal-btn.cancel   { background: var(--grey-light); color: var(--grey); border-color: var(--grey-mid); }
@@ -418,7 +421,7 @@
     /* ── Toast ── */
     .toast {
       position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
-      background: var(--teal-dark); color: var(--white);
+      background: linear-gradient(180deg, var(--teal-dark) 0%, var(--navy) 100%); color: var(--white);
       padding: 0.8rem 1.4rem; border-radius: 10px;
       font-size: 0.88rem; font-weight: 500;
       box-shadow: 0 4px 20px rgba(0,0,0,0.2);
@@ -547,8 +550,8 @@
   <!-- ── Top bar ── -->
   <div class="topbar">
     <div class="topbar-brand">
-      <div class="brand-mark">VD</div>
-      <div class="brand-name">VirtuDrop <span>Driver</span></div>
+      <img class="brand-logo" src="assets/logo.png" alt="VirtuDrop" onerror="this.style.display='none'" />
+      <div class="brand-name">VirtuDrop <span>Driver Dashboard</span><small>A logistics service by VirtuForms Ltd.</small></div>
     </div>
     <div class="topbar-driver">
       <div class="driver-info">
@@ -678,7 +681,7 @@
       <div class="delivery-card"><div class="card-header"><div>Loading assigned pickups...</div></div></div>
     </div>
     <div class="empty-state" id="pickupEmptyState">
-      <span class="empty-icon">📦</span>
+      <span class="empty-icon"></span>
       <h3>No assigned pickups</h3>
       <p>New pickup work will appear here after admin assigns it.</p>
     </div>
@@ -717,10 +720,10 @@
       document.body.style.background = '#f4f8f7';
       document.body.innerHTML = `
         <div style="min-height:100vh; display:flex; align-items:center; justify-content:center; background:#f4f8f7; padding:1.5rem; font-family:Inter, Arial, sans-serif;">
-          <div style="width:min(440px,100%); background:#fff; border-radius:14px; box-shadow:0 12px 35px rgba(13,43,40,0.14); padding:2rem; text-align:center; border-top:4px solid #2a9d8f;">
-            <h1 style="margin:0 0 0.8rem; color:#0d2b28; font-size:1.6rem;">Please log in again</h1>
+          <div style="width:min(440px,100%); background:#fff; border-radius:14px; box-shadow:0 12px 35px rgba(13,43,40,0.14); padding:2rem; text-align:center; border-top:4px solid #1F8F52;">
+            <h1 style="margin:0 0 0.8rem; color:#122C2A; font-size:1.6rem;">Please log in again</h1>
             <p style="margin:0 0 1.4rem; color:#4a4a4a; line-height:1.6;">Your driver dashboard session has ended. Log back in to view protected information.</p>
-            <button style="border:0; border-radius:10px; background:#2a9d8f; color:#fff; padding:0.85rem 1.4rem; font-weight:700; cursor:pointer;" onclick="window.location.href='auth.html?returnTo=driver-dashboard.html'">Log In</button>
+            <button style="border:0; border-radius:10px; background:#1F8F52; color:#fff; padding:0.85rem 1.4rem; font-weight:700; cursor:pointer;" onclick="window.location.href='auth.html?returnTo=driver-dashboard.html'">Log In</button>
           </div>
         </div>
       `;
@@ -799,11 +802,11 @@
     }
 
     function statusBadge(status) {
-      if (status === 'out') return '<span class="status-badge badge-out">🚚 Out for Delivery</span>';
+      if (status === 'out') return '<span class="status-badge badge-out">Out for Delivery</span>';
       if (status === 'delivered') return '<span class="status-badge badge-delivered">✅ Delivered</span>';
-      if (status === 'failed') return '<span class="status-badge badge-failed">❌ Failed Attempt</span>';
+      if (status === 'failed') return '<span class="status-badge badge-failed">Failed Attempt</span>';
       if (status === 'rescheduled') return '<span class="status-badge badge-rescheduled">🔄 Rescheduled</span>';
-      return '<span class="status-badge badge-queued">📋 Queued</span>';
+      return '<span class="status-badge badge-queued">Queued</span>';
     }
 
     function cardClass(status) {
@@ -1030,8 +1033,8 @@
       }
 
       const common = `
-        <button class="action-btn btn-maps" onclick="openMaps('${maps.replaceAll("'", "\\'")}')">🗺️ Open in Maps</button>
-        <button class="action-btn btn-call" onclick="callCustomer('${phone}')">📞 Call Customer</button>
+        <button class="action-btn btn-maps" onclick="openMaps('${maps.replaceAll("'", "\\'")}')">Open in Maps</button>
+        <button class="action-btn btn-call" onclick="callCustomer('${phone}')">Call Customer</button>
         <button class="action-btn btn-whatsapp" onclick="whatsappCustomer('${phone}')">💬 WhatsApp Customer</button>
       `;
 
@@ -1040,7 +1043,7 @@
         if (manifest && manifest.status !== 'collected' && order.parcel_status !== 'handed_to_driver') {
           return `<span class="status-badge ${manifest.status === 'ready' ? 'badge-out' : 'badge-queued'}">Manifest ${manifest.status === 'ready' ? 'ready - awaiting handover' : 'being prepared'}</span>`;
         }
-        return common + `<button class="action-btn btn-collected" onclick="markCollected('${order.id}')">📦 Mark Collected</button>`;
+        return common + `<button class="action-btn btn-collected" onclick="markCollected('${order.id}')">Mark Collected</button>`;
       }
 
       return common + `
@@ -1370,7 +1373,7 @@
         return;
       }
       openModal(
-        '📦 Mark as Collected',
+        'Mark as Collected',
         `Confirm that package ${order.order_number} has been collected and is ready for delivery.`,
         `<button class="modal-btn confirm" onclick="confirmStatus('${order.id}', 'out_for_delivery')">✅ Yes, Package Collected</button>
          <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>`
@@ -1390,7 +1393,7 @@
       ctx.lineWidth = 2.2;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      ctx.strokeStyle = '#0d2b28';
+      ctx.strokeStyle = '#122C2A';
       ctx.fillStyle = '#fff';
       ctx.fillRect(0, 0, rect.width, rect.height);
       deliverySignaturePad = { canvas, ctx, drawing: false, signed: false };
@@ -1456,7 +1459,7 @@
              <div class="collection-method-title">Collection Method Required</div>
              <div class="collection-method-options">
                <label><input type="radio" name="collectionMethod" value="Cash" /> 💵 Cash</label>
-               <label><input type="radio" name="collectionMethod" value="LINX" /> 💳 LINX</label>
+               <label><input type="radio" name="collectionMethod" value="LINX" />LINX</label>
              </div>
            </div>`
         : '';
@@ -1608,11 +1611,11 @@
         return;
       }
       openModal(
-        '❌ Mark as Failed',
+        'Mark as Failed',
         'Select a reason for the failed delivery:',
         `<button class="modal-btn danger" onclick="confirmStatus('${order.id}', 'failed', 'Customer unavailable')">📵 Customer unavailable</button>
          <button class="modal-btn danger" onclick="confirmStatus('${order.id}', 'failed', 'Customer refused item')">🚫 Customer refused item</button>
-         <button class="modal-btn danger" onclick="confirmStatus('${order.id}', 'failed', 'Wrong address')">📍 Wrong address</button>
+         <button class="modal-btn danger" onclick="confirmStatus('${order.id}', 'failed', 'Wrong address')">Wrong address</button>
          <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>`
       );
     };

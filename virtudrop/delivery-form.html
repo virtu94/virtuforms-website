@@ -17,7 +17,7 @@
 
     /* ── Header ── */
     .delivery-header {
-      background: #0d2b28;
+      background: #122C2A;
       padding: 1.5rem 0;
       text-align: center;
     }
@@ -37,10 +37,10 @@
     }
     .vd-badge {
       display: flex; align-items: center; gap: 0.4rem;
-      margin-top: 0.4rem; font-size: 0.75rem; color: #14d4ae; font-weight: 600;
+      margin-top: 0.4rem; font-size: 0.75rem; color: #6FD39A; font-weight: 600;
     }
-    .vd-badge::before { content: ''; width: 16px; height: 1px; background: #14d4ae; }
-    .vd-badge::after  { content: ''; width: 16px; height: 1px; background: #14d4ae; }
+    .vd-badge::before { content: ''; width: 16px; height: 1px; background: #6FD39A; }
+    .vd-badge::after  { content: ''; width: 16px; height: 1px; background: #6FD39A; }
 
     /* ── Page ── */
     .page { padding: 2.5rem 0 5rem; }
@@ -65,10 +65,10 @@
 
     .card-label {
       font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 1px; color: #2a9d8f; margin-bottom: 1.2rem;
+      letter-spacing: 1px; color: #1F8F52; margin-bottom: 1.2rem;
       display: flex; align-items: center; gap: 0.6rem;
     }
-    .card-label::after { content: ''; flex: 1; height: 1px; background: #f0f9f8; }
+    .card-label::after { content: ''; flex: 1; height: 1px; background: #F1F7F3; }
 
     /* ── Fields ── */
     .field { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1.2rem; }
@@ -84,7 +84,7 @@
       color: #1a1a1a; background: #ffffff; transition: all 0.25s ease;
       appearance: none; -webkit-appearance: none;
     }
-    .input:focus { outline: none; border-color: #2a9d8f; box-shadow: 0 0 0 3px rgba(42,157,143,0.1); }
+    .input:focus { outline: none; border-color: #1F8F52; box-shadow: 0 0 0 3px rgba(31,143,82,0.1); }
     .input::placeholder { color: #bbb; }
     .input.has-error { border-color: #e05555; }
 
@@ -113,7 +113,7 @@
 
     /* ── Location widget ── */
     .loc-tabs {
-      display: flex; gap: 0; background: #f0f9f8;
+      display: flex; gap: 0; background: #F1F7F3;
       border-radius: 10px; padding: 4px; margin-bottom: 1.2rem;
     }
     .loc-tab {
@@ -122,27 +122,27 @@
       cursor: pointer; transition: all 0.25s; background: transparent;
       color: #4a4a4a; text-align: center;
     }
-    .loc-tab.active { background: #0d2b28; color: #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
-    .loc-tab:not(.active):hover { background: rgba(42,157,143,0.12); color: #2a9d8f; }
+    .loc-tab.active { background: linear-gradient(135deg, #122C2A 0%, #1A1A2A 100%); color: #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    .loc-tab:not(.active):hover { background: rgba(31,143,82,0.12); color: #1F8F52; }
 
     .loc-panel { display: none; }
     .loc-panel.active { display: block; animation: fadeIn 0.3s ease; }
 
     .gps-btn {
-      width: 100%; padding: 0.9rem; background: #f0f9f8;
-      border: 2px solid #2a9d8f; border-radius: 10px;
-      color: #2a9d8f; font-family: 'Inter', sans-serif;
+      width: 100%; padding: 0.9rem; background: #F1F7F3;
+      border: 2px solid #1F8F52; border-radius: 10px;
+      color: #1F8F52; font-family: 'Inter', sans-serif;
       font-size: 0.92rem; font-weight: 700; cursor: pointer;
       transition: all 0.25s; margin-bottom: 1.2rem;
       display: flex; align-items: center; justify-content: center; gap: 0.5rem;
     }
-    .gps-btn:hover { background: #2a9d8f; color: #ffffff; }
+    .gps-btn:hover { background: #1F8F52; color: #ffffff; }
 
     .gps-result {
       display: none; padding: 0.8rem 1rem; border-radius: 8px;
       font-size: 0.88rem; line-height: 1.5; margin-bottom: 1rem;
     }
-    .gps-result.success { background: #e8f5f3; color: #0d2b28; }
+    .gps-result.success { background: #E8F3EC; color: #122C2A; }
     .gps-result.error   { background: #fff3f3; color: #8b2020; }
 
     .divider-row {
@@ -175,9 +175,9 @@
       padding: 1rem 1.2rem; border: 2px solid #e0e0e0; border-radius: 10px;
       cursor: pointer; transition: all 0.2s;
     }
-    .payment-option:hover { border-color: #2a9d8f; background: #f8f9fa; }
-    .payment-option.selected { border-color: #2a9d8f; background: #f0f9f8; }
-    .payment-option input[type="radio"] { margin-top: 3px; accent-color: #2a9d8f; flex-shrink: 0; }
+    .payment-option:hover { border-color: #1F8F52; background: #f8f9fa; }
+    .payment-option.selected { border-color: #1F8F52; background: #F1F7F3; }
+    .payment-option input[type="radio"] { margin-top: 3px; accent-color: #1F8F52; flex-shrink: 0; }
     .payment-option-text h4 { font-size: 0.92rem; font-weight: 700; color: #1a1a1a; margin-bottom: 0.2rem; }
     .payment-option-text p  { font-size: 0.82rem; color: #6a6a6a; line-height: 1.4; }
 
@@ -187,13 +187,13 @@
     /* ── Submit ── */
     .submit-section { margin-top: 1.5rem; }
     .submit-btn {
-      width: 100%; padding: 1.1rem; background: #2a9d8f; border: none;
+      width: 100%; padding: 1.1rem; background: #1F8F52; border: none;
       border-radius: 12px; color: #ffffff; font-family: 'Inter', sans-serif;
       font-size: 1.05rem; font-weight: 700; cursor: pointer;
       transition: all 0.3s; display: flex; align-items: center;
       justify-content: center; gap: 0.6rem;
     }
-    .submit-btn:hover { background: #238277; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(42,157,143,0.3); }
+    .submit-btn:hover { background: #176B42; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(31,143,82,0.3); }
     .submit-btn:active { transform: translateY(0); }
     .submit-btn .spinner {
       width: 20px; height: 20px; border: 2.5px solid rgba(255,255,255,0.4);
@@ -215,28 +215,28 @@
     }
     .success-screen.show { display: block; }
     .success-icon { font-size: 4rem; margin-bottom: 1rem; display: block; }
-    .success-screen h2 { font-size: 2rem; font-weight: 700; color: #0d2b28; margin-bottom: 0.8rem; }
+    .success-screen h2 { font-size: 2rem; font-weight: 700; color: #122C2A; margin-bottom: 0.8rem; }
     .success-screen p  { font-size: 1rem; color: #4a4a4a; line-height: 1.7; margin-bottom: 1.5rem; }
     .success-detail {
-      background: #f0f9f8; border-radius: 12px; padding: 1.5rem;
+      background: #F1F7F3; border-radius: 12px; padding: 1.5rem;
       margin-bottom: 1.5rem; text-align: left;
     }
-    .success-detail-row { display: flex; justify-content: space-between; font-size: 0.9rem; padding: 0.5rem 0; border-bottom: 1px solid #e8f5f3; }
+    .success-detail-row { display: flex; justify-content: space-between; font-size: 0.9rem; padding: 0.5rem 0; border-bottom: 1px solid #E8F3EC; }
     .success-detail-row:last-child { border-bottom: none; }
     .success-detail-key   { color: #6a6a6a; }
-    .success-detail-value { font-weight: 600; color: #0d2b28; text-align: right; }
+    .success-detail-value { font-weight: 600; color: #122C2A; text-align: right; }
     .whatsapp-note {
-      background: #e8f5f3; border-radius: 10px; padding: 1.2rem;
-      font-size: 0.9rem; color: #0d2b28; line-height: 1.6;
+      background: #E8F3EC; border-radius: 10px; padding: 1.2rem;
+      font-size: 0.9rem; color: #122C2A; line-height: 1.6;
     }
-    .whatsapp-note strong { color: #2a9d8f; }
+    .whatsapp-note strong { color: #1F8F52; }
 
     /* ── Footer ── */
     .form-footer {
       text-align: center; padding: 2rem 1.5rem; font-size: 0.8rem;
       color: #aaa; line-height: 1.7;
     }
-    .form-footer a { color: #2a9d8f; text-decoration: none; }
+    .form-footer a { color: #1F8F52; text-decoration: none; }
 
     /* ── Responsive ── */
     @media (max-width: 480px) {
@@ -402,12 +402,12 @@
       <!-- ── 4. Delivery Fee Estimate ── -->
       <div class="form-card" id="estimateCard" style="display:none;">
         <div class="card-label">Delivery Fee Estimate</div>
-        <div id="estimateBox" style="background:#0d2b28; border-radius:12px; padding:1.5rem;">
+        <div id="estimateBox" style="background:#122C2A; border-radius:12px; padding:1.5rem;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
             <span style="font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:rgba(255,255,255,0.45);">Estimated Delivery Fee</span>
-            <span id="estimateBadge" style="padding:0.3rem 0.8rem; background:rgba(20,212,174,0.15); border-radius:20px; font-size:0.8rem; font-weight:700; color:#14d4ae;">Estimate</span>
+            <span id="estimateBadge" style="padding:0.3rem 0.8rem; background:rgba(31,143,82,0.15); border-radius:20px; font-size:0.8rem; font-weight:700; color:#6FD39A;">Estimate</span>
           </div>
-          <div style="font-size:2.2rem; font-weight:800; color:#14d4ae; margin-bottom:0.5rem;" id="estimateAmount">$—</div>
+          <div style="font-size:2.2rem; font-weight:800; color:#6FD39A; margin-bottom:0.5rem;" id="estimateAmount">$—</div>
           <div style="font-size:0.82rem; color:rgba(255,255,255,0.55); margin-bottom:1rem;" id="estimateRoute">Zone pending</div>
           <div id="estimateBreakdown" style="border-top:1px solid rgba(255,255,255,0.08); padding-top:1rem; display:flex; flex-direction:column; gap:0.4rem;"></div>
         </div>

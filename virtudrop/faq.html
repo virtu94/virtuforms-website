@@ -61,7 +61,7 @@
     .badge {
       font-size: 0.78rem;
       font-weight: 600;
-      color: #2a9d8f;
+      color: #1F8F52;
       letter-spacing: 0.4px;
       white-space: nowrap;
     }
@@ -87,7 +87,7 @@
 
     /* Login button */
     .links a.nav-login {
-      background: #2a9d8f;
+      background: #1F8F52;
       color: #ffffff !important;
       padding: 0.5rem 1.2rem;
       border-radius: 8px;
@@ -95,7 +95,7 @@
     }
 
     .links a.nav-login:hover {
-      background: #238277;
+      background: #176B42;
     }
 
     /* Mobile */
@@ -104,7 +104,7 @@
       align-items: center;
       justify-content: center;
 
-      background: linear-gradient(135deg, #2a9d8f 0%, #238277 100%);
+      background: linear-gradient(135deg, #1F8F52 0%, #176B42 100%);
       color: #ffffff;
 
       border: none;
@@ -118,15 +118,15 @@
 
       cursor: pointer;
 
-      box-shadow: 0 4px 12px rgba(42,157,143,0.25);
+      box-shadow: 0 4px 12px rgba(31,143,82,0.25);
 
       transition: all 0.25s ease;
     }
 
     .mobile-toggle:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(42,157,143,0.35);
-      background: linear-gradient(135deg, #31b3a3 0%, #2a9d8f 100%);
+      box-shadow: 0 8px 20px rgba(31,143,82,0.35);
+      background: linear-gradient(135deg, #2E9E61 0%, #1F8F52 100%);
     }
 
     .mobile-toggle:active {
@@ -159,8 +159,8 @@
       border: 2px solid #e0e0e0; background: #ffffff; color: #4a4a4a;
       transition: all 0.25s ease;
     }
-    .faq-tab.active { background: #2a9d8f; border-color: #2a9d8f; color: #ffffff; }
-    .faq-tab:hover:not(.active) { border-color: #2a9d8f; color: #2a9d8f; }
+    .faq-tab.active { background: #1F8F52; border-color: #1F8F52; color: #ffffff; }
+    .faq-tab:hover:not(.active) { border-color: #1F8F52; color: #1F8F52; }
 
     /* ── FAQ Container ── */
     .faq-container { max-width: 860px; margin: 0 auto; }
@@ -170,7 +170,7 @@
 
     .faq-group-label {
       font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 1.2px; color: #2a9d8f; margin-bottom: 1.2rem;
+      letter-spacing: 1.2px; color: #1F8F52; margin-bottom: 1.2rem;
       padding-left: 0.5rem;
     }
 
@@ -183,8 +183,8 @@
       transition: all 0.3s ease; border: 2px solid transparent; overflow: hidden;
       animation: fadeInUp 0.6s ease-out both;
     }
-    details:hover { border-color: #2a9d8f; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-    details[open] { border-color: #2a9d8f; }
+    details:hover { border-color: #1F8F52; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    details[open] { border-color: #1F8F52; }
 
     summary {
       padding: 1.5rem 2rem; font-size: 1.05rem; font-weight: 700;
@@ -196,10 +196,10 @@
     summary::after {
       content: '+'; position: absolute; right: 2rem; top: 50%;
       transform: translateY(-50%); font-size: 1.6rem; font-weight: 700;
-      color: #2a9d8f; transition: all 0.3s ease; line-height: 1;
+      color: #1F8F52; transition: all 0.3s ease; line-height: 1;
     }
     details[open] summary::after { content: '−'; }
-    summary:hover { color: #2a9d8f; background: #f8f9fa; }
+    summary:hover { color: #1F8F52; background: #f8f9fa; }
 
     .faq-content {
       padding: 0 2rem 1.8rem 2rem; font-size: 1rem;
@@ -211,7 +211,7 @@
     .faq-content li { margin-bottom: 0.5rem; }
     .faq-content strong { color: #1a1a1a; }
     .faq-content .highlight {
-      background: #f0f9f8; border-left: 3px solid #2a9d8f;
+      background: #F1F7F3; border-left: 3px solid #1F8F52;
       padding: 0.8rem 1rem; border-radius: 6px; margin-top: 0.8rem;
       font-size: 0.95rem;
     }
@@ -223,27 +223,27 @@
 
     /* ── CTA ── */
     .cta-section {
-      background: linear-gradient(135deg, #2a9d8f 0%, #3fb8a8 100%);
+      background: linear-gradient(135deg, #1F8F52 0%, #2E9E61 100%);
       color: #ffffff; padding: 3rem; border-radius: 16px;
       text-align: center; margin-top: 3rem;
-      box-shadow: 0 8px 30px rgba(42,157,143,0.25);
+      box-shadow: 0 8px 30px rgba(31,143,82,0.25);
     }
     .cta-section h2 { font-size: 2rem; font-weight: 700; margin-bottom: 1rem; }
     .cta-section p  { font-size: 1.1rem; margin-bottom: 2rem; opacity: 0.95; }
     .btn {
       display: inline-block; padding: 1rem 2.2rem; border-radius: 10px;
       text-decoration: none; font-weight: 600; font-size: 1rem;
-      border: 2px solid #ffffff; color: #2a9d8f; background: #ffffff;
+      border: 2px solid #ffffff; color: #1F8F52; background: #ffffff;
       transition: all 0.3s ease; cursor: pointer;
     }
-    .btn:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.15); background: #f0f9f8; }
+    .btn:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.15); background: #F1F7F3; }
 
     /* ── Footer ── */
     .footer { background: #1a1a1a; color: #ffffff; padding: 4rem 0 2rem; margin-top: 6rem; }
     .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 3rem; margin-bottom: 3rem; }
     .footer-brand img { height: 44px; margin-bottom: 1rem; }
     .footer-brand p { font-size: 0.88rem; color: rgba(255,255,255,0.55); line-height: 1.7; }
-    .footer-col h4 { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #14d4ae; margin-bottom: 1rem; }
+    .footer-col h4 { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #6FD39A; margin-bottom: 1rem; }
     .footer-col a { display: block; font-size: 0.88rem; color: rgba(255,255,255,0.55); text-decoration: none; margin-bottom: 0.5rem; transition: color 0.2s; }
     .footer-col a:hover { color: #ffffff; }
     .footer-bottom { border-top: 1px solid rgba(255,255,255,0.08); padding-top: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
@@ -430,7 +430,7 @@
                 <summary>Do you offer volume discounts?</summary>
                 <div class="faq-content">
                   <p>Yes. We are flexible and willing to discuss a delivery rate based on your business&apos;s delivery volume and needs.</p>
-                  <p><a href="contact.html" style="color:#2a9d8f; font-weight:600; text-decoration:none;">Book a free consultation</a> with us to discuss a suitable rate.</p>
+                  <p><a href="contact.html" style="color:#1F8F52; font-weight:600; text-decoration:none;">Book a free consultation</a> with us to discuss a suitable rate.</p>
                 </div>
               </details>
 
@@ -543,7 +543,7 @@
                 <summary>How do I track my delivery?</summary>
                 <div class="faq-content">
                   <p>You can track your delivery by order number or tracking link and see the latest status updates.</p>
-                  <p>Visit our <a href="track.html" style="color:#2a9d8f; font-weight:600; text-decoration:none;">Track Delivery</a> page to check the status of your order.</p>
+                  <p>Visit our <a href="track.html" style="color:#1F8F52; font-weight:600; text-decoration:none;">Track Delivery</a> page to check the status of your order.</p>
                 </div>
               </details>
 
@@ -572,7 +572,7 @@
                     <li>Wholesale and distribution companies</li>
                     <li>Any business sending packages in Trinidad</li>
                   </ul>
-                  <p><a href="contact.html" style="color:#2a9d8f; font-weight:600; text-decoration:none;">Contact us</a> to set up your business account.</p>
+                  <p><a href="contact.html" style="color:#1F8F52; font-weight:600; text-decoration:none;">Contact us</a> to set up your business account.</p>
                 </div>
               </details>
 
@@ -581,7 +581,7 @@
                 <div class="faq-content">
                   <p>To set up a business account with VirtuDrop:</p>
                   <ol style="margin-left:1rem; padding-left:0.5rem;">
-                    <li>Fill out the <a href="contact.html" style="color:#2a9d8f; font-weight:600; text-decoration:none;">business inquiry form</a>.</li>
+                    <li>Fill out the <a href="contact.html" style="color:#1F8F52; font-weight:600; text-decoration:none;">business inquiry form</a>.</li>
                     <li>Our team will review your information and contact you.</li>
                     <li>Once approved, you'll receive login credentials and a unique delivery link.</li>
                     <li>Start submitting orders through your dashboard or share your link with customers.</li>
@@ -599,7 +599,7 @@
                     <li><strong>Dashboard:</strong> Real-time order tracking and history</li>
                     <li><strong>Phone:</strong> For urgent matters</li>
                   </ul>
-                  <p><a href="contact.html" style="color:#2a9d8f; font-weight:600; text-decoration:none;">Contact us</a> for support details.</p>
+                  <p><a href="contact.html" style="color:#1F8F52; font-weight:600; text-decoration:none;">Contact us</a> for support details.</p>
                 </div>
               </details>
 
@@ -673,7 +673,7 @@
                 <summary>Do you offer volume discounts?</summary>
                 <div class="faq-content">
                   <p>Yes. We are flexible and willing to discuss a delivery rate based on your business&apos;s delivery volume and needs.</p>
-                  <p><a href="contact.html" style="color:#2a9d8f; font-weight:600; text-decoration:none;">Book a free consultation</a> with us to discuss a suitable rate.</p>
+                  <p><a href="contact.html" style="color:#1F8F52; font-weight:600; text-decoration:none;">Book a free consultation</a> with us to discuss a suitable rate.</p>
                 </div>
               </details>
             </div>
@@ -761,7 +761,7 @@
                 <summary>How do I track my delivery?</summary>
                 <div class="faq-content">
                   <p>You can track your delivery by order number or tracking link and see the latest status updates.</p>
-                  <p>Visit our <a href="track.html" style="color:#2a9d8f; font-weight:600; text-decoration:none;">Track Delivery</a> page to check the status of your order.</p>
+                  <p>Visit our <a href="track.html" style="color:#1F8F52; font-weight:600; text-decoration:none;">Track Delivery</a> page to check the status of your order.</p>
                 </div>
               </details>
               <details>
@@ -788,7 +788,7 @@
                     <li>Wholesale and distribution companies</li>
                     <li>Any business sending packages in Trinidad</li>
                   </ul>
-                  <p><a href="contact.html" style="color:#2a9d8f; font-weight:600; text-decoration:none;">Contact us</a> to set up your business account.</p>
+                  <p><a href="contact.html" style="color:#1F8F52; font-weight:600; text-decoration:none;">Contact us</a> to set up your business account.</p>
                 </div>
               </details>
               <details>
@@ -796,7 +796,7 @@
                 <div class="faq-content">
                   <p>To set up a business account with VirtuDrop:</p>
                   <ol style="margin-left:1rem; padding-left:0.5rem;">
-                    <li>Fill out the <a href="contact.html" style="color:#2a9d8f; font-weight:600; text-decoration:none;">business inquiry form</a>.</li>
+                    <li>Fill out the <a href="contact.html" style="color:#1F8F52; font-weight:600; text-decoration:none;">business inquiry form</a>.</li>
                     <li>Our team will review your information and contact you.</li>
                     <li>Once approved, you'll receive login credentials and a unique delivery link.</li>
                     <li>Start submitting orders through your dashboard or share your link with customers.</li>
@@ -813,7 +813,7 @@
                     <li><strong>Dashboard:</strong> Real-time order tracking and history</li>
                     <li><strong>Phone:</strong> For urgent matters</li>
                   </ul>
-                  <p><a href="contact.html" style="color:#2a9d8f; font-weight:600; text-decoration:none;">Contact us</a> for support details.</p>
+                  <p><a href="contact.html" style="color:#1F8F52; font-weight:600; text-decoration:none;">Contact us</a> for support details.</p>
                 </div>
               </details>
             </div>

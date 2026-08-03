@@ -63,7 +63,7 @@
     .badge {
       font-size: 0.78rem;
       font-weight: 600;
-      color: #2a9d8f;
+      color: #1F8F52;
       letter-spacing: 0.4px;
       white-space: nowrap;
     }
@@ -89,7 +89,7 @@
 
     /* Login button */
     .links a.nav-login {
-      background: #2a9d8f;
+      background: #1F8F52;
       color: #ffffff !important;
       padding: 0.5rem 1.2rem;
       border-radius: 8px;
@@ -97,7 +97,7 @@
     }
 
     .links a.nav-login:hover {
-      background: #238277;
+      background: #176B42;
     }
 
     /* Mobile */
@@ -106,7 +106,7 @@
       align-items: center;
       justify-content: center;
 
-      background: linear-gradient(135deg, #2a9d8f 0%, #238277 100%);
+      background: linear-gradient(135deg, #1F8F52 0%, #176B42 100%);
       color: #ffffff;
 
       border: none;
@@ -120,15 +120,15 @@
 
       cursor: pointer;
 
-      box-shadow: 0 4px 12px rgba(42,157,143,0.25);
+      box-shadow: 0 4px 12px rgba(31,143,82,0.25);
 
       transition: all 0.25s ease;
     }
 
     .mobile-toggle:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(42,157,143,0.35);
-      background: linear-gradient(135deg, #31b3a3 0%, #2a9d8f 100%);
+      box-shadow: 0 8px 20px rgba(31,143,82,0.35);
+      background: linear-gradient(135deg, #2E9E61 0%, #1F8F52 100%);
     }
 
     .mobile-toggle:active {
@@ -162,11 +162,11 @@
     }
 
     .card-title {
-      font-size: 1.1rem; font-weight: 700; color: #2a9d8f;
+      font-size: 1.1rem; font-weight: 700; color: #1F8F52;
       text-transform: uppercase; letter-spacing: 0.8px;
       margin-bottom: 1.8rem; display: flex; align-items: center; gap: 0.6rem;
     }
-    .card-title::after { content: ''; flex: 1; height: 2px; background: #f0f9f8; border-radius: 2px; }
+    .card-title::after { content: ''; flex: 1; height: 2px; background: #F1F7F3; border-radius: 2px; }
 
     /* ── Zone Grid ── */
     .zone-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
@@ -190,7 +190,7 @@
       background-repeat: no-repeat; background-position: right 1rem center;
       padding-right: 2.5rem; cursor: pointer;
     }
-    .input:focus { outline: none; border-color: #2a9d8f; box-shadow: 0 0 0 3px rgba(42,157,143,0.1); }
+    .input:focus { outline: none; border-color: #1F8F52; box-shadow: 0 0 0 3px rgba(31,143,82,0.1); }
     .input:disabled { background-color: #f8f9fa; color: #aaa; cursor: not-allowed; border-color: #e0e0e0; }
 
     /* ── Service Type ── */
@@ -203,10 +203,10 @@
       border: 2px solid #e0e0e0; border-radius: 12px;
       cursor: pointer; transition: all 0.3s ease; gap: 0.4rem; min-height: 100px;
     }
-    .service-option label:hover { border-color: #2a9d8f; background: #f0f9f8; }
+    .service-option label:hover { border-color: #1F8F52; background: #F1F7F3; }
     .service-option input[type="radio"]:checked + label {
-      border-color: #2a9d8f; background: #f0f9f8;
-      box-shadow: 0 0 0 3px rgba(42,157,143,0.15);
+      border-color: #1F8F52; background: #F1F7F3;
+      box-shadow: 0 0 0 3px rgba(31,143,82,0.15);
     }
     .service-option.disabled label {
       opacity: 0.3; cursor: not-allowed; pointer-events: none; background: #f8f9fa;
@@ -231,12 +231,12 @@ input[type="number"].input {
 
     /* ── Same-Day Notice ── */
     .sameday-notice {
-      padding: 1.4rem 1.6rem; background: #0d2b28;
+      padding: 1.4rem 1.6rem; background: #122C2A;
       border-radius: 12px; font-size: 0.92rem;
       color: rgba(255,255,255,0.85); line-height: 1.7;
     }
-    .sameday-notice strong { color: #14d4ae; }
-    .sameday-notice a { color: #14d4ae; font-weight: 600; text-decoration: none; }
+    .sameday-notice strong { color: #6FD39A; }
+    .sameday-notice a { color: #6FD39A; font-weight: 600; text-decoration: none; }
     .sameday-notice a:hover { text-decoration: underline; }
 
     /* ── Result ── */
@@ -247,27 +247,27 @@ input[type="number"].input {
     .result-empty .empty-icon { font-size: 2.5rem; margin-bottom: 1rem; display: block; }
 
     .result-filled {
-      display: none; background: #0d2b28;
+      display: none; background: #122C2A;
       border-radius: 16px; padding: 2.5rem; color: #ffffff;
       animation: fadeInUp 0.4s ease-out;
     }
     .result-filled.visible { display: block; }
 
-    .result-label { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #14d4ae; margin-bottom: 0.5rem; }
+    .result-label { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #6FD39A; margin-bottom: 0.5rem; }
     .result-price { font-size: 4rem; font-weight: 700; color: #ffffff; line-height: 1; margin-bottom: 0.3rem; }
-    .result-price .currency { font-size: 2rem; vertical-align: super; font-weight: 500; color: #14d4ae; }
-    .result-price-range { font-size: 2.4rem; font-weight: 700; color: #14d4ae; line-height: 1; margin-bottom: 0.3rem; }
+    .result-price .currency { font-size: 2rem; vertical-align: super; font-weight: 500; color: #6FD39A; }
+    .result-price-range { font-size: 2.4rem; font-weight: 700; color: #6FD39A; line-height: 1; margin-bottom: 0.3rem; }
     .result-currency-note { font-size: 0.9rem; color: rgba(255,255,255,0.6); margin-bottom: 2rem; }
 
     .result-breakdown { border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1.5rem; display: flex; flex-direction: column; gap: 0.7rem; }
     .breakdown-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.95rem; }
     .breakdown-label { color: rgba(255,255,255,0.7); }
     .breakdown-value { font-weight: 600; color: #ffffff; }
-    .breakdown-value.highlight { color: #14d4ae; }
+    .breakdown-value.highlight { color: #6FD39A; }
     .breakdown-value.fee { color: #f0a060; }
     .breakdown-divider { border-top: 1px solid rgba(255,255,255,0.15); margin: 0.3rem 0; }
 
-    .result-note { margin-top: 1rem; padding: 1rem 1.2rem; background: rgba(20,212,174,0.1); border-left: 3px solid #14d4ae; border-radius: 6px; font-size: 0.9rem; color: rgba(255,255,255,0.85); line-height: 1.6; }
+    .result-note { margin-top: 1rem; padding: 1rem 1.2rem; background: rgba(31,143,82,0.1); border-left: 3px solid #6FD39A; border-radius: 6px; font-size: 0.9rem; color: rgba(255,255,255,0.85); line-height: 1.6; }
     .result-note + .result-note { margin-top: 0.6rem; }
     .result-note.contact-note { background: rgba(224,122,58,0.12); border-left-color: #e07a3a; }
 
@@ -277,10 +277,10 @@ input[type="number"].input {
     .pricing-table th { text-align: left; padding: 0.8rem 1rem; font-weight: 700; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; color: #6a6a6a; border-bottom: 2px solid #f0f0f0; }
     .pricing-table td { padding: 0.8rem 1rem; border-bottom: 1px solid #f5f5f5; color: #1a1a1a; }
     .pricing-table tr:last-child td { border-bottom: none; }
-    .pricing-table .price-val { font-weight: 700; color: #2a9d8f; white-space: nowrap; }
+    .pricing-table .price-val { font-weight: 700; color: #1F8F52; white-space: nowrap; }
     .pricing-table .contact-val { font-weight: 700; color: #e07a3a; white-space: nowrap; }
     .pricing-table tr:hover td { background: #f8f9fa; }
-    .table-section-head td { background: #f0f9f8 !important; font-weight: 700; color: #2a9d8f; font-size: 0.85rem; padding: 0.6rem 1rem; }
+    .table-section-head td { background: #F1F7F3 !important; font-weight: 700; color: #1F8F52; font-size: 0.85rem; padding: 0.6rem 1rem; }
     .table-divider { margin: 1.5rem 0; border: none; border-top: 2px solid #f0f0f0; }
 
     /* ── Footer ── */

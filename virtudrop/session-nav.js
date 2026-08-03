@@ -39,24 +39,24 @@ function injectStyles() {
     body.vd-session-authenticated [data-nav-links] { order: 2; }
     .vd-account-menu { position: relative; display: inline-flex; align-items: center; order: 3; margin-left: 0.75rem; flex-shrink: 0; }
     .vd-account-button {
-      width: 42px; height: 42px; border-radius: 999px; border: 2px solid rgba(42,157,143,0.22);
-      background: #2a9d8f; color: #fff; display: inline-flex; align-items: center; justify-content: center;
+      width: 42px; height: 42px; border-radius: 999px; border: 2px solid rgba(31,143,82,0.22);
+      background: #1F8F52; color: #fff; display: inline-flex; align-items: center; justify-content: center;
       font: 800 0.82rem/1 Inter, Arial, sans-serif; cursor: pointer; box-shadow: 0 8px 18px rgba(13,43,40,0.14);
     }
-    .vd-account-button:hover { background: #238277; }
+    .vd-account-button:hover { background: #176B42; }
     .vd-account-dropdown {
       position: absolute; top: calc(100% + 0.6rem); right: 0; min-width: 230px; background: #fff;
       border: 1px solid #e6eeee; border-radius: 12px; box-shadow: 0 18px 45px rgba(13,43,40,0.18);
       padding: 0.45rem; z-index: 2000; display: none;
     }
     .vd-account-menu.open .vd-account-dropdown { display: block; }
-    .vd-account-name { padding: 0.65rem 0.75rem 0.5rem; color: #0d2b28; font-weight: 800; font-size: 0.88rem; }
+    .vd-account-name { padding: 0.65rem 0.75rem 0.5rem; color: #122C2A; font-weight: 800; font-size: 0.88rem; }
     .vd-account-role { display: block; margin-top: 0.12rem; color: #6a6a6a; font-weight: 600; font-size: 0.74rem; text-transform: capitalize; }
     .vd-account-dropdown a, .vd-account-dropdown button {
       width: 100%; border: 0; background: transparent; color: #1a1a1a; text-align: left; text-decoration: none;
       display: block; padding: 0.62rem 0.75rem; border-radius: 8px; font: 700 0.86rem/1.2 Inter, Arial, sans-serif; cursor: pointer;
     }
-    .vd-account-dropdown a:hover, .vd-account-dropdown button:hover { background: #f0f9f8; color: #2a9d8f; }
+    .vd-account-dropdown a:hover, .vd-account-dropdown button:hover { background: #F1F7F3; color: #1F8F52; }
     .vd-account-divider { height: 1px; background: #edf4f3; margin: 0.45rem 0; }
     .vd-account-logout { color: #c0392b !important; }
     @media (max-width: 768px) {

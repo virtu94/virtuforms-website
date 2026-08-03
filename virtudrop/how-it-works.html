@@ -9,11 +9,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
   <style>
     :root {
-      --teal-dark:   #0d2b28;
-      --teal-mid:    #2a9d8f;
-      --teal-bright: #14d4ae;
-      --teal-pale:   #f0f9f8;
-      --teal-light:  #e8f5f3;
+      --teal-dark:   #122C2A;
+      --teal-mid:    #1F8F52;
+      --teal-bright: #6FD39A;
+      --teal-pale:   #F1F7F3;
+      --teal-light:  #E8F3EC;
       --orange:      #e07a3a;
       --white:       #ffffff;
       --black:       #1a1a1a;
@@ -75,7 +75,7 @@
     .badge {
       font-size: 0.78rem;
       font-weight: 600;
-      color: #2a9d8f;
+      color: #1F8F52;
       letter-spacing: 0.4px;
       white-space: nowrap;
     }
@@ -101,7 +101,7 @@
 
     /* Login button */
     .links a.nav-login {
-      background: #2a9d8f;
+      background: #1F8F52;
       color: #ffffff !important;
       padding: 0.5rem 1.2rem;
       border-radius: 8px;
@@ -109,7 +109,7 @@
     }
 
     .links a.nav-login:hover {
-      background: #238277;
+      background: #176B42;
     }
 
     /* Mobile */
@@ -118,7 +118,7 @@
       align-items: center;
       justify-content: center;
 
-      background: linear-gradient(135deg, #2a9d8f 0%, #238277 100%);
+      background: linear-gradient(135deg, #1F8F52 0%, #176B42 100%);
       color: #ffffff;
 
       border: none;
@@ -132,15 +132,15 @@
 
       cursor: pointer;
 
-      box-shadow: 0 4px 12px rgba(42,157,143,0.25);
+      box-shadow: 0 4px 12px rgba(31,143,82,0.25);
 
       transition: all 0.25s ease;
     }
 
     .mobile-toggle:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(42,157,143,0.35);
-      background: linear-gradient(135deg, #31b3a3 0%, #2a9d8f 100%);
+      box-shadow: 0 8px 20px rgba(31,143,82,0.35);
+      background: linear-gradient(135deg, #2E9E61 0%, #1F8F52 100%);
     }
 
     .mobile-toggle:active {
@@ -164,7 +164,7 @@
       content: '';
       position: absolute; top: -80px; right: -80px;
       width: 400px; height: 400px;
-      background: radial-gradient(circle, rgba(20,212,174,0.12) 0%, transparent 70%);
+      background: radial-gradient(circle, rgba(31,143,82,0.12) 0%, transparent 70%);
       pointer-events: none;
     }
     .hero-inner {
@@ -206,7 +206,7 @@
       border: 2px solid transparent; cursor: pointer;
     }
     .btn-bright { background: var(--teal-bright); color: var(--teal-dark); border-color: var(--teal-bright); }
-    .btn-bright:hover { background: #10bda0; transform: translateY(-3px); box-shadow: 0 8px 24px rgba(20,212,174,0.3); }
+    .btn-bright:hover { background: #10bda0; transform: translateY(-3px); box-shadow: 0 8px 24px rgba(31,143,82,0.3); }
     .btn-ghost { background: transparent; color: var(--white); border-color: rgba(255,255,255,0.3); }
     .btn-ghost:hover { border-color: var(--white); background: rgba(255,255,255,0.08); transform: translateY(-3px); }
 
@@ -235,7 +235,7 @@
       border-radius: 10px; border: 1px solid rgba(255,255,255,0.07);
       transition: background 0.2s;
     }
-    .stat-row:hover { background: rgba(20,212,174,0.08); }
+    .stat-row:hover { background: rgba(31,143,82,0.08); }
     .stat-label { font-size: 0.88rem; color: rgba(255,255,255,0.6); }
     .stat-value { font-size: 1rem; font-weight: 700; color: var(--white); }
     .stat-value.accent { color: var(--teal-bright); }
@@ -301,7 +301,7 @@
       background: var(--teal-mid); border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
       font-size: 0.8rem; font-weight: 800; color: var(--white);
-      box-shadow: 0 0 0 4px var(--white), 0 0 0 6px rgba(42,157,143,0.2);
+      box-shadow: 0 0 0 4px var(--white), 0 0 0 6px rgba(31,143,82,0.2);
       z-index: 1; flex-shrink: 0;
     }
     .step-dot.accent { background: var(--teal-bright); }
@@ -318,7 +318,7 @@
     .step-body.highlight { background: var(--teal-dark); border-left-color: var(--teal-bright); }
     .step-body.highlight .step-title { color: var(--white); }
     .step-body.highlight .step-desc  { color: rgba(255,255,255,0.7); }
-    .step-body.highlight .step-note  { background: rgba(20,212,174,0.12); color: var(--teal-bright); }
+    .step-body.highlight .step-note  { background: rgba(31,143,82,0.12); color: var(--teal-bright); }
 
     .step-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.6rem; }
     .step-icon { font-size: 1.4rem; flex-shrink: 0; }
@@ -355,7 +355,7 @@
       border-radius: 14px; padding: 1.8rem;
       transition: all 0.3s ease;
     }
-    .policy-card:hover { background: rgba(20,212,174,0.08); border-color: rgba(20,212,174,0.3); transform: translateY(-4px); }
+    .policy-card:hover { background: rgba(31,143,82,0.08); border-color: rgba(31,143,82,0.3); transform: translateY(-4px); }
     .policy-card-icon { font-size: 1.8rem; margin-bottom: 0.8rem; display: block; }
     .policy-card h4 { font-size: 0.95rem; font-weight: 700; color: var(--white); margin-bottom: 0.5rem; }
     .policy-card p  { font-size: 0.88rem; color: rgba(255,255,255,0.6); line-height: 1.7; }
@@ -363,7 +363,7 @@
     /* ── CTA ── */
     .cta-section { background: var(--white); padding: 6rem 0; }
     .cta-inner {
-      background: linear-gradient(135deg, var(--teal-dark) 0%, #1e5c54 100%);
+      background: linear-gradient(135deg, var(--teal-dark) 0%, #1A1A2A 100%);
       border-radius: 24px; padding: 5rem 4rem; text-align: center;
       position: relative; overflow: hidden;
       box-shadow: 0 20px 60px rgba(13,43,40,0.3);
@@ -372,13 +372,13 @@
       content: '';
       position: absolute; top: -100px; right: -100px;
       width: 400px; height: 400px;
-      background: radial-gradient(circle, rgba(20,212,174,0.15) 0%, transparent 70%);
+      background: radial-gradient(circle, rgba(31,143,82,0.15) 0%, transparent 70%);
     }
     .cta-inner::after {
       content: '';
       position: absolute; bottom: -80px; left: -80px;
       width: 300px; height: 300px;
-      background: radial-gradient(circle, rgba(42,157,143,0.2) 0%, transparent 70%);
+      background: radial-gradient(circle, rgba(31,143,82,0.2) 0%, transparent 70%);
     }
     .cta-content { position: relative; z-index: 1; }
     .cta-eyebrow {
