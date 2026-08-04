@@ -2284,27 +2284,35 @@
         ctx.stroke();
 
         const logoUrl = new URL('assets/logo.png', window.location.href).href;
+        let headerRuleY = 520;
         try {
           const logo = await labelCanvasImage(logoUrl);
-          const maxWidth = 560;
-          const maxHeight = 345;
+          const maxWidth = 860;
+          const maxHeight = 390;
           const scale = Math.min(maxWidth / logo.naturalWidth, maxHeight / logo.naturalHeight);
           const drawWidth = logo.naturalWidth * scale;
           const drawHeight = logo.naturalHeight * scale;
-          ctx.drawImage(logo, (canvas.width - drawWidth) / 2, 60, drawWidth, drawHeight);
+          const logoX = (canvas.width - drawWidth) / 2;
+          const logoY = 50;
+          ctx.drawImage(logo, logoX, logoY, drawWidth, drawHeight);
+
+          ctx.fillStyle = teal;
+          ctx.font = '600 24px Inter, Arial, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.letterSpacing = '2px';
+          ctx.fillText('PROFESSIONAL  •  STRUCTURED  •  RELIABLE', logoX + (drawWidth / 2), logoY + drawHeight + 46);
+          ctx.letterSpacing = '0px';
+          headerRuleY = Math.max(520, logoY + drawHeight + 92);
         } catch (logoError) {
           ctx.fillStyle = teal;
           ctx.font = '800 94px Inter, Arial, sans-serif';
           ctx.textAlign = 'center';
           ctx.fillText('VirtuDrop', 600, 285);
+          ctx.font = '600 24px Inter, Arial, sans-serif';
+          ctx.letterSpacing = '2px';
+          ctx.fillText('PROFESSIONAL  •  STRUCTURED  •  RELIABLE', 600, 350);
+          ctx.letterSpacing = '0px';
         }
-
-        ctx.fillStyle = teal;
-        ctx.font = '600 24px Inter, Arial, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.letterSpacing = '2px';
-        ctx.fillText('PROFESSIONAL  •  STRUCTURED  •  RELIABLE', 600, 470);
-        ctx.letterSpacing = '0px';
 
         const drawRule = y => {
           ctx.strokeStyle = teal;
@@ -2314,7 +2322,7 @@
           ctx.lineTo(right, y);
           ctx.stroke();
         };
-        drawRule(520);
+        drawRule(headerRuleY);
 
         ctx.fillStyle = teal;
         ctx.textAlign = 'left';
@@ -2406,7 +2414,7 @@
         ctx.fillText('LEAVE A REVIEW', 600, 1585);
         ctx.fillStyle = black;
         ctx.font = '500 25px Inter, Arial, sans-serif';
-        ctx.fillText('Love your order?', 600, 1625);
+        ctx.fillText('Love our service?', 600, 1625);
         ctx.fillText('Your feedback means a lot to us!', 600, 1660);
 
         drawRule(1695);
@@ -2427,7 +2435,7 @@
         ctx.fillStyle = teal;
         ctx.font = '700 28px Inter, Arial, sans-serif';
         ctx.textAlign = 'left';
-        ctx.fillText('@VirtuDropTT', 835, 1750);
+        ctx.fillText('@VirtuForms', 835, 1750);
 
         const jpegBlob = await new Promise((resolve, reject) => {
           canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Could not create the JPEG image.')), 'image/jpeg', 0.95);
