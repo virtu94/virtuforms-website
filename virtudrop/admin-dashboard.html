@@ -6,7 +6,7 @@
   <meta http-equiv="Cache-Control" content="no-store" />
   <meta http-equiv="Pragma" content="no-cache" />
   <title>Admin Dashboard | VirtuDrop</title>
-  <link rel="icon" href="assets/dashboard-logo.png?v=20260806-dashboard-logo-1">
+  <link rel="icon" href="assets/dashboard-logo.png">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -56,7 +56,7 @@
       padding: 1.35rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.08);
       text-decoration: none;
     }
-    .brand-logo { height: 48px; width: auto; flex-shrink: 0; }
+    .brand-logo { height: 48px; width: min(178px, 100%); object-fit: contain; flex-shrink: 0; }
     .brand-mark {
       width: 48px; height: 48px; background: var(--teal-mid);
       border-radius: 10px; display: flex; align-items: center;
@@ -808,7 +808,7 @@
   <!-- ── Sidebar ── -->
   <aside class="sidebar" id="sidebar">
     <a class="sidebar-brand" href="index.html">
-      <img class="brand-logo" src="assets/dashboard-logo.png?v=20260806-dashboard-logo-1" alt="VirtuDrop" onerror="this.style.display='none'" />
+      <img class="brand-logo" src="assets/dashboard-logo.png" alt="VirtuDrop" />
       <div class="brand-text">VirtuDrop <span>Admin Panel</span><small>A logistics service by VirtuForms Ltd.</small></div>
     </a>
 
@@ -2283,7 +2283,7 @@
         labelCanvasRoundRect(ctx, 30, 30, 1140, 1740, 52);
         ctx.stroke();
 
-        const logoUrl = new URL('assets/dashboard-logo.png?v=20260806-dashboard-logo-1', window.location.href).href;
+        const logoUrl = new URL('assets/dashboard-logo.png', window.location.href).href;
         let headerRuleY = 520;
         try {
           const logo = await labelCanvasImage(logoUrl);

@@ -6,7 +6,7 @@
   <meta http-equiv="Cache-Control" content="no-store" />
   <meta http-equiv="Pragma" content="no-cache" />
   <title>Dashboard | VirtuDrop</title>
-  <link rel="icon" href="assets/dashboard-logo.png?v=20260806-dashboard-logo-1">
+  <link rel="icon" href="assets/dashboard-logo.png">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     /* ── Reset & Base ── */
@@ -45,7 +45,7 @@
       border-bottom: 1px solid rgba(255,255,255,0.08);
       text-decoration: none;
     }
-    .sidebar-brand img { height: 48px; width: auto; }
+    .sidebar-brand img { height: 48px; width: min(178px, 100%); object-fit: contain; }
     .sidebar-brand-text { font-size: 1.1rem; font-weight: 700; color: #ffffff; line-height: 1.2; }
     .sidebar-brand-text span { display: block; font-size: 0.7rem; font-weight: 400; color: #6FD39A; letter-spacing: 0.5px; }
     .sidebar-brand-text small { display: block; margin-top: 0.28rem; font-size: 0.62rem; font-weight: 500; color: #C8D4D3; letter-spacing: 0; line-height: 1.25; }
@@ -928,7 +928,7 @@
 <!-- ── Sidebar ── -->
 <aside class="sidebar" id="sidebar">
   <a class="sidebar-brand" href="index.html">
-    <img src="assets/dashboard-logo.png?v=20260806-dashboard-logo-1" alt="VirtuDrop" onerror="this.style.display='none'" />
+    <img src="assets/dashboard-logo.png" alt="VirtuDrop" />
     <div class="sidebar-brand-text">
       VirtuDrop
       <span>Client Dashboard</span>

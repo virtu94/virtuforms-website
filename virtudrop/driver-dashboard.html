@@ -6,7 +6,7 @@
   <meta http-equiv="Cache-Control" content="no-store" />
   <meta http-equiv="Pragma" content="no-cache" />
   <title>Driver Dashboard | VirtuDrop</title>
-  <link rel="icon" href="assets/dashboard-logo.png?v=20260806-dashboard-logo-1">
+  <link rel="icon" href="assets/dashboard-logo.png">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -49,7 +49,7 @@
       position: sticky; top: 0; z-index: 5000;
     }
     .topbar-brand { display: flex; align-items: center; gap: 0.8rem; }
-    .brand-logo { height: 45px; width: auto; flex-shrink: 0; }
+    .brand-logo { height: 45px; width: min(174px, 42vw); object-fit: contain; flex-shrink: 0; }
     .brand-mark {
       width: 45px; height: 45px; background: var(--teal-mid);
       border-radius: 8px; display: flex; align-items: center;
@@ -550,7 +550,7 @@
   <!-- ── Top bar ── -->
   <div class="topbar">
     <div class="topbar-brand">
-      <img class="brand-logo" src="assets/dashboard-logo.png?v=20260806-dashboard-logo-1" alt="VirtuDrop" onerror="this.style.display='none'" />
+      <img class="brand-logo" src="assets/dashboard-logo.png" alt="VirtuDrop" />
       <div class="brand-name">VirtuDrop <span>Driver Dashboard</span><small>A logistics service by VirtuForms Ltd.</small></div>
     </div>
     <div class="topbar-driver">
