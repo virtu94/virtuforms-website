@@ -1407,7 +1407,7 @@ function labelCollectAmount(order) {
         labelCanvasRoundRect(ctx, 30, 30, 1140, 1740, 52);
         ctx.stroke();
 
-        const logoUrl = new URL('assets/dashboard-logo.png', window.location.href).href;
+        const logoUrl = new URL('assets/dashboard-logo.png?v=20260806-dashboard-logo-1', window.location.href).href;
         let headerRuleY = 520;
         try {
           const logo = await labelCanvasImage(logoUrl);
