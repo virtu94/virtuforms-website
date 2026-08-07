@@ -6,7 +6,7 @@
   <meta http-equiv="Cache-Control" content="no-store" />
   <meta http-equiv="Pragma" content="no-cache" />
   <title>Admin Dashboard | VirtuDrop</title>
-  <link rel="icon" href="/virtudrop/assets/dashboard-logo.png">
+  <link rel="icon" href="/virtudrop/assets/logo.png">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -52,18 +52,18 @@
     }
 
     .sidebar-brand {
-      display: flex; align-items: center; gap: 0.8rem;
-      padding: 1.35rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.08);
+      display: flex; align-items: center; gap: 0.55rem;
+      padding: 1.35rem 1rem 1.35rem 0.85rem; border-bottom: 1px solid rgba(255,255,255,0.08);
       text-decoration: none;
     }
-    .brand-logo { height: 48px; width: min(178px, 100%); object-fit: contain; flex-shrink: 0; }
+    .brand-logo { height: 44px; width: 104px; object-fit: contain; object-position: left center; flex-shrink: 0; }
     .brand-mark {
       width: 48px; height: 48px; background: var(--teal-mid);
       border-radius: 10px; display: flex; align-items: center;
       justify-content: center; font-weight: 800; font-size: 0.9rem; color: var(--white);
       flex-shrink: 0;
     }
-    .brand-text { font-size: 1rem; font-weight: 700; color: var(--white); line-height: 1.2; }
+    .brand-text { min-width: 0; font-size: 0.95rem; font-weight: 700; color: var(--white); line-height: 1.15; overflow-wrap: anywhere; }
     .brand-text span { display: block; font-size: 0.68rem; font-weight: 500; color: var(--teal-bright); letter-spacing: 0.5px; }
     .brand-text small { display: block; margin-top: 0.26rem; font-size: 0.6rem; font-weight: 500; color: #C8D4D3; letter-spacing: 0; line-height: 1.25; }
 
@@ -808,7 +808,7 @@
   <!-- ── Sidebar ── -->
   <aside class="sidebar" id="sidebar">
     <a class="sidebar-brand" href="index.html">
-      <img class="brand-logo" src="/virtudrop/assets/dashboard-logo.png" alt="VirtuDrop" />
+      <img class="brand-logo" src="/virtudrop/assets/logo.png" alt="VirtuDrop" />
       <div class="brand-text">VirtuDrop <span>Admin Panel</span><small>A logistics service by VirtuForms Ltd.</small></div>
     </a>
 
@@ -2283,7 +2283,7 @@
         labelCanvasRoundRect(ctx, 30, 30, 1140, 1740, 52);
         ctx.stroke();
 
-        const logoUrl = new URL('/virtudrop/assets/dashboard-logo.png', window.location.href).href;
+        const logoUrl = new URL('/virtudrop/assets/logo.png', window.location.href).href;
         let headerRuleY = 520;
         try {
           const logo = await labelCanvasImage(logoUrl);

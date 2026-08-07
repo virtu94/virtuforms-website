@@ -1407,7 +1407,7 @@ function labelCollectAmount(order) {
         labelCanvasRoundRect(ctx, 30, 30, 1140, 1740, 52);
         ctx.stroke();
 
-        const logoUrl = new URL('/virtudrop/assets/dashboard-logo.png', window.location.href).href;
+        const logoUrl = new URL('/virtudrop/assets/logo.png', window.location.href).href;
         let headerRuleY = 520;
         try {
           const logo = await labelCanvasImage(logoUrl);
