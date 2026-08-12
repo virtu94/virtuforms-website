@@ -606,7 +606,7 @@
     <div class="day-divider"></div>
     <div class="day-stat">
       <div class="day-stat-val" id="statCOD">$935</div>
-      <div class="day-stat-label">COD Collected</div>
+      <div class="day-stat-label">Total Collected</div>
     </div>
     <div class="day-strip-date" id="todayDate"></div>
   </div>
@@ -824,12 +824,13 @@
     }
 
     function amountToCollect(order) {
-      if (order.financial_model_version >= 2 && order.driver_amount_to_collect !== null) {
+      if (order.driver_amount_to_collect !== null && order.driver_amount_to_collect !== undefined) {
         return Number(order.driver_amount_to_collect || 0);
       }
-      if (order.payment_type === 'prepaid') return 0;
-      if (order.payment_type === 'delivery_only') return Number(order.delivery_fee || 0);
-      return Number(order.cod_amount || 0);
+      if (order.customer_amount_due !== null && order.customer_amount_due !== undefined) {
+        return Number(order.customer_amount_due || 0);
+      }
+      return 0;
     }
 
     function money(value) {
@@ -1092,25 +1093,12 @@
                 <div class="info-value address">${escapeHtml(addressLabel(order))}</div>
               </div>
               <div class="info-row">
-                <div class="info-label">Package Value</div>
-                <div class="info-value">${money(order.package_value || order.cod_amount || 0)}</div>
-              </div>
-              <div class="info-row">
-                <div class="info-label">Delivery Fee</div>
-                <div class="info-value">${money(order.delivery_fee || 0)}</div>
+                <div class="info-label">Total to Collect</div>
+                <div class="info-value ${collectClass}">${collectLabel}</div>
               </div>
               <div class="info-row">
                 <div class="info-label">Driver Earns</div>
                 <div class="info-value">${money(order.driver_delivery_pay || 0)}</div>
-              </div>
-              ${Number(order.redelivery_fee || 0) > 0 ? `<div class="info-row"><div class="info-label">Redelivery Fee</div><div class="info-value">${money(order.redelivery_fee)} · ${escapeHtml(order.redelivery_fee_payer === 'client' ? 'client pays' : 'customer pays')}</div></div>` : ''}
-              <div class="info-row">
-                <div class="info-label">To Collect</div>
-                <div class="info-value ${collectClass}">${collectLabel}</div>
-              </div>
-              <div class="info-row">
-                <div class="info-label">Delivery Paid By</div>
-                <div class="info-value">${order.delivery_fee_payer === 'client' ? 'Business client' : 'Customer'}</div>
               </div>
               <div class="info-row">
                 <div class="info-label">Scheduled Delivery</div>
@@ -1176,7 +1164,7 @@
       const delivered = orders.filter(o => normalizeStatus(o) === 'delivered').length;
       const failed = orders.filter(o => ['failed', 'rescheduled'].includes(normalizeStatus(o))).length;
       const remaining = orders.filter(o => !['delivered', 'failed', 'rescheduled'].includes(normalizeStatus(o))).length;
-      const cod = orders
+      const collectedTotal = orders
         .filter(o => normalizeStatus(o) === 'delivered')
         .reduce((sum, o) => sum + amountToCollect(o), 0);
 
@@ -1184,7 +1172,7 @@
       document.getElementById('statPending').textContent = remaining;
       document.getElementById('statDone').textContent = delivered;
       document.getElementById('statFailed').textContent = failed;
-      document.getElementById('statCOD').textContent = `TTD ${cod.toFixed(0)}`;
+      document.getElementById('statCOD').textContent = `TTD ${collectedTotal.toFixed(0)}`;
       updateFilterTabs();
     }
 
@@ -1245,7 +1233,7 @@
         console.warn('Driver delivery RPC could not load; using direct assignment fallback:', ordersRes.error);
         ordersRes = await supabase
           .from('orders')
-          .select('id, order_number, external_item_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, payment_type, payment_arrangement, delivery_fee_payer, cod_amount, package_value, delivery_fee, driver_delivery_pay, driver_amount_to_collect, pickup_required, pickup_parcel_count, pickup_fee, scheduled_delivery_date, parcel_status, delivery_outcome, delivery_attempt_count, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_recipient_name, delivery_signed_at, delivery_signature_data_url, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, redelivery_status, redelivery_fee, redelivery_fee_payer, redelivery_notes, order_status, assigned_driver_id, customer_notes, driver_notes, tracking_token, created_at')
+          .select('id, order_number, external_item_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, payment_type, customer_amount_due, driver_delivery_pay, driver_amount_to_collect, pickup_required, pickup_parcel_count, pickup_fee, scheduled_delivery_date, parcel_status, delivery_outcome, delivery_attempt_count, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_recipient_name, delivery_signed_at, delivery_signature_data_url, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, redelivery_status, redelivery_notes, order_status, assigned_driver_id, customer_notes, driver_notes, tracking_token, created_at')
           .eq('assigned_driver_id', driver.id)
           .order('created_at', { ascending: false });
         if (ordersRes.error) throw ordersRes.error;
