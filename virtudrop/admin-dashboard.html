@@ -2679,6 +2679,19 @@
       return Math.max(amount(order.cod_amount) - amount(order.delivery_fee), 0);
     }
 
+    function pickupFeeStatus(order) {
+      if (order.pickup_fee_admin_status === 'waived') return 'waived';
+      if (order.pickup_fee_admin_status === 'paid_on_pickup') return 'paid_on_pickup';
+      return 'standard';
+    }
+
+    function pickupFeeStatusLabel(status, settlement = '') {
+      if (status === 'waived') return 'Waived';
+      if (status === 'paid_on_pickup') return 'Paid on pickup';
+      if (settlement === 'deduct_from_remittance') return 'Deduct from remittance';
+      return 'Pay on pickup';
+    }
+
     function isDelivered(order) {
       return order.order_status === 'delivered';
     }
@@ -4267,19 +4280,106 @@
       XLSX.writeFile(wb, `VirtuDrop-Remittance-${new Date().toISOString().slice(0, 10)}.xlsx`);
     };
 
+    function remittancePickupOrders(row) {
+      return (row.orderIds || [])
+        .map(orderId => orders.find(order => order.id === orderId))
+        .filter(order => order?.pickup_required && amount(order.pickup_fee) > 0);
+    }
+
+    function remittancePickupAction(order) {
+      const currentStatus = pickupFeeStatus(order);
+      if (currentStatus === 'waived') return 'waive';
+      if (currentStatus === 'paid_on_pickup') return 'paid_on_pickup';
+      if (order.pickup_fee_settlement === 'deduct_from_remittance') return 'deduct_from_remittance';
+      return 'pay_on_pickup';
+    }
+
+    function pickupDeductionForAction(order, action) {
+      if (!order?.pickup_required || action === 'waive' || action === 'paid_on_pickup' || action === 'pay_on_pickup') return 0;
+      return amount(order.pickup_fee);
+    }
+
+    function remittanceAdjustedTotals(row) {
+      const pickupOrders = remittancePickupOrders(row);
+      const pickupDeduction = pickupOrders.reduce((sum, order) => {
+        const action = document.getElementById('remitPickupAction_' + order.id)?.value || remittancePickupAction(order);
+        return sum + pickupDeductionForAction(order, action);
+      }, 0);
+      const nonPickupDeductions = (row.orderIds || []).reduce((sum, orderId) => {
+        const order = orders.find(item => item.id === orderId);
+        if (!order) return sum;
+        const currentPickupDeduction = order.pickup_fee_settlement === 'deduct_from_remittance' ? amount(order.pickup_fee) : 0;
+        return sum + Math.max(amount(order.remittance_deductions_amount) - currentPickupDeduction, 0);
+      }, 0);
+      const gross = amount(row.gross);
+      const deductions = nonPickupDeductions + pickupDeduction;
+      return { gross, deductions, payout: Math.max(gross - deductions, 0) };
+    }
+
+    window.syncRemittancePickupAdjustments = function(clientId) {
+      const row = payoutRowByClient(clientId);
+      if (!row) return;
+      const totals = remittanceAdjustedTotals(row);
+      const grossEl = document.getElementById('remitPreviewGross');
+      const deductionsEl = document.getElementById('remitPreviewDeductions');
+      const balanceEl = document.getElementById('remitPreviewBalance');
+      const amountInput = document.getElementById('remitPaidAmount');
+      if (grossEl) grossEl.textContent = moneyFull(totals.gross);
+      if (deductionsEl) deductionsEl.textContent = moneyFull(totals.deductions);
+      if (balanceEl) balanceEl.textContent = moneyFull(totals.payout);
+      if (amountInput) {
+        amountInput.max = totals.payout.toFixed(2);
+        amountInput.value = totals.payout.toFixed(2);
+      }
+    };
+
+    function remittancePickupAdjustments(row) {
+      return remittancePickupOrders(row).map(order => ({
+        order_id: order.id,
+        action: document.getElementById('remitPickupAction_' + order.id)?.value || remittancePickupAction(order)
+      }));
+    }
+
     window.openMarkRemittancePaid = function(clientId) {
       const row = payoutRowByClient(clientId);
       if (!row) {
         showToast('Could not find this payout row.');
         return false;
       }
+      const pickupRows = remittancePickupOrders(row);
+      const pickupControls = pickupRows.map(order => {
+        const current = pickupFeeStatusLabel(pickupFeeStatus(order), order.pickup_fee_settlement);
+        return `
+          <tr>
+            <td><div class="td-name">${escapeHtml(order.order_number || '')}</div><div class="td-sub">${escapeHtml(order.customer_name || '')}</div></td>
+            <td>${moneyFull(order.pickup_fee)}</td>
+            <td>${escapeHtml(current)}</td>
+            <td><select id="remitPickupAction_${order.id}" onchange="syncRemittancePickupAdjustments('${clientId}')">
+              ${adminEditSelect([
+                ['deduct_from_remittance', 'Deduct from remittance'],
+                ['paid_on_pickup', 'Already paid on pickup'],
+                ['waive', 'Waive pickup fee'],
+                ['pay_on_pickup', 'Pay on pickup / separately']
+              ], remittancePickupAction(order))}
+            </select></td>
+          </tr>
+        `;
+      }).join('');
+      const pickupReview = pickupRows.length ? `<div style="margin-top:0.9rem;">
+          <div class="td-name" style="margin-bottom:0.35rem;">Pickup Fee Review</div>
+          <div class="table-wrap"><table style="min-width:620px;">
+            <thead><tr><th>Order</th><th>Pickup Fee</th><th>Current</th><th>Apply Before Payment</th></tr></thead>
+            <tbody>${pickupControls}</tbody>
+          </table></div>
+        </div>` : '';
 
       document.getElementById('modalTitle').textContent = 'Mark Remittance Paid';
       document.getElementById('modalBody').innerHTML = `
         <strong>${escapeHtml(row.client)}</strong><br>
-        Gross COD: <strong>${moneyFull(row.gross)}</strong><br>
-        Deductions: <strong>${moneyFull(row.deductions)}</strong><br>
-        Total balance: <strong>${moneyFull(row.payout)}</strong>
+        Gross COD: <strong id="remitPreviewGross">${moneyFull(row.gross)}</strong><br>
+        Deductions: <strong id="remitPreviewDeductions">${moneyFull(row.deductions)}</strong><br>
+        Total balance: <strong id="remitPreviewBalance">${moneyFull(row.payout)}</strong>
+        ${pickupReview}
         <div class="payment-modal-form">
           <label>Remittance Date
             <input id="remitPaidDate" type="date" value="${todayDateInputValue()}" />
@@ -4303,9 +4403,9 @@
         </div>
       `;
       document.getElementById('modal').classList.add('show');
+      syncRemittancePickupAdjustments(clientId);
       modalCb = async () => markRemittancePaid(clientId);
     };
-
     async function markRemittancePaid(clientId) {
       const row = payoutRowByClient(clientId);
       if (!row) {
@@ -4323,7 +4423,8 @@
         window.vdNotify('Amount Required', 'Enter an amount remitted greater than zero.', 'error');
         return false;
       }
-      if (remittedAmount > amount(row.payout) + 0.009) {
+      const adjustedTotals = remittanceAdjustedTotals(row);
+      if (remittedAmount > amount(adjustedTotals.payout) + 0.009) {
         window.vdNotify('Amount Too High', 'The remitted amount cannot exceed the current total balance.', 'error');
         return false;
       }
@@ -4334,6 +4435,7 @@
         p_method: document.getElementById('remitPaidMethod')?.value || 'bank_transfer',
         p_paid_date: remittedDate,
         p_remitted_amount: remittedAmount,
+        p_pickup_adjustments: remittancePickupAdjustments(row),
         p_reference: document.getElementById('remitPaidReference')?.value.trim() || null,
         p_notes: document.getElementById('remitPaidNotes')?.value.trim() || null
       });
@@ -4949,7 +5051,7 @@
             ${order.redelivery_fee > 0 ? `<div class="td-sub">Redelivery: ${moneyFull(order.redelivery_fee)} · ${escapeHtml(order.redelivery_fee_payer || 'payer pending')}</div>` : ''}
             ${order.return_to_client_fee > 0 ? `<div class="td-sub">Client return: ${moneyFull(order.return_to_client_fee)}</div>` : ''}
             <div class="td-sub">Collect: ${moneyFull(driverCollects(order))}</div>
-            ${order.pickup_required ? `<div class="td-sub">Pickup: ${moneyFull(order.pickup_fee)} · ${order.pickup_parcel_count || 1} parcel(s)</div>` : ''}
+            ${order.pickup_required ? `<div class="td-sub">Pickup: ${moneyFull(order.pickup_fee)} · ${pickupFeeStatusLabel(pickupFeeStatus(order), order.pickup_fee_settlement)} · ${order.pickup_parcel_count || 1} parcel(s)</div>` : ''}
           </td>
           <td>${badgeForStatus(order)}<div class="td-sub" style="margin-top:0.3rem;">Parcel: ${escapeHtml(String(order.parcel_status || 'awaiting_parcel').replaceAll('_', ' '))}</div>${order.delivery_attempt_count ? `<div class="td-sub">Attempt ${order.delivery_attempt_count}${order.delivery_proof_confirmed_at ? ' · Handover confirmed' : ''}</div>` : ''}${order.delivery_recipient_name ? `<div class="td-sub">Recipient: ${escapeHtml(order.delivery_recipient_name)}</div>` : ''}${order.delivery_signature_data_url ? `<button class="btn btn-ghost btn-sm" type="button" onclick="viewDeliverySignature('${order.id}')">View Signature</button>` : ''}${order.delivery_return_required ? '<div class="td-sub" style="color:var(--red); font-weight:700;">Awaiting hub return</div>' : order.delivery_returned_hub_at ? '<div class="td-sub" style="color:var(--green); font-weight:700;">Returned to hub</div>' : ''}</td>
           <td>${order.assigned_driver_id ? escapeHtml(driverName(order.assigned_driver_id)) : '—'}</td>
@@ -5027,6 +5129,9 @@
         pickup_fee_settlement: document.getElementById('adminEditPickupRequired')?.value === 'true'
           ? document.getElementById('adminEditPickupFeeSettlement')?.value || null
           : null,
+        pickup_fee_admin_status: document.getElementById('adminEditPickupRequired')?.value === 'true'
+          ? document.getElementById('adminEditPickupFeeStatus')?.value || 'standard'
+          : 'standard',
         pickup_contact_name: document.getElementById('adminEditPickupRequired')?.value === 'true'
           ? document.getElementById('adminEditPickupContactName')?.value.trim() || null
           : null,
@@ -5306,8 +5411,13 @@
               <label>Pickup Latitude<input id="adminEditPickupLatitude" type="number" step="any" value="${order.pickup_latitude ?? ''}"></label>
               <label>Pickup Longitude<input id="adminEditPickupLongitude" type="number" step="any" value="${order.pickup_longitude ?? ''}"></label>
               <label>Pickup Window<input id="adminEditPickupWindow" value="${escapeHtml(order.pickup_window || '')}" placeholder="e.g. 9 AM - 12 PM"></label>
+              <label>Pickup Fee Status<select id="adminEditPickupFeeStatus">${adminEditSelect([
+                ['standard', 'Charge pickup fee'],
+                ['paid_on_pickup', 'Already paid on pickup'],
+                ['waived', 'Waive pickup fee']
+              ], pickupFeeStatus(order))}</select></label>
               <label>Pickup Fee Settlement<select id="adminEditPickupFeeSettlement">${adminEditSelect([
-                ['pay_separately', 'Pay separately'],
+                ['pay_separately', 'Pay on pickup'],
                 ['deduct_from_remittance', 'Deduct from remittance']
               ], order.pickup_fee_settlement || 'pay_separately')}</select></label>
               <label style="grid-column:1 / -1;">Pickup Instructions<textarea id="adminEditPickupInstructions">${escapeHtml(order.pickup_instructions || '')}</textarea></label>
