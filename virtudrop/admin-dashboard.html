@@ -1425,11 +1425,11 @@
         </div>
 
         <div class="card">
-          <div class="card-title">Driver Payments & Incentives</div>
+          <div class="card-title">Driver Payments</div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Driver</th><th>Cycle</th><th>Tier Progress</th><th>Completed</th><th>Earned</th><th>Paid</th><th>Outstanding</th><th>Recent Payments</th><th>Action</th></tr></thead>
-              <tbody id="driverFinanceBody"><tr><td colspan="9">Loading driver finance records...</td></tr></tbody>
+              <thead><tr><th>Driver</th><th>Cycle</th><th>Completed</th><th>Earned</th><th>Paid</th><th>Outstanding</th><th>Recent Payments</th><th>Action</th></tr></thead>
+              <tbody id="driverFinanceBody"><tr><td colspan="8">Loading driver finance records...</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -1453,7 +1453,7 @@
           <div class="table-wrap">
             <table>
               <thead><tr><th>Date</th><th>Type</th><th>Category</th><th>Account</th><th>Direction</th><th>Amount</th><th>Linked To</th><th>Reference / Notes</th><th>Action</th></tr></thead>
-              <tbody id="accountingLedgerBody"><tr><td colspan="9">Loading accounting ledger...</td></tr></tbody>
+              <tbody id="accountingLedgerBody"><tr><td colspan="8">Loading accounting ledger...</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -1556,7 +1556,7 @@
           <div class="card-title">Remittance History</div>
           <div class="table-wrap"><table>
             <thead><tr><th>Batch</th><th>Client</th><th>Orders</th><th>Gross</th><th>Deductions</th><th>Net Paid</th><th>Method</th><th>Date</th><th>Action</th></tr></thead>
-            <tbody id="remittanceHistoryBody"><tr><td colspan="9">Loading remittance history...</td></tr></tbody>
+            <tbody id="remittanceHistoryBody"><tr><td colspan="8">Loading remittance history...</td></tr></tbody>
           </table></div>
         </div>
       </div>
@@ -1644,7 +1644,7 @@
                 </tr>
               </thead>
               <tbody id="csvPreviewBody">
-                <tr><td colspan="9">Upload a CSV file to preview rows before importing.</td></tr>
+                <tr><td colspan="8">Upload a CSV file to preview rows before importing.</td></tr>
               </tbody>
             </table>
           </div>
@@ -3299,52 +3299,37 @@
             <td>${voided ? '<span class="badge badge-failed">Voided</span>' : `<div class="finance-actions"><button class="btn btn-primary btn-sm" onclick="editAccountingTransaction('${transaction.id}')">Edit</button><button class="btn btn-ghost btn-sm" onclick="voidAccountingTransaction('${transaction.id}')">Void</button></div>`}</td>
           </tr>
         `;
-      }).join('') || '<tr><td colspan="9">No accounting transactions entered yet.</td></tr>';
+      }).join('') || '<tr><td colspan="8">No accounting transactions entered yet.</td></tr>';
     }
 
     function renderDriverFinance() {
-      const body = document.getElementById('driverFinanceBody');
+      const body = document.getElementById("driverFinanceBody");
       if (!body) return;
-      const tierIcon = incentive => incentive?.icon
-        ? `<img src="${escapeHtml(incentive.icon)}" alt="${escapeHtml(incentive.current_tier || 'Tier')}" style="width:48px;height:48px;object-fit:contain;display:block;margin-bottom:0.35rem;" onerror="this.style.display='none';">`
-        : '';
       body.innerHTML = driverFinanceRecords.map(record => {
         const cycle = record.cycle || {};
-        const incentive = record.incentive || {};
-        const progress = Math.max(0, Math.min(100, Number(incentive.progress_percent || 0)));
-        const nextTier = incentive.next_tier
-          ? `${escapeHtml(incentive.next_tier)} at ${escapeHtml(incentive.next_target)} deliveries`
-          : 'Top tier reached';
         const recentPayments = (record.recent_payments || [])
           .filter(payment => !payment.voided_at)
           .slice(0, 3)
-          .map(payment => `${moneyFull(payment.amount)} ${String(payment.payment_method || '').replaceAll('_', ' ')} · ${payment.payment_date}`)
-          .join('<br>') || 'No payments recorded';
+          .map(payment => `${moneyFull(payment.amount)} ${String(payment.payment_method || "").replaceAll("_", " ")} · ${payment.payment_date}`)
+          .join("<br>") || "No payments recorded";
         return `
           <tr>
-            <td><div class="td-name">${escapeHtml(record.driver_name || driverName(record.driver_id))}</div><div class="td-sub">Earnings come from each order's Driver Pay</div></td>
-            <td><div class="td-name">${escapeHtml(cycle.cycle_start || '—')} to ${escapeHtml(cycle.cycle_end || '—')}</div><div class="td-sub">Resets ${escapeHtml(cycle.reset_date || '—')}</div></td>
-            <td>
-              ${tierIcon(incentive)}
-              <div class="td-name">${escapeHtml(incentive.current_tier || 'Starter')} · Total Subsidy ${moneyFull(incentive.subsidy_amount)}</div>
-              <div class="td-sub">Phone ${moneyFull(incentive.phone_allowance)} · Monthly ${moneyFull(incentive.monthly_subsidy)}</div>
-              <div style="height:8px; background:#e6eeee; border-radius:999px; overflow:hidden; margin:0.4rem 0; width:150px;"><div style="height:100%; width:${progress}%; background:var(--teal-mid);"></div></div>
-              <div class="td-sub">${nextTier}</div>
-            </td>
+            <td><div class="td-name">${escapeHtml(record.driver_name || driverName(record.driver_id))}</div><div class="td-sub">Earnings come from per-order Driver Pay</div></td>
+            <td><div class="td-name">${escapeHtml(cycle.cycle_start || "-")} to ${escapeHtml(cycle.cycle_end || "-")}</div><div class="td-sub">Resets ${escapeHtml(cycle.reset_date || "-")}</div></td>
             <td><div class="td-name">${escapeHtml(record.completed_deliveries_cycle || 0)} this cycle</div><div class="td-sub">${escapeHtml(record.completed_deliveries_all_time || 0)} all time</div></td>
             <td><div class="td-name">${moneyFull(record.earned_cycle)}</div><div class="td-sub">${moneyFull(record.earned_all_time)} all time</div></td>
             <td><div class="td-name">${moneyFull(record.paid_cycle)}</div><div class="td-sub">${moneyFull(record.paid_all_time)} all time</div></td>
-            <td class="accounting-total" style="color:${Number(record.outstanding_balance || 0) > 0 ? 'var(--orange)' : 'var(--green)'};">${moneyFull(record.outstanding_balance)}</td>
+            <td class="accounting-total" style="color:${Number(record.outstanding_balance || 0) > 0 ? "var(--orange)" : "var(--green)"};">${moneyFull(record.outstanding_balance)}</td>
             <td class="td-sub">${recentPayments}</td>
             <td>
               <div class="finance-actions">
-                <button class="btn btn-primary btn-sm" type="button" onclick="recordDriverPayment('${record.driver_id}')">Record Payment</button>
-                <button class="btn btn-ghost btn-sm" type="button" onclick="voidLatestDriverPayment('${record.driver_id}')">Void Latest</button>
+                <button class="btn btn-primary btn-sm" type="button" onclick="recordDriverPayment(&quot;${record.driver_id}&quot;)">Record Payment</button>
+                <button class="btn btn-ghost btn-sm" type="button" onclick="voidLatestDriverPayment(&quot;${record.driver_id}&quot;)">Void Latest</button>
               </div>
             </td>
           </tr>
         `;
-      }).join('') || '<tr><td colspan="9">No active drivers found.</td></tr>';
+      }).join("") || `<tr><td colspan="8">No active drivers found.</td></tr>`;
     }
 
     function renderAccounting() {
@@ -3491,7 +3476,7 @@
           <td>${new Date(record.paid_at || record.created_at).toLocaleString('en-TT')}</td>
           <td><button class="btn btn-ghost btn-sm" onclick="viewRemittanceRecord('${record.id}')">View</button></td>
         </tr>
-      `).join('') || '<tr><td colspan="9">No remittance batches match the selected filters.</td></tr>';
+      `).join('') || '<tr><td colspan="8">No remittance batches match the selected filters.</td></tr>';
     }
 
     window.clearAccountingTransactionForm = function() {
@@ -6473,10 +6458,10 @@
       document.getElementById('manifestList').innerHTML = '<div class="card">Loading delivery manifests...</div>';
       document.getElementById('accountingRecordsBody').innerHTML = '<tr><td colspan="11">Loading accounting records...</td></tr>';
       document.getElementById('fullAccountingSummaryBody').innerHTML = '<tr><td colspan="3">Loading accounting summary...</td></tr>';
-      document.getElementById('accountingLedgerBody').innerHTML = '<tr><td colspan="9">Loading accounting ledger...</td></tr>';
+      document.getElementById('accountingLedgerBody').innerHTML = '<tr><td colspan="8">Loading accounting ledger...</td></tr>';
       document.getElementById('clientPayoutBody').innerHTML = '<tr><td colspan="7">Loading client payouts...</td></tr>';
       document.getElementById('returnManagementBody').innerHTML = '<tr><td colspan="7">Loading returned parcels...</td></tr>';
-      document.getElementById('remittanceHistoryBody').innerHTML = '<tr><td colspan="9">Loading remittance history...</td></tr>';
+      document.getElementById('remittanceHistoryBody').innerHTML = '<tr><td colspan="8">Loading remittance history...</td></tr>';
       showZoneMessage('Loading pending zone orders...');
     }
 
@@ -7046,7 +7031,7 @@
           showToast('Choose a CSV or XLSX file first.');
           return;
         }
-        body.innerHTML = '<tr><td colspan="9">Reading import file...</td></tr>';
+        body.innerHTML = '<tr><td colspan="8">Reading import file...</td></tr>';
         const rows = await readImportFile(file);
         csvImportRows = rows.map(row => {
           const order = buildHistoricalOrder(row, 'csv_import');
@@ -7065,13 +7050,13 @@
             <td>${moneyFull(item.order.delivery_fee)}</td>
             <td>${escapeHtml(item.issues.join(', ') || '—')}</td>
           </tr>
-        `).join('') || '<tr><td colspan="9">No rows found in this import file.</td></tr>';
+        `).join('') || '<tr><td colspan="8">No rows found in this import file.</td></tr>';
         confirmBtn.disabled = !csvImportRows.some(item => !item.issues.length);
       } catch (error) {
         console.error('CSV preview error:', error);
         csvImportRows = [];
         confirmBtn.disabled = true;
-        body.innerHTML = `<tr><td colspan="9">Preview failed: ${escapeHtml(error.message || 'Could not read import file.')}</td></tr>`;
+        body.innerHTML = `<tr><td colspan="8">Preview failed: ${escapeHtml(error.message || 'Could not read import file.')}</td></tr>`;
         window.vdNotify('Preview Failed', error.message || 'Could not read import file.', 'error');
       }
     };
@@ -7114,9 +7099,9 @@
       document.getElementById('returnManagementBody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
       document.getElementById('accountingRecordsBody').innerHTML = `<tr><td colspan="11">${message}</td></tr>`;
       document.getElementById('fullAccountingSummaryBody').innerHTML = `<tr><td colspan="3">${message}</td></tr>`;
-      document.getElementById('accountingLedgerBody').innerHTML = `<tr><td colspan="9">${message}</td></tr>`;
+      document.getElementById('accountingLedgerBody').innerHTML = `<tr><td colspan="8">${message}</td></tr>`;
       document.getElementById('clientPayoutBody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
-      document.getElementById('remittanceHistoryBody').innerHTML = `<tr><td colspan="9">${message}</td></tr>`;
+      document.getElementById('remittanceHistoryBody').innerHTML = `<tr><td colspan="8">${message}</td></tr>`;
       document.getElementById('manifestList').innerHTML = `<div class="card">${message}</div>`;
       document.getElementById('overviewPendingActions').innerHTML = `<div style="padding:0.65rem 0;color:var(--grey);">${message}</div>`;
       document.getElementById('overviewRecentOrders').innerHTML = `<div style="padding:0.65rem 0;color:var(--grey);">${message}</div>`;

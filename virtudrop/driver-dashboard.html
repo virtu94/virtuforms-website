@@ -122,14 +122,10 @@
     .driver-finance-head { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; margin-bottom:0.8rem; }
     .driver-finance-title { font-weight:800; color:var(--teal-dark); font-size:1rem; }
     .driver-finance-sub { color:var(--grey); font-size:0.78rem; margin-top:0.18rem; }
-    .driver-finance-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:0.75rem; }
+    .driver-finance-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:0.75rem; }
     .driver-finance-metric { border:1px solid #edf4f3; border-radius:8px; padding:0.7rem; min-width:0; }
     .driver-finance-label { font-size:0.68rem; text-transform:uppercase; font-weight:800; color:var(--grey); }
     .driver-finance-value { font-size:1.05rem; font-weight:800; color:var(--black); margin-top:0.25rem; overflow-wrap:anywhere; }
-    .driver-tier-row { display:flex; align-items:center; gap:0.6rem; margin-top:0.25rem; }
-    .driver-tier-icon { width:52px; height:52px; object-fit:contain; flex-shrink:0; }
-    .driver-progress { height:9px; background:#e6eeee; border-radius:999px; overflow:hidden; margin-top:0.45rem; }
-    .driver-progress-fill { height:100%; background:var(--teal-mid); width:0%; }
     @media (max-width: 780px) { .driver-finance-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
     @media (max-width: 520px) {
       .driver-finance-panel { margin:0.85rem 1rem 0; }
@@ -614,7 +610,7 @@
   <div class="driver-finance-panel" id="driverFinancePanel">
     <div class="driver-finance-head">
       <div>
-        <div class="driver-finance-title">Payments & Incentives</div>
+        <div class="driver-finance-title">Driver Payments</div>
         <div class="driver-finance-sub" id="driverFinanceCycle">Loading driver payment cycle...</div>
       </div>
       <div class="driver-finance-sub" id="driverFinanceReset"></div>
@@ -627,18 +623,6 @@
       <div class="driver-finance-metric">
         <div class="driver-finance-label">Earned This Cycle</div>
         <div class="driver-finance-value" id="driverCycleEarned">TTD 0</div>
-      </div>
-      <div class="driver-finance-metric">
-        <div class="driver-finance-label">Tier</div>
-        <div class="driver-tier-row">
-          <img class="driver-tier-icon" id="driverIncentiveIcon" alt="" style="display:none;">
-          <div>
-            <div class="driver-finance-value" id="driverIncentiveTier">Starter</div>
-            <div class="driver-finance-sub" id="driverIncentiveSubsidy">Subsidy TTD 0</div>
-          </div>
-        </div>
-        <div class="driver-progress"><div class="driver-progress-fill" id="driverIncentiveProgress"></div></div>
-        <div class="driver-finance-sub" id="driverIncentiveNext">Loading progress...</div>
       </div>
       <div class="driver-finance-metric">
         <div class="driver-finance-label">Recent Payment</div>
@@ -846,12 +830,10 @@
     function renderDriverFinance() {
       if (!driverFinance) {
         const cycle = document.getElementById('driverFinanceCycle');
-        if (cycle) cycle.textContent = 'Payment and incentive records will appear after the admin runs the driver finance update.';
+        if (cycle) cycle.textContent = 'Payment records will appear after the admin runs the driver finance update.';
         return;
       }
       const cycle = driverFinance.cycle || {};
-      const incentive = driverFinance.incentive || {};
-      const progress = Math.max(0, Math.min(100, Number(incentive.progress_percent || 0)));
       const recentPayment = (driverFinance.recent_payments || []).find(payment => !payment.voided_at);
       const setText = (id, value) => {
         const el = document.getElementById(id);
@@ -861,25 +843,6 @@
       setText('driverFinanceReset', `Resets ${cycle.reset_date || '—'}`);
       setText('driverOutstandingBalance', financeMoney(driverFinance.outstanding_balance));
       setText('driverCycleEarned', financeMoney(driverFinance.earned_cycle));
-      setText('driverIncentiveTier', incentive.current_tier || 'Starter');
-      setText('driverIncentiveSubsidy', `Total subsidy ${financeMoney(incentive.subsidy_amount)} · Phone ${financeMoney(incentive.phone_allowance)} · Monthly ${financeMoney(incentive.monthly_subsidy)}`);
-      setText('driverIncentiveNext', incentive.next_tier
-        ? `${progress}% toward ${incentive.next_tier} at ${incentive.next_target} deliveries`
-        : 'Elite tier reached for this cycle');
-      setText('driverRecentPayment', recentPayment
-        ? `${financeMoney(recentPayment.amount)} · ${String(recentPayment.payment_method || '').replaceAll('_', ' ')}`
-        : 'None yet');
-      const bar = document.getElementById('driverIncentiveProgress');
-      if (bar) bar.style.width = `${progress}%`;
-      const icon = document.getElementById('driverIncentiveIcon');
-      if (icon && incentive.icon) {
-        icon.src = incentive.icon;
-        icon.alt = `${incentive.current_tier || 'Driver'} tier`;
-        icon.style.display = '';
-        icon.onerror = () => { icon.style.display = 'none'; };
-      } else if (icon) {
-        icon.style.display = 'none';
-      }
     }
 
     function cleanPhone(phone) {
