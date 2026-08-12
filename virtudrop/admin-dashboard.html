@@ -5229,13 +5229,26 @@
     window.syncAdminOperationalEdit = function() {
       const orderStatus = document.getElementById('adminEditOrderStatus')?.value;
       const outcome = document.getElementById('adminEditDeliveryOutcome')?.value;
+      const parcel = document.getElementById('adminEditParcelStatus');
+      const deliveryOutcome = document.getElementById('adminEditDeliveryOutcome');
+      const normalStatuses = ['zone_pending', 'pending', 'confirmed', 'assigned', 'out_for_delivery', 'rescheduled'];
+      const returnParcelStatuses = ['returned_to_hub', 'held_for_client_instructions', 'redelivery_scheduled', 'returned_to_client'];
       if (orderStatus === 'delivered') {
-        const parcel = document.getElementById('adminEditParcelStatus');
-        const deliveryOutcome = document.getElementById('adminEditDeliveryOutcome');
         const proof = document.getElementById('adminEditProofConfirmed');
         if (parcel) parcel.value = 'delivered';
         if (deliveryOutcome) deliveryOutcome.value = 'delivered';
         if (proof) proof.checked = true;
+      } else if (normalStatuses.includes(orderStatus)) {
+        if (deliveryOutcome && ['no_response', 'refused', 'reschedule_requested'].includes(deliveryOutcome.value)) {
+          deliveryOutcome.value = '';
+        }
+        if (parcel && returnParcelStatuses.includes(parcel.value)) {
+          parcel.value = orderStatus === 'out_for_delivery'
+            ? 'handed_to_driver'
+            : orderStatus === 'assigned'
+              ? 'assigned'
+              : 'sorted';
+        }
       } else if (outcome === 'delivered') {
         const proof = document.getElementById('adminEditProofConfirmed');
         if (proof) proof.checked = true;
