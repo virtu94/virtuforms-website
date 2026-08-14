@@ -511,7 +511,7 @@ input[type="number"].input {
                 </tr>
               </thead>
               <tbody>
-                <tr><td>Standard Delivery</td><td class="price-val">TTD $40</td><td class="price-val">TTD $50</td></tr>
+                <tr><td>Standard Delivery</td><td class="price-val">Listed rate</td><td class="price-val">Listed rate</td></tr>
                 <tr><td>Remote / Special Route</td><td class="contact-val" colspan="2">Contact Us for Quote</td></tr>
               </tbody>
             </table>
@@ -572,7 +572,7 @@ input[type="number"].input {
         const option = document.createElement('option');
         option.value = area.name;
         option.dataset.rateBand = area.rateBand;
-        option.textContent = area.name + (area.rateBand === 'extended' ? ' - Extended $50' : area.rateBand === 'remote' ? ' - Quote required' : '');
+        option.textContent = area.name + (area.rateBand === 'extended' ? ' - Extended' : area.rateBand === 'remote' ? ' - Quote required' : '');
         sel.appendChild(option);
       });
     }
@@ -599,8 +599,8 @@ input[type="number"].input {
       const prices = getReferencePrices();
       if (pricingRow) {
         const cells = pricingRow.querySelectorAll('td');
-        if (cells[1]) cells[1].textContent = appSettings.currency + ' $' + formatMoney(prices.primary);
-        if (cells[2]) cells[2].textContent = appSettings.currency + ' $' + formatMoney(prices.extended);
+        if (cells[1]) cells[1].textContent = 'Listed rate';
+        if (cells[2]) cells[2].textContent = 'Listed rate';
       }
     }
 

@@ -722,7 +722,7 @@
       <div class="container">
         <div class="page-header">
           <h1>Delivery Zones</h1>
-          <p>VirtuDrop uses primary and extended delivery areas to keep pricing clear: primary areas are $40 and extended areas are $50.</p>
+          <p>VirtuDrop uses primary and extended delivery areas to keep coverage clear across scheduled delivery days.</p>
         </div>
 
         <div class="zones-grid">
@@ -751,7 +751,7 @@
             </div>
             <div class="zone-info">
               <span class="zone-info-icon">📦</span>
-              <p>Primary areas are $40. Extended areas are marked $50. Standard delivery is 1–2 days on scheduled delivery days.</p>
+              <p>Standard delivery is 1–2 days in listed service areas on scheduled delivery days.</p>
             </div>
           </div>
 
@@ -779,7 +779,7 @@
             </div>
             <div class="zone-info">
               <span class="zone-info-icon">📦</span>
-              <p>Primary areas are $40. Extended areas are marked $50. Standard delivery is 1–2 days on scheduled delivery days.</p>
+              <p>Standard delivery is 1–2 days in listed service areas on scheduled delivery days.</p>
             </div>
           </div>
 
@@ -807,7 +807,7 @@
             </div>
             <div class="zone-info">
               <span class="zone-info-icon">📦</span>
-              <p>Primary areas are $40. Extended areas are marked $50. Standard delivery is 1–2 days on scheduled delivery days.</p>
+              <p>Standard delivery is 1–2 days in listed service areas on scheduled delivery days.</p>
             </div>
           </div>
 
@@ -836,7 +836,7 @@
             </div>
             <div class="zone-info">
               <span class="zone-info-icon">📦</span>
-              <p>Primary areas are $40. Extended areas are marked $50. Standard delivery is 1–2 days on scheduled delivery days.</p>
+              <p>Standard delivery is 1–2 days in listed service areas on scheduled delivery days.</p>
             </div>
           </div>
 
@@ -849,12 +849,12 @@
           <div class="info-card">
             <div class="info-icon">🗺️</div>
             <h3>Primary Areas</h3>
-            <p>Primary delivery areas are covered at TTD $40 per package.</p>
+            <p>Primary delivery areas are covered on scheduled delivery days.</p>
           </div>
           <div class="info-card">
             <div class="info-icon">🔄</div>
             <h3>Extended Areas</h3>
-            <p>Extended delivery areas are covered at TTD $50 per package.</p>
+            <p>Extended delivery areas are listed where service is available.</p>
           </div>
           <div class="info-card">
             <div class="info-icon">📍</div>
@@ -1007,7 +1007,7 @@
         drawerSub.textContent = data.subtitle;
         drawerBody.innerHTML = '';
         const extendedCount = data.areas.filter(area => area.rateBand === 'extended').length;
-        drawerCount.textContent = `${data.areas.length} areas covered · ${extendedCount} extended at $50`;
+        drawerCount.textContent = `${data.areas.length} areas covered · ${extendedCount} extended`;
 
         const tagWrap = document.createElement('div');
         tagWrap.className = 'drawer-tags';
