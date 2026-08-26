@@ -767,13 +767,14 @@
           promptManualLocationIfNeeded(displayEstimate);
 
           if (displayEstimate.fee !== null) {
-            estimateAmount.textContent = `$${Number(displayEstimate.fee).toFixed(2)} TTD`;
+            estimateAmount.textContent = displayEstimate.feeLabel || `$${Number(displayEstimate.fee).toFixed(2)} TTD`;
+            estimateRoute.textContent = `${displayEstimate.label} → ${displayEstimate.zoneName} (${displayEstimate.region})`;
+          } else if (displayEstimate.status === 'remote') {
+            estimateAmount.textContent = displayEstimate.feeLabel || 'From $60 TTD';
             estimateRoute.textContent = `${displayEstimate.label} → ${displayEstimate.zoneName} (${displayEstimate.region})`;
           } else {
-            estimateAmount.textContent = displayEstimate.status === 'unknown' ? 'Location Needed' : 'Quote Required';
-            estimateRoute.textContent = displayEstimate.zoneCode
-              ? `${displayEstimate.label} → ${displayEstimate.zoneName} (${displayEstimate.region})`
-              : displayEstimate.message;
+            estimateAmount.textContent = 'Manual Confirmation';
+            estimateRoute.textContent = displayEstimate.message;
           }
 
           const pkgVal = payment === 'cod' || payment === 'cod-client-delivery' ? (Number(document.getElementById('pkgValue').value) || 0) : 0;

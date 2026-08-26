@@ -3,6 +3,8 @@ import { calculateOrderMoney, moneyLabel, validateManualAddress } from './vd-ord
 const REMOTE_ZONE_CODE = 'REMOTE';
 const COVERED_ZONE_CODES = new Set(['A', 'B', 'C', 'D']);
 const STANDARD_FEES = { standard: 40, extended: 50 };
+const DELIVERY_DISCLAIMER = 'Delivery rates are based on general service areas. Exact pricing may vary for locations significantly outside the normal route or with difficult access. We are happy to confirm the applicable fee before delivery.';
+const REMOTE_DELIVERY_MESSAGE = 'Remote Area - Delivery from TT$60. Final fee to be confirmed.';
 const EXTENDED_AREA_NAMES = new Set([
   'wallerfield', 'cumuto', 'guanapo', 'heights of guanapo', 'lopinot', 'surrey village',
   'arena', 'gran couva', 'todds road', 'todds road station', 'las lomas', 'esmeralda',
@@ -73,6 +75,10 @@ function withTimeout(promise, ms, fallback) {
       timer = setTimeout(() => resolve(fallback), ms);
     })
   ]);
+}
+
+function hasUsableCoordinate(value) {
+  return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
 }
 
 function normalise(value) {
@@ -438,13 +444,14 @@ function matchZoneFromText(zones, text) {
 function classifyMatch(match) {
   if (!match?.zone) {
     return {
-      status: 'remote',
+      status: 'unknown',
       fee: null,
-      zoneCode: REMOTE_ZONE_CODE,
-      zoneName: 'Remote / Special Route',
-      region: 'Manual Review',
+      zoneCode: '',
+      zoneName: '',
+      region: '',
       matchedArea: '',
-      message: 'Outside listed zones - quote required'
+      feeLabel: '',
+      message: 'Manual confirmation required. We could not match this location to a listed delivery area.'
     };
   }
 
@@ -459,7 +466,8 @@ function classifyMatch(match) {
       zoneName: match.zone.name || 'Remote / Special Route',
       region: match.zone.region || 'Manual Review',
       matchedArea: matchedAreaName,
-      message: 'Remote / special route - quote required'
+      feeLabel: 'From $60 TTD',
+      message: REMOTE_DELIVERY_MESSAGE
     };
   }
 
@@ -471,7 +479,9 @@ function classifyMatch(match) {
     region: match.zone.region || 'Listed Zone',
     matchedArea: matchedAreaName,
     rateBand,
-    message: rateBand === 'extended' ? 'Extended delivery area' : (match.zone.region || 'Standard delivery area')
+    feeLabel: `$${Number(STANDARD_FEES[rateBand] || STANDARD_FEES.standard).toFixed(2)} TTD`,
+    message: rateBand === 'extended' ? 'Extended delivery area' : (match.zone.region || 'Standard delivery area'),
+    disclaimer: DELIVERY_DISCLAIMER
   };
 }
 
@@ -524,14 +534,14 @@ export async function estimateDeliveryZone({
   businessSlug = ''
 }) {
   const debug = {
-    hasCoordinates: Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude)),
+    hasCoordinates: hasUsableCoordinate(latitude) && hasUsableCoordinate(longitude),
     hasMapsLink: Boolean(mapsLink),
     source: '',
     addressFound: false,
     zonesLoaded: false,
     locationError: ''
   };
-  const hasCoordinateInput = Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude));
+  const hasCoordinateInput = hasUsableCoordinate(latitude) && hasUsableCoordinate(longitude);
   const hasMapsInput = Boolean(mapsLink);
   const hasManualInput = Boolean(streetName || areaName);
   const shouldUseManualAddress = hasManualInput || (!hasCoordinateInput && !hasMapsInput);
@@ -558,8 +568,8 @@ export async function estimateDeliveryZone({
 
     if (
       !sourceText &&
-      Number.isFinite(Number(latitude)) &&
-      Number.isFinite(Number(longitude))
+      hasUsableCoordinate(latitude) &&
+      hasUsableCoordinate(longitude)
     ) {
       debug.source = 'gps';
 
@@ -754,14 +764,19 @@ export function formatEstimateRows({
   });
 
   if (estimate.status === 'unknown') {
-    rows.push(['Delivery Fee', 'Unable to estimate']);
+    rows.push(['Delivery Fee', 'Manual confirmation required']);
   } else if (estimate.status === 'remote') {
-    rows.push(['Delivery Fee', estimate.fee !== null ? '$' + Number(estimate.fee).toFixed(2) : 'Quote required']);
+    rows.push(['Delivery Fee', estimate.feeLabel || (estimate.fee !== null ? '$' + Number(estimate.fee).toFixed(2) : 'From $60 TTD')]);
   } else {
-    rows.push(['Delivery Fee', `$${Number(estimate.fee).toFixed(2)}`]);
+    rows.push(['Delivery Fee', estimate.feeLabel || `$${Number(estimate.fee).toFixed(2)} TTD`]);
   }
 
   rows.push(["Zone", estimate.zoneCode ? estimate.zoneName + " - " + estimate.region : estimate.message]);
+  if (estimate.status === 'remote') {
+    rows.push(['Confirmation', estimate.message]);
+  } else if (estimate.disclaimer) {
+    rows.push(['Note', estimate.disclaimer]);
+  }
   if (estimate.businessRateApplied) {
     rows.push(["Business Rate", estimate.businessRateNote || "Matched " + estimate.businessRateMatch]);
   }
