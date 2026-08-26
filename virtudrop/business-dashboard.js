@@ -210,27 +210,80 @@ function areaSearchVariants(area) {
 function textMatchesAnyAreaVariant(input, variants) {
   const text = normaliseZoneText(input);
   if (!text) return false;
-  return variants.some(target => {
-    if (!target) return false;
-    if (text.includes(target)) return true;
-    const targetTokens = target.split(' ').filter(token => token.length > 2);
-    return targetTokens.length > 1 && targetTokens.every(token => text.includes(token));
-  });
+  return variants.some(target => scoreVariantMatch(text, target, 200) > 0);
+}
+
+function normalizedTokens(value) {
+  return normaliseZoneText(value).split(' ').filter(Boolean);
+}
+
+function phraseInText(text, value) {
+  const textTokens = normalizedTokens(text);
+  const targetTokens = normalizedTokens(value);
+  if (!textTokens.length || !targetTokens.length || targetTokens.length > textTokens.length) return false;
+
+  for (let index = 0; index <= textTokens.length - targetTokens.length; index += 1) {
+    if (targetTokens.every((token, offset) => textTokens[index + offset] === token)) return true;
+  }
+
+  return false;
+}
+
+function scoreVariantMatch(text, value, baseScore) {
+  const target = normaliseZoneText(value);
+  if (!text || !target) return 0;
+  if (text === target) return baseScore + 80;
+  if (phraseInText(text, target)) return baseScore + Math.min(target.length, 40);
+
+  const targetTokens = target.split(' ').filter(token => token.length > 2);
+  if (targetTokens.length > 1 && targetTokens.every(token => phraseInText(text, token))) {
+    return baseScore - 25 + targetTokens.length;
+  }
+
+  return 0;
+}
+
+function scoreAreaMatch(input, area = {}) {
+  const text = normaliseZoneText(input);
+  if (!text) return { score: 0, matchedAlias: null };
+
+  let bestScore = 0;
+  let matchedAlias = null;
+
+  for (const variant of zoneAreaVariants(area.area_name || area)) {
+    bestScore = Math.max(bestScore, scoreVariantMatch(text, variant, 300));
+  }
+
+  for (const alias of area.zone_area_aliases || area.aliases || []) {
+    const aliasValue = alias.match_value || alias.alias_name;
+    for (const variant of zoneAreaVariants(aliasValue)) {
+      const score = scoreVariantMatch(text, variant, 240);
+      if (score > bestScore) {
+        bestScore = score;
+        matchedAlias = alias;
+      }
+    }
+
+    if (alias.street_hint) {
+      for (const variant of zoneAreaVariants(alias.street_hint)) {
+        const score = scoreVariantMatch(text, variant, 120);
+        if (score > bestScore) {
+          bestScore = score;
+          matchedAlias = alias;
+        }
+      }
+    }
+  }
+
+  return { score: bestScore, matchedAlias };
 }
 
 function areaMatches(input, area) {
-  return textMatchesAnyAreaVariant(input, areaSearchVariants(area));
+  return scoreAreaMatch(input, area).score > 0;
 }
 
 function matchedZoneAreaAlias(input, area = {}) {
-  const text = normaliseZoneText(input);
-  if (!text) return null;
-  return (area.zone_area_aliases || area.aliases || []).find(alias =>
-    textMatchesAnyAreaVariant(text, [
-      ...zoneAreaVariants(alias.match_value || alias.alias_name),
-      ...zoneAreaVariants(alias.street_hint)
-    ])
-  ) || null;
+  return scoreAreaMatch(input, area).matchedAlias;
 }
 
 async function loadEstimateZones() {
@@ -375,15 +428,17 @@ async function geocodeAddress(address) {
 }
 
 function matchZoneFromText(zones, text) {
+  let bestMatch = null;
   for (const zone of zones) {
     const areas = zone.zone_areas || [];
-    const matchedArea = areas.find(area => areaMatches(text, area));
-    if (matchedArea) {
-      const matchedAlias = matchedZoneAreaAlias(text, matchedArea);
-      return { zone, matchedArea, matchedAlias };
+    for (const area of areas) {
+      const { score, matchedAlias } = scoreAreaMatch(text, area);
+      if (score > (bestMatch?.score || 0)) {
+        bestMatch = { zone, matchedArea: area, matchedAlias, score };
+      }
     }
   }
-  return null;
+  return bestMatch;
 }
 
 function classifyZoneMatch(match) {
