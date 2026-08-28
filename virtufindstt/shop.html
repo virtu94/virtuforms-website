@@ -1559,6 +1559,29 @@ document.addEventListener('DOMContentLoaded', async function () {
     if (noResultsEl) noResultsEl.classList.add('is-active');
     return;
   }
+  var categoryListEl = document.querySelector('.filter-category-list');
+  if (categoryListEl) {
+    var counts = {};
+    data.forEach(function (p) {
+      var cat = (p.category || '').trim();
+      if (cat) counts[cat] = (counts[cat] || 0) + 1;
+    });
+    var allCountEl = categoryListEl.querySelector('[data-category="all"] .count');
+    if (allCountEl) allCountEl.textContent = data.length;
+    Object.keys(counts).sort().forEach(function (name) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.setAttribute('data-category', name);
+      var label = document.createElement('span');
+      label.textContent = name;
+      var count = document.createElement('span');
+      count.className = 'count';
+      count.textContent = counts[name];
+      btn.appendChild(label);
+      btn.appendChild(count);
+      categoryListEl.appendChild(btn);
+    });
+  }
   grid.innerHTML = data.map(vfProductCardHTML).join('');
   if (noResultsEl) noResultsEl.classList.remove('is-active');
   if (window.refreshShopGridCards) window.refreshShopGridCards();
@@ -2055,7 +2078,7 @@ document.addEventListener('DOMContentLoaded', function () {
       applyFilters();
     };
     var searchInput = document.querySelector('.search-bar input');
-    var categoryBtns = Array.prototype.slice.call(document.querySelectorAll('.filter-category-list button'));
+    function categoryBtns() { return Array.prototype.slice.call(document.querySelectorAll('.filter-category-list button')); }
     var priceSlider = document.getElementById('priceSlider');
     var priceValueLabel = document.getElementById('priceValueLabel');
     var sortSelect = document.querySelector('.sort-select');
@@ -2099,10 +2122,13 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     }
 
-    categoryBtns.forEach(function (btn) {
-      btn.addEventListener('click', function () {
+    var categoryListEl = document.querySelector('.filter-category-list');
+    if (categoryListEl) {
+      categoryListEl.addEventListener('click', function (e) {
+        var btn = e.target.closest('button[data-category]');
+        if (!btn) return;
         activeCategory = btn.getAttribute('data-category') || 'all';
-        categoryBtns.forEach(function (b) { b.classList.toggle('is-active', b === btn); });
+        categoryBtns().forEach(function (b) { b.classList.toggle('is-active', b === btn); });
         applyFilters();
         var drawer = document.querySelector('.filter-sidebar.is-drawer-open');
         if (drawer) {
@@ -2110,7 +2136,7 @@ document.addEventListener('DOMContentLoaded', function () {
           document.body.style.overflow = '';
         }
       });
-    });
+    }
 
     if (sortSelect) {
       sortSelect.addEventListener('change', function () {
@@ -2149,7 +2175,7 @@ document.addEventListener('DOMContentLoaded', function () {
           if (priceValueLabel) priceValueLabel.textContent = '$' + priceSlider.max + '+';
         }
         activeCategory = 'all';
-        categoryBtns.forEach(function (b) { b.classList.toggle('is-active', b.getAttribute('data-category') === 'all'); });
+        categoryBtns().forEach(function (b) { b.classList.toggle('is-active', b.getAttribute('data-category') === 'all'); });
         document.querySelectorAll('.checkbox-list input[type="checkbox"]').forEach(function (cb) { cb.checked = false; });
         applyFilters();
       });
