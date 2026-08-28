@@ -1409,10 +1409,6 @@ document.addEventListener('DOMContentLoaded', async function () {
     .eq('featured', true)
     .order('created_at', { ascending: false })
     .limit(4);
-  console.log('VF DEBUG — error message:', error ? error.message : 'none');
-  console.log('VF DEBUG — error hint:', error ? error.hint : 'none');
-  console.log('VF DEBUG — error code:', error ? error.code : 'none');
-  console.log('VF DEBUG — data:', JSON.stringify(data));
   if (error || !data || !data.length) return; // keeps the existing "no products live yet" placeholder
   grid.innerHTML = data.map(vfProductCardHTML).join('');
 });
@@ -1537,6 +1533,7 @@ document.addEventListener('DOMContentLoaded', function () {
       var locStatus = modalForm.querySelector('.location-status');
       if (locStatus) locStatus.textContent = '';
       modalOverlay.classList.add('is-open');
+      modalOverlay.removeAttribute('aria-hidden');
       lastFocused = document.activeElement;
       var firstField = modalForm.querySelector('input, select, textarea');
       if (firstField) firstField.focus();
@@ -1545,8 +1542,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function closeModal() {
       modalOverlay.classList.remove('is-open');
-      document.body.style.overflow = '';
       if (lastFocused) lastFocused.focus();
+      modalOverlay.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
     }
 
     document.addEventListener('click', function (e) {
@@ -1620,7 +1618,7 @@ document.addEventListener('DOMContentLoaded', function () {
       var itemLine = feeRow('Item', '$' + subtotal.toFixed(2));
 
       if (!latestEstimate) {
-        breakdown.innerHTML = itemLine + feeRow('Delivery Fee', 'Enter your delivery area') + feeRow('Total', '--', true);
+        breakdown.innerHTML = itemLine + feeRow('Delivery Fee', 'Add your address') + feeRow('Total', '--', true);
         waWrap.style.display = 'none';
         return;
       }

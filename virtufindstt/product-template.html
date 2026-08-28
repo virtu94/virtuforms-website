@@ -1799,6 +1799,7 @@ document.addEventListener('DOMContentLoaded', function () {
       var locStatus = modalForm.querySelector('.location-status');
       if (locStatus) locStatus.textContent = '';
       modalOverlay.classList.add('is-open');
+      modalOverlay.removeAttribute('aria-hidden');
       lastFocused = document.activeElement;
       var firstField = modalForm.querySelector('input, select, textarea');
       if (firstField) firstField.focus();
@@ -1807,8 +1808,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function closeModal() {
       modalOverlay.classList.remove('is-open');
-      document.body.style.overflow = '';
       if (lastFocused) lastFocused.focus();
+      modalOverlay.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
     }
 
     document.addEventListener('click', function (e) {
@@ -1882,7 +1884,7 @@ document.addEventListener('DOMContentLoaded', function () {
       var itemLine = feeRow('Item', '$' + subtotal.toFixed(2));
 
       if (!latestEstimate) {
-        breakdown.innerHTML = itemLine + feeRow('Delivery Fee', 'Enter your delivery area') + feeRow('Total', '--', true);
+        breakdown.innerHTML = itemLine + feeRow('Delivery Fee', 'Add your address') + feeRow('Total', '--', true);
         waWrap.style.display = 'none';
         return;
       }

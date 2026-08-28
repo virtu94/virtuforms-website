@@ -416,7 +416,8 @@ tbody tr:last-child td{border-bottom:0}
       phone: o.customer_phone,
       product: (o.items || []).map(i => i.description).join(', ') || 'No items listed',
       total: o.subtotal,
-      payment: o.payment_method === 'cod' ? 'COD' : 'Paid',
+      paymentMethod: o.payment_method,
+      payment: o.payment_method === 'cod' ? 'COD' : (o.payment_status === 'paid' ? 'Paid' : 'Awaiting Payment'),
       paymentStatus: o.payment_status,
       status: STATUS_DB_TO_UI[o.status] || 'Pending',
       area: o.delivery_area,
@@ -446,6 +447,7 @@ tbody tr:last-child td{border-bottom:0}
   const money = value => '$' + Number(value).toLocaleString('en-TT',{minimumFractionDigits:0,maximumFractionDigits:2});
   const iconEye = '<svg class="icon"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
   const iconEdit = '<svg class="icon"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"></path></svg>';
+  const iconCheck = '<svg class="icon"><path d="m5 12 4 4L19 6"></path></svg>';
 
   function renderOrders(){
     const q = (document.getElementById('orderSearch')?.value || '').toLowerCase();
@@ -454,7 +456,7 @@ tbody tr:last-child td{border-bottom:0}
     const filtered = orders.filter(o => (status==='all'||o.status===status) && (payment==='all'||o.payment===payment) && [o.id,o.customer,o.phone,o.product,o.area].join(' ').toLowerCase().includes(q));
     const body = document.getElementById('ordersTableBody');
     if(body) {
-      body.innerHTML = filtered.length ? filtered.map((o,i)=>`<tr><td><span class="order-id">${o.id}</span><div style="font-size:.74rem;color:var(--grey-500);margin-top:3px">${o.date}</div></td><td><div class="customer-cell"><strong>${o.customer}</strong><span>${o.phone}</span></div></td><td><div class="product-cell"><strong>${o.product}</strong><span>${o.area}</span></div></td><td class="money">${money(o.total)}</td><td>${o.payment}</td><td><select class="filter-select order-status-select" data-index="${orders.indexOf(o)}" aria-label="Change ${o.id} status" style="height:36px;min-width:145px;padding-left:9px"><option ${o.status==='Pending'?'selected':''}>Pending</option><option ${o.status==='Processing'?'selected':''}>Processing</option><option ${o.status==='Ready'?'selected':''}>Ready</option><option ${o.status==='Out for delivery'?'selected':''}>Out for delivery</option><option ${o.status==='Completed'?'selected':''}>Completed</option><option ${o.status==='Cancelled'?'selected':''}>Cancelled</option></select></td><td><div class="row-actions"><button class="row-btn" title="View order" data-view-order="${orders.indexOf(o)}">${iconEye}</button><button class="row-btn" title="Edit order" data-edit-order="${orders.indexOf(o)}">${iconEdit}</button></div></td></tr>`).join('') : '<tr><td colspan="7"><div class="empty-state"><h3>No orders yet</h3><p>Orders will appear here after the VirtuFinds order flow is connected.</p></div></td></tr>';
+      body.innerHTML = filtered.length ? filtered.map((o,i)=>`<tr><td><span class="order-id">${o.id}</span><div style="font-size:.74rem;color:var(--grey-500);margin-top:3px">${o.date}</div></td><td><div class="customer-cell"><strong>${o.customer}</strong><span>${o.phone}</span></div></td><td><div class="product-cell"><strong>${o.product}</strong><span>${o.area}</span></div></td><td class="money">${money(o.total)}</td><td><span class="status ${o.payment==='Awaiting Payment'?'status-pending':'status-completed'}">${o.payment}</span></td><td><select class="filter-select order-status-select" data-index="${orders.indexOf(o)}" aria-label="Change ${o.id} status" style="height:36px;min-width:145px;padding-left:9px"><option ${o.status==='Pending'?'selected':''}>Pending</option><option ${o.status==='Processing'?'selected':''}>Processing</option><option ${o.status==='Ready'?'selected':''}>Ready</option><option ${o.status==='Out for delivery'?'selected':''}>Out for delivery</option><option ${o.status==='Completed'?'selected':''}>Completed</option><option ${o.status==='Cancelled'?'selected':''}>Cancelled</option></select></td><td><div class="row-actions">${o.paymentMethod!=='cod'&&o.paymentStatus!=='paid'?`<button class="row-btn" title="Confirm payment received" data-confirm-payment="${orders.indexOf(o)}">${iconCheck}</button>`:''}<button class="row-btn" title="View order" data-view-order="${orders.indexOf(o)}">${iconEye}</button><button class="row-btn" title="Edit order" data-edit-order="${orders.indexOf(o)}">${iconEdit}</button></div></td></tr>`).join('') : '<tr><td colspan="7"><div class="empty-state"><h3>No orders yet</h3><p>Orders will appear here after the VirtuFinds order flow is connected.</p></div></td></tr>';
     }
     document.getElementById('orderResultCount').textContent = `Showing ${filtered.length} of ${orders.length} orders`;
     body?.querySelectorAll('.order-status-select').forEach(select=>select.addEventListener('change', async e=>{
@@ -471,6 +473,19 @@ tbody tr:last-child td{border-bottom:0}
     }));
     body?.querySelectorAll('[data-view-order]').forEach(btn=>btn.addEventListener('click',()=>showToast(`${orders[Number(btn.dataset.viewOrder)].id} details would open here.`)));
     body?.querySelectorAll('[data-edit-order]').forEach(btn=>btn.addEventListener('click',()=>showToast(`${orders[Number(btn.dataset.editOrder)].id} is ready to edit.`)));
+    body?.querySelectorAll('[data-confirm-payment]').forEach(btn=>btn.addEventListener('click', async ()=>{
+      const idx = Number(btn.dataset.confirmPayment);
+      const order = orders[idx];
+      if(!order) return;
+      btn.disabled = true;
+      const { error } = await sb.from('vf_orders').update({ payment_status: 'paid' }).eq('id', order.dbId);
+      btn.disabled = false;
+      if (error) { showToast('Could not confirm payment: ' + error.message); return; }
+      order.paymentStatus = 'paid';
+      order.payment = 'Paid';
+      showToast('Payment confirmed for ' + order.id);
+      renderOrders();renderRecent();
+    }));
   }
 
   function renderRecent(){
