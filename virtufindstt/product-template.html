@@ -1037,6 +1037,9 @@ textarea:focus-visible{
 .fee-row span:last-child{ font-weight:700; text-align:right; }
 .fee-row--total{ border-top:1px solid rgba(0,0,0,0.14); margin-top:2px; padding-top:10px; font-size:1.28rem; font-weight:800; color:var(--teal-600); }
 .location-status{ font-size:0.82rem; color:#1F8A4C; font-weight:600; }
+.modal-tracking-id{ display:flex; flex-direction:column; align-items:center; gap:2px; background:var(--grey-50,#f4f4f4); border:1px solid rgba(0,0,0,0.08); border-radius:10px; padding:10px 16px; margin:14px 0; }
+.modal-tracking-id__label{ font-size:0.78rem; text-transform:uppercase; letter-spacing:0.04em; color:#666; font-weight:600; }
+.modal-tracking-id__value{ font-size:1.15rem; font-weight:800; color:var(--teal-600); letter-spacing:0.02em; }
 
 .modal-success{ display:none; text-align:center; padding:10px 0 4px; }
 .modal-success.is-active{ display:block; }
@@ -1136,7 +1139,7 @@ Edit only the PRODUCT_DATA section near the bottom of the file.
 <nav aria-label="Main navigation" class="nav-links">
 <a href="index.html">Home</a>
 <a aria-current="page" href="shop.html">Shop</a>
-<a href="track-order.html">Track Order</a>
+<a href="../virtudrop/track.html" target="_blank" rel="noopener">Track Order</a>
 <a href="contact.html">Contact Us</a>
 </nav>
 <div class="nav-actions">
@@ -1158,7 +1161,7 @@ Edit only the PRODUCT_DATA section near the bottom of the file.
 <svg fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="20"><path d="M6 7h12l1 13H5L6 7Z"></path><path d="M9 7a3 3 0 0 1 6 0"></path></svg>
       Shop
     </a>
-<a href="track-order.html">
+<a href="../virtudrop/track.html" target="_blank" rel="noopener">
 <svg fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="20"><path d="M3 7h11v8H3z"></path><path d="M14 11h3l3 3v1h-6z"></path><circle cx="6.5" cy="17.5" r="1.5"></circle><circle cx="16.5" cy="17.5" r="1.5"></circle></svg>
       Track Order
     </a>
@@ -1356,7 +1359,7 @@ Edit only the PRODUCT_DATA section near the bottom of the file.
 <div class="footer-col">
 <h4>Help</h4>
 <ul>
-<li><a href="track-order.html">Track Order</a></li>
+<li><a href="../virtudrop/track.html" target="_blank" rel="noopener">Track Order</a></li>
 <li><a href="contact.html">FAQs</a></li>
 <li><a href="contact.html">Shipping Info</a></li>
 <li><a href="contact.html">Returns</a></li>
@@ -1461,6 +1464,11 @@ Edit only the PRODUCT_DATA section near the bottom of the file.
 </div>
 <h3>Order Received!</h3>
 <p class="modal-order-number">Thanks — your order has been received.</p>
+<div class="modal-tracking-id" id="modalTrackingId" style="display:none;">
+<span class="modal-tracking-id__label">Delivery Tracking ID</span>
+<span class="modal-tracking-id__value" id="modalTrackingIdValue"></span>
+</div>
+<a class="btn btn--outline btn--block" id="modalTrackDeliveryBtn" href="../virtudrop/track.html" target="_blank" rel="noopener" style="display:none;margin-bottom:10px;">Track My Delivery</a>
 <button class="btn btn--primary btn--block js-modal-cancel" type="button">Done</button>
 </div>
 </div>
@@ -2085,6 +2093,21 @@ document.addEventListener('DOMContentLoaded', function () {
           orderNumEl.textContent = fee === null
             ? 'Thanks - your order ' + orderNumber + ' has been received. We will confirm your delivery fee with you shortly.'
             : 'Thanks - your order ' + orderNumber + ' has been received. We will confirm it with you shortly.';
+        }
+
+        var trackingIdBox = modalOverlay.querySelector('#modalTrackingId');
+        var trackingIdValue = modalOverlay.querySelector('#modalTrackingIdValue');
+        var trackDeliveryBtn = modalOverlay.querySelector('#modalTrackDeliveryBtn');
+        if (trackingIdBox && trackingIdValue) {
+          trackingIdValue.textContent = vdOrderNumber;
+          trackingIdBox.style.display = 'flex';
+        }
+        if (trackDeliveryBtn) {
+          var trackParams = new URLSearchParams();
+          trackParams.set('order', vdOrderNumber);
+          if (requestData.customer_phone) trackParams.set('phone', requestData.customer_phone);
+          trackDeliveryBtn.href = '../virtudrop/track.html?' + trackParams.toString();
+          trackDeliveryBtn.style.display = 'block';
         }
 
         modalForm.classList.add('is-hidden');
