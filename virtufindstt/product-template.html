@@ -1025,6 +1025,17 @@ textarea:focus-visible{
 }
 .location-btn:hover{ filter:brightness(0.94); }
 .location-btn svg{ width:17px; height:17px; flex-shrink:0; }
+#deliveryFeeBox{
+  background:var(--grey-50,#f4f4f4);
+  border:1px solid rgba(0,0,0,0.08);
+  border-radius:12px;
+  padding:18px 20px;
+  margin-top:6px;
+}
+.fee-breakdown{ display:flex; flex-direction:column; gap:9px; }
+.fee-row{ display:flex; justify-content:space-between; align-items:baseline; gap:12px; font-size:1.02rem; color:var(--ink-700,#333); }
+.fee-row span:last-child{ font-weight:700; text-align:right; }
+.fee-row--total{ border-top:1px solid rgba(0,0,0,0.14); margin-top:2px; padding-top:10px; font-size:1.28rem; font-weight:800; color:var(--teal-600); }
 .location-status{ font-size:0.82rem; color:#1F8A4C; font-weight:600; }
 
 .modal-success{ display:none; text-align:center; padding:10px 0 4px; }
@@ -1436,10 +1447,10 @@ Edit only the PRODUCT_DATA section near the bottom of the file.
 <label style="display:flex;align-items:center;gap:6px;font-weight:500;font-size:0.92rem;"><input type="radio" name="paymentMethod" value="cod" style="width:auto;"/> Cash on Delivery</label>
 </div>
 </div>
-<div class="form-field" id="deliveryFeeBox" style="background:var(--grey-50,#f4f4f4);border-radius:10px;padding:10px 12px;font-size:0.88rem;">
-<div id="deliveryFeeLine">Enter your delivery area to calculate the delivery fee.</div>
-<div id="deliveryFeeWhatsapp" style="display:none;margin-top:8px;">
-<a class="btn btn--whatsapp" id="deliveryFeeWhatsappBtn" href="#" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:0.85rem;font-weight:600;text-decoration:none;">Ask delivery fee on WhatsApp</a>
+<div class="form-field" id="deliveryFeeBox">
+<div id="deliveryFeeBreakdown" class="fee-breakdown"></div>
+<div id="deliveryFeeWhatsapp" style="display:none;margin-top:12px;">
+<a class="btn btn--whatsapp" id="deliveryFeeWhatsappBtn" href="#" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:8px;font-size:0.9rem;font-weight:600;text-decoration:none;">Ask delivery fee on WhatsApp</a>
 </div>
 </div>
 <button class="btn btn--primary btn--lg btn--block" type="submit">Confirm Order</button>
@@ -1847,28 +1858,33 @@ document.addEventListener('DOMContentLoaded', function () {
       return checked ? checked.value : 'all-online';
     }
 
+    function feeRow(label, value, isTotal) {
+      return '<div class="fee-row' + (isTotal ? ' fee-row--total' : '') + '"><span>' + label + '</span><span>' + value + '</span></div>';
+    }
+
     function renderDeliveryFeeBox() {
-      var line = modalForm.querySelector('#deliveryFeeLine');
+      var breakdown = modalForm.querySelector('#deliveryFeeBreakdown');
       var waWrap = modalForm.querySelector('#deliveryFeeWhatsapp');
       var waBtn = modalForm.querySelector('#deliveryFeeWhatsappBtn');
-      if (!line) return;
+      if (!breakdown) return;
 
       var street = modalForm.querySelector('#orderStreet').value.trim();
       var area = modalForm.querySelector('#orderArea').value.trim();
       var subtotal = getOrderSubtotal();
+      var itemLine = feeRow('Item', '$' + subtotal.toFixed(2));
 
       if (!latestEstimate) {
-        line.textContent = 'Enter your delivery area to calculate the delivery fee.';
+        breakdown.innerHTML = itemLine + feeRow('Delivery Fee', 'Enter your delivery area') + feeRow('Total', '--', true);
         waWrap.style.display = 'none';
         return;
       }
       if (latestEstimate.loading) {
-        line.textContent = 'Calculating delivery fee...';
+        breakdown.innerHTML = itemLine + feeRow('Delivery Fee', 'Calculating...') + feeRow('Total', '--', true);
         waWrap.style.display = 'none';
         return;
       }
       if (latestEstimate.fee === null || latestEstimate.fee === undefined) {
-        line.innerHTML = 'Delivery fee to be advised by courier. <strong>You can still place your order</strong> - we will confirm the delivery fee with you directly.';
+        breakdown.innerHTML = itemLine + feeRow('Delivery Fee', 'To be advised by courier') + feeRow('Total', 'To be confirmed', true);
         var itemName = modalProductLine ? modalProductLine.textContent : 'my order';
         var waText = 'Hi VirtuFinds! I would like to check the delivery fee for ' + itemName +
           (area || street ? (' to ' + [street, area].filter(Boolean).join(', ')) : '') +
@@ -1878,7 +1894,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
       }
       var total = subtotal + latestEstimate.fee;
-      line.textContent = 'Delivery fee: $' + latestEstimate.fee.toFixed(2) + ' (' + (latestEstimate.zoneName || latestEstimate.label || 'your area') + ') - Order total: $' + total.toFixed(2);
+      breakdown.innerHTML = itemLine + feeRow('Delivery Fee', '$' + latestEstimate.fee.toFixed(2)) + feeRow('Total', '$' + total.toFixed(2), true);
       waWrap.style.display = 'none';
     }
 
@@ -1955,6 +1971,14 @@ document.addEventListener('DOMContentLoaded', function () {
           if (status) status.textContent = 'Location not supported on this device.';
           return;
         }
+        // Clear any manually typed address so the resolved GPS location fully replaces it.
+        modalForm.querySelector('#orderStreet').value = '';
+        modalForm.querySelector('#orderArea').value = '';
+        delete modalForm.dataset.lat;
+        delete modalForm.dataset.lng;
+        latestEstimate = null;
+        renderDeliveryFeeBox();
+
         if (status) status.textContent = 'Getting your location...';
         navigator.geolocation.getCurrentPosition(
           function (pos) {
