@@ -96,8 +96,8 @@ img{display:block;max-width:100%}
 .icon-btn{width:44px;height:44px;border:1px solid var(--grey-200);border-radius:12px;background:#fff;display:grid;place-items:center;color:var(--grey-700);position:relative}
 .icon-btn:hover{background:var(--teal-50);color:var(--teal-700)}
 .notification-dot{position:absolute;width:9px;height:9px;border-radius:999px;background:var(--danger);right:9px;top:8px;border:2px solid #fff}
-.profile-button{height:46px;border:0;background:var(--teal-50);border-radius:13px;padding:5px 11px 5px 5px;display:flex;align-items:center;gap:9px;color:var(--teal-700);font-weight:800}
-.avatar{width:36px;height:36px;border-radius:10px;background:var(--teal-600);color:#fff;display:grid;place-items:center;font-size:.83rem;font-weight:800}
+.profile-button{border:0;background:none;padding:0;display:flex;align-items:center;cursor:pointer}
+.avatar{width:38px;height:38px;border-radius:50%;background:var(--teal-600);color:#fff;display:grid;place-items:center;font-size:.83rem;font-weight:800}
 .profile-menu-item:hover{background:var(--grey-100)}
 
 .page{padding:28px;max-width:1600px;margin:0 auto}
@@ -281,14 +281,26 @@ tbody tr:last-child td{border-bottom:0}
 <script>
 (async function(){
   const gate = document.getElementById('loginGate');
+  let currentAdminRow = null;
   async function isApprovedAdmin(session){
     if(!session) return false;
-    const { data } = await sb.from('vf_admins').select('id').eq('id', session.user.id).single();
+    const { data } = await sb.from('vf_admins').select('id, first_name, last_name').eq('id', session.user.id).single();
+    currentAdminRow = data || null;
     return !!data;
   }
   function showAdminEmail(session){
-    const label = document.getElementById('profileEmailLabel');
-    if (label && session && session.user && session.user.email) label.textContent = session.user.email;
+    const avatarEl = document.getElementById('profileAvatar');
+    const first = (currentAdminRow && currentAdminRow.first_name || '').trim();
+    const last = (currentAdminRow && currentAdminRow.last_name || '').trim();
+    let initials = ((first[0]||'') + (last[0]||'')).toUpperCase();
+    if (!initials && session && session.user && session.user.email) initials = session.user.email[0].toUpperCase();
+    if (avatarEl) avatarEl.textContent = initials || 'A';
+    const btn = document.getElementById('profileMenuBtn');
+    if (btn && session && session.user && session.user.email) btn.title = session.user.email;
+    const firstInput = document.getElementById('adminFirstName');
+    const lastInput = document.getElementById('adminLastName');
+    if (firstInput) firstInput.value = first;
+    if (lastInput) lastInput.value = last;
   }
   const { data: { session } } = await sb.auth.getSession();
   if (await isApprovedAdmin(session)) { gate.style.display = 'none'; showAdminEmail(session); }
@@ -335,7 +347,7 @@ tbody tr:last-child td{border-bottom:0}
 <div class="topbar-actions">
 <button aria-label="Notifications" class="icon-btn"><svg class="icon"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg><span class="notification-dot"></span></button>
 <div style="position:relative;">
-<button class="profile-button" id="profileMenuBtn" type="button" aria-haspopup="true" aria-expanded="false"><span class="avatar">VF</span><span class="profile-copy" id="profileEmailLabel">Admin</span><svg class="icon" style="width:16px"><path d="m6 9 6 6 6-6"></path></svg></button>
+<button class="profile-button" id="profileMenuBtn" type="button" aria-haspopup="true" aria-expanded="false"><span class="avatar" id="profileAvatar">VF</span></button>
 <div id="profileMenu" style="display:none;position:absolute;right:0;top:calc(100% + 8px);background:#fff;border:1px solid var(--grey-200);border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,0.14);min-width:190px;padding:6px;z-index:50;">
 <button class="profile-menu-item" data-go-section="dashboard" type="button" style="display:flex;align-items:center;gap:9px;width:100%;padding:9px 10px;border:0;background:none;border-radius:8px;text-align:left;font-weight:600;color:var(--grey-800);cursor:pointer;"><svg class="icon" style="width:16px"><rect height="7" rx="1" width="7" x="3" y="3"></rect><rect height="7" rx="1" width="7" x="14" y="3"></rect><rect height="7" rx="1" width="7" x="3" y="14"></rect><rect height="7" rx="1" width="7" x="14" y="14"></rect></svg>Dashboard</button>
 <button class="profile-menu-item" id="profileLogoutBtn" type="button" style="display:flex;align-items:center;gap:9px;width:100%;padding:9px 10px;border:0;background:none;border-radius:8px;text-align:left;font-weight:600;color:var(--danger,#c0392b);cursor:pointer;"><svg class="icon" style="width:16px"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path></svg>Log out</button>
@@ -400,6 +412,7 @@ tbody tr:last-child td{border-bottom:0}
 <div class="page-heading"><div><h2>Settings</h2><p>Base configuration fields for the VirtuFinds storefront and administration system.</p></div><div class="heading-actions"><button class="btn btn-primary" data-action="save-settings"><svg class="icon"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path><path d="M17 21v-8H7v8"></path><path d="M7 3v5h8"></path></svg>Save settings</button></div></div>
 <div class="two-col">
 <article class="card"><div class="card-header"><div><h3>Store information</h3><p>Customer-facing business details</p></div></div><div class="card-body"><div class="setting-note">Replace all placeholder details before launching the website.</div><div class="form-grid"><div class="field full"><label for="storeName">Store name</label><input id="storeName" value="VirtuFinds TT"/></div><div class="field"><label for="storePhone">Phone number</label><input id="storePhone" placeholder="Add phone number"/></div><div class="field"><label for="storeWhatsApp">WhatsApp number</label><input id="storeWhatsApp" placeholder="Add WhatsApp number"/></div><div class="field full"><label for="storeEmail">Email address</label><input id="storeEmail" placeholder="Add business email" type="email"/></div><div class="field full"><label for="storeAddress">Business address</label><textarea id="storeAddress" placeholder="Add business or pickup address"></textarea></div></div></div></article>
+<article class="card"><div class="card-header"><div><h3>Your profile</h3><p>Your first and last name set the initials shown in the admin avatar across every VirtuFinds page</p></div></div><div class="card-body"><div class="form-grid"><div class="field"><label for="adminFirstName">First name</label><input id="adminFirstName" placeholder="First name"/></div><div class="field"><label for="adminLastName">Last name</label><input id="adminLastName" placeholder="Last name"/></div></div><div style="margin-top:14px;text-align:right;"><button class="btn btn-primary" id="saveAdminProfileBtn" type="button">Save profile</button></div></div></article>
 <article class="card"><div class="card-header"><div><h3>Ordering preferences</h3><p>Control customer order behaviour</p></div></div><div class="card-body"><div class="toggle-row"><div><strong>Accept new orders</strong><span>Allow customers to submit orders</span></div><label class="switch"><input checked="" type="checkbox"/><span class="slider"></span></label></div><div class="toggle-row"><div><strong>Cash on delivery</strong><span>Display COD as a payment option</span></div><label class="switch"><input checked="" type="checkbox"/><span class="slider"></span></label></div><div class="toggle-row"><div><strong>Low stock notifications</strong><span>Notify admin when stock reaches reorder level</span></div><label class="switch"><input checked="" type="checkbox"/><span class="slider"></span></label></div><div class="toggle-row"><div><strong>Automatic VirtuDrop transfer</strong><span>Send confirmed orders to delivery system</span></div><label class="switch"><input type="checkbox"/><span class="slider"></span></label></div><div class="toggle-row"><div><strong>Customer order confirmation</strong><span>Send confirmation by WhatsApp or email</span></div><label class="switch"><input checked="" type="checkbox"/><span class="slider"></span></label></div></div></article>
 </div>
 <div class="two-col"><article class="card"><div class="card-header"><div><h3>Delivery pricing</h3><p>Connect these fields to VirtuDrop delivery-zone settings.</p></div></div><div class="card-body"><div class="form-grid"><div class="field"><label>Primary delivery fee</label><input type="number" placeholder="Add fee"/><small>TTD</small></div><div class="field"><label>Extended delivery fee</label><input type="number" placeholder="Add fee"/><small>TTD</small></div><div class="field full"><label>Free delivery threshold</label><input placeholder="Optional amount" type="number"/><small>Leave blank if not offered.</small></div></div></div></article><article class="card"><div class="card-header"><div><h3>Security and access</h3><p>Backend setup requirements</p></div></div><div class="card-body"><div class="list"><div class="list-item"><div class="list-thumb"><svg class="icon"><rect height="11" rx="2" width="16" x="4" y="10"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg></div><div class="list-copy"><strong>Admin authentication</strong><span>Add secure sign-in and role-based permissions.</span></div></div><div class="list-item"><div class="list-thumb"><svg class="icon"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"></path><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"></path></svg></div><div class="list-copy"><strong>Database connection</strong><span>Store orders, customers, products and stock securely.</span></div></div><div class="list-item"><div class="list-thumb"><svg class="icon"><path d="M20 11a8 8 0 1 0-2.3 5.7"></path><path d="M20 4v7h-7"></path></svg></div><div class="list-copy"><strong>Backups and audit logs</strong><span>Track admin changes and restore data when needed.</span></div></div></div></div></article></div>
@@ -806,6 +819,25 @@ tbody tr:last-child td{border-bottom:0}
       window.location.reload();
     });
   }
+
+  document.getElementById('saveAdminProfileBtn')?.addEventListener('click', async () => {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return;
+    const firstName = document.getElementById('adminFirstName').value.trim();
+    const lastName = document.getElementById('adminLastName').value.trim();
+    const btn = document.getElementById('saveAdminProfileBtn');
+    btn.disabled = true;
+    const { error } = await sb.from('vf_admins').update({ first_name: firstName, last_name: lastName }).eq('id', session.user.id);
+    btn.disabled = false;
+    if (error) { showToast('Could not save profile: ' + error.message); return; }
+    const avatarEl = document.getElementById('profileAvatar');
+    if (avatarEl) {
+      let initials = ((firstName[0]||'') + (lastName[0]||'')).toUpperCase();
+      if (!initials && session.user.email) initials = session.user.email[0].toUpperCase();
+      avatarEl.textContent = initials || 'A';
+    }
+    showToast('Profile updated');
+  });
 
   let toastTimer;
   function showToast(message){const toast=document.getElementById('toast');document.getElementById('toastText').textContent=message;toast.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove('show'),2600)}
