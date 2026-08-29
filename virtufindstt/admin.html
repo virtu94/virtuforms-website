@@ -98,6 +98,7 @@ img{display:block;max-width:100%}
 .notification-dot{position:absolute;width:9px;height:9px;border-radius:999px;background:var(--danger);right:9px;top:8px;border:2px solid #fff}
 .profile-button{height:46px;border:0;background:var(--teal-50);border-radius:13px;padding:5px 11px 5px 5px;display:flex;align-items:center;gap:9px;color:var(--teal-700);font-weight:800}
 .avatar{width:36px;height:36px;border-radius:10px;background:var(--teal-600);color:#fff;display:grid;place-items:center;font-size:.83rem;font-weight:800}
+.profile-menu-item:hover{background:var(--grey-100)}
 
 .page{padding:28px;max-width:1600px;margin:0 auto}
 .page-section{display:none;animation:fade .2s ease}
@@ -285,8 +286,12 @@ tbody tr:last-child td{border-bottom:0}
     const { data } = await sb.from('vf_admins').select('id').eq('id', session.user.id).single();
     return !!data;
   }
+  function showAdminEmail(session){
+    const label = document.getElementById('profileEmailLabel');
+    if (label && session && session.user && session.user.email) label.textContent = session.user.email;
+  }
   const { data: { session } } = await sb.auth.getSession();
-  if (await isApprovedAdmin(session)) gate.style.display = 'none';
+  if (await isApprovedAdmin(session)) { gate.style.display = 'none'; showAdminEmail(session); }
 
   document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -296,6 +301,7 @@ tbody tr:last-child td{border-bottom:0}
     if (error) { document.getElementById('loginError').textContent = error.message; return; }
     if (await isApprovedAdmin(data.session)) {
       gate.style.display = 'none';
+      showAdminEmail(data.session);
     } else {
       document.getElementById('loginError').textContent = 'This account is not an approved VirtuFinds admin.';
       await sb.auth.signOut();
@@ -328,7 +334,13 @@ tbody tr:last-child td{border-bottom:0}
 <label class="topbar-search"><span class="sr-only">Search admin dashboard</span><svg class="icon"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg><input id="globalSearch" placeholder="Search orders or customers" type="search"/></label>
 <div class="topbar-actions">
 <button aria-label="Notifications" class="icon-btn"><svg class="icon"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg><span class="notification-dot"></span></button>
-<button class="profile-button" type="button"><span class="avatar">VF</span><span class="profile-copy">Admin</span><svg class="icon" style="width:16px"><path d="m6 9 6 6 6-6"></path></svg></button>
+<div style="position:relative;">
+<button class="profile-button" id="profileMenuBtn" type="button" aria-haspopup="true" aria-expanded="false"><span class="avatar">VF</span><span class="profile-copy" id="profileEmailLabel">Admin</span><svg class="icon" style="width:16px"><path d="m6 9 6 6 6-6"></path></svg></button>
+<div id="profileMenu" style="display:none;position:absolute;right:0;top:calc(100% + 8px);background:#fff;border:1px solid var(--grey-200);border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,0.14);min-width:190px;padding:6px;z-index:50;">
+<button class="profile-menu-item" data-go-section="dashboard" type="button" style="display:flex;align-items:center;gap:9px;width:100%;padding:9px 10px;border:0;background:none;border-radius:8px;text-align:left;font-weight:600;color:var(--grey-800);cursor:pointer;"><svg class="icon" style="width:16px"><rect height="7" rx="1" width="7" x="3" y="3"></rect><rect height="7" rx="1" width="7" x="14" y="3"></rect><rect height="7" rx="1" width="7" x="3" y="14"></rect><rect height="7" rx="1" width="7" x="14" y="14"></rect></svg>Dashboard</button>
+<button class="profile-menu-item" id="profileLogoutBtn" type="button" style="display:flex;align-items:center;gap:9px;width:100%;padding:9px 10px;border:0;background:none;border-radius:8px;text-align:left;font-weight:600;color:var(--danger,#c0392b);cursor:pointer;"><svg class="icon" style="width:16px"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path></svg>Log out</button>
+</div>
+</div>
 </div>
 </header>
 <div class="page">
@@ -358,7 +370,7 @@ tbody tr:last-child td{border-bottom:0}
 <article class="card table-card"><div class="table-toolbar"><label class="search-field"><span class="sr-only">Search orders</span><svg class="icon"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg><input id="orderSearch" placeholder="Search order, customer or phone" type="search"/></label><select aria-label="Filter by order status" class="filter-select" id="orderStatusFilter"><option value="all">All statuses</option><option value="Pending">Pending</option><option value="Processing">Processing</option><option value="Ready">Ready</option><option value="Out for delivery">Out for delivery</option><option value="Completed">Completed</option><option value="Cancelled">Cancelled</option></select><select aria-label="Filter by payment" class="filter-select" id="paymentFilter"><option value="all">All payments</option><option value="Paid">Paid</option><option value="COD">Cash on delivery</option></select></div><div class="table-wrap"><table><thead><tr><th>Order</th><th>Customer</th><th>Products</th><th>Total</th><th>Payment</th><th>Status</th><th>Actions</th></tr></thead><tbody id="ordersTableBody"></tbody></table></div><div class="table-footer"><span id="orderResultCount">Showing 0 orders</span><div class="pagination"><button class="page-btn active">1</button></div></div></article>
 </section>
 <section class="page-section" id="section-products">
-<div class="page-heading"><div><h2>Products</h2><p>Add products, update prices and control what appears on the VirtuFinds shop.</p></div><div class="heading-actions"><button class="btn btn-secondary" data-go-section="inventory"><svg class="icon"><path d="M4 7h16v13H4z"></path><path d="M2 3h20v4H2z"></path></svg>Manage stock</button><button class="btn btn-primary" data-open-modal="productModal"><svg class="icon"><path d="M12 5v14M5 12h14"></path></svg>Add product</button></div></div>
+<div class="page-heading"><div><h2>Products</h2><p>Add products, update prices and control what appears on the VirtuFinds shop.</p></div><div class="heading-actions"><button class="btn btn-secondary" data-go-section="inventory"><svg class="icon"><path d="M4 7h16v13H4z"></path><path d="M2 3h20v4H2z"></path></svg>Manage stock</button><button class="btn btn-primary" id="addProductBtn" type="button"><svg class="icon"><path d="M12 5v14M5 12h14"></path></svg>Add product</button></div></div>
 <article class="card table-card"><div class="table-toolbar"><label class="search-field"><span class="sr-only">Search products</span><svg class="icon"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg><input id="productSearch" placeholder="Search product or SKU" type="search"/></label><select class="filter-select" id="productCategoryFilter"><option value="all">All categories</option></select><select class="filter-select"><option>All visibility</option><option>Published</option><option>Draft</option></select></div><div class="table-wrap"><table><thead><tr><th>Product</th><th>SKU</th><th>Category</th><th>Price</th><th>Stock</th><th>Visibility</th><th>Actions</th></tr></thead><tbody id="productsTableBody"></tbody></table></div><div class="table-footer"><span id="productResultCount">Showing 0 products</span><div class="pagination"><button class="page-btn active">1</button></div></div></article>
 </section>
 <section class="page-section" id="section-categories">
@@ -366,7 +378,7 @@ tbody tr:last-child td{border-bottom:0}
 <article class="card table-card"><div class="table-wrap"><table><thead><tr><th>Category</th><th>Products</th><th>Actions</th></tr></thead><tbody id="categoriesTableBody"></tbody></table></div><div class="table-footer"><span id="categoryResultCount">Showing 0 categories</span></div></article>
 </section>
 <section class="page-section" id="section-inventory">
-<div class="page-heading"><div><h2>Inventory</h2><p>Monitor available quantities and identify products that need to be reordered.</p></div><div class="heading-actions"><button class="btn btn-secondary" onclick="window.print()"><svg class="icon"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><path d="M6 14h12v8H6z"></path></svg>Print stock list</button><button class="btn btn-primary" data-open-modal="productModal"><svg class="icon"><path d="M12 5v14M5 12h14"></path></svg>Add stock item</button></div></div>
+<div class="page-heading"><div><h2>Inventory</h2><p>Monitor available quantities and identify products that need to be reordered.</p></div><div class="heading-actions"><button class="btn btn-secondary" onclick="window.print()"><svg class="icon"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><path d="M6 14h12v8H6z"></path></svg>Print stock list</button></div></div>
 <div class="stats-grid"><article class="stat-card"><div class="stat-icon"><svg class="icon"><path d="M4 7h16v13H4z"></path><path d="M2 3h20v4H2z"></path></svg></div><p class="stat-label">Total units</p><p class="stat-value" id="statTotalUnits">0</p><span class="stat-change neutral" id="statTotalUnitsSub">No live data yet</span></article><article class="stat-card"><div class="stat-icon warning"><svg class="icon"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.3 3.7 2.6 17a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 3.7a2 2 0 0 0-3.4 0Z"></path></svg></div><p class="stat-label">Low stock</p><p class="stat-value" id="statLowStock">0</p><span class="stat-change down" id="statLowStockSub">No live data yet</span></article><article class="stat-card"><div class="stat-icon success"><svg class="icon"><path d="m5 12 4 4L19 6"></path></svg></div><p class="stat-label">Healthy stock</p><p class="stat-value" id="statHealthyStock">0</p><span class="stat-change" id="statHealthyStockSub">No live data yet</span></article><article class="stat-card"><div class="stat-icon purple"><svg class="icon"><path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></div><p class="stat-label">Stock value</p><p class="stat-value" id="statStockValue">$0</p><span class="stat-change neutral" id="statStockValueSub">No live data yet</span></article></div>
 <article class="card table-card"><div class="table-toolbar"><label class="search-field"><span class="sr-only">Search inventory</span><svg class="icon"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg><input id="inventorySearch" placeholder="Search inventory" type="search"/></label><select class="filter-select" id="inventoryStockFilter"><option value="all">All stock levels</option><option value="low">Low stock</option><option value="healthy">Healthy stock</option><option value="out">Out of stock</option></select></div><div class="table-wrap"><table><thead><tr><th>Product</th><th>Available</th><th>Reorder level</th><th>Incoming</th><th>Stock health</th><th>Last updated</th><th>Action</th></tr></thead><tbody id="inventoryTableBody"><tr><td colspan="7"><div class="empty-state"><h3>No inventory records yet</h3><p>Products added through the admin portal will populate this table after Supabase is connected.</p></div></td></tr></tbody></table></div></article>
 </section>
@@ -375,10 +387,9 @@ tbody tr:last-child td{border-bottom:0}
 <article class="card table-card"><div class="table-toolbar"><label class="search-field"><span class="sr-only">Search customers</span><svg class="icon"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg><input id="customerSearch" placeholder="Search name or phone" type="search"/></label><select class="filter-select"><option>All customers</option><option>Repeat customers</option><option>New customers</option></select></div><div class="table-wrap"><table><thead><tr><th>Customer</th><th>Phone</th><th>Area</th><th>Orders</th><th>Total spent</th><th>Last order</th><th>Actions</th></tr></thead><tbody><tr><td colspan="7"><div class="empty-state"><h3>No customers yet</h3><p>Customer records will appear after real orders are connected.</p></div></td></tr></tbody></table></div><div class="table-footer"><span>Showing 0 customers</span></div></article>
 </section>
 <section class="page-section" id="section-delivery">
-<div class="page-heading"><div><h2>Delivery</h2><p>Track the handoff of confirmed orders from VirtuFinds to VirtuDrop.</p></div><div class="heading-actions"><a class="btn btn-secondary" href="track-order.html"><svg class="icon"><path d="M3 6h11v11H3z"></path><path d="M14 10h4l3 3v4h-7z"></path></svg>Open tracking page</a><button class="btn btn-primary" data-action="sync-delivery"><svg class="icon"><path d="M20 11a8 8 0 1 0-2.3 5.7"></path><path d="M20 4v7h-7"></path></svg>Sync VirtuDrop</button></div></div>
-<div class="notice"><svg class="icon"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.3 3.7 2.6 17a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 3.7a2 2 0 0 0-3.4 0Z"></path></svg><div><strong>VirtuDrop connection pending</strong>The “Sync VirtuDrop” action is disabled until the VirtuDrop backend connection is added.</div></div>
-<div class="stats-grid"><article class="stat-card"><div class="stat-icon warning"><svg class="icon"><path d="M6 3h12l1 18H5L6 3Z"></path></svg></div><p class="stat-label">Awaiting handoff</p><p class="stat-value">0</p><span class="stat-change neutral">No live data yet</span></article><article class="stat-card"><div class="stat-icon"><svg class="icon"><path d="M3 6h11v11H3z"></path><path d="M14 10h4l3 3v4h-7z"></path></svg></div><p class="stat-label">Out for delivery</p><p class="stat-value">0</p><span class="stat-change neutral">No live data yet</span></article><article class="stat-card"><div class="stat-icon success"><svg class="icon"><path d="m5 12 4 4L19 6"></path></svg></div><p class="stat-label">Delivered today</p><p class="stat-value">0</p><span class="stat-change">No live data yet</span></article><article class="stat-card"><div class="stat-icon purple"><svg class="icon"><path d="M4 13a8 8 0 0 1 16 0"></path><rect height="6" rx="1" width="4" x="3" y="13"></rect><rect height="6" rx="1" width="4" x="17" y="13"></rect></svg></div><p class="stat-label">Delivery issues</p><p class="stat-value">0</p><span class="stat-change down">No live data yet</span></article></div>
-<article class="card table-card"><div class="card-header"><div><h3>Active delivery orders</h3><p>Delivery records will appear after orders are sent to VirtuDrop.</p></div></div><div class="table-wrap"><table><thead><tr><th>Order</th><th>Customer</th><th>Area</th><th>Tracking</th><th>Driver</th><th>Delivery status</th><th>Action</th></tr></thead><tbody><tr><td colspan="7"><div class="empty-state"><h3>No delivery records yet</h3><p>VirtuDrop tracking records will appear here after the integration is connected.</p></div></td></tr></tbody></table></div></article>
+<div class="page-heading"><div><h2>Delivery</h2><p>Track the handoff of confirmed orders from VirtuFinds to VirtuDrop.</p></div><div class="heading-actions"><a class="btn btn-secondary" href="../virtudrop/track.html" target="_blank" rel="noopener"><svg class="icon"><path d="M3 6h11v11H3z"></path><path d="M14 10h4l3 3v4h-7z"></path></svg>Open tracking page</a><button class="btn btn-primary" data-action="sync-delivery"><svg class="icon"><path d="M20 11a8 8 0 1 0-2.3 5.7"></path><path d="M20 4v7h-7"></path></svg>Sync VirtuDrop</button></div></div>
+<div class="stats-grid"><article class="stat-card"><div class="stat-icon warning"><svg class="icon"><path d="M6 3h12l1 18H5L6 3Z"></path></svg></div><p class="stat-label">Awaiting handoff</p><p class="stat-value" id="statAwaitingHandoff">0</p><span class="stat-change neutral" id="statAwaitingHandoffSub">No live data yet</span></article><article class="stat-card"><div class="stat-icon"><svg class="icon"><path d="M3 6h11v11H3z"></path><path d="M14 10h4l3 3v4h-7z"></path></svg></div><p class="stat-label">Out for delivery</p><p class="stat-value" id="statOutForDelivery">0</p><span class="stat-change neutral" id="statOutForDeliverySub">No live data yet</span></article><article class="stat-card"><div class="stat-icon success"><svg class="icon"><path d="m5 12 4 4L19 6"></path></svg></div><p class="stat-label">Delivered today</p><p class="stat-value" id="statDeliveredToday">0</p><span class="stat-change" id="statDeliveredTodaySub">No live data yet</span></article><article class="stat-card"><div class="stat-icon purple"><svg class="icon"><path d="M4 13a8 8 0 0 1 16 0"></path><rect height="6" rx="1" width="4" x="3" y="13"></rect><rect height="6" rx="1" width="4" x="17" y="13"></rect></svg></div><p class="stat-label">Delivery issues</p><p class="stat-value" id="statDeliveryIssues">0</p><span class="stat-change down" id="statDeliveryIssuesSub">No live data yet</span></article></div>
+<article class="card table-card"><div class="card-header"><div><h3>Active delivery orders</h3><p>Delivery records appear here once an order has been sent to VirtuDrop.</p></div></div><div class="table-wrap"><table><thead><tr><th>Order</th><th>Customer</th><th>Area</th><th>Tracking</th><th>Driver</th><th>Delivery status</th><th>Action</th></tr></thead><tbody id="deliveryTableBody"><tr><td colspan="7"><div class="empty-state"><h3>No delivery records yet</h3><p>VirtuDrop tracking records will appear here after orders are sent to VirtuDrop.</p></div></td></tr></tbody></table></div></article>
 </section>
 <section class="page-section" id="section-reports">
 <div class="page-heading"><div><h2>Reports</h2><p>Review live sales, order and product performance summaries once Supabase is connected.</p></div><div class="heading-actions"><select aria-label="Report period" class="filter-select"><option>This week</option><option>This month</option><option>Last 3 months</option><option>This year</option></select><button class="btn btn-secondary" onclick="window.print()"><svg class="icon"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><path d="M6 14h12v8H6z"></path></svg>Print report</button></div></div>
@@ -397,7 +408,7 @@ tbody tr:last-child td{border-bottom:0}
 </main>
 </div>
 <div aria-labelledby="productModalTitle" aria-modal="true" class="modal-backdrop" id="productModal" role="dialog">
-<div class="modal"><div class="modal-header"><h3 id="productModalTitle">Add a product</h3><button aria-label="Close" class="modal-close" data-close-modal=""><svg class="icon"><path d="m6 6 12 12M18 6 6 18"></path></svg></button></div><form id="productForm"><div class="modal-body"><div class="form-grid"><div class="field full"><label for="newProductName">Product name</label><input id="newProductName" placeholder="Enter product name" required=""/></div><div class="field"><label for="newProductSku">SKU</label><input id="newProductSku" placeholder="Enter SKU" required=""/></div><div class="field"><label for="newProductCategory">Category</label><select id="newProductCategory"><option value="">Select category</option></select></div><div class="field"><label for="newProductPrice">Selling price</label><input id="newProductPrice" min="0" placeholder="0.00" required="" step="0.01" type="number"/></div><div class="field"><label for="newProductStock">Opening stock</label><input id="newProductStock" min="0" type="number" value="0"/></div><div class="field full"><label for="newProductDescription">Short description</label><textarea id="newProductDescription" placeholder="Add a short customer-friendly product description"></textarea></div><div class="field full"><label for="newProductMedia">Product images / video (optional — add one or several)</label><input accept="image/*,video/*" id="newProductMedia" multiple type="file"/><small>You can upload any mix of images and a video, just one item, or leave this empty for now.</small></div></div></div><div class="modal-footer"><button class="btn btn-secondary" data-close-modal="" type="button">Cancel</button><button class="btn btn-primary" type="submit">Add product</button></div></form></div>
+<div class="modal"><div class="modal-header"><h3 id="productModalTitle">Add a product</h3><button aria-label="Close" class="modal-close" data-close-modal=""><svg class="icon"><path d="m6 6 12 12M18 6 6 18"></path></svg></button></div><form id="productForm"><div class="modal-body"><div class="form-grid"><div class="field full"><label for="newProductName">Product name</label><input id="newProductName" placeholder="Enter product name" required=""/></div><div class="field"><label for="newProductSku">SKU</label><input id="newProductSku" placeholder="Enter SKU" required=""/></div><div class="field"><label for="newProductCategory">Category</label><select id="newProductCategory"><option value="">Select category</option></select></div><div class="field"><label for="newProductPrice">Selling price</label><input id="newProductPrice" min="0" placeholder="0.00" required="" step="0.01" type="number"/></div><div class="field"><label for="newProductStock">Opening stock</label><input id="newProductStock" min="0" type="number" value="0"/></div><div class="field full"><label for="newProductDescription">Short description</label><textarea id="newProductDescription" placeholder="Add a short customer-friendly product description"></textarea></div><div class="field full"><label for="newProductMedia">Product images / video (optional — add one or several)</label><input accept="image/*,video/*" id="newProductMedia" multiple type="file"/><small>You can upload any mix of images and a video, just one item, or leave this empty for now.</small></div></div></div><div class="modal-footer"><button class="btn btn-secondary" data-close-modal="" type="button">Cancel</button><button class="btn btn-primary" id="productFormSubmitBtn" type="submit">Add product</button></div></form></div>
 </div>
 <div aria-labelledby="categoryModalTitle" aria-modal="true" class="modal-backdrop" id="categoryModal" role="dialog">
 <div class="modal"><div class="modal-header"><h3 id="categoryModalTitle">Add a category</h3><button aria-label="Close" class="modal-close" data-close-modal=""><svg class="icon"><path d="m6 6 12 12M18 6 6 18"></path></svg></button></div><form id="categoryForm"><div class="modal-body"><div class="form-grid"><div class="field full"><label for="newCategoryName">Category name</label><input id="newCategoryName" placeholder="e.g. Electronics" required=""/></div></div></div><div class="modal-footer"><button class="btn btn-secondary" data-close-modal="" type="button">Cancel</button><button class="btn btn-primary" type="submit">Add category</button></div></form></div>
@@ -405,12 +416,21 @@ tbody tr:last-child td{border-bottom:0}
 <div aria-labelledby="orderModalTitle" aria-modal="true" class="modal-backdrop" id="orderModal" role="dialog">
 <div class="modal"><div class="modal-header"><h3 id="orderModalTitle">Add a manual order</h3><button aria-label="Close" class="modal-close" data-close-modal=""><svg class="icon"><path d="m6 6 12 12M18 6 6 18"></path></svg></button></div><form id="orderForm"><div class="modal-body"><div class="form-grid"><div class="field"><label for="newCustomerName">Customer name</label><input id="newCustomerName" placeholder="Full name" required=""/></div><div class="field"><label for="newCustomerPhone">Phone number</label><input id="newCustomerPhone" placeholder="Enter phone number" required=""/></div><div class="field full"><label for="newOrderProduct">Product</label><input id="newOrderProduct" placeholder="Product name and quantity" required=""/></div><div class="field"><label for="newOrderTotal">Order total</label><input id="newOrderTotal" min="0" placeholder="0.00" required="" step="0.01" type="number"/></div><div class="field"><label for="newOrderPayment">Payment</label><select id="newOrderPayment"><option>COD</option><option>Paid</option></select></div><div class="field"><label for="newOrderArea">Delivery area</label><input id="newOrderArea" placeholder="Area" required=""/></div><div class="field full"><label for="newOrderAddress">Delivery address</label><textarea id="newOrderAddress" placeholder="Street name, area and directions" required=""></textarea></div></div></div><div class="modal-footer"><button class="btn btn-secondary" data-close-modal="" type="button">Cancel</button><button class="btn btn-primary" type="submit">Create order</button></div></form></div>
 </div>
+<div aria-labelledby="orderViewModalTitle" aria-modal="true" class="modal-backdrop" id="orderViewModal" role="dialog">
+<div class="modal"><div class="modal-header"><h3 id="orderViewModalTitle">Order details</h3><button aria-label="Close" class="modal-close" data-close-modal=""><svg class="icon"><path d="m6 6 12 12M18 6 6 18"></path></svg></button></div><div class="modal-body"><div id="orderViewBody" class="form-grid"></div></div><div class="modal-footer"><button class="btn btn-secondary" data-close-modal="" type="button">Close</button></div></div>
+</div>
+<div aria-labelledby="orderEditModalTitle" aria-modal="true" class="modal-backdrop" id="orderEditModal" role="dialog">
+<div class="modal"><div class="modal-header"><h3 id="orderEditModalTitle">Edit order</h3><button aria-label="Close" class="modal-close" data-close-modal=""><svg class="icon"><path d="m6 6 12 12M18 6 6 18"></path></svg></button></div><form id="orderEditForm"><div class="modal-body"><div class="form-grid"><div class="field"><label for="editOrderName">Customer name</label><input id="editOrderName" placeholder="Full name" required=""/></div><div class="field"><label for="editOrderPhone">Phone number</label><input id="editOrderPhone" placeholder="Enter phone number" required=""/></div><div class="field full"><label for="editOrderAddress">Delivery address</label><textarea id="editOrderAddress" placeholder="Street name and directions"></textarea></div><div class="field"><label for="editOrderArea">Delivery area</label><input id="editOrderArea" placeholder="Area"/></div><div class="field"><label for="editOrderStatus">Order status</label><select id="editOrderStatus"><option>Pending</option><option>Processing</option><option>Ready</option><option>Out for delivery</option><option>Completed</option><option>Cancelled</option></select></div></div><p id="editOrderVdNote" style="display:none;font-size:.82rem;color:var(--grey-500);margin-top:10px">This order was sent to VirtuDrop — name, phone and address changes will also be pushed to their delivery record.</p></div><div class="modal-footer"><button class="btn btn-secondary" data-close-modal="" type="button">Cancel</button><button class="btn btn-primary" id="orderEditSubmitBtn" type="submit">Save changes</button></div></form></div>
+</div>
 <div aria-live="polite" class="toast" id="toast" role="status"><svg class="icon"><path d="m5 12 4 4L19 6"></path></svg><span id="toastText">Saved</span></div>
 <script>
 (function(){
   let orders = [];
   let products = [];
   let categories = [];
+  let editingProductId = null;
+  let editingOrderId = null;
+  let deliveryStatuses = {};
 
   const STATUS_DB_TO_UI = {pending:'Pending',processing:'Processing',ready:'Ready',out_for_delivery:'Out for delivery',completed:'Completed',cancelled:'Cancelled'};
   const STATUS_UI_TO_DB = {Pending:'pending',Processing:'processing',Ready:'ready','Out for delivery':'out_for_delivery',Completed:'completed',Cancelled:'cancelled'};
@@ -430,9 +450,13 @@ tbody tr:last-child td{border-bottom:0}
       paymentStatus: o.payment_status,
       status: STATUS_DB_TO_UI[o.status] || 'Pending',
       area: o.delivery_area,
+      address: o.delivery_address,
+      items: o.items || [],
+      deliveryFee: o.delivery_fee,
+      virtudropOrderNumber: o.virtudrop_order_number,
       date: new Date(o.created_at).toLocaleDateString('en-TT', { day:'numeric', month:'short', year:'numeric' })
     }));
-    renderOrders();renderRecent();updateCounts();
+    renderOrders();renderRecent();updateCounts();renderDelivery();
   }
 
   async function loadProducts(){
@@ -441,10 +465,12 @@ tbody tr:last-child td{border-bottom:0}
     products = (data || []).map(p => ({
       id: p.id,
       name: p.name,
+      slug: p.slug,
       sku: p.sku,
       category: p.category,
       price: p.price,
       stock: p.stock_qty,
+      description: p.description,
       visibility: p.is_published ? 'Published' : 'Draft',
       featured: !!p.featured,
       categoryId: p.category_id
@@ -478,6 +504,84 @@ tbody tr:last-child td{border-bottom:0}
       if (current) filterSelect.value = current;
     }
   }
+
+  const DELIVERY_STATUS_LABELS = {awaiting_parcel:'Awaiting Parcel',parcel_received:'Package Received',zone_pending:'Request Received',confirmed:'Confirmed',assigned:'Driver Assigned',out_for_delivery:'Out for Delivery',delivered:'Delivered',failed:'Failed Attempt',rescheduled:'Rescheduled',no_response:'No Response',refused:'Delivery Refused',reschedule_requested:'Reschedule Requested',cancelled:'Cancelled'};
+  const DELIVERY_ASSIGNED_CODES = ['assigned','out_for_delivery','delivered'];
+  const DELIVERY_ISSUE_CODES = ['failed','no_response','refused'];
+
+  function resolveDeliveryStatus(rec){
+    if (!rec) return { code: null, label: 'Not yet synced', cls: 'status-pending' };
+    var terminalIsh = ['assigned','out_for_delivery','delivered','failed','rescheduled'];
+    var code = rec.delivery_outcome || (!terminalIsh.includes(rec.order_status) ? rec.parcel_status : null) || rec.order_status || 'zone_pending';
+    var cls = code === 'delivered' ? 'status-completed' : (DELIVERY_ISSUE_CODES.includes(code) ? 'status-cancelled' : (code === 'out_for_delivery' ? 'status-delivery' : 'status-processing'));
+    return { code: code, label: DELIVERY_STATUS_LABELS[code] || code, cls: cls };
+  }
+
+  async function loadDeliveryStatuses(){
+    const orderNumbers = orders.filter(o => o.virtudropOrderNumber).map(o => o.virtudropOrderNumber);
+    if (!orderNumbers.length) { deliveryStatuses = {}; renderDelivery(); return; }
+    const { data, error } = await sb.rpc('vf_get_delivery_statuses', { p_order_numbers: orderNumbers });
+    if (error) { showToast('Could not sync VirtuDrop: ' + error.message); return; }
+    deliveryStatuses = {};
+    (data || []).forEach(rec => { deliveryStatuses[rec.order_number] = rec; });
+    renderDelivery();
+    showToast('Delivery statuses synced');
+  }
+
+  function renderDelivery(){
+    const body = document.getElementById('deliveryTableBody');
+    if (!body) return;
+    const dispatched = orders.filter(o => o.virtudropOrderNumber);
+    if (!dispatched.length) {
+      body.innerHTML = '<tr><td colspan="7"><div class="empty-state"><h3>No delivery records yet</h3><p>VirtuDrop tracking records will appear here after orders are sent to VirtuDrop.</p></div></td></tr>';
+    } else {
+      body.innerHTML = dispatched.map(o => {
+        const rec = deliveryStatuses[o.virtudropOrderNumber];
+        const st = resolveDeliveryStatus(rec);
+        const driverLabel = DELIVERY_ASSIGNED_CODES.includes(st.code) ? 'Assigned' : 'Not yet assigned';
+        const trackUrl = '../virtudrop/track.html?' + new URLSearchParams({ order: o.virtudropOrderNumber, phone: o.phone || '' }).toString();
+        return `<tr><td><span class="order-id">${o.id}</span></td><td>${o.customer}</td><td>${o.area || '—'}</td><td>${o.virtudropOrderNumber}</td><td>${driverLabel}</td><td><span class="status ${st.cls}">${st.label}</span></td><td><a class="row-btn" title="Track this order" href="${trackUrl}" target="_blank" rel="noopener">${iconEye}</a></td></tr>`;
+      }).join('');
+    }
+    const awaiting = dispatched.filter(o => { var c = resolveDeliveryStatus(deliveryStatuses[o.virtudropOrderNumber]).code; return !DELIVERY_ASSIGNED_CODES.includes(c) && !DELIVERY_ISSUE_CODES.includes(c); }).length;
+    const outForDelivery = dispatched.filter(o => resolveDeliveryStatus(deliveryStatuses[o.virtudropOrderNumber]).code === 'out_for_delivery').length;
+    const today = new Date().toDateString();
+    const deliveredToday = dispatched.filter(o => {
+      const rec = deliveryStatuses[o.virtudropOrderNumber];
+      return rec && resolveDeliveryStatus(rec).code === 'delivered' && rec.updated_at && new Date(rec.updated_at).toDateString() === today;
+    }).length;
+    const issues = dispatched.filter(o => DELIVERY_ISSUE_CODES.includes(resolveDeliveryStatus(deliveryStatuses[o.virtudropOrderNumber]).code)).length;
+    const setStat = (id, subId, value) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+      const sub = document.getElementById(subId);
+      if (sub) sub.textContent = dispatched.length ? 'Live from VirtuDrop' : 'No live data yet';
+    };
+    setStat('statAwaitingHandoff', 'statAwaitingHandoffSub', awaiting);
+    setStat('statOutForDelivery', 'statOutForDeliverySub', outForDelivery);
+    setStat('statDeliveredToday', 'statDeliveredTodaySub', deliveredToday);
+    setStat('statDeliveryIssues', 'statDeliveryIssuesSub', issues);
+  }
+
+  document.querySelector('[data-action="sync-delivery"]')?.addEventListener('click', loadDeliveryStatuses);
+
+  function openProductEditor(product){
+    editingProductId = product ? product.id : null;
+    document.getElementById('productModalTitle').textContent = product ? 'Edit product' : 'Add a product';
+    document.getElementById('productFormSubmitBtn').textContent = product ? 'Save changes' : 'Add product';
+    const form = document.getElementById('productForm');
+    form.reset();
+    if (product) {
+      document.getElementById('newProductName').value = product.name || '';
+      document.getElementById('newProductSku').value = product.sku || '';
+      document.getElementById('newProductCategory').value = product.categoryId || '';
+      document.getElementById('newProductPrice').value = product.price != null ? product.price : '';
+      document.getElementById('newProductStock').value = product.stock != null ? product.stock : 0;
+      document.getElementById('newProductDescription').value = product.description || '';
+    }
+    openModal('productModal');
+  }
+  document.getElementById('addProductBtn')?.addEventListener('click', () => openProductEditor(null));
 
   function renderCategories(){
     const body = document.getElementById('categoriesTableBody');
@@ -534,8 +638,8 @@ tbody tr:last-child td{border-bottom:0}
       order.status = newStatusUi;
       updateCounts();renderRecent();showToast('Order status updated');
     }));
-    body?.querySelectorAll('[data-view-order]').forEach(btn=>btn.addEventListener('click',()=>showToast(`${orders[Number(btn.dataset.viewOrder)].id} details would open here.`)));
-    body?.querySelectorAll('[data-edit-order]').forEach(btn=>btn.addEventListener('click',()=>showToast(`${orders[Number(btn.dataset.editOrder)].id} is ready to edit.`)));
+    body?.querySelectorAll('[data-view-order]').forEach(btn=>btn.addEventListener('click',()=>openOrderViewer(orders[Number(btn.dataset.viewOrder)])));
+    body?.querySelectorAll('[data-edit-order]').forEach(btn=>btn.addEventListener('click',()=>openOrderEditor(orders[Number(btn.dataset.editOrder)])));
     body?.querySelectorAll('[data-confirm-payment]').forEach(btn=>btn.addEventListener('click', async ()=>{
       const idx = Number(btn.dataset.confirmPayment);
       const order = orders[idx];
@@ -566,7 +670,17 @@ tbody tr:last-child td{border-bottom:0}
       body.innerHTML = filtered.length ? filtered.map(p=>`<tr data-id="${p.id}"><td><div style="display:flex;align-items:center;gap:10px"><div class="product-thumb">IMG</div><div class="product-cell"><strong>${p.name}</strong><span>Product page placeholder</span></div></div></td><td>${p.sku}</td><td>${p.category}</td><td class="money">${money(p.price)}</td><td><span class="stock-number ${p.stock<=8?'low':''}">${p.stock}</span></td><td><span class="status ${p.visibility==='Published'?'status-completed':'status-processing'}">${p.visibility}</span>${p.featured?' <span class="status status-completed" title="Shown on the home page">★ Featured</span>':''}</td><td><div class="row-actions"><button class="row-btn" title="Edit product" data-product-action="edit">${iconEdit}</button><button class="row-btn" title="View product" data-product-action="view">${iconEye}</button><button class="row-btn" title="${p.visibility==='Published'?'Unpublish':'Publish'}" data-product-action="toggle-publish">${p.visibility==='Published'?'Unpublish':'Publish'}</button><button class="row-btn" title="${p.featured?'Remove from home page':'Feature on home page'}" data-product-action="toggle-featured">${p.featured?'Unfeature':'Feature'}</button></div></td></tr>`).join('') : '<tr><td colspan="7"><div class="empty-state"><h3>No products yet</h3><p>Products added through the admin form will appear here. After Supabase is connected, saved active products will publish to the storefront.</p></div></td></tr>';
     }
     document.getElementById('productResultCount').textContent = `Showing ${filtered.length} of ${products.length} products`;
-    body?.querySelectorAll('[data-product-action="edit"],[data-product-action="view"]').forEach(btn=>btn.addEventListener('click',()=>showToast(btn.dataset.productAction==='edit'?'Product editor would open here.':'Product preview would open here.')));
+    body?.querySelectorAll('[data-product-action="edit"]').forEach(btn=>btn.addEventListener('click',()=>{
+      const id = btn.closest('tr')?.dataset.id;
+      const product = products.find(p=>p.id===id);
+      if (product) openProductEditor(product);
+    }));
+    body?.querySelectorAll('[data-product-action="view"]').forEach(btn=>btn.addEventListener('click',()=>{
+      const id = btn.closest('tr')?.dataset.id;
+      const product = products.find(p=>p.id===id);
+      if (product && product.slug) window.open('product-template.html?slug=' + encodeURIComponent(product.slug), '_blank');
+      else showToast('This product has no page link yet — add one from the edit screen.');
+    }));
     body?.querySelectorAll('[data-product-action="toggle-publish"]').forEach(btn=>btn.addEventListener('click', async ()=>{
       const row = btn.closest('tr');
       const id = row?.dataset.id;
@@ -626,7 +740,11 @@ tbody tr:last-child td{border-bottom:0}
     setEl('statHealthyStockSub', `${healthyCount} of ${products.length} products`);
     setEl('statStockValueSub', 'Based on current stock and price');
 
-    body?.querySelectorAll('[data-inventory-action="adjust"]').forEach(btn=>btn.addEventListener('click',()=>showToast('Adjust stock directly from the Products tab for now.')));
+    body?.querySelectorAll('[data-inventory-action="adjust"]').forEach(btn=>btn.addEventListener('click',()=>{
+      const id = btn.closest('tr')?.dataset.id;
+      const product = products.find(p=>p.id===id);
+      if (product) openProductEditor(product);
+    }));
   }
 
   function updateCounts(){
@@ -658,6 +776,37 @@ tbody tr:last-child td{border-bottom:0}
   document.querySelectorAll('.modal-backdrop').forEach(backdrop=>backdrop.addEventListener('click',e=>{if(e.target===backdrop)closeModals()}));
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModals()});
 
+  var profileMenuBtn = document.getElementById('profileMenuBtn');
+  var profileMenu = document.getElementById('profileMenu');
+  if (profileMenuBtn && profileMenu) {
+    profileMenuBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var isOpen = profileMenu.style.display === 'block';
+      profileMenu.style.display = isOpen ? 'none' : 'block';
+      profileMenuBtn.setAttribute('aria-expanded', String(!isOpen));
+    });
+    profileMenu.querySelectorAll('button').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        profileMenu.style.display = 'none';
+        profileMenuBtn.setAttribute('aria-expanded', 'false');
+      });
+    });
+    document.addEventListener('click', function (e) {
+      if (profileMenu.style.display === 'block' && !profileMenu.contains(e.target) && e.target !== profileMenuBtn) {
+        profileMenu.style.display = 'none';
+        profileMenuBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { profileMenu.style.display = 'none'; profileMenuBtn.setAttribute('aria-expanded', 'false'); }
+    });
+    var logoutBtn = document.getElementById('profileLogoutBtn');
+    if (logoutBtn) logoutBtn.addEventListener('click', async function () {
+      await sb.auth.signOut();
+      window.location.reload();
+    });
+  }
+
   let toastTimer;
   function showToast(message){const toast=document.getElementById('toast');document.getElementById('toastText').textContent=message;toast.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove('show'),2600)}
 
@@ -678,8 +827,79 @@ tbody tr:last-child td{border-bottom:0}
     if (error) { showToast('Could not create order: ' + error.message); return; }
     e.target.reset();closeModals();await loadOrders();showToast('Order added');
   });
+
+  function openOrderViewer(order){
+    if (!order) return;
+    const itemsHtml = (order.items || []).map(i => escapeHtml(i.description || 'Item')).join(', ') || 'No items listed';
+    const vdStatus = order.virtudropOrderNumber ? resolveDeliveryStatus(deliveryStatuses[order.virtudropOrderNumber]) : null;
+    const trackUrl = order.virtudropOrderNumber ? '../virtudrop/track.html?' + new URLSearchParams({ order: order.virtudropOrderNumber, phone: order.phone || '' }).toString() : null;
+    document.getElementById('orderViewBody').innerHTML = `
+      <div class="field full"><label>Order</label><p>${escapeHtml(order.id)} &middot; ${escapeHtml(order.date)}</p></div>
+      <div class="field"><label>Customer</label><p>${escapeHtml(order.customer)}</p></div>
+      <div class="field"><label>Phone</label><p>${escapeHtml(order.phone)}</p></div>
+      <div class="field full"><label>Items</label><p>${itemsHtml}</p></div>
+      <div class="field full"><label>Delivery address</label><p>${escapeHtml(order.address || order.area || '—')}</p></div>
+      <div class="field"><label>Order total</label><p>${money(order.total)}</p></div>
+      <div class="field"><label>Delivery fee</label><p>${order.deliveryFee != null ? money(order.deliveryFee) : '—'}</p></div>
+      <div class="field"><label>Payment</label><p>${escapeHtml(order.payment)}</p></div>
+      <div class="field"><label>Status</label><p><span class="status ${statusClass(order.status)}">${escapeHtml(order.status)}</span></p></div>
+      ${order.virtudropOrderNumber ? `<div class="field full"><label>VirtuDrop delivery</label><p><span class="status ${vdStatus.cls}">${escapeHtml(vdStatus.label)}</span> &middot; <a href="${trackUrl}" target="_blank" rel="noopener">Track this delivery</a></p></div>` : ''}
+    `;
+    openModal('orderViewModal');
+  }
+
+  function openOrderEditor(order){
+    if (!order) return;
+    editingOrderId = order.dbId;
+    document.getElementById('editOrderName').value = order.customer || '';
+    document.getElementById('editOrderPhone').value = order.phone || '';
+    document.getElementById('editOrderAddress').value = order.address || '';
+    document.getElementById('editOrderArea').value = order.area || '';
+    document.getElementById('editOrderStatus').value = order.status || 'Pending';
+    document.getElementById('editOrderVdNote').style.display = order.virtudropOrderNumber ? 'block' : 'none';
+    openModal('orderEditModal');
+  }
+
+  document.getElementById('orderEditForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const order = orders.find(o => o.dbId === editingOrderId);
+    if (!order) { closeModals(); return; }
+    const name = document.getElementById('editOrderName').value.trim();
+    const phone = document.getElementById('editOrderPhone').value.trim();
+    const address = document.getElementById('editOrderAddress').value.trim();
+    const area = document.getElementById('editOrderArea').value.trim();
+    const statusUi = document.getElementById('editOrderStatus').value;
+    const submitBtn = document.getElementById('orderEditSubmitBtn');
+    submitBtn.disabled = true;
+    const { error } = await sb.from('vf_orders').update({
+      customer_name: name,
+      customer_phone: phone,
+      delivery_address: address,
+      delivery_area: area,
+      status: STATUS_UI_TO_DB[statusUi]
+    }).eq('id', editingOrderId);
+    if (error) { submitBtn.disabled = false; showToast('Could not update order: ' + error.message); return; }
+    let vdWarning = '';
+    if (order.virtudropOrderNumber) {
+      const { error: vdError } = await sb.rpc('vf_push_order_correction', {
+        p_virtudrop_order_number: order.virtudropOrderNumber,
+        p_customer_name: name,
+        p_customer_phone: phone,
+        p_street_name: address,
+        p_area_name: area
+      });
+      if (vdError) vdWarning = ' (VirtuDrop sync failed: ' + vdError.message + ')';
+    }
+    submitBtn.disabled = false;
+    editingOrderId = null;
+    closeModals();
+    await loadOrders();
+    showToast('Order updated' + vdWarning);
+  });
+
   document.getElementById('productForm').addEventListener('submit', async e=>{
     e.preventDefault();
+    const isEdit = !!editingProductId;
     const name = document.getElementById('newProductName').value;
     const slug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
 
@@ -696,6 +916,25 @@ tbody tr:last-child td{border-bottom:0}
 
     const categoryId = document.getElementById('newProductCategory').value || null;
     const categoryName = categoryId ? (categories.find(c => c.id === categoryId)?.name || null) : null;
+
+    if (isEdit) {
+      const payload = {
+        name,
+        sku: document.getElementById('newProductSku').value,
+        category_id: categoryId,
+        category: categoryName,
+        price: Number(document.getElementById('newProductPrice').value),
+        stock_qty: Number(document.getElementById('newProductStock').value),
+        description: document.getElementById('newProductDescription').value
+      };
+      if (media.length) payload.images = media;
+      const { error } = await sb.from('vf_products').update(payload).eq('id', editingProductId);
+      if (error) { showToast('Could not update product: ' + error.message); return; }
+      editingProductId = null;
+      e.target.reset();closeModals();await loadProducts();showToast('Product updated');
+      return;
+    }
+
     const { error } = await sb.from('vf_products').insert({
       name,
       slug,
@@ -742,7 +981,7 @@ tbody tr:last-child td{border-bottom:0}
   document.querySelector('[data-action="sync-delivery"]').addEventListener('click',()=>showToast('VirtuDrop sync is a backend integration placeholder.'));
   document.querySelector('[data-action="save-settings"]').addEventListener('click',()=>showToast('Settings saved locally. Connect Supabase for live storage.'));
 
-  renderOrders();renderRecent();loadOrders();loadProducts();loadCategories();updateCounts();
+  renderOrders();renderRecent();loadOrders().then(loadDeliveryStatuses);loadProducts();loadCategories();updateCounts();
 })();
 </script>
 </body>

@@ -1304,6 +1304,28 @@ input[type="range"]{
 </script>
 </head>
 <body>
+<div id="vfAdminBar" style="display:none;position:fixed;top:0;left:0;right:0;height:36px;z-index:9999;background:#0b1616;color:#fff;align-items:center;justify-content:space-between;padding:0 16px;font:500 13px/1 system-ui,-apple-system,sans-serif;box-sizing:border-box;"><span>Admin mode — <span id="vfAdminBarEmail"></span></span><span style="display:flex;gap:10px;align-items:center;"><a href="admin.html" style="color:#fff;text-decoration:underline;">Dashboard</a><button id="vfAdminBarLogout" type="button" style="background:none;border:1px solid rgba(255,255,255,.5);color:#fff;padding:3px 10px;border-radius:6px;cursor:pointer;font:inherit;">Log out</button></span></div>
+<style>body.vf-admin-bar-visible{padding-top:36px}</style>
+<script>
+(async function(){
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return;
+    const { data } = await sb.from('vf_admins').select('id').eq('id', session.user.id).single();
+    if (!data) return;
+    const bar = document.getElementById('vfAdminBar');
+    if (!bar) return;
+    document.getElementById('vfAdminBarEmail').textContent = session.user.email || '';
+    bar.style.display = 'flex';
+    document.body.classList.add('vf-admin-bar-visible');
+    const logoutBtn = document.getElementById('vfAdminBarLogout');
+    if (logoutBtn) logoutBtn.addEventListener('click', async function(){
+      await sb.auth.signOut();
+      window.location.reload();
+    });
+  } catch (e) {}
+})();
+</script>
 <a class="skip-link" href="#main">Skip to main content</a>
 <!-- =========================================================
      HEADER
