@@ -2522,7 +2522,7 @@ function renderLinkCatalogSelector() {
     const item = entry.item;
     return '<div style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; padding:0.65rem 0.75rem; background:#ffffff; border:1px solid #dcecea; border-radius:8px; flex-wrap:wrap;">'
       + '<div style="font-weight:700; color:#1a1a1a;">' + escapeHtml(item.item_name) + '<div style="font-size:0.78rem; color:#6a6a6a; font-weight:500;">' + money(item.item_cost) + ' each</div></div>'
-      + '<div style="display:flex; align-items:center; gap:0.5rem;"><label style="font-size:0.78rem; color:#6a6a6a;">Qty</label><input class="input" type="number" min="1" step="1" value="' + entry.quantity + '" style="width:82px; padding:0.55rem 0.65rem;" onchange="setLinkCatalogQuantity(\'' + item.id + '\', this.value)" oninput="setLinkCatalogQuantity(\'' + item.id + '\', this.value)"><button type="button" class="btn btn-ghost" style="padding:0.45rem 0.65rem; font-size:0.82rem;" onclick="removeLinkCatalogItem(\'' + item.id + '\')">Remove</button></div>'
+      + '<div style="display:flex; align-items:center; gap:0.5rem;"><label style="font-size:0.78rem; color:#6a6a6a;">Qty</label><input class="input" type="number" min="1" step="1" value="' + entry.quantity + '" style="width:82px; padding:0.55rem 0.65rem;" onchange="setLinkCatalogQuantity(\'' + item.id + '\', this.value, true)" oninput="setLinkCatalogQuantity(\'' + item.id + '\', this.value, false)"><button type="button" class="btn btn-ghost" style="padding:0.45rem 0.65rem; font-size:0.82rem;" onclick="removeLinkCatalogItem(\'' + item.id + '\')">Remove</button></div>'
       + '</div>';
   }).join('');
   syncLinkCatalogFields();
@@ -2534,10 +2534,21 @@ window.toggleLinkCatalogItem = function(itemId) {
   else linkCatalogSelection.set(itemId, 1);
   renderLinkCatalogSelector();
 };
-window.setLinkCatalogQuantity = function(itemId, value) {
+window.setLinkCatalogQuantity = function(itemId, value, commit) {
   if (!linkCatalogSelection.has(itemId)) return;
-  linkCatalogSelection.set(itemId, Math.max(parseInt(value, 10) || 1, 1));
-  renderLinkCatalogSelector();
+  if (commit) {
+    linkCatalogSelection.set(itemId, Math.max(parseInt(value, 10) || 1, 1));
+    renderLinkCatalogSelector();
+    return;
+  }
+  // Still typing: only accept fully-typed positive numbers and never re-render the input
+  // itself, otherwise clearing the field to type a new quantity gets stomped back to "1"
+  // on every keystroke and the input loses focus/cursor position.
+  const parsed = parseInt(value, 10);
+  if (Number.isFinite(parsed) && parsed > 0) {
+    linkCatalogSelection.set(itemId, parsed);
+    syncLinkCatalogFields();
+  }
 };
 window.removeLinkCatalogItem = function(itemId) {
   linkCatalogSelection.delete(itemId);
@@ -2676,7 +2687,7 @@ function renderOrderCatalogSelector() {
     const item = entry.item;
     return '<div style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; padding:0.65rem 0.75rem; background:#ffffff; border:1px solid #dcecea; border-radius:8px; flex-wrap:wrap;">'
       + '<div style="font-weight:700; color:#1a1a1a;">' + escapeHtml(item.item_name) + '<div style="font-size:0.78rem; color:#6a6a6a; font-weight:500;">' + money(item.item_cost) + ' each</div></div>'
-      + '<div style="display:flex; align-items:center; gap:0.5rem;"><label style="font-size:0.78rem; color:#6a6a6a;">Qty</label><input class="input" type="number" min="1" step="1" value="' + entry.quantity + '" style="width:82px; padding:0.55rem 0.65rem;" onchange="setOrderCatalogQuantity(\'' + item.id + '\', this.value)" oninput="setOrderCatalogQuantity(\'' + item.id + '\', this.value)"><button type="button" class="btn btn-ghost" style="padding:0.45rem 0.65rem; font-size:0.82rem;" onclick="removeOrderCatalogItem(\'' + item.id + '\')">Remove</button></div>'
+      + '<div style="display:flex; align-items:center; gap:0.5rem;"><label style="font-size:0.78rem; color:#6a6a6a;">Qty</label><input class="input" type="number" min="1" step="1" value="' + entry.quantity + '" style="width:82px; padding:0.55rem 0.65rem;" onchange="setOrderCatalogQuantity(\'' + item.id + '\', this.value, true)" oninput="setOrderCatalogQuantity(\'' + item.id + '\', this.value, false)"><button type="button" class="btn btn-ghost" style="padding:0.45rem 0.65rem; font-size:0.82rem;" onclick="removeOrderCatalogItem(\'' + item.id + '\')">Remove</button></div>'
       + '</div>';
   }).join('');
   syncOrderCatalogFields();
@@ -2690,11 +2701,23 @@ window.toggleOrderCatalogItem = function(itemId) {
   renderOrderCatalogSelector();
 };
 
-window.setOrderCatalogQuantity = function(itemId, value) {
+window.setOrderCatalogQuantity = function(itemId, value, commit) {
   if (!orderCatalogSelection.has(itemId)) return;
-  const quantity = Math.max(parseInt(value, 10) || 1, 1);
-  orderCatalogSelection.set(itemId, quantity);
-  renderOrderCatalogSelector();
+  if (commit) {
+    // Field lost focus (or Enter/step arrows) - normalize to a valid quantity and refresh the UI.
+    const quantity = Math.max(parseInt(value, 10) || 1, 1);
+    orderCatalogSelection.set(itemId, quantity);
+    renderOrderCatalogSelector();
+    return;
+  }
+  // Still typing: only accept fully-typed positive numbers and never re-render the input
+  // itself, otherwise clearing the field to type a new quantity gets stomped back to "1"
+  // on every keystroke and the input loses focus/cursor position.
+  const parsed = parseInt(value, 10);
+  if (Number.isFinite(parsed) && parsed > 0) {
+    orderCatalogSelection.set(itemId, parsed);
+    syncOrderCatalogFields();
+  }
 };
 
 window.removeOrderCatalogItem = function(itemId) {
