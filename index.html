@@ -3,818 +3,502 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title> VirtuForms | Professional Business Solutions in Trinidad</title>
+  <title>VirtuForms | Professional Business Solutions in Trinidad</title>
   <meta name="description" content="VirtuForms provides professional business solutions including delivery services, virtual assistance, and business management tools for Trinidad enterprises.">
   <link rel="icon" href="assets/virtuforms-logo.png">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --navy-900: #101B33;
+      --navy-800: #16233F;
+      --navy-700: #223257;
+      --navy-600: #2C3D63;
+      --teal-600: #007A82;
+      --teal-500: #00A0A8;
+      --teal-400: #00A8B0;
+      --teal-100: #E3F5F6;
+      --slate-600: #5B6B7D;
+      --slate-400: #94A3B8;
+      --bg: #FFFFFF;
+      --bg-soft: #F4F9F8;
+      --border: #E4EBEA;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+      /* Neumorphic (soft-UI) tokens */
+      --neu-bg: #EDF3F2;
+      --neu-light: #FFFFFF;
+      --neu-dark: rgba(163, 182, 194, 0.55);
+      --neu-navy-light: rgba(56, 76, 115, 0.55);
+      --neu-navy-dark: rgba(0, 0, 0, 0.5);
     }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
+    html { scroll-behavior: smooth; }
 
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       line-height: 1.7;
-      color: #f8f9fa;
-      background: #0b1616;
+      color: var(--slate-600);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
     }
 
+    h1, h2, h3, h4, .brand-text { font-family: 'Sora', 'Inter', sans-serif; }
+
     .container {
-      max-width: 1400px;
+      max-width: 1360px;
       margin: 0 auto;
       padding: 0 2rem;
     }
 
-    /* Navigation */
+    a { color: inherit; }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.7s var(--ease), transform 0.7s var(--ease);
+    }
+    .reveal.is-visible { opacity: 1; transform: translateY(0); }
+
+    /* ===== Navigation ===== */
     .nav {
-      background: #0f2020;
-      box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+      background: rgba(255,255,255,0.94);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 1px 0 var(--border);
       position: sticky;
       top: 0;
       z-index: 100;
-      border-bottom: 2px solid #1a5656;
-      animation: slideDown 0.5s ease-out;
+      animation: slideDown 0.6s var(--ease);
+      transition: box-shadow 0.3s ease;
     }
 
+    .nav.scrolled { box-shadow: 0 4px 24px rgba(16, 27, 51, 0.08); }
+
     @keyframes slideDown {
-      from {
-        transform: translateY(-100%);
-        opacity: 0;
-      }
-      to {
-        transform: translateY(0);
-        opacity: 1;
-      }
+      from { transform: translateY(-100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
     }
 
     .nav-inner {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 1.5rem 0;
+      padding: 1.1rem 0;
       gap: 2rem;
+      transition: padding 0.3s ease;
     }
 
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      text-decoration: none;
-      transition: transform 0.3s ease;
-    }
+    .nav.scrolled .nav-inner { padding: 0.7rem 0; }
 
-    .brand:hover {
-      transform: scale(1.02);
-    }
+    .brand { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; transition: opacity 0.25s ease; }
+    .brand:hover { opacity: 0.85; }
+    .brand-logo { height: 68px; width: auto; display: block; transition: height 0.3s ease; }
+    .nav.scrolled .brand-logo { height: 54px; }
+    .brand-text-wrap { display: flex; flex-direction: column; line-height: 1.15; }
+    .brand-text { font-size: 1.3rem; font-weight: 700; color: var(--navy-900); letter-spacing: -0.3px; }
+    .brand-text span { color: var(--teal-500); }
+    .brand-sub { font-size: 0.62rem; font-weight: 600; color: var(--slate-400); letter-spacing: 1.5px; text-transform: uppercase; }
 
-    .brand img {
-      height: 60px;
-      width: auto;
-    }
+    .links { display: flex; gap: 2.2rem; align-items: center; }
 
-    .brand-logo {
-      height: 50px;
-      width: auto;
-      display: block;
+    .links a:not(.nav-cta) {
+      text-decoration: none; color: var(--navy-800); font-weight: 500; font-size: 0.95rem;
+      position: relative; padding: 0.4rem 0; transition: color 0.25s ease;
     }
-
-    .brand-text {
-      font-size: 1.8rem;
-      font-weight: 800;
-      color: #7dd3c0;
-      letter-spacing: -0.5px;
+    .links a:not(.nav-cta)::after {
+      content: ''; position: absolute; bottom: -3px; left: 0; width: 0; height: 2px;
+      background: var(--teal-500); transition: width 0.3s var(--ease);
     }
+    .links a:not(.nav-cta):hover { color: var(--teal-600); }
+    .links a:not(.nav-cta):hover::after, .links a[aria-current="page"]::after { width: 100%; }
+    .links a[aria-current="page"] { color: var(--teal-600); }
 
-    .badge {
-      font-size: 0.75rem;
-      font-weight: 500;
-      color: #7dd3c0;
-      letter-spacing: 0.5px;
-    }
-
-    .links {
-      display: flex;
-      gap: 2.5rem;
-      align-items: center;
-    }
-
-    .links a {
-      text-decoration: none;
-      color: #b8e6dc;
-      font-weight: 500;
-      font-size: 0.95rem;
-      position: relative;
-      transition: color 0.3s ease;
-    }
-
-    .links a::after {
-      content: '';
-      position: absolute;
-      bottom: -5px;
-      left: 0;
-      width: 0;
-      height: 2px;
-      background: #7dd3c0;
-      transition: width 0.3s ease;
-    }
-
-    .links a:hover {
-      color: #7dd3c0;
-    }
-
-    .links a:hover::after {
-      width: 100%;
-    }
-
-    .links a[aria-current="page"] {
-      color: #7dd3c0;
-    }
-
-    .links a[aria-current="page"]::after {
-      width: 100%;
-    }
-
-    /* Nav CTA Button */
     .nav-cta {
-      background: linear-gradient(135deg, #2a9d8f 0%, #1a5656 100%);
-      color: #ffffff !important;
-      padding: 0.65rem 1.5rem;
-      border-radius: 50px;
-      font-weight: 600;
-      box-shadow: 0 2px 10px rgba(42, 157, 143, 0.3);
-      transition: all 0.3s ease;
+      background: var(--teal-600); color: #fff !important; padding: 0.7rem 1.6rem; border-radius: 8px;
+      font-weight: 600; font-size: 0.92rem; text-decoration: none; box-shadow: 0 2px 12px rgba(0, 122, 130, 0.3);
+      transition: all 0.25s var(--ease); display: inline-flex; align-items: center; gap: 0.4rem;
     }
+    .nav-cta:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0, 122, 130, 0.4); background: var(--teal-500); }
 
-    .nav-cta::after {
-      display: none;
-    }
-
-    .nav-cta:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 15px rgba(42, 157, 143, 0.4);
-      color: #ffffff !important;
-    }
-
-    .dropdown {
-      position: relative;
-    }
-
+    .dropdown { position: relative; }
     .dropdown-toggle {
-      display: flex;
-      align-items: center;
-      gap: 0.3rem;
-      background: none;
-      border: none;
-      color: #b8e6dc;
-      font-weight: 500;
-      font-size: 0.95rem;
-      cursor: pointer;
-      padding: 0.5rem 0;
-      position: relative;
-      transition: color 0.3s ease;
+      display: flex; align-items: center; gap: 0.35rem; background: none; border: none; color: var(--navy-800);
+      font-weight: 500; font-size: 0.95rem; font-family: inherit; cursor: pointer; padding: 0.4rem 0;
+      position: relative; transition: color 0.25s ease;
     }
-
     .dropdown-toggle::after {
-      content: '';
-      position: absolute;
-      bottom: -5px;
-      left: 0;
-      width: 0;
-      height: 2px;
-      background: #7dd3c0;
-      transition: width 0.3s ease;
+      content: ''; position: absolute; bottom: -3px; left: 0; width: 0; height: 2px;
+      background: var(--teal-500); transition: width 0.3s var(--ease);
     }
-
-    .dropdown-toggle:hover {
-      color: #7dd3c0;
-    }
-
-    .dropdown-toggle:hover::after {
-      width: 100%;
-    }
+    .dropdown-toggle:hover { color: var(--teal-600); }
+    .dropdown-toggle:hover::after { width: 100%; }
+    .dropdown-toggle .chev { font-size: 0.65rem; transition: transform 0.25s ease; }
+    .dropdown:hover .chev { transform: rotate(180deg); }
 
     .dropdown-menu {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      background: #0f2020;
-      border: 2px solid #2a9d8f;
-      border-radius: 8px;
-      padding: 1rem 0;
-      min-width: 220px;
-      opacity: 0;
-      visibility: hidden;
-      transform: translateY(-10px);
-      transition: all 0.3s ease;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-      margin-top: 0.5rem;
-      z-index: 1000;
+      position: absolute; top: 100%; left: 0; background: #fff; border: 1px solid var(--border); border-radius: 12px;
+      padding: 0.6rem; min-width: 230px; opacity: 0; visibility: hidden; transform: translateY(-8px);
+      transition: all 0.25s var(--ease); box-shadow: 0 16px 40px rgba(16, 27, 51, 0.12); margin-top: 0.6rem; z-index: 1000;
     }
-
-    .dropdown:hover .dropdown-menu {
-      opacity: 1;
-      visibility: visible;
-      transform: translateY(0);
-    }
-
-    .dropdown-menu a {
-      display: block;
-      padding: 0.8rem 1.5rem;
-      color: #b8e6dc;
-      text-decoration: none;
-      transition: all 0.3s ease;
-      font-size: 0.95rem;
-    }
-
-    .dropdown-menu a::after {
-      display: none;
-    }
-
-    .dropdown-menu a:hover {
-      background: #1a5656;
-      color: #7dd3c0;
-      padding-left: 2rem;
-    }
+    .dropdown:hover .dropdown-menu { opacity: 1; visibility: visible; transform: translateY(0); }
+    .dropdown-menu a { display: block; padding: 0.7rem 0.9rem; color: var(--navy-800); text-decoration: none; transition: all 0.2s ease; font-size: 0.92rem; border-radius: 8px; }
+    .dropdown-menu a::after { display: none; }
+    .dropdown-menu a:hover { background: var(--teal-100); color: var(--teal-600); }
 
     .mobile-toggle {
-      display: none;
-      background: none;
-      border: 2px solid #7dd3c0;
-      color: #7dd3c0;
-      padding: 0.5rem 1rem;
-      border-radius: 6px;
-      font-weight: 600;
-      cursor: pointer;
-      position: relative;
-      z-index: 1001;
-      font-size: 1rem;
+      display: none; background: none; border: 1.5px solid var(--navy-800); color: var(--navy-800);
+      padding: 0.5rem 1rem; border-radius: 6px; font-weight: 600; cursor: pointer; position: relative; z-index: 1001; font-size: 0.95rem;
     }
 
-    /* Mobile menu open state - works at all screen sizes */
     .links.mobile-open {
-      display: flex !important;
-      position: fixed;
-      top: 76px;
-      left: 0;
-      right: 0;
-      background: #0f2020;
-      flex-direction: column;
-      padding: 2rem;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-      border-top: 2px solid #1a5656;
-      gap: 0;
-      z-index: 999;
-      max-height: calc(100vh - 76px);
-      overflow-y: auto;
+      display: flex !important; position: fixed; top: 70px; left: 0; right: 0; background: #fff; flex-direction: column;
+      padding: 1.5rem 2rem; box-shadow: 0 10px 40px rgba(16,27,51,0.15); border-top: 1px solid var(--border);
+      gap: 0; z-index: 999; max-height: calc(100vh - 70px); overflow-y: auto; align-items: flex-start;
     }
-
-    .links.mobile-open a,
-    .links.mobile-open .dropdown-toggle {
-      padding: 1rem;
-      border-bottom: 1px solid #1a5656;
-    }
-
-    .links.mobile-open a:last-child {
-      border-bottom: none;
-    }
-
+    .links.mobile-open a, .links.mobile-open .dropdown-toggle { padding: 1rem 0; border-bottom: 1px solid var(--border); width: 100%; }
+    .links.mobile-open a:last-child { border-bottom: none; }
     .dropdown-menu.mobile-open {
-      display: block !important;
-      position: static;
-      opacity: 1;
-      visibility: visible;
-      transform: none;
-      margin-top: 0;
-      border: none;
-      border-radius: 0;
-      box-shadow: none;
-      background: #0b1616;
+      display: block !important; position: static; opacity: 1; visibility: visible; transform: none;
+      margin-top: 0.4rem; border: none; box-shadow: none; background: var(--bg-soft); width: 100%;
     }
 
-    .dropdown-menu.mobile-open a {
-      padding: 1rem 1rem 1rem 2rem;
-    }
-
-    /* Hero Section */
+    /* ===== Hero ===== */
     .hero {
-      min-height: 90vh;
-      display: flex;
-      align-items: center;
-      background: linear-gradient(135deg, #0b1616 0%, #1a5656 100%);
       position: relative;
       overflow: hidden;
+      background: linear-gradient(180deg, #ffffff 0%, var(--bg-soft) 100%);
+      padding: 4.5rem 0 9rem;
     }
 
-    .hero::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      right: -20%;
-      width: 60%;
-      height: 100%;
-      background: radial-gradient(circle, rgba(125, 211, 192, 0.15) 0%, transparent 70%);
-      animation: float 20s ease-in-out infinite;
-    }
-
-    @keyframes float {
-      0%, 100% { transform: translate(0, 0) rotate(0deg); }
-      50% { transform: translate(-30px, 30px) rotate(5deg); }
-    }
-
-    .hero-container {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 5rem 2rem;
+    .hero-inner {
+      display: grid;
+      grid-template-columns: minmax(0, 460px) 1fr;
+      align-items: center;
+      gap: 2rem;
       position: relative;
-      z-index: 1;
+      z-index: 2;
     }
 
-    .hero-content {
-      max-width: 900px;
-      text-align: center;
-      margin: 0 auto;
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 0.5rem; background: var(--teal-100); color: var(--teal-600);
+      font-size: 0.78rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+      padding: 0.4rem 0.85rem; border-radius: 50px; margin-bottom: 1.4rem; animation: fadeUp 0.7s var(--ease) both;
     }
 
     .hero-content h1 {
-      font-size: 5rem;
-      font-weight: 800;
-      background: linear-gradient(135deg, #7dd3c0 0%, #b8e6dc 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      line-height: 1.1;
-      margin-bottom: 2rem;
-      animation: slideInUp 0.8s ease-out;
+      font-size: 3.1rem; font-weight: 700; color: var(--navy-900); line-height: 1.14; letter-spacing: -1px;
+      margin-bottom: 1.4rem; animation: fadeUp 0.7s var(--ease) 0.1s both;
     }
-
-    @keyframes slideInUp {
-      from {
-        opacity: 0;
-        transform: translateY(30px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+    .hero-content h1 .accent {
+      background: linear-gradient(120deg, var(--teal-600) 0%, var(--teal-400) 100%);
+      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
     }
-
     .hero-content .tagline {
-      font-size: 1.5rem;
-      color: #b8e6dc;
-      margin-bottom: 3rem;
-      line-height: 1.8;
-      animation: slideInUp 0.8s ease-out 0.2s both;
+      font-size: 1.08rem; color: var(--slate-600); margin-bottom: 2.2rem; max-width: 460px;
+      animation: fadeUp 0.7s var(--ease) 0.2s both;
     }
 
-    .cta-buttons {
-      display: flex;
-      gap: 1.5rem;
-      justify-content: center;
-      flex-wrap: wrap;
-      animation: slideInUp 0.8s ease-out 0.4s both;
-    }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: translateY(0); } }
+
+    .cta-buttons { display: flex; gap: 1rem; flex-wrap: wrap; animation: fadeUp 0.7s var(--ease) 0.3s both; }
 
     .btn {
-      padding: 1.3rem 3rem;
-      font-weight: 700;
-      font-size: 1.1rem;
+      padding: 0.95rem 1.9rem; font-weight: 600; font-size: 0.98rem; font-family: inherit; border: none;
+      border-radius: 8px; cursor: pointer; transition: all 0.3s var(--ease); text-decoration: none;
+      display: inline-flex; align-items: center; gap: 0.5rem;
+    }
+    .btn-primary { background: var(--teal-600); color: #ffffff; box-shadow: 0 8px 24px rgba(0, 122, 130, 0.32); }
+    .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 14px 32px rgba(0, 122, 130, 0.4); background: var(--teal-500); }
+    .btn-secondary { background: #ffffff; color: var(--navy-900); border: 1.5px solid var(--border); }
+    .btn-secondary:hover { border-color: var(--navy-900); transform: translateY(-3px); box-shadow: 0 8px 20px rgba(16,27,51,0.08); }
+
+    /* Hero globe graphic — bleeds off the right edge */
+    .hero-globe-wrap {
+      position: relative;
+      height: 480px;
+      pointer-events: none;
+    }
+
+    .hero-globe-shading,
+    .hero-globe-spin,
+    .hero-globe-shards {
+      position: absolute;
+      top: -60px;
+      right: -12vw;
+      width: 600px;
+      height: 600px;
+    }
+
+    .hero-globe-shading { display: block; width: 600px; height: auto; }
+
+    .hero-globe-surface { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .hero-globe-overlay { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+    .hero-globe-spin { transform-origin: 50% 50%; animation: spin 90s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    .node-dot { animation: pulse 3.2s ease-in-out infinite; }
+    .pulse-dot { filter: url(#pulseGlow); }
+    @keyframes pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+
+    .pixel-shard { animation: drift 6s ease-in-out infinite; }
+    @keyframes drift {
+      0%, 100% { transform: translate(0, 0); opacity: 0.6; }
+      50% { transform: translate(-5px, -9px); opacity: 1; }
+    }
+
+    /* Curved divider between hero and dark zone */
+    .hero-curve { position: absolute; left: 0; right: 0; bottom: -1px; line-height: 0; z-index: 1; }
+    .hero-curve svg { width: 100%; height: 130px; display: block; }
+
+    /* ===== Dark zone (icon strip + services + contact, one continuous section) ===== */
+    .dark-zone {
+      background: var(--navy-900);
+      position: relative;
+      overflow: visible;
+      padding-top: 0.5rem;
+      padding-bottom: 5rem;
+    }
+
+    .dark-zone-decor-tr {
+      position: absolute; top: 0; right: 0; width: 320px; height: 320px; opacity: 0.5; pointer-events: none;
+    }
+    .dark-zone-decor-bl {
+      position: absolute; bottom: 40px; left: -60px; width: 280px; height: 280px; opacity: 0.35; pointer-events: none;
+    }
+
+    /* Icon strip */
+    .icon-strip {
+      position: relative;
+      z-index: 2;
+      background: var(--navy-800);
       border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      text-decoration: none;
-      display: inline-block;
-      letter-spacing: 0.5px;
+      border-radius: 20px;
+      margin-top: -2.6rem;
+      padding: 0.4rem 1rem;
+      box-shadow: 10px 10px 22px var(--neu-navy-dark), -10px -10px 22px var(--neu-navy-light);
     }
 
-    .btn-primary {
-      background: linear-gradient(135deg, #2a9d8f 0%, #3fb8a8 100%);
-      color: #ffffff;
-      box-shadow: 0 6px 30px rgba(42, 157, 143, 0.4);
-    }
+    .icon-strip-grid { display: grid; grid-template-columns: repeat(3, 1fr); }
 
-    .btn-primary:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 10px 40px rgba(42, 157, 143, 0.6);
-    }
+    .icon-pill { display: flex; align-items: center; gap: 1.1rem; padding: 1.6rem 1.4rem; }
+    .icon-pill:not(:last-child) { border-right: 1px solid rgba(255,255,255,0.08); }
 
-    .btn-secondary {
-      background: transparent;
-      color: #7dd3c0;
-      border: 2px solid #7dd3c0;
+    .icon-hex {
+      width: 56px; height: 56px; min-width: 56px;
+      clip-path: polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0% 50%);
+      background: rgba(0, 160, 168, 0.12);
+      border: 1px solid rgba(0, 160, 168, 0.4);
+      display: flex; align-items: center; justify-content: center;
+      transition: transform 0.3s var(--ease);
     }
+    .icon-pill:hover .icon-hex { transform: scale(1.08) rotate(-4deg); }
+    .icon-hex svg { width: 24px; height: 24px; }
 
-    .btn-secondary:hover {
-      background: #7dd3c0;
-      color: #0b1616;
-      transform: translateY(-3px);
-    }
+    .icon-pill-text { flex-grow: 1; }
+    .icon-pill h4 { color: #ffffff; font-size: 1rem; font-weight: 700; margin-bottom: 0.15rem; letter-spacing: 0.2px; }
+    .icon-pill p { color: rgba(255,255,255,0.55); font-size: 0.83rem; margin: 0; }
 
-    /* Services Section */
-    .services {
-      padding: 8rem 0;
-      background: #0f2020;
+    .icon-arrow {
+      width: 34px; height: 34px; min-width: 34px; border-radius: 50%;
+      background: var(--teal-500); display: flex; align-items: center; justify-content: center;
+      transition: all 0.3s var(--ease);
     }
+    .icon-pill:hover .icon-arrow { background: var(--teal-400); transform: translateX(3px); }
+    .icon-arrow svg { width: 15px; height: 15px; color: var(--navy-900); }
 
-    .section-header {
-      text-align: center;
-      margin-bottom: 5rem;
-      animation: slideInUp 0.8s ease-out;
-    }
+    /* Section header (used on dark bg) */
+    .section-header { text-align: center; margin: 5rem auto 3.2rem; max-width: 620px; }
+    .section-eyebrow { color: var(--teal-400); font-weight: 700; font-size: 0.8rem; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 0.7rem; display: block; }
+    .section-header h2 { font-size: 2.2rem; font-weight: 700; color: #ffffff; margin-bottom: 0.9rem; letter-spacing: -0.5px; }
+    .section-header h2 .accent { color: var(--teal-400); }
+    .section-header p { font-size: 1rem; color: rgba(255,255,255,0.6); }
 
-    .section-header h2 {
-      font-size: 3.5rem;
-      font-weight: 800;
-      color: #7dd3c0;
-      margin-bottom: 1.5rem;
-    }
-
-    .section-header p {
-      font-size: 1.3rem;
-      color: #b8e6dc;
-      max-width: 700px;
-      margin: 0 auto;
-      line-height: 1.8;
-    }
+    /* Services */
+    .services { position: relative; z-index: 2; }
 
     .services-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-      gap: 3rem;
-      margin-top: 4rem;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1.2rem;
     }
 
     .service-card {
-      background: linear-gradient(135deg, #1a5656 0%, #0f2020 100%);
-      border-radius: 20px;
-      padding: 4rem;
-      border: 2px solid #2a9d8f;
-      transition: all 0.4s ease;
-      position: relative;
-      overflow: hidden;
+      background: var(--navy-800);
+      border: none;
+      border-radius: 16px;
+      padding: 1.8rem 1.5rem;
+      transition: all 0.35s var(--ease);
       display: flex;
       flex-direction: column;
+      box-shadow: 8px 8px 16px var(--neu-navy-dark), -8px -8px 16px var(--neu-navy-light);
     }
+    .service-card:hover { transform: translateY(-6px); box-shadow: 11px 11px 22px var(--neu-navy-dark), -11px -11px 22px var(--neu-navy-light); }
 
-    .service-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 4px;
-      background: linear-gradient(90deg, #7dd3c0 0%, #3fb8a8 100%);
-      transform: scaleX(0);
-      transform-origin: left;
-      transition: transform 0.4s ease;
-    }
-
-    .service-card:hover::before {
-      transform: scaleX(1);
-    }
-
-    .service-card:hover {
-      transform: translateY(-10px);
-      box-shadow: 0 20px 60px rgba(42, 157, 143, 0.3);
-      border-color: #7dd3c0;
-    }
-
-    .service-card[style*="cursor: not-allowed"]:hover {
-      transform: none;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
-      border-color: #2a9d8f;
-    }
+    .service-card.featured { box-shadow: 8px 8px 16px var(--neu-navy-dark), -8px -8px 16px var(--neu-navy-light), inset 0 0 0 1px rgba(0, 168, 176, 0.3); }
+    .service-card.featured:hover { box-shadow: 11px 11px 22px var(--neu-navy-dark), -11px -11px 22px var(--neu-navy-light), inset 0 0 0 1px rgba(0, 168, 176, 0.5); }
 
     .service-icon {
-      width: 80px;
-      height: 80px;
-      background: #0f2020;
-      border: 3px solid #7dd3c0;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2.5rem;
-      margin-bottom: 2rem;
-      transition: all 0.3s ease;
+      width: 48px; height: 48px; border-radius: 50%;
+      background: rgba(0, 160, 168, 0.14);
+      border: 1px solid rgba(0, 160, 168, 0.35);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 1.3rem; transition: transform 0.3s var(--ease);
     }
+    .service-card:hover .service-icon { transform: scale(1.08) rotate(-4deg); }
+    .service-icon svg { width: 22px; height: 22px; }
 
-    .service-card:hover .service-icon {
-      transform: scale(1.1) rotate(5deg);
+    .service-card h3 { font-size: 1.08rem; font-weight: 700; color: #ffffff; margin-bottom: 0.6rem; }
+    .service-card p { font-size: 0.86rem; color: rgba(255,255,255,0.55); margin-bottom: 1.5rem; flex-grow: 1; }
+
+    .card-pill-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+      font-weight: 600; font-size: 0.85rem; color: var(--teal-400); text-decoration: none;
+      border: 1.3px solid rgba(0, 168, 176, 0.4); border-radius: 8px; padding: 0.6rem 0.9rem;
+      transition: all 0.25s var(--ease);
     }
+    .card-pill-btn:hover { background: var(--teal-500); color: var(--navy-900); border-color: var(--teal-500); }
+    .card-pill-btn svg { width: 14px; height: 14px; transition: transform 0.25s ease; }
+    .card-pill-btn:hover svg { transform: translateX(2px); }
 
-    .service-card h3 {
-      font-size: 2rem;
-      font-weight: 700;
-      color: #7dd3c0;
-      margin-bottom: 1.5rem;
-    }
-
-    .service-card p {
-      font-size: 1.1rem;
-      color: #b8e6dc;
-      line-height: 1.8;
-      margin-bottom: 2rem;
-      flex-grow: 1;
-    }
-
-    .service-card .btn {
-      width: 100%;
-      margin-top: auto;
-    }
-
-    /* Why Choose Us */
-    .why-choose {
-      padding: 8rem 0;
-      background: #0b1616;
-    }
-
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 3rem;
+    /* Contact bar (nested rounded card inside dark zone) */
+    .contact-strip {
+      position: relative;
+      z-index: 2;
       margin-top: 4rem;
+      background: var(--navy-800);
+      border: none;
+      border-radius: 18px;
+      padding: 1.8rem 2rem;
+      box-shadow: 9px 9px 18px var(--neu-navy-dark), -9px -9px 18px var(--neu-navy-light);
     }
+
+    .contact-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; }
+    .contact-item { display: flex; align-items: flex-start; gap: 0.85rem; }
+    .contact-item .ic {
+      width: 40px; height: 40px; min-width: 40px; border-radius: 10px;
+      background: rgba(0, 160, 168, 0.18); display: flex; align-items: center; justify-content: center;
+    }
+    .contact-item .ic svg { width: 18px; height: 18px; color: var(--teal-400); }
+    .contact-item h5 { color: #fff; font-size: 0.82rem; font-weight: 700; margin-bottom: 0.3rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    .contact-item p { color: rgba(255,255,255,0.6); font-size: 0.86rem; margin: 0; }
+
+    /* ===== Why Choose Us ===== */
+    .why-choose { padding: 6.5rem 0; background: #fff; }
+    .why-choose .section-header h2 { color: var(--navy-900); }
+    .why-choose .section-header p { color: var(--slate-600); }
+    .why-choose .section-eyebrow { color: var(--teal-600); }
+
+    .features-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
 
     .feature-card {
-      background: #0f2020;
-      padding: 3rem;
-      border-radius: 16px;
-      border-left: 4px solid #2a9d8f;
-      transition: all 0.3s ease;
+      display: flex; gap: 1.3rem; background: var(--neu-bg); padding: 2rem; border-radius: 16px;
+      border-left: 3px solid var(--teal-500); transition: all 0.3s var(--ease);
+      box-shadow: 8px 8px 16px var(--neu-dark), -8px -8px 16px var(--neu-light);
     }
+    .feature-card:hover { transform: translateX(6px); box-shadow: 10px 10px 20px var(--neu-dark), -10px -10px 20px var(--neu-light); }
 
-    .feature-card:hover {
-      transform: translateX(10px);
-      border-left-color: #7dd3c0;
-      box-shadow: 0 10px 40px rgba(42, 157, 143, 0.2);
+    .feature-icon {
+      min-width: 46px; width: 46px; height: 46px; border-radius: 12px; background: var(--neu-bg);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 4px 4px 8px var(--neu-dark), -4px -4px 8px var(--neu-light);
     }
+    .feature-icon svg { width: 22px; height: 22px; color: var(--teal-600); }
+    .feature-card h3 { font-size: 1.1rem; font-weight: 700; color: var(--navy-900); margin-bottom: 0.4rem; }
+    .feature-card p { font-size: 0.92rem; color: var(--slate-600); margin: 0; }
 
-    .feature-card h3 {
-      font-size: 1.6rem;
-      font-weight: 700;
-      color: #7dd3c0;
-      margin-bottom: 1rem;
-    }
-
-    .feature-card p {
-      font-size: 1.1rem;
-      color: #b8e6dc;
-      line-height: 1.8;
-    }
-
-    /* CTA Section */
+    /* ===== CTA ===== */
+    .cta-wrap { padding: 0 0 6.5rem; background: #fff; }
     .cta-section {
-      padding: 6rem 4rem;
-      background: linear-gradient(135deg, #2a9d8f 0%, #3fb8a8 100%);
-      border-radius: 24px;
-      text-align: center;
-      margin: 6rem 2rem;
-      box-shadow: 0 20px 60px rgba(42, 157, 143, 0.4);
+      padding: 4.5rem 3rem; background: linear-gradient(120deg, var(--teal-600) 0%, var(--teal-500) 100%);
+      border-radius: 20px; text-align: center; position: relative; overflow: hidden;
+    }
+    .cta-section::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 85% 20%, rgba(255,255,255,0.15), transparent 55%); }
+    .cta-section h2 { font-size: 2.1rem; font-weight: 700; color: #ffffff; margin-bottom: 1rem; position: relative; }
+    .cta-section p { font-size: 1.1rem; color: rgba(255,255,255,0.9); margin-bottom: 2.2rem; position: relative; }
+    .cta-section .btn { background: #ffffff; color: var(--teal-600); position: relative; }
+    .cta-section .btn:hover { background: var(--navy-900); color: #fff; }
+
+    /* ===== Footer ===== */
+    .footer { background: var(--navy-900); color: rgba(255,255,255,0.65); padding: 4rem 0 2rem; }
+    .footer-grid { display: grid; grid-template-columns: 1.4fr repeat(3, 1fr); gap: 2.5rem; margin-bottom: 3rem; }
+    .footer-section h3 { color: #fff; font-size: 1.1rem; margin-bottom: 1.3rem; font-weight: 700; }
+    .footer-section p, .footer-section a { color: rgba(255,255,255,0.6); text-decoration: none; display: block; margin-bottom: 0.75rem; font-size: 0.92rem; transition: color 0.25s ease; }
+    .footer-section a:hover { color: var(--teal-400); }
+    .footer-bottom { text-align: center; padding-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.45); font-size: 0.85rem; }
+
+    /* Staggered reveal delays */
+    .services-grid .reveal:nth-child(1) { transition-delay: 0.05s; }
+    .services-grid .reveal:nth-child(2) { transition-delay: 0.12s; }
+    .services-grid .reveal:nth-child(3) { transition-delay: 0.19s; }
+    .services-grid .reveal:nth-child(4) { transition-delay: 0.26s; }
+    .services-grid .reveal:nth-child(5) { transition-delay: 0.33s; }
+    .features-grid .reveal:nth-child(1) { transition-delay: 0.05s; }
+    .features-grid .reveal:nth-child(2) { transition-delay: 0.12s; }
+    .features-grid .reveal:nth-child(3) { transition-delay: 0.19s; }
+    .features-grid .reveal:nth-child(4) { transition-delay: 0.26s; }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 1200px) {
+      .services-grid { grid-template-columns: repeat(3, 1fr); }
     }
 
-    .cta-section h2 {
-      font-size: 3rem;
-      font-weight: 800;
-      color: #ffffff;
-      margin-bottom: 1.5rem;
+    @media (max-width: 1024px) {
+      .hero-inner { grid-template-columns: 1fr; }
+      .hero-globe-wrap { height: 320px; order: -1; }
+      .hero-globe-shading, .hero-globe-spin, .hero-globe-shards { width: 440px; height: 440px; top: -20px; right: -8vw; }
+      .hero-globe-shading { height: auto; }
+      .hero-content { text-align: left; }
+      .hero-content .tagline { max-width: 100%; }
+      .contact-grid { grid-template-columns: repeat(2, 1fr); gap: 1.6rem; }
+      .footer-grid { grid-template-columns: repeat(2, 1fr); }
     }
 
-    .cta-section p {
-      font-size: 1.4rem;
-      color: #ffffff;
-      margin-bottom: 3rem;
-      opacity: 0.95;
-    }
-
-    .cta-section .btn {
-      background: #ffffff;
-      color: #2a9d8f;
-      font-size: 1.2rem;
-      padding: 1.5rem 3.5rem;
-    }
-
-    .cta-section .btn:hover {
-      background: #f8f9fa;
-    }
-
-    /* Footer */
-    .footer {
-      background: #000000;
-      color: #b8e6dc;
-      padding: 4rem 0 2rem;
-      border-top: 2px solid #1a5656;
-    }
-
-    .footer-content {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 0 2rem;
-    }
-
-    .footer-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 3rem;
-      margin-bottom: 3rem;
-    }
-
-    .footer-section h3 {
-      color: #7dd3c0;
-      font-size: 1.3rem;
-      margin-bottom: 1.5rem;
-      font-weight: 700;
-    }
-
-    .footer-section p,
-    .footer-section a {
-      color: #b8e6dc;
-      text-decoration: none;
-      display: block;
-      margin-bottom: 0.8rem;
-      transition: color 0.3s ease;
-    }
-
-    .footer-section a:hover {
-      color: #7dd3c0;
-    }
-
-    .footer-bottom {
-      text-align: center;
-      padding-top: 2rem;
-      border-top: 1px solid #1a5656;
-      color: #7dd3c0;
-      opacity: 0.8;
-    }
-
-    /* Animations */
-    .service-card:nth-child(1) { animation: slideInUp 0.8s ease-out 0.1s both; }
-    .service-card:nth-child(2) { animation: slideInUp 0.8s ease-out 0.2s both; }
-    .service-card:nth-child(3) { animation: slideInUp 0.8s ease-out 0.3s both; }
-    .service-card:nth-child(4) { animation: slideInUp 0.8s ease-out 0.4s both; }
-    .service-card:nth-child(5) { animation: slideInUp 0.8s ease-out 0.5s both; }
-    .service-card:nth-child(6) { animation: slideInUp 0.8s ease-out 0.6s both; }
-
-    /* Responsive */
     @media (max-width: 968px) {
-      .nav-inner {
-        padding: 1rem 0;
-        gap: 1rem;
-      }
-
-      .brand-logo {
-        height: 40px;
-      }
-
-      .brand-text {
-        font-size: 1.3rem;
-      }
-
-      .container {
-        padding: 0 1rem;
-      }
-
       .links {
-        display: none;
-        position: fixed;
-        top: 76px;
-        left: 0;
-        right: 0;
-        background: #0f2020;
-        flex-direction: column;
-        padding: 2rem;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-        border-top: 2px solid #1a5656;
-        gap: 0;
-        z-index: 999;
-        max-height: calc(100vh - 76px);
-        overflow-y: auto;
+        display: none; position: fixed; top: 70px; left: 0; right: 0; background: #fff; flex-direction: column;
+        padding: 1.5rem 2rem; box-shadow: 0 10px 40px rgba(16,27,51,0.15); border-top: 1px solid var(--border);
+        gap: 0; z-index: 999; max-height: calc(100vh - 70px); overflow-y: auto;
       }
-
-      .links.mobile-open {
-        display: flex;
-      }
-
-      .links a,
-      .links .dropdown-toggle {
-        padding: 1rem;
-        border-bottom: 1px solid #1a5656;
-      }
-
-      .links a:last-child {
-        border-bottom: none;
-      }
-
-      .dropdown-menu {
-        position: static;
-        opacity: 1;
-        visibility: visible;
-        transform: none;
-        margin-top: 0;
-        border: none;
-        border-radius: 0;
-        box-shadow: none;
-        background: #0b1616;
-        display: none;
-      }
-
-      .dropdown-menu.mobile-open {
-        display: block;
-      }
-
-      .dropdown-menu a {
-        padding: 1rem 1rem 1rem 2rem;
-      }
-
-      .dropdown-menu a:hover {
-        padding-left: 2.5rem;
-      }
-
-      .mobile-toggle {
-        display: block;
-      }
-
-      .hero-content h1 {
-        font-size: 3.5rem;
-      }
-
-      .services-grid,
-      .features-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .cta-section {
-        margin: 4rem 1rem;
-        padding: 4rem 2rem;
-      }
+      .links.mobile-open { display: flex; }
+      .mobile-toggle { display: block; }
+      .hero-content h1 { font-size: 2.4rem; }
+      .icon-strip-grid { grid-template-columns: 1fr; }
+      .icon-pill:not(:last-child) { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.08); }
+      .services-grid { grid-template-columns: repeat(2, 1fr); }
+      .features-grid { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 640px) {
-      .container {
-        padding: 0 1rem;
-      }
-
-      .nav-inner {
-        padding: 0.75rem 0;
-      }
-
-      .brand-logo {
-        height: 35px;
-      }
-
-      .brand-text {
-        font-size: 1.1rem;
-      }
-
-      .mobile-toggle {
-        padding: 0.5rem 0.75rem;
-        font-size: 0.9rem;
-      }
-
-      .hero-content h1 {
-        font-size: 2rem;
-        line-height: 1.2;
-      }
-
-      .hero-content .tagline {
-        font-size: 1.1rem;
-      }
-
-      .section-header h2 {
-        font-size: 2rem;
-      }
-
-      .service-card {
-        padding: 2rem 1.5rem;
-      }
-
-      .service-card h3 {
-        font-size: 1.5rem;
-      }
-
-      .cta-buttons {
-        flex-direction: column;
-      }
-
-      .btn {
-        width: 100%;
-        padding: 1rem 1.5rem;
-      }
-
-      .stat-number {
-        font-size: 2.5rem;
-      }
-
-      .cta-section {
-        padding: 3rem 1.5rem;
-        margin: 3rem 0.5rem;
-      }
-
-      .cta-section h2 {
-        font-size: 1.8rem;
-      }
+      .container { padding: 0 1.25rem; }
+      .hero { padding: 3rem 0 7rem; }
+      .hero-content h1 { font-size: 2rem; }
+      .hero-globe-wrap { height: 220px; }
+      .hero-globe-shading, .hero-globe-spin, .hero-globe-shards { width: 320px; height: 320px; }
+      .hero-globe-shading { height: auto; }
+      .section-header h2 { font-size: 1.7rem; }
+      .cta-buttons { flex-direction: column; }
+      .btn { width: 100%; justify-content: center; }
+      .cta-section { padding: 3rem 1.5rem; }
+      .cta-section h2 { font-size: 1.6rem; }
+      .services-grid { grid-template-columns: 1fr; }
+      .contact-grid { grid-template-columns: 1fr; }
+      .icon-strip { margin-top: -1.6rem; }
+      .footer-grid { grid-template-columns: 1fr; gap: 2rem; }
     }
   </style>
 </head>
@@ -825,14 +509,12 @@
         <a class="brand" href="index.html" aria-label="VirtuForms Home">
           <img src="assets/virtuforms-logo.png" alt="VirtuForms logo" class="brand-logo" />
         </a>
-        <button class="mobile-toggle" type="button" data-mobile-toggle aria-label="Toggle navigation" onclick="var nav = document.querySelector('[data-nav-links]'); if(nav.style.display === 'flex' && nav.style.position === 'fixed') { nav.style.display = 'none'; nav.style.position = ''; } else { nav.style.display = 'flex'; nav.style.position = 'fixed'; nav.style.flexDirection = 'column'; nav.style.top = '76px'; nav.style.left = '0'; nav.style.right = '0'; nav.style.background = '#0f2020'; nav.style.padding = '2rem'; nav.style.zIndex = '999'; nav.style.borderTop = '2px solid #1a5656'; }">Menu</button>
+        <button class="mobile-toggle" type="button" data-mobile-toggle aria-label="Toggle navigation">Menu</button>
         <nav class="links" data-nav-links>
           <a href="index.html" aria-current="page">Home</a>
+          <a href="about.html">About Us</a>
           <div class="dropdown">
-            <button class="dropdown-toggle" onclick="var menu = this.nextElementSibling; if(menu.style.display === 'block') { menu.style.display = 'none'; } else { menu.style.display = 'block'; menu.style.position = 'static'; menu.style.background = '#0b1616'; menu.style.border = 'none'; menu.style.borderRadius = '0'; menu.style.boxShadow = 'none'; menu.style.marginTop = '0'; menu.style.padding = '0'; } event.stopPropagation();">
-              Services
-              <span style="font-size: 0.7rem;">▼</span>
-            </button>
+            <button class="dropdown-toggle">Services <span class="chev">&#9660;</span></button>
             <div class="dropdown-menu">
               <a href="business-services.html">Business Services</a>
               <a href="government-services.html">Government Services</a>
@@ -841,91 +523,295 @@
               <a href="virtudrop/index.html">VirtuDrop</a>
             </div>
           </div>
-          <a href="about.html">About</a>
-          <a href="contact.html">Contact</a>
-          <a href="order-form.html">Get Started</a>
+          <a href="contact.html">Contact Us</a>
+          <a href="order-form.html" class="nav-cta">Get Started &rarr;</a>
         </nav>
       </div>
     </div>
   </header>
 
+  <!-- Shared filters -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <filter id="pulseGlow" x="-200%" y="-200%" width="500%" height="500%">
+        <feGaussianBlur stdDeviation="1.6"/>
+      </filter>
+    </defs>
+  </svg>
+
   <main>
-    <!-- Hero Section -->
+    <!-- Hero -->
     <section class="hero">
-      <div class="hero-container">
+      <div class="container hero-inner">
         <div class="hero-content">
-          <h1>Professional Administrative Solutions for Trinidad</h1>
+          <span class="eyebrow">Trinidad &amp; Tobago</span>
+          <h1>Your trusted <span class="accent">virtual paperwork</span> partner</h1>
           <p class="tagline">
-            Simplifying business, government, travel, and personal administrative services. From company registration 
-            to passport applications, we handle the paperwork so you can focus on what matters most.
+            Simplifying business, government, travel, and personal administrative services.
+            From company registration to passport applications, we handle the paperwork
+            so you can focus on what matters most.
           </p>
           <div class="cta-buttons">
-            <a href="order-form.html" class="btn btn-primary">Get Started</a>
+            <a href="order-form.html" class="btn btn-primary">Get Started &rarr;</a>
             <a href="business-services.html" class="btn btn-secondary">View Services</a>
           </div>
         </div>
+
+        <div class="hero-globe-wrap" aria-hidden="true">
+          <img class="hero-globe-shading" src="assets/globe-shading.png" alt="" />
+          <div class="hero-globe-spin">
+            <img class="hero-globe-surface" src="assets/globe-surface.png" alt="" />
+            <svg class="hero-globe-overlay" viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg">
+              <line x1="181.5" y1="223.0" x2="116.2" y2="234.3" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="516.7" y1="298.8" x2="537.0" y2="288.9" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="208.7" y1="314.0" x2="197.4" y2="393.0" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="181.5" y1="223.0" x2="142.5" y2="188.0" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="230.9" y1="147.1" x2="216.4" y2="134.1" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="286.3" y1="489.5" x2="236.8" y2="484.3" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="286.3" y1="489.5" x2="295.2" y2="490.6" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="92.8" y1="159.5" x2="116.2" y2="234.3" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="187.7" y1="139.3" x2="216.4" y2="134.1" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="197.4" y1="393.0" x2="236.8" y2="484.3" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="201.1" y1="248.7" x2="192.7" y2="211.1" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="471.7" y1="168.5" x2="465.2" y2="259.5" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="516.7" y1="298.8" x2="471.7" y2="168.5" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="527.7" y1="295.3" x2="537.0" y2="288.9" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="142.5" y1="188.0" x2="192.7" y2="211.1" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="208.7" y1="314.0" x2="188.4" y2="336.7" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="142.5" y1="188.0" x2="116.2" y2="234.3" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="243.2" y1="287.0" x2="201.1" y2="248.7" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="201.1" y1="248.7" x2="268.8" y2="286.8" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="295.2" y1="490.6" x2="337.5" y2="445.9" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="516.7" y1="298.8" x2="465.2" y2="259.5" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="516.7" y1="298.8" x2="527.7" y2="295.3" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="192.7" y1="211.1" x2="230.9" y2="147.1" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="142.5" y1="188.0" x2="92.8" y2="159.5" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="236.8" y1="484.3" x2="337.5" y2="445.9" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="201.1" y1="248.7" x2="185.3" y2="291.6" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="181.5" y1="223.0" x2="201.1" y2="248.7" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="295.2" y1="490.6" x2="236.8" y2="484.3" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="187.7" y1="139.3" x2="142.5" y2="188.0" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="185.3" y1="291.6" x2="188.4" y2="336.7" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="187.7" y1="139.3" x2="92.8" y2="159.5" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="465.2" y1="259.5" x2="537.0" y2="288.9" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="208.7" y1="314.0" x2="243.2" y2="287.0" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="208.7" y1="314.0" x2="268.8" y2="286.8" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="197.4" y1="393.0" x2="188.4" y2="336.7" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="527.7" y1="295.3" x2="465.2" y2="259.5" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="187.7" y1="139.3" x2="230.9" y2="147.1" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="471.7" y1="168.5" x2="537.0" y2="288.9" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="192.7" y1="211.1" x2="216.4" y2="134.1" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="181.5" y1="223.0" x2="192.7" y2="211.1" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="243.2" y1="287.0" x2="268.8" y2="286.8" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="286.3" y1="489.5" x2="337.5" y2="445.9" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+            <line x1="208.7" y1="314.0" x2="185.3" y2="291.6" stroke="#12588A" stroke-width="0.7" opacity="0.42"/>
+
+              <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 181.5,223.0 L 116.2,234.3" dur="2.76s" begin="3.1s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="2.76s" begin="3.1s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 516.7,298.8 L 537.0,288.9" dur="3.8s" begin="2.16s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="3.8s" begin="2.16s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 208.7,314.0 L 197.4,393.0" dur="2.88s" begin="3.57s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="2.88s" begin="3.57s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 181.5,223.0 L 142.5,188.0" dur="4.18s" begin="2.31s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="4.18s" begin="2.31s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 230.9,147.1 L 216.4,134.1" dur="3.51s" begin="1.06s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="3.51s" begin="1.06s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 286.3,489.5 L 236.8,484.3" dur="2.41s" begin="1.67s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="2.41s" begin="1.67s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 286.3,489.5 L 295.2,490.6" dur="3.69s" begin="0.31s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="3.69s" begin="0.31s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 92.8,159.5 L 116.2,234.3" dur="4.15s" begin="1.05s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="4.15s" begin="1.05s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 187.7,139.3 L 216.4,134.1" dur="2.91s" begin="0.19s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="2.91s" begin="0.19s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 197.4,393.0 L 236.8,484.3" dur="4.59s" begin="3.32s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="4.59s" begin="3.32s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 201.1,248.7 L 192.7,211.1" dur="4.33s" begin="2.77s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="4.33s" begin="2.77s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 471.7,168.5 L 465.2,259.5" dur="2.47s" begin="1.48s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="2.47s" begin="1.48s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 516.7,298.8 L 471.7,168.5" dur="3.49s" begin="0.52s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="3.49s" begin="0.52s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 527.7,295.3 L 537.0,288.9" dur="4.49s" begin="1.66s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="4.49s" begin="1.66s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 142.5,188.0 L 192.7,211.1" dur="2.74s" begin="3.68s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="2.74s" begin="3.68s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 208.7,314.0 L 188.4,336.7" dur="2.67s" begin="4.18s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="2.67s" begin="4.18s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 142.5,188.0 L 116.2,234.3" dur="3.4s" begin="2.48s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="3.4s" begin="2.48s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 243.2,287.0 L 201.1,248.7" dur="3.15s" begin="2.18s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="3.15s" begin="2.18s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 201.1,248.7 L 268.8,286.8" dur="2.81s" begin="0.17s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="2.81s" begin="0.17s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 295.2,490.6 L 337.5,445.9" dur="4.3s" begin="1.06s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="4.3s" begin="1.06s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 516.7,298.8 L 465.2,259.5" dur="4.12s" begin="0.94s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="4.12s" begin="0.94s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 516.7,298.8 L 527.7,295.3" dur="4.53s" begin="4.02s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="4.53s" begin="4.02s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 192.7,211.1 L 230.9,147.1" dur="4.06s" begin="3.43s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="4.06s" begin="3.43s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 142.5,188.0 L 92.8,159.5" dur="3.68s" begin="3.28s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="3.68s" begin="3.28s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 236.8,484.3 L 337.5,445.9" dur="2.67s" begin="2.14s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="2.67s" begin="2.14s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 201.1,248.7 L 185.3,291.6" dur="4.22s" begin="0.9s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="4.22s" begin="0.9s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 181.5,223.0 L 201.1,248.7" dur="4.43s" begin="3.99s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="4.43s" begin="3.99s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 295.2,490.6 L 236.8,484.3" dur="3.3s" begin="1.64s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="3.3s" begin="1.64s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 187.7,139.3 L 142.5,188.0" dur="3.39s" begin="1.74s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="3.39s" begin="1.74s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 185.3,291.6 L 188.4,336.7" dur="4.59s" begin="1.74s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="4.59s" begin="1.74s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 187.7,139.3 L 92.8,159.5" dur="2.46s" begin="0.42s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="2.46s" begin="0.42s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 465.2,259.5 L 537.0,288.9" dur="3.98s" begin="4.47s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="3.98s" begin="4.47s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 208.7,314.0 L 243.2,287.0" dur="3.49s" begin="2.21s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="3.49s" begin="2.21s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 208.7,314.0 L 268.8,286.8" dur="3.61s" begin="3.37s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="3.61s" begin="3.37s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 197.4,393.0 L 188.4,336.7" dur="2.89s" begin="2.74s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="2.89s" begin="2.74s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 527.7,295.3 L 465.2,259.5" dur="3.62s" begin="2.8s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="3.62s" begin="2.8s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 187.7,139.3 L 230.9,147.1" dur="2.8s" begin="0.77s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="2.8s" begin="0.77s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 471.7,168.5 L 537.0,288.9" dur="3.17s" begin="4.17s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="3.17s" begin="4.17s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 192.7,211.1 L 216.4,134.1" dur="3.16s" begin="2.69s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="3.16s" begin="2.69s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 181.5,223.0 L 192.7,211.1" dur="3.07s" begin="0.46s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="3.07s" begin="0.46s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 243.2,287.0 L 268.8,286.8" dur="2.54s" begin="3.66s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="2.54s" begin="3.66s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 286.3,489.5 L 337.5,445.9" dur="4.11s" begin="1.69s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="4.11s" begin="1.69s" repeatCount="indefinite"/></circle>
+            <circle class="pulse-dot" r="2.3" fill="#FFFFFF"><animateMotion path="M 208.7,314.0 L 185.3,291.6" dur="3.9s" begin="3.04s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="3.9s" begin="3.04s" repeatCount="indefinite"/></circle>
+
+              <circle class="node-dot" cx="537.0" cy="288.9" r="3.4" fill="#ffffff" stroke="#0E6C9E" stroke-width="0.8" style="animation-delay:0.0s"/>
+            <circle class="node-dot" cx="187.7" cy="139.3" r="3.2" fill="#0E6C9E" style="animation-delay:0.4s"/>
+            <circle class="node-dot" cx="337.5" cy="445.9" r="3.2" fill="#0E6C9E" style="animation-delay:0.8s"/>
+            <circle class="node-dot" cx="201.1" cy="248.7" r="3.4" fill="#ffffff" stroke="#0E6C9E" stroke-width="0.8" style="animation-delay:1.2s"/>
+            <circle class="node-dot" cx="216.4" cy="134.1" r="3.2" fill="#0E6C9E" style="animation-delay:1.6s"/>
+            <circle class="node-dot" cx="230.9" cy="147.1" r="3.2" fill="#0E6C9E" style="animation-delay:2.0s"/>
+            <circle class="node-dot" cx="92.8" cy="159.5" r="3.4" fill="#ffffff" stroke="#0E6C9E" stroke-width="0.8" style="animation-delay:2.4s"/>
+            <circle class="node-dot" cx="516.7" cy="298.8" r="3.2" fill="#0E6C9E" style="animation-delay:2.8s"/>
+            <circle class="node-dot" cx="243.2" cy="287.0" r="3.2" fill="#0E6C9E" style="animation-delay:3.2s"/>
+            </svg>
+          </div>
+
+          <svg class="hero-globe-shards" viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg">
+            <rect class="pixel-shard" x="470" y="90" width="11" height="11" rx="2" fill="#00A0A8" style="animation-delay:0.2s"/>
+            <rect class="pixel-shard" x="490" y="112" width="8" height="8" rx="2" fill="#00A8B0" style="animation-delay:0.6s"/>
+            <rect class="pixel-shard" x="505" y="133" width="5.5" height="5.5" rx="1.5" fill="#007A82" style="animation-delay:1s"/>
+            <rect class="pixel-shard" x="60" y="470" width="10" height="10" rx="2" fill="#007A82" style="animation-delay:0.4s"/>
+            <rect class="pixel-shard" x="82" y="490" width="7" height="7" rx="2" fill="#00A0A8" style="animation-delay:0.9s"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="hero-curve" aria-hidden="true">
+        <svg viewBox="0 0 1440 120" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M0 40 C 320 130 1120 -30 1440 60 L1440 120 L0 120 Z" fill="#101B33"/>
+        </svg>
       </div>
     </section>
 
-    <!-- Services Section -->
-    <section class="services">
+    <!-- Dark zone: icon strip + services + contact, one continuous section -->
+    <section class="dark-zone">
+      <svg class="dark-zone-decor-tr" viewBox="0 0 320 320" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M320 40H220L170 90V180" stroke="#00A0A8" stroke-width="1.5" opacity="0.25"/>
+        <path d="M320 90H250" stroke="#00A0A8" stroke-width="1.5" opacity="0.25"/>
+        <path d="M220 40V0" stroke="#00A0A8" stroke-width="1.5" opacity="0.25"/>
+        <circle cx="220" cy="40" r="4" opacity="0.3" stroke="#00A0A8" stroke-width="1.5"/>
+        <circle cx="170" cy="90" r="4" opacity="0.3" fill="#00A0A8"/>
+        <circle cx="250" cy="90" r="4" opacity="0.3" fill="#00A8B0"/>
+        <circle cx="170" cy="180" r="4" opacity="0.3" stroke="#00A0A8" stroke-width="1.5"/>
+      </svg>
+      <svg class="dark-zone-decor-bl" viewBox="0 0 280 280" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <g opacity="0.5">
+          <circle cx="20" cy="20" r="2" fill="#00A0A8"/><circle cx="45" cy="20" r="2" fill="#00A0A8"/><circle cx="70" cy="20" r="2" fill="#00A0A8"/>
+          <circle cx="20" cy="45" r="2" fill="#00A0A8"/><circle cx="45" cy="45" r="2" fill="#00A0A8"/><circle cx="70" cy="45" r="2" fill="#00A0A8"/>
+          <circle cx="20" cy="70" r="2" fill="#00A0A8"/><circle cx="45" cy="70" r="2" fill="#00A0A8"/><circle cx="70" cy="70" r="2" fill="#00A0A8"/>
+          <circle cx="95" cy="20" r="2" fill="#00A0A8"/><circle cx="95" cy="45" r="2" fill="#00A0A8"/><circle cx="95" cy="70" r="2" fill="#00A0A8"/>
+          <circle cx="20" cy="95" r="2" fill="#00A0A8"/><circle cx="45" cy="95" r="2" fill="#00A0A8"/><circle cx="70" cy="95" r="2" fill="#00A0A8"/><circle cx="95" cy="95" r="2" fill="#00A0A8"/>
+        </g>
+      </svg>
+
       <div class="container">
-        <div class="section-header">
-          <h2>Our Services</h2>
-          <p>Complete administrative solutions covering business, government, travel, personal needs, and delivery services.</p>
+        <!-- Icon strip -->
+        <div class="icon-strip reveal">
+          <div class="icon-strip-grid">
+            <div class="icon-pill">
+              <div class="icon-hex">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#00A0A8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              </div>
+              <div class="icon-pill-text">
+                <h4>Business Solutions</h4>
+                <p>Start &amp; grow with confidence</p>
+              </div>
+              <div class="icon-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+            </div>
+            <div class="icon-pill">
+              <div class="icon-hex">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#00A0A8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              </div>
+              <div class="icon-pill-text">
+                <h4>Logistics Solutions</h4>
+                <p>Fast, reliable delivery in TT</p>
+              </div>
+              <div class="icon-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+            </div>
+            <div class="icon-pill">
+              <div class="icon-hex">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#00A0A8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+              </div>
+              <div class="icon-pill-text">
+                <h4>Digital Products</h4>
+                <p>Smart tools for your success</p>
+              </div>
+              <div class="icon-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+            </div>
+          </div>
         </div>
 
-        <div class="services-grid">
-          <div class="service-card">
-            <div class="service-icon">
-              <img src="assets/virtudrop-logo.png" alt="VirtuDrop" style="width: 100%; height: 100%; object-fit: contain;" />
+        <!-- Core Services -->
+        <div class="services">
+          <div class="section-header reveal">
+            <span class="section-eyebrow">What We Do</span>
+            <h2>Explore Our <span class="accent">Core Services</span></h2>
+            <p>End-to-end administrative support for businesses, individuals, and organizations across Trinidad.</p>
+          </div>
+
+          <div class="services-grid">
+            <div class="service-card reveal">
+              <div class="service-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#00A8B0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h1"/><path d="M9 13h1"/><path d="M14 9h1"/><path d="M14 13h1"/><path d="M10 21v-5a2 2 0 0 1 4 0v5"/></svg>
+              </div>
+              <h3>Business Services</h3>
+              <p>Company registration, LLC conversion, bank account setup, annual returns, amendments, and closures.</p>
+              <a href="business-services.html" class="card-pill-btn">View Services <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
             </div>
-            <h3>VirtuDrop</h3>
-            <p>
-              Fast, reliable delivery services for online sellers. Same-day and next-day options with 
-              zoned pricing across Trinidad. Focus on selling while we handle the logistics.
-            </p>
-            <a href="virtudrop/index.html" class="btn btn-primary">Learn More</a>
-          </div>
 
-          <div class="service-card">
-            <div class="service-icon">🏢</div>
-            <h3>Business Services</h3>
-            <p>
-              Complete business solutions including company registration, LLC conversion, bank account 
-              setup, annual returns, amendments, and closures. Expert handling of all your business needs.
-            </p>
-            <a href="business-services.html" class="btn btn-secondary">View Services</a>
-          </div>
+            <div class="service-card reveal">
+              <div class="service-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#00A8B0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12h6m-6 4h6M9 8h6M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/></svg>
+              </div>
+              <h3>Government Services</h3>
+              <p>Driver's permit renewals, certified copies, birth/marriage/death certificates, and other documentation.</p>
+              <a href="government-services.html" class="card-pill-btn">View Services <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+            </div>
 
-          <div class="service-card">
-            <div class="service-icon">📋</div>
-            <h3>Government Services</h3>
-            <p>
-              Streamlined assistance with driver's permit renewals, certified copies, birth/marriage/death 
-              certificates, and other essential government documentation.
-            </p>
-            <a href="government-services.html" class="btn btn-secondary">View Services</a>
-          </div>
+            <div class="service-card reveal">
+              <div class="service-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#00A8B0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-1 .1-1.3.5l-.7.8c-.3.5-.2 1.1.3 1.4L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.6 6.1c.3.5.9.6 1.4.3l.8-.7c.4-.3.6-.8.5-1.3z"/></svg>
+              </div>
+              <h3>Travel Services</h3>
+              <p>Passport renewals, new applications, and visa applications made simple and stress-free.</p>
+              <a href="travel-services.html" class="card-pill-btn">View Services <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+            </div>
 
-          <div class="service-card">
-            <div class="service-icon">✈️</div>
-            <h3>Travel Services</h3>
-            <p>
-              Complete support for passport renewals, new passport applications, and visa applications. 
-              Making your travel preparations hassle-free.
-            </p>
-            <a href="travel-services.html" class="btn btn-secondary">View Services</a>
-          </div>
+            <div class="service-card reveal">
+              <div class="service-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#00A8B0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6M9 11h3"/></svg>
+              </div>
+              <h3>Personal Services</h3>
+              <p>Tax returns, BIR number applications, NIS, police certificates, and other personal admin needs.</p>
+              <a href="personal-services.html" class="card-pill-btn">View Services <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+            </div>
 
-          <div class="service-card">
-            <div class="service-icon">📄</div>
-            <h3>Personal Services</h3>
-            <p>
-              Professional assistance with tax returns, BIR number applications, and other personal 
-              administrative needs. Expert guidance every step of the way.
-            </p>
-            <a href="personal-services.html" class="btn btn-secondary">View Services</a>
+            <div class="service-card featured reveal">
+              <div class="service-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#00A8B0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+              </div>
+              <h3>VirtuDrop</h3>
+              <p>Same-day and next-day delivery with zoned pricing across Trinidad &mdash; you focus on selling.</p>
+              <a href="virtudrop/index.html" class="card-pill-btn">Learn More <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Contact bar -->
+        <div class="contact-strip reveal">
+          <div class="contact-grid">
+            <div class="contact-item">
+              <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.68 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.32 1.85.55 2.81.68A2 2 0 0 1 22 16.92z"/></svg></div>
+              <div><h5>Call Us</h5><p>+1 (868) 470-3704<br>+1 (868) 797-3543</p></div>
+            </div>
+            <div class="contact-item">
+              <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="m4 6 8 7 8-7"/></svg></div>
+              <div><h5>Email Us</h5><p>info@virtuforms.net</p></div>
+            </div>
+            <div class="contact-item">
+              <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z"/></svg></div>
+              <div><h5>Visit Us</h5><p>www.virtuforms.net</p></div>
+            </div>
+            <div class="contact-item">
+              <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+              <div><h5>Business Hours</h5><p>Mon&ndash;Fri: 8:00 AM&ndash;5:00 PM<br>Sat: 9:00 AM&ndash;1:00 PM</p></div>
+            </div>
           </div>
         </div>
       </div>
@@ -934,62 +820,53 @@
     <!-- Why Choose Us -->
     <section class="why-choose">
       <div class="container">
-        <div class="section-header">
-          <h2>Why Choose VirtuForms</h2>
+        <div class="section-header reveal">
+          <span class="section-eyebrow">Why VirtuForms</span>
+          <h2>Built for <span class="accent">Trinidad</span> Businesses</h2>
           <p>We're committed to providing efficient, professional administrative services for Trinidad residents and businesses.</p>
         </div>
 
         <div class="features-grid">
-          <div class="feature-card">
-            <h3>🚀 Fast & Reliable</h3>
-            <p>
-              Quick turnaround times and dependable service you can count on. We understand that in business and personal matters, time is critical.
-            </p>
+          <div class="feature-card reveal">
+            <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+            <div><h3>Fast &amp; Reliable</h3><p>Quick turnaround times and dependable service you can count on, every time.</p></div>
           </div>
-
-          <div class="feature-card">
-            <h3>💰 Affordable Pricing</h3>
-            <p>
-              Transparent pricing with no hidden fees. Quality professional services at rates that make sense for Trinidad businesses and individuals.
-            </p>
+          <div class="feature-card reveal">
+            <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M8.5 9.5a3.5 2 0 0 1 3.5-1.5c2 0 3.5 1 3.5 2.5S14 12 12 12s-3.5.5-3.5 2 1.5 2.5 3.5 2.5a3.5 2 0 0 0 3.5-1.5"/></svg></div>
+            <div><h3>Affordable Pricing</h3><p>Transparent pricing with no hidden fees &mdash; quality service at rates that make sense.</p></div>
           </div>
-
-          <div class="feature-card">
-            <h3>🔒 Secure & Professional</h3>
-            <p>
-              Your personal and business documents are handled with the highest level of security, confidentiality, and professionalism.
-            </p>
+          <div class="feature-card reveal">
+            <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6l-8-4z"/></svg></div>
+            <div><h3>Secure &amp; Professional</h3><p>Your documents are handled with the highest level of security and confidentiality.</p></div>
           </div>
-
-          <div class="feature-card">
-            <h3>📊 Comprehensive Solutions</h3>
-            <p>
-              From business registration to travel documents, we provide end-to-end support for all your administrative needs in one place.
-            </p>
+          <div class="feature-card reveal">
+            <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg></div>
+            <div><h3>Comprehensive Solutions</h3><p>From business registration to travel documents &mdash; end-to-end support in one place.</p></div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- CTA Section -->
-    <div class="container">
-      <section class="cta-section">
-        <h2>Ready to Simplify Your Administrative Tasks?</h2>
-        <p>Let VirtuForms handle the paperwork while you focus on what matters most.</p>
-        <a href="order-form.html" class="btn">Get Started Today</a>
-      </section>
+    <!-- CTA -->
+    <div class="cta-wrap">
+      <div class="container">
+        <section class="cta-section reveal">
+          <h2>Ready to Simplify Your Administrative Tasks?</h2>
+          <p>Let VirtuForms handle the paperwork while you focus on what matters most.</p>
+          <a href="order-form.html" class="btn">Get Started Today</a>
+        </section>
+      </div>
     </div>
   </main>
 
   <!-- Footer -->
   <footer class="footer">
-    <div class="footer-content">
+    <div class="footer-content container">
       <div class="footer-grid">
         <div class="footer-section">
           <h3>VirtuForms</h3>
           <p>Professional administrative solutions for Trinidad. From business services to travel documents, we handle the paperwork so you don't have to.</p>
         </div>
-
         <div class="footer-section">
           <h3>Services</h3>
           <a href="business-services.html">Business Services</a>
@@ -998,7 +875,6 @@
           <a href="personal-services.html">Personal Services</a>
           <a href="virtudrop/index.html">VirtuDrop</a>
         </div>
-
         <div class="footer-section">
           <h3>Company</h3>
           <a href="about.html">About Us</a>
@@ -1006,7 +882,6 @@
           <a href="privacy-policy.html">Privacy Policy</a>
           <a href="terms-of-service.html">Terms of Service</a>
         </div>
-
         <div class="footer-section">
           <h3>Contact</h3>
           <p>Email: info@virtuforms.net</p>
@@ -1014,97 +889,79 @@
           <p>Phone: 868-470-3704</p>
         </div>
       </div>
-
       <div class="footer-bottom">
-        <small>© 2026 VirtuForms. Professional administrative solutions for Trinidad. All rights reserved.</small>
+        <small>&copy; 2026 VirtuForms. Professional administrative solutions for Trinidad. All rights reserved.</small>
       </div>
     </div>
   </footer>
 
   <script>
-    // Mobile menu toggle - Simplified version
     function initMobileMenu() {
       const toggle = document.querySelector('[data-mobile-toggle]');
       const navLinks = document.querySelector('[data-nav-links]');
       const dropdownToggle = document.querySelector('.dropdown-toggle');
       const dropdownMenu = document.querySelector('.dropdown-menu');
-      
-      if (!toggle || !navLinks) {
-        console.error('Mobile menu elements not found!');
-        return;
-      }
-      
-      console.log('Mobile menu initialized successfully');
-      
-      // Main toggle function
-      toggle.onclick = function(e) {
+      if (!toggle || !navLinks) return;
+
+      toggle.onclick = function (e) {
         e.preventDefault();
         e.stopPropagation();
-        console.log('Menu button clicked!');
         navLinks.classList.toggle('mobile-open');
-        console.log('Menu is now:', navLinks.classList.contains('mobile-open') ? 'OPEN' : 'CLOSED');
-        
-        // Close dropdown when closing main menu
-        if (!navLinks.classList.contains('mobile-open') && dropdownMenu) {
-          dropdownMenu.classList.remove('mobile-open');
-        }
+        if (!navLinks.classList.contains('mobile-open') && dropdownMenu) dropdownMenu.classList.remove('mobile-open');
       };
 
-      // Mobile dropdown toggle
       if (dropdownToggle && dropdownMenu) {
-        dropdownToggle.onclick = function(e) {
+        dropdownToggle.onclick = function (e) {
           if (window.innerWidth <= 968) {
             e.preventDefault();
             e.stopPropagation();
             dropdownMenu.classList.toggle('mobile-open');
-            console.log('Dropdown toggled');
           }
         };
       }
 
-      // Close mobile menu when clicking outside
-      document.onclick = function(e) {
+      document.onclick = function (e) {
         if (window.innerWidth <= 968) {
           if (!e.target.closest('.nav-inner') && navLinks.classList.contains('mobile-open')) {
             navLinks.classList.remove('mobile-open');
             if (dropdownMenu) dropdownMenu.classList.remove('mobile-open');
-            console.log('Menu closed by outside click');
           }
         }
       };
 
-      // Close mobile menu when clicking a link
-      const navLinksElements = document.querySelectorAll('[data-nav-links] a');
-      navLinksElements.forEach(function(link) {
-        link.onclick = function() {
+      document.querySelectorAll('[data-nav-links] a').forEach(function (link) {
+        link.onclick = function () {
           if (window.innerWidth <= 968) {
             navLinks.classList.remove('mobile-open');
             if (dropdownMenu) dropdownMenu.classList.remove('mobile-open');
-            console.log('Menu closed by link click');
           }
         };
       });
     }
-    
-    // Initialize when DOM is ready
+
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', initMobileMenu);
     } else {
       initMobileMenu();
     }
 
-    // Animate stats on scroll
-    const statsSection = document.querySelector('.stats');
-    const statNumbers = document.querySelectorAll('.stat-number');
-    
-    const observerOptions = {
-      threshold: 0.5
-    };
+    const navEl = document.querySelector('.nav');
+    window.addEventListener('scroll', function () {
+      if (window.scrollY > 12) navEl.classList.add('scrolled');
+      else navEl.classList.remove('scrolled');
+    });
 
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
+    const revealEls = document.querySelectorAll('.reveal');
+    const revealObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
         if (entry.isIntersecting) {
-          statNumbers.forEach(stat => {
-            stat.style.transform = 'scale(1.1)';
-            setTimeout(() => {
-              stat.style.transform = 'sc
+          entry.target.classList.add('is-visible');
+          revealObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+
+    revealEls.forEach(function (el) { revealObserver.observe(el); });
+  </script>
+</body>
+</html>
