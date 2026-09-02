@@ -73,7 +73,7 @@
       transition: box-shadow 0.3s ease;
     }
     .nav.scrolled { box-shadow: 0 4px 24px rgba(16, 27, 51, 0.08); }
-    @keyframes slideDown { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes slideDown { from { opacity: 0; } to { opacity: 1; } }
 
     .nav-inner { display: flex; justify-content: space-between; align-items: center; padding: 1.1rem 0; gap: 2rem; transition: padding 0.3s ease; }
     .nav.scrolled .nav-inner { padding: 0.7rem 0; }
@@ -261,6 +261,7 @@
     .footer-section a:hover { color: var(--teal-400); }
     .footer-bottom { text-align: center; padding-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.45); font-size: 0.85rem; }
 
+    
     /* ===== Responsive ===== */
     @media (max-width: 968px) {
       .links {
@@ -315,6 +316,7 @@
       </div>
     </div>
   </header>
+
 
   <main>
     <!-- Page hero -->
