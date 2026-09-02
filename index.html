@@ -295,31 +295,42 @@
 
     .icon-strip-grid { display: grid; grid-template-columns: repeat(3, 1fr); }
 
-    .icon-pill { display: flex; align-items: center; gap: 1.1rem; padding: 1.6rem 1.4rem; }
+    .icon-pill {
+      display: flex; flex-direction: column; align-items: center; text-align: center;
+      gap: 1.1rem; padding: 2.4rem 1.6rem; text-decoration: none; cursor: pointer; position: relative;
+    }
     .icon-pill:not(:last-child) { border-right: 1px solid rgba(255,255,255,0.08); }
+    .icon-pill-disabled { cursor: default; }
+    .icon-pill-disabled:hover .pill-logo-frame { transform: none; }
 
-    .icon-hex {
-      width: 56px; height: 56px; min-width: 56px;
-      clip-path: polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0% 50%);
-      background: rgba(0, 160, 168, 0.12);
-      border: 1px solid rgba(0, 160, 168, 0.4);
-      display: flex; align-items: center; justify-content: center;
+    .pill-logo-frame {
+      background: #ffffff; border-radius: 14px; width: 100%; max-width: 220px; height: 96px;
+      display: flex; align-items: center; justify-content: center; padding: 0.9rem 1.4rem;
       transition: transform 0.3s var(--ease);
     }
-    .icon-pill:hover .icon-hex { transform: scale(1.08) rotate(-4deg); }
-    .icon-hex svg { width: 24px; height: 24px; }
+    .icon-pill:hover .pill-logo-frame { transform: scale(1.05); }
+    .pill-logo { height: 52px; width: auto; max-width: 100%; display: block; object-fit: contain; }
 
-    .icon-pill-text { flex-grow: 1; }
-    .icon-pill h4 { color: #ffffff; font-size: 1rem; font-weight: 700; margin-bottom: 0.15rem; letter-spacing: 0.2px; }
-    .icon-pill p { color: rgba(255,255,255,0.55); font-size: 0.83rem; margin: 0; }
+    .icon-pill-text { display: flex; flex-direction: column; align-items: center; }
+    .icon-pill-heading-row { display: flex; flex-direction: column; align-items: center; gap: 0.6rem; margin-bottom: 0.2rem; }
+    .icon-pill h4 { color: #ffffff; font-size: 1.05rem; font-weight: 700; margin-bottom: 0.3rem; letter-spacing: 0.2px; }
+    .icon-pill-heading-row h4 { margin-bottom: 0; }
+    .icon-pill p { color: rgba(255,255,255,0.55); font-size: 0.85rem; margin: 0; }
+
+    .coming-soon-badge {
+      background: #F5B400; color: var(--navy-900); font-size: 0.7rem; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.5px; padding: 0.3rem 0.65rem; border-radius: 50px;
+      white-space: nowrap; box-shadow: 0 2px 8px rgba(245, 180, 0, 0.4);
+    }
 
     .icon-arrow {
-      width: 34px; height: 34px; min-width: 34px; border-radius: 50%;
+      width: 32px; height: 32px; min-width: 32px; border-radius: 50%;
       background: var(--teal-500); display: flex; align-items: center; justify-content: center;
       transition: all 0.3s var(--ease);
+      position: absolute; top: 1.2rem; right: 1.2rem;
     }
     .icon-pill:hover .icon-arrow { background: var(--teal-400); transform: translateX(3px); }
-    .icon-arrow svg { width: 15px; height: 15px; color: var(--navy-900); }
+    .icon-arrow svg { width: 14px; height: 14px; color: var(--navy-900); }
 
     /* Section header (used on dark bg) */
     .section-header { text-align: center; margin: 5rem auto 3.2rem; max-width: 620px; }
@@ -704,35 +715,37 @@
         <!-- Icon strip -->
         <div class="icon-strip reveal">
           <div class="icon-strip-grid">
-            <div class="icon-pill">
-              <div class="icon-hex">
-                <svg viewBox="0 0 24 24" fill="none" stroke="#00A0A8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <a href="business-services.html" class="icon-pill">
+              <div class="pill-logo-frame">
+                <img src="assets/virtuforms-logo.png" alt="VirtuForms logo" class="pill-logo" />
               </div>
               <div class="icon-pill-text">
-                <h4>Business Solutions</h4>
+                <h4>VirtuForms &ndash; Business Solutions</h4>
                 <p>Start &amp; grow with confidence</p>
               </div>
               <div class="icon-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
-            </div>
-            <div class="icon-pill">
-              <div class="icon-hex">
-                <svg viewBox="0 0 24 24" fill="none" stroke="#00A0A8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            </a>
+            <a href="virtudrop/index.html" class="icon-pill">
+              <div class="pill-logo-frame">
+                <img src="assets/virtudrop-logo.png" alt="VirtuDrop logo" class="pill-logo" />
               </div>
               <div class="icon-pill-text">
-                <h4>Logistics Solutions</h4>
+                <h4>VirtuDrop &ndash; Logistics Solutions</h4>
                 <p>Fast, reliable delivery in TT</p>
               </div>
               <div class="icon-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
-            </div>
-            <div class="icon-pill">
-              <div class="icon-hex">
-                <svg viewBox="0 0 24 24" fill="none" stroke="#00A0A8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+            </a>
+            <div class="icon-pill icon-pill-disabled">
+              <div class="pill-logo-frame">
+                <img src="assets/virtufindstt-logo.png" alt="VirtuFindsTT logo" class="pill-logo" />
               </div>
               <div class="icon-pill-text">
-                <h4>Digital Products</h4>
+                <div class="icon-pill-heading-row">
+                  <h4>VirtuFindsTT &ndash; Digital Products</h4>
+                  <span class="coming-soon-badge">Coming Soon</span>
+                </div>
                 <p>Smart tools for your success</p>
               </div>
-              <div class="icon-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
             </div>
           </div>
         </div>
