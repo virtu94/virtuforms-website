@@ -1291,7 +1291,7 @@
           <div class="card-title">CSV Batch Import</div>
           <div class="csv-drop">
             <input class="filter-input" type="file" id="chelImportFile" accept=".csv,text/csv">
-            <div class="csv-help">Required columns: name, contact, item, area, total. Address is optional (combined with area for the delivery location). Order number, price, and notes are filled in automatically — do not include a notes column.</div>
+            <div class="csv-help">Required columns: name, contact, item, area, total. Address is optional (combined with area for the delivery location). Enter "Exchange" in the total column for a warranty/item exchange with no item price attached — VirtuDrop's $45 fee is deducted from C&amp;H's remittance instead of being charged to the customer. Order number, price, and notes are filled in automatically — do not include a notes column.</div>
             <div class="finance-actions">
               <button class="btn btn-ghost" type="button" onclick="downloadCHElectronicsTemplate()">Download Template</button>
               <button class="btn btn-primary" type="button" onclick="previewCHElectronicsImport()">Preview CSV</button>
@@ -6973,15 +6973,20 @@
     function buildCHElectronicsRow(row) {
       const name = String(row.name || '').trim();
       const item = String(row.item || '').trim();
-      const total = Number(row.total || 0);
+      const rawTotal = String(row.total || '').trim();
+      const isExchange = rawTotal.toLowerCase() === 'exchange';
+      const total = isExchange ? null : Number(rawTotal);
       return {
         name,
         contact: String(row.contact || '').trim(),
         item,
         area: String(row.area || '').trim(),
         address: String(row.address || '').trim() || null,
+        isExchange,
         total,
-        notes: Number.isFinite(total) ? `Order pending | ${name || '—'} | ${item || '—'} | $${total.toFixed(2)}` : ''
+        notes: isExchange
+          ? `${name || '—'} | ${item || '—'} | Exchange — no item price, $${CHELECTRONICS_FLAT_FEE.toFixed(2)} delivery fee due from client`
+          : (Number.isFinite(total) ? `${name || '—'} | ${item || '—'} | $${total.toFixed(2)}` : '')
       };
     }
 
@@ -6991,7 +6996,9 @@
       if (String(row.contact).replace(/\D/g, '').length < 7) issues.push('invalid contact');
       if (row.item.length < 1) issues.push('missing item');
       if (row.area.length < 2) issues.push('missing area');
-      if (!Number.isFinite(row.total) || row.total < CHELECTRONICS_FLAT_FEE) issues.push(`total must be at least $${CHELECTRONICS_FLAT_FEE}`);
+      if (!row.isExchange && (!Number.isFinite(row.total) || row.total < CHELECTRONICS_FLAT_FEE)) {
+        issues.push(`total must be at least $${CHELECTRONICS_FLAT_FEE}, or "Exchange"`);
+      }
       return issues;
     }
 
@@ -6999,14 +7006,14 @@
       const { data, error } = await supabase.rpc('admin_bulk_import_client_orders', {
         p_business_client_id: CHELECTRONICS_BUSINESS_CLIENT_ID,
         p_flat_fee: CHELECTRONICS_FLAT_FEE,
-        p_rows: rows.map(row => ({ name: row.name, contact: row.contact, item: row.item, area: row.area, address: row.address, total: row.total }))
+        p_rows: rows.map(row => ({ name: row.name, contact: row.contact, item: row.item, area: row.area, address: row.address, total: row.isExchange ? 'exchange' : row.total }))
       });
       if (error) throw error;
       return data;
     }
 
     window.downloadCHElectronicsTemplate = function() {
-      const csv = 'name,contact,item,area,address,total\nCustomer Name,868-000-0000,Item description,Area,"Optional full address",145.00\n';
+      const csv = 'name,contact,item,area,address,total\nCustomer Name,868-000-0000,Item description,Area,"Optional full address",145.00\nCustomer Name,868-000-0000,Item description,Area,"Optional full address",Exchange\n';
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -7032,7 +7039,7 @@
         body.innerHTML = chelImportRows.map(item => `<tr>
           <td>${item.issues.length ? '<span class="badge badge-failed">Invalid</span>' : '<span class="badge badge-confirmed">Ready</span>'}</td>
           <td>${escapeHtml(item.row.name)}</td><td>${escapeHtml(item.row.contact)}</td><td>${escapeHtml(item.row.item)}</td>
-          <td>${escapeHtml(item.row.area)}</td><td>${moneyFull(item.row.total)}</td><td>${escapeHtml(item.row.notes)}</td>
+          <td>${escapeHtml(item.row.area)}</td><td>${item.row.isExchange ? 'Exchange' : moneyFull(item.row.total)}</td><td>${escapeHtml(item.row.notes)}</td>
           <td>${escapeHtml(item.issues.join(', ') || '—')}</td></tr>`).join('');
         confirmBtn.disabled = !chelImportRows.some(item => !item.issues.length);
       } catch (error) {
