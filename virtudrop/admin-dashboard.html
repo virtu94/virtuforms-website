@@ -858,6 +858,9 @@
       <button class="nav-item" data-panel="driver-import">
         <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v13"></path><path d="m7 8 5-5 5 5"></path><path d="M5 21h14"></path></svg></span> Active Delivery Import
       </button>
+      <button class="nav-item" data-panel="chelectronics-import">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8 12 3 3 8l9 5 9-5z"></path><path d="M3 8v8l9 5 9-5V8"></path><path d="M12 13v8"></path></svg></span> C&amp;H Electronics Bulk Import
+      </button>
 
       <div class="nav-section-label">Finance</div>
       <button class="nav-item" data-panel="cod-mgmt">
@@ -1273,6 +1276,31 @@
           <div class="table-wrap" style="margin-top:1rem;"><table>
             <thead><tr><th>Status</th><th>Customer</th><th>Phone</th><th>Item</th><th>Location</th><th>Package/COD</th><th>Collect</th><th>Issue</th></tr></thead>
             <tbody id="driverImportPreviewBody"><tr><td colspan="8">Upload a CSV file to preview deliveries.</td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <!-- ════════ C&H ELECTRONICS BULK IMPORT ════════ -->
+      <div class="panel" id="panel-chelectronics-import">
+        <div class="section-heading">
+          <h2>C&amp;H Electronics Bulk Import</h2>
+          <p>Upload C&amp;H Electronics' order spreadsheet to create orders in bulk. Every order uses their flat $45 delivery fee — the item price plus that fee is entered once as the total, and the fee is split out automatically so remittance to C&amp;H excludes VirtuDrop's $45. This import is only available for C&amp;H Electronics.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-title">CSV Batch Import</div>
+          <div class="csv-drop">
+            <input class="filter-input" type="file" id="chelImportFile" accept=".csv,text/csv">
+            <div class="csv-help">Required columns: name, contact, item, area, total. Address is optional (combined with area for the delivery location). Order number, price, and notes are filled in automatically — do not include a notes column.</div>
+            <div class="finance-actions">
+              <button class="btn btn-ghost" type="button" onclick="downloadCHElectronicsTemplate()">Download Template</button>
+              <button class="btn btn-primary" type="button" onclick="previewCHElectronicsImport()">Preview CSV</button>
+              <button class="btn btn-primary" type="button" id="confirmCHElectronicsImportBtn" onclick="confirmCHElectronicsImport()" disabled>Import Orders</button>
+            </div>
+          </div>
+          <div class="table-wrap" style="margin-top:1rem;"><table>
+            <thead><tr><th>Status</th><th>Name</th><th>Contact</th><th>Item</th><th>Area</th><th>Total</th><th>Notes (auto)</th><th>Issue</th></tr></thead>
+            <tbody id="chelImportPreviewBody"><tr><td colspan="8">Upload a CSV file to preview orders.</td></tr></tbody>
           </table></div>
         </div>
       </div>
@@ -1881,6 +1909,7 @@
       'returns-redelivery': 'Returns & Redelivery',
       'driver-assign': 'Driver Assignment',
       'driver-import': 'Active Delivery Import',
+      'chelectronics-import': 'C&H Electronics Bulk Import',
       'cod-mgmt': 'Accounting',
       remittance: 'Remittance',
       'historical-import': 'Historical Import',
@@ -6931,6 +6960,102 @@
         showPanel(result?.next_step === 'zone_confirmation' ? 'zone-confirm' : 'parcel-checkin');
       } catch (error) {
         window.vdNotify('Active Deliveries Not Imported', error.message || 'Could not import these deliveries.', 'error');
+      }
+    };
+
+    // ── C&H Electronics bulk import ──
+    // Special client-only import: enabled purely by the business_clients.bulk_import_enabled
+    // flag (checked server-side in the RPC), fixed to C&H Electronics' own client record.
+    const CHELECTRONICS_BUSINESS_CLIENT_ID = '88ed8611-0b37-44ea-bd12-d52feaaf69a5';
+    const CHELECTRONICS_FLAT_FEE = 45;
+    let chelImportRows = [];
+
+    function buildCHElectronicsRow(row) {
+      const name = String(row.name || '').trim();
+      const item = String(row.item || '').trim();
+      const total = Number(row.total || 0);
+      return {
+        name,
+        contact: String(row.contact || '').trim(),
+        item,
+        area: String(row.area || '').trim(),
+        address: String(row.address || '').trim() || null,
+        total,
+        notes: Number.isFinite(total) ? `Order pending | ${name || '—'} | ${item || '—'} | $${total.toFixed(2)}` : ''
+      };
+    }
+
+    function validateCHElectronicsRow(row) {
+      const issues = [];
+      if (row.name.length < 2) issues.push('missing name');
+      if (String(row.contact).replace(/\D/g, '').length < 7) issues.push('invalid contact');
+      if (row.item.length < 1) issues.push('missing item');
+      if (row.area.length < 2) issues.push('missing area');
+      if (!Number.isFinite(row.total) || row.total < CHELECTRONICS_FLAT_FEE) issues.push(`total must be at least $${CHELECTRONICS_FLAT_FEE}`);
+      return issues;
+    }
+
+    async function importCHElectronicsRows(rows) {
+      const { data, error } = await supabase.rpc('admin_bulk_import_client_orders', {
+        p_business_client_id: CHELECTRONICS_BUSINESS_CLIENT_ID,
+        p_flat_fee: CHELECTRONICS_FLAT_FEE,
+        p_rows: rows.map(row => ({ name: row.name, contact: row.contact, item: row.item, area: row.area, address: row.address, total: row.total }))
+      });
+      if (error) throw error;
+      return data;
+    }
+
+    window.downloadCHElectronicsTemplate = function() {
+      const csv = 'name,contact,item,area,address,total\nCustomer Name,868-000-0000,Item description,Area,"Optional full address",145.00\n';
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'chelectronics-bulk-import-template.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    window.previewCHElectronicsImport = async function() {
+      const body = document.getElementById('chelImportPreviewBody');
+      const confirmBtn = document.getElementById('confirmCHElectronicsImportBtn');
+      try {
+        const file = document.getElementById('chelImportFile')?.files[0];
+        if (!file) throw new Error('Select a CSV file first.');
+        const parsed = parseCsv(await file.text());
+        if (!parsed.length) throw new Error('The CSV has no order rows.');
+        chelImportRows = parsed.map(source => {
+          const row = buildCHElectronicsRow(source);
+          const issues = validateCHElectronicsRow(row);
+          return { row, issues };
+        });
+        body.innerHTML = chelImportRows.map(item => `<tr>
+          <td>${item.issues.length ? '<span class="badge badge-failed">Invalid</span>' : '<span class="badge badge-confirmed">Ready</span>'}</td>
+          <td>${escapeHtml(item.row.name)}</td><td>${escapeHtml(item.row.contact)}</td><td>${escapeHtml(item.row.item)}</td>
+          <td>${escapeHtml(item.row.area)}</td><td>${moneyFull(item.row.total)}</td><td>${escapeHtml(item.row.notes)}</td>
+          <td>${escapeHtml(item.issues.join(', ') || '—')}</td></tr>`).join('');
+        confirmBtn.disabled = !chelImportRows.some(item => !item.issues.length);
+      } catch (error) {
+        chelImportRows = [];
+        confirmBtn.disabled = true;
+        body.innerHTML = `<tr><td colspan="8">${escapeHtml(error.message || 'Could not read this CSV.')}</td></tr>`;
+      }
+    };
+
+    window.confirmCHElectronicsImport = async function() {
+      const validRows = chelImportRows.filter(item => !item.issues.length).map(item => item.row);
+      if (!validRows.length) return showToast('No valid order rows are ready to import.');
+      try {
+        const result = await importCHElectronicsRows(validRows);
+        showToast(`${result.imported_count} C&H Electronics orders imported.`);
+        chelImportRows = [];
+        document.getElementById('confirmCHElectronicsImportBtn').disabled = true;
+        document.getElementById('chelImportPreviewBody').innerHTML = '<tr><td colspan="8">Import completed. Add a Google Maps pin to each order from All Orders, then continue through zone confirmation and driver assignment.</td></tr>';
+        document.getElementById('chelImportFile').value = '';
+        await loadData();
+        showPanel('zone-confirm');
+      } catch (error) {
+        window.vdNotify('Orders Not Imported', error.message || 'Could not import these orders.', 'error');
       }
     };
 
