@@ -1178,10 +1178,7 @@
         <div class="driver-zone-filter" id="driverAssignZoneFilter" aria-label="Filter deliveries by confirmed zone">
           <span class="driver-zone-filter-label">Confirmed zone:</span>
           <button class="btn btn-ghost btn-sm" type="button" data-driver-zone="all" aria-pressed="true" onclick="setDriverAssignZoneFilter('all')">All <span data-zone-count="all"></span></button>
-          <button class="btn btn-ghost btn-sm" type="button" data-driver-zone="A" aria-pressed="false" onclick="setDriverAssignZoneFilter('A')">Zone A <span data-zone-count="A"></span></button>
-          <button class="btn btn-ghost btn-sm" type="button" data-driver-zone="B" aria-pressed="false" onclick="setDriverAssignZoneFilter('B')">Zone B <span data-zone-count="B"></span></button>
-          <button class="btn btn-ghost btn-sm" type="button" data-driver-zone="C" aria-pressed="false" onclick="setDriverAssignZoneFilter('C')">Zone C <span data-zone-count="C"></span></button>
-          <button class="btn btn-ghost btn-sm" type="button" data-driver-zone="D" aria-pressed="false" onclick="setDriverAssignZoneFilter('D')">Zone D <span data-zone-count="D"></span></button>
+          <span id="driverAssignZoneButtons"></span>
         </div>
 
         <div class="bulk-toolbar" id="driverAssignBulkToolbar">
@@ -2157,7 +2154,9 @@
       if (order.zone_status === 'pending' || order.order_status === 'zone_pending') return 'Zone pending';
       const zone = zones.find(item => item.id === (order.confirmed_zone_id || order.zone_id));
       const code = zone?.code || order.zone_code || order.confirmed_zone_code || '';
-      return code ? "Zone " + String(code).toUpperCase() : "Zone not set";
+      if (!code) return "Zone not set";
+      const region = zone?.region || '';
+      return region ? `Zone ${String(code).toUpperCase()} – ${region}` : "Zone " + String(code).toUpperCase();
     }
 
     function orderPackageAssignmentText(order) {
@@ -6379,7 +6378,19 @@
     function renderDriverAssign() {
       const tbody = document.querySelector('#panel-driver-assign tbody');
       const allManageable = orders.filter(isDriverAssignmentManageable);
-      const zoneCounts = { all: allManageable.length, A: 0, B: 0, C: 0, D: 0 };
+      // Zone filter buttons are built from the zones table (code + region) rather
+      // than hardcoded, so "what Zone A/B/C/D covers" always matches what's
+      // actually configured there (Central/South/East/North-West, etc.).
+      const knownZones = zones.filter(zone => zone.active !== false && zone.code);
+      const zoneButtonsWrap = document.getElementById('driverAssignZoneButtons');
+      if (zoneButtonsWrap) {
+        zoneButtonsWrap.innerHTML = knownZones.map(zone => {
+          const label = zone.region ? `Zone ${zone.code} – ${zone.region}` : `Zone ${zone.code}`;
+          return `<button class="btn btn-ghost btn-sm" type="button" data-driver-zone="${escapeHtml(zone.code)}" aria-pressed="false" onclick="setDriverAssignZoneFilter('${escapeHtml(zone.code)}')">${escapeHtml(label)} <span data-zone-count="${escapeHtml(zone.code)}"></span></button>`;
+        }).join('');
+      }
+      const zoneCounts = { all: allManageable.length };
+      knownZones.forEach(zone => { zoneCounts[zone.code] = 0; });
       allManageable.forEach(order => {
         const code = orderDeliveryZoneCode(order);
         if (Object.prototype.hasOwnProperty.call(zoneCounts, code)) zoneCounts[code] += 1;
@@ -6421,7 +6432,7 @@
             <td>${isAssigned ? escapeHtml(driverName(order.assigned_driver_id)) : 'Unassigned'}</td>
             <td><select class="filter-select driver-select" style="width:180px;" onchange="markDriverAssignRowSelected('${order.id}')">${isAssigned ? transferDriverOptions(order.assigned_driver_id) : driverOptions()}</select></td>
             <td>${controls}</td>
-            <td><div style="display:flex; gap:0.4rem; flex-wrap:wrap;"><button class="btn btn-primary btn-sm" onclick="assignDriver('${order.id}')">${isAssigned ? 'Change Driver' : 'Assign'}</button><button class="btn btn-ghost btn-sm" type="button" onclick="showDriverAssignmentNotes('${order.id}')">Notes</button>${canRemoveDriverAssignment(order) ? `<button class="btn btn-ghost btn-sm" onclick="removeDriverFromOrder('${order.id}')">Remove</button>` : ''}</div></td>
+            <td><div style="display:flex; gap:0.4rem; flex-wrap:wrap;"><button class="btn btn-primary btn-sm" onclick="assignDriver('${order.id}')">${isAssigned ? 'Change Driver' : 'Assign'}</button><button class="btn btn-ghost btn-sm" type="button" onclick="openAdminOrderEdit('${order.id}')">Edit Order</button><button class="btn btn-ghost btn-sm" type="button" onclick="showDriverAssignmentNotes('${order.id}')">Notes</button>${canRemoveDriverAssignment(order) ? `<button class="btn btn-ghost btn-sm" onclick="removeDriverFromOrder('${order.id}')">Remove</button>` : ''}</div></td>
           </tr>`;
       }).join('') || '<tr><td colspan="11">No parcels are currently available for driver assignment or reassignment.</td></tr>';
       syncDriverAssignBulkControls();
