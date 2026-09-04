@@ -1333,14 +1333,42 @@
           </table></div>
         </div>
 
-        <div class="card" id="managedExportsCard" style="display:none; margin-top:1rem;">
-          <div class="card-title">Invoice &amp; Return Exports</div>
-          <div class="accounting-note">Fills in the exact Invoice / Return spreadsheet templates provided by Middleman — combining every business under this managed account, sorted by the imported order number, with no business shown. Only orders not already included on a previous export are pulled in.</div>
+        <div class="card" id="managedBatchFilterCard" style="display:none; margin-top:1rem;">
+          <div class="card-title">Batches</div>
+          <div class="accounting-note">Every batch you've imported (one row per CSV upload or manual add), including ones still working their way through delivery. All batches are pre-checked — untick a batch to leave last week's import out of today's export, or to only work with one specific batch. This narrows both lists below at once. Click the count next to a batch to expand it and see how many orders are pending, delivered, cancelled, etc.</div>
           <div class="finance-actions" style="margin-top:0.75rem;">
-            <button class="btn btn-primary" type="button" onclick="exportManagedInvoiceXlsx()">Export Invoice (.xlsx)</button>
-            <button class="btn btn-primary" type="button" onclick="exportManagedReturnXlsx()">Export Return (.xlsx)</button>
+            <button class="btn btn-ghost" type="button" onclick="toggleAllManagedBatchRows()">Select All / None</button>
           </div>
-          <div class="accounting-note" id="managedExportStatus" style="margin-top:0.75rem;"></div>
+          <div class="table-wrap" style="margin-top:0.75rem;"><table>
+            <thead><tr><th style="width:2rem;"></th><th style="width:4rem;"></th><th>Imported</th><th>Ready for Invoice</th><th>Ready for Return</th></tr></thead>
+            <tbody id="managedBatchFilterBody"><tr><td colspan="5">Select a managed account to see its import batches.</td></tr></tbody>
+          </table></div>
+        </div>
+
+        <div class="card" id="managedExportsCard" style="display:none; margin-top:1rem;">
+          <div class="card-title">Invoice Export</div>
+          <div class="accounting-note">Every delivered order not yet invoiced, from the batches checked above, is pre-checked here too — so a routine batch is just hit Export. Untick anything you want to hold back for a later run. Fills in Middleman's Invoice template — combining every business under this managed account, sorted by the imported order number, with no business shown. Only checked orders are included and marked as exported; anything left unchecked stays available for a later batch.</div>
+          <div class="finance-actions" style="margin-top:0.75rem;">
+            <button class="btn btn-ghost" type="button" onclick="toggleAllManagedExportRows('invoice')">Select All / None</button>
+            <button class="btn btn-primary" type="button" onclick="exportManagedInvoiceXlsx()">Export Selected as Invoice (.xlsx)</button>
+          </div>
+          <div class="table-wrap" style="margin-top:0.75rem;"><table>
+            <thead><tr><th style="width:2rem;"></th><th>Order #</th><th>Business</th><th>Customer</th><th>Total</th><th>Imported</th></tr></thead>
+            <tbody id="managedInvoiceExportBody"><tr><td colspan="6">Select a managed account to see delivered orders ready to invoice.</td></tr></tbody>
+          </table></div>
+        </div>
+
+        <div class="card" id="managedReturnExportCard" style="display:none; margin-top:1rem;">
+          <div class="card-title">Return Export</div>
+          <div class="accounting-note">Every failed / cancelled / rescheduled order not yet returned, from the batches checked above, is pre-checked the same way — untick anything to hold back. Fills in Middleman's Return template the same way — only checked orders are included and marked exported.</div>
+          <div class="finance-actions" style="margin-top:0.75rem;">
+            <button class="btn btn-ghost" type="button" onclick="toggleAllManagedExportRows('return')">Select All / None</button>
+            <button class="btn btn-primary" type="button" onclick="exportManagedReturnXlsx()">Export Selected as Return (.xlsx)</button>
+          </div>
+          <div class="table-wrap" style="margin-top:0.75rem;"><table>
+            <thead><tr><th style="width:2rem;"></th><th>Order #</th><th>Business</th><th>Customer</th><th>Status</th><th>Comment</th><th>Imported</th></tr></thead>
+            <tbody id="managedReturnExportBody"><tr><td colspan="7">Select a managed account to see orders ready to return.</td></tr></tbody>
+          </table></div>
         </div>
       </div>
 
@@ -7041,7 +7069,7 @@
     window.onManagedAccountChange = function() {
       selectedManagedAccountId = document.getElementById('managedAccountSelect')?.value || '';
       const hasSelection = !!selectedManagedAccountId;
-      ['managedAddOrderCard', 'managedBulkImportCard', 'managedExportsCard'].forEach(id => {
+      ['managedAddOrderCard', 'managedBulkImportCard', 'managedBatchFilterCard', 'managedExportsCard', 'managedReturnExportCard'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = hasSelection ? '' : 'none';
       });
@@ -7058,7 +7086,8 @@
           ? `Businesses under this account: ${businesses.map(b => b.business_name).join(', ') || 'none yet'}.`
           : 'Select a managed account to see its businesses and get started.';
       }
-      updateManagedExportStatus();
+      renderManagedBatchFilter();
+      renderManagedExportTables();
     };
 
     function buildManagedRow(row) {
@@ -7224,13 +7253,31 @@
       return orders.filter(o => businessIds.has(o.business_client_id) && statuses.includes(o.order_status) && !o[exportedField]);
     }
 
-    function updateManagedExportStatus() {
-      const el = document.getElementById('managedExportStatus');
-      if (!el) return;
-      if (!selectedManagedAccountId) { el.textContent = ''; return; }
-      const invoiceCount = pendingManagedOrders('invoice').length;
-      const returnCount = pendingManagedOrders('return').length;
-      el.textContent = `Ready to export: ${invoiceCount} delivered order${invoiceCount === 1 ? '' : 's'} for Invoice, ${returnCount} order${returnCount === 1 ? '' : 's'} for Return.`;
+    function managedBatchKey(order) {
+      return order.import_batch_id || 'unbatched';
+    }
+
+    function formatImportedAt(value) {
+      if (!value) return 'Unbatched';
+      return new Date(value).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+    }
+
+    // Which batches are currently checked in the Batches list. Returns null
+    // (meaning "no filter, include everything") only when that list hasn't
+    // rendered any rows yet — otherwise an unchecked batch is genuinely
+    // excluded, including the edge case where the admin has unchecked every
+    // single batch (which should show nothing, not fall back to "all").
+    function checkedManagedBatchIds() {
+      const boxes = Array.from(document.querySelectorAll('.managed-batch-check'));
+      if (!boxes.length) return null;
+      return new Set(boxes.filter(box => box.checked).map(box => box.dataset.batchKey));
+    }
+
+    function pendingManagedOrdersFiltered(exportType) {
+      const batchIds = checkedManagedBatchIds();
+      const rows = pendingManagedOrders(exportType);
+      if (batchIds === null) return rows;
+      return rows.filter(order => batchIds.has(managedBatchKey(order)));
     }
 
     function naturalSortByExternalOrderNumber(a, b) {
@@ -7249,6 +7296,158 @@
       return order.delivery_outcome_notes || order.rejection_reason || order.redelivery_notes || order.driver_notes || order.return_management_notes || '';
     }
 
+    function managedOrderBusinessName(order) {
+      return clientsById.get(order.business_client_id)?.business_name || '—';
+    }
+
+    // Renders the Batches checklist: one row per import (one CSV upload, or
+    // one manual "Add Order"), newest first, showing how many of its orders
+    // are still waiting for each export type. All pre-checked, so unchecking
+    // one is how Bobs keeps an old or a future batch out of today's export
+    // without touching individual order rows.
+    function managedAccountOrders() {
+      if (!selectedManagedAccountId) return [];
+      const businessIds = new Set(managedAccountBusinessClients(selectedManagedAccountId).map(b => b.id));
+      return orders.filter(o => businessIds.has(o.business_client_id));
+    }
+
+    // Human-readable "X: n · Y: n" breakdown of every status currently
+    // present in a batch (zone pending, delivered, cancelled, etc.) so Bobs
+    // can see where a batch's orders are without leaving this card.
+    function managedBatchStatusBreakdown(batchOrders) {
+      const counts = new Map();
+      batchOrders.forEach(order => {
+        const key = order.order_status || 'confirmed';
+        counts.set(key, (counts.get(key) || 0) + 1);
+      });
+      const priority = ['zone_pending', 'confirmed', 'assigned', 'delivered', 'failed', 'rescheduled', 'cancelled'];
+      const keys = [...counts.keys()].sort((a, b) => {
+        const ai = priority.indexOf(a), bi = priority.indexOf(b);
+        if (ai === -1 && bi === -1) return a.localeCompare(b);
+        if (ai === -1) return 1;
+        if (bi === -1) return -1;
+        return ai - bi;
+      });
+      return keys.map(key => `${escapeHtml(key.replaceAll('_', ' '))}: ${counts.get(key)}`).join(' &middot; ');
+    }
+
+    // Shows every batch for this managed account -- not just ones with
+    // something ready to export -- so a batch Bobs just imported (still
+    // moving through parcel check-in / zone confirmation / driver
+    // assignment) shows up right away, with a click-to-expand breakdown
+    // of where its orders currently stand.
+    function renderManagedBatchFilter() {
+      const body = document.getElementById('managedBatchFilterBody');
+      if (!body) return;
+      if (!selectedManagedAccountId) {
+        body.innerHTML = '<tr><td colspan="5">Select a managed account to see its import batches.</td></tr>';
+        return;
+      }
+      const previouslyChecked = new Set(
+        Array.from(document.querySelectorAll('.managed-batch-check')).filter(box => !box.checked).map(box => box.dataset.batchKey)
+      );
+      const expandedKeys = new Set(
+        Array.from(document.querySelectorAll('.managed-batch-detail-row'))
+          .filter(row => row.style.display !== 'none')
+          .map(row => row.dataset.batchKey)
+      );
+      const batches = new Map();
+      managedAccountOrders().forEach(order => {
+        const key = managedBatchKey(order);
+        if (!batches.has(key)) batches.set(key, { key, importedAt: order.imported_at || null, orders: [] });
+        batches.get(key).orders.push(order);
+      });
+      const sortedBatches = [...batches.values()].sort((a, b) => {
+        if (!a.importedAt) return 1;
+        if (!b.importedAt) return -1;
+        return new Date(b.importedAt) - new Date(a.importedAt);
+      });
+      body.innerHTML = sortedBatches.length
+        ? sortedBatches.map(batch => {
+            const invoiceCount = batch.orders.filter(o => o.order_status === 'delivered' && !o.managed_invoice_exported_at).length;
+            const returnCount = batch.orders.filter(o => ['failed', 'cancelled', 'rescheduled'].includes(o.order_status) && !o.managed_return_exported_at).length;
+            const isExpanded = expandedKeys.has(batch.key);
+            return `<tr>
+                <td><input type="checkbox" class="managed-batch-check" data-batch-key="${escapeHtml(batch.key)}" onchange="renderManagedExportTables()" ${previouslyChecked.has(batch.key) ? '' : 'checked'}></td>
+                <td><button type="button" class="btn btn-ghost btn-sm" onclick="toggleManagedBatchDetail('${escapeHtml(batch.key)}')">${isExpanded ? '▾' : '▸'} ${batch.orders.length}</button></td>
+                <td>${escapeHtml(formatImportedAt(batch.importedAt))}</td>
+                <td>${invoiceCount}</td>
+                <td>${returnCount}</td>
+              </tr>
+              <tr class="managed-batch-detail-row" data-batch-key="${escapeHtml(batch.key)}" style="display:${isExpanded ? '' : 'none'};">
+                <td colspan="5" style="padding-left:2rem; color:var(--text-muted,#666); font-size:0.85em;">${managedBatchStatusBreakdown(batch.orders)}</td>
+              </tr>`;
+          }).join('')
+        : '<tr><td colspan="5">No batches yet for this managed account.</td></tr>';
+    }
+
+    window.toggleManagedBatchDetail = function(key) {
+      const row = document.querySelector(`.managed-batch-detail-row[data-batch-key="${key}"]`);
+      if (!row) return;
+      const showing = row.style.display !== 'none';
+      row.style.display = showing ? 'none' : '';
+      const btn = row.previousElementSibling ? row.previousElementSibling.querySelector('button') : null;
+      if (btn) btn.textContent = (showing ? '▸ ' : '▾ ') + btn.textContent.replace(/^[▸▾]\s*/, '');
+    };
+
+    window.toggleAllManagedBatchRows = function() {
+      const boxes = Array.from(document.querySelectorAll('.managed-batch-check'));
+      const allChecked = boxes.length > 0 && boxes.every(box => box.checked);
+      boxes.forEach(box => { box.checked = !allChecked; });
+      renderManagedExportTables();
+    };
+
+    // Renders the two checkbox tables (Invoice / Return) that let the admin
+    // pick exactly which pending orders — from whichever batches are
+    // checked above — go into THIS export. Every row starts pre-checked so
+    // a routine export is just hit the button; unticking one holds it back
+    // for a later run instead of forcing a re-edit of an already-generated
+    // file.
+    function renderManagedExportTables() {
+      const invoiceBody = document.getElementById('managedInvoiceExportBody');
+      const returnBody = document.getElementById('managedReturnExportBody');
+      if (invoiceBody) {
+        const invoiceRows = pendingManagedOrdersFiltered('invoice').sort(naturalSortByExternalOrderNumber);
+        invoiceBody.innerHTML = invoiceRows.length
+          ? invoiceRows.map(order => `<tr>
+              <td><input type="checkbox" class="managed-export-check" data-export-type="invoice" data-order-id="${order.id}" checked></td>
+              <td>${escapeHtml(order.external_order_number || order.order_number)}</td>
+              <td>${escapeHtml(managedOrderBusinessName(order))}</td>
+              <td>${escapeHtml(order.customer_name || '')}</td>
+              <td>${typeof managedOrderTotalValue(order) === 'number' ? moneyFull(managedOrderTotalValue(order)) : managedOrderTotalValue(order)}</td>
+              <td>${escapeHtml(formatImportedAt(order.imported_at))}</td>
+            </tr>`).join('')
+          : '<tr><td colspan="6">No delivered orders are ready to invoice yet (from the batches checked above).</td></tr>';
+      }
+      if (returnBody) {
+        const returnRows = pendingManagedOrdersFiltered('return').sort(naturalSortByExternalOrderNumber);
+        returnBody.innerHTML = returnRows.length
+          ? returnRows.map(order => `<tr>
+              <td><input type="checkbox" class="managed-export-check" data-export-type="return" data-order-id="${order.id}" checked></td>
+              <td>${escapeHtml(order.external_order_number || order.order_number)}</td>
+              <td>${escapeHtml(managedOrderBusinessName(order))}</td>
+              <td>${escapeHtml(order.customer_name || '')}</td>
+              <td>${escapeHtml(String(order.order_status || '').replaceAll('_', ' '))}</td>
+              <td>${escapeHtml(managedOrderComment(order))}</td>
+              <td>${escapeHtml(formatImportedAt(order.imported_at))}</td>
+            </tr>`).join('')
+          : '<tr><td colspan="7">No failed, cancelled, or rescheduled orders are ready to return yet (from the batches checked above).</td></tr>';
+      }
+    }
+
+    window.toggleAllManagedExportRows = function(exportType) {
+      const boxes = Array.from(document.querySelectorAll(`.managed-export-check[data-export-type="${exportType}"]`));
+      const allChecked = boxes.length > 0 && boxes.every(box => box.checked);
+      boxes.forEach(box => { box.checked = !allChecked; });
+    };
+
+    function selectedManagedExportOrders(exportType) {
+      const checkedIds = new Set(
+        Array.from(document.querySelectorAll(`.managed-export-check[data-export-type="${exportType}"]:checked`))
+          .map(box => box.dataset.orderId)
+      );
+      return pendingManagedOrdersFiltered(exportType).filter(order => checkedIds.has(order.id));
+    }
     function fillManagedTemplate(templateB64, matchedOrders, includeComment) {
       const wb = XLSX.read(b64ToArrayBuffer(templateB64), { type: 'array', cellFormula: true, cellDates: true });
       const sheetName = wb.SheetNames.includes('Invoice') ? 'Invoice' : wb.SheetNames[0];
@@ -7285,8 +7484,8 @@
 
     window.exportManagedInvoiceXlsx = async function() {
       if (!selectedManagedAccountId) return showToast('Select a managed account first.');
-      const matched = pendingManagedOrders('invoice');
-      if (!matched.length) return showToast('No delivered orders are ready to invoice.');
+      const matched = selectedManagedExportOrders('invoice');
+      if (!matched.length) return showToast('Tick at least one delivered order to include in this batch.');
       try {
         const { wb, count } = fillManagedTemplate(MANAGED_INVOICE_TEMPLATE_B64, matched, false);
         const stamp = new Date().toISOString().slice(0, 10);
@@ -7302,8 +7501,8 @@
 
     window.exportManagedReturnXlsx = async function() {
       if (!selectedManagedAccountId) return showToast('Select a managed account first.');
-      const matched = pendingManagedOrders('return');
-      if (!matched.length) return showToast('No returned/cancelled/rescheduled orders are ready to export.');
+      const matched = selectedManagedExportOrders('return');
+      if (!matched.length) return showToast('Tick at least one order to include in this return batch.');
       try {
         const { wb, count } = fillManagedTemplate(MANAGED_RETURN_TEMPLATE_B64, matched, true);
         const stamp = new Date().toISOString().slice(0, 10);
@@ -7316,7 +7515,6 @@
         window.vdNotify('Return Sheet Not Exported', error.message || 'Could not generate the return export.', 'error');
       }
     };
-
 
     window.linkDriverProfile = async function() {
       const userId = document.getElementById('driverAuthUserId')?.value.trim() || '';
