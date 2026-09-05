@@ -172,6 +172,14 @@
       justify-content: space-between; gap: 1rem;
     }
     .card-order { display: flex; flex-direction: column; gap: 0.2rem; }
+    .drag-handle {
+      cursor: grab; color: var(--grey); font-size: 1.3rem; line-height: 1;
+      padding: 0.2rem 0.4rem; margin-right: -0.2rem; user-select: none; flex-shrink: 0;
+      touch-action: none;
+    }
+    .drag-handle:active { cursor: grabbing; }
+    .sortable-ghost { opacity: 0.4; }
+    .sortable-chosen { box-shadow: 0 8px 24px rgba(0,0,0,0.18); }
     .order-num { font-family: 'Courier New', monospace; font-size: 0.82rem; color: var(--teal-mid); font-weight: 700; }
     .client-tag { font-size: 0.75rem; color: var(--grey); }
 
@@ -694,6 +702,7 @@
   <div class="toast" id="toast"></div>
 
   <script src="vd-modal.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -750,6 +759,74 @@
     let activeFilter = 'all';
     let activeWorkView = 'deliveries';
     let deliverySignaturePad = null;
+    let routeSortable = null;
+    let savingRouteOrder = false;
+
+    // ── Distance-from-store default sort ──────────────────────────────
+    // Fixed pickup point (YD Harvest). Update here if the pickup location
+    // ever changes.
+    const STORE_LAT = 10.5306022;
+    const STORE_LNG = -61.3784294;
+    // Orders without a GPS pin fall back to a rough distance estimate based
+    // on the pricing zone's rate band, so they still land in a sensible
+    // spot instead of always sorting to the very end.
+    const RATE_BAND_FALLBACK_KM = { standard: 15, extended: 30, remote: 45 };
+
+    function haversineKm(lat1, lon1, lat2, lon2) {
+      const toRad = deg => deg * Math.PI / 180;
+      const R = 6371;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat / 2) ** 2
+        + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function orderDistanceInfo(order) {
+      const lat = Number(order.latitude);
+      const lng = Number(order.longitude);
+      if (Number.isFinite(lat) && Number.isFinite(lng) && (lat !== 0 || lng !== 0)) {
+        return { km: haversineKm(STORE_LAT, STORE_LNG, lat, lng), estimated: false };
+      }
+      if (order.pricing_rate_band && RATE_BAND_FALLBACK_KM[order.pricing_rate_band] != null) {
+        return { km: RATE_BAND_FALLBACK_KM[order.pricing_rate_band], estimated: true };
+      }
+      return { km: 999, estimated: true }; // unknown - sort last among active deliveries
+    }
+
+    function orderDistanceKm(order) {
+      return orderDistanceInfo(order).km;
+    }
+
+    // Builds the on-screen delivery order: any card the driver has already
+    // dragged keeps its saved spot (driver_route_position, ascending); any
+    // card that's never been touched by a drag is slotted into that list at
+    // the point its distance from the store would naturally place it.
+    // Delivered/failed/rescheduled cards are not part of this - they always
+    // render after, in their normal recency order.
+    function computeDeliveryDisplayOrder(allOrders) {
+      const active = allOrders.filter(o => normalizeStatus(o) !== 'delivered' && normalizeStatus(o) !== 'failed' && normalizeStatus(o) !== 'rescheduled');
+      const done = allOrders.filter(o => normalizeStatus(o) === 'delivered' || normalizeStatus(o) === 'failed' || normalizeStatus(o) === 'rescheduled');
+
+      const positioned = active
+        .filter(o => o.driver_route_position != null)
+        .sort((a, b) => a.driver_route_position - b.driver_route_position);
+      const unpositioned = active
+        .filter(o => o.driver_route_position == null)
+        .sort((a, b) => orderDistanceKm(a) - orderDistanceKm(b));
+
+      const merged = positioned.slice();
+      unpositioned.forEach(order => {
+        const dist = orderDistanceKm(order);
+        let insertAt = merged.length;
+        for (let i = 0; i < merged.length; i++) {
+          if (dist < orderDistanceKm(merged[i])) { insertAt = i; break; }
+        }
+        merged.splice(insertAt, 0, order);
+      });
+
+      return merged.concat(done);
+    }
 
     document.getElementById('todayDate').textContent =
       new Date().toLocaleDateString('en-TT', { weekday:'long', day:'numeric', month:'short', year:'numeric' });
@@ -1028,7 +1105,8 @@
 
     function renderOrders() {
       const list = document.getElementById('deliveryList');
-      list.innerHTML = orders.map(order => {
+      const displayOrder = computeDeliveryDisplayOrder(orders);
+      list.innerHTML = displayOrder.map(order => {
         const status = normalizeStatus(order);
         const manifest = manifestForOrder(order.id);
         const collect = amountToCollect(order);
@@ -1038,13 +1116,21 @@
           .join('');
         const collectClass = collect > 0 ? 'cod' : 'no-cod';
         const collectLabel = collect > 0 ? money(collect) : `${money(collect)} — ${paymentLabel(order.payment_type).toLowerCase()}`;
+        const reorderable = ['queued', 'out'].includes(status);
+        const distanceInfo = orderDistanceInfo(order);
+        const distanceLabel = distanceInfo.km < 900
+          ? `${distanceInfo.estimated ? '~' : ''}${distanceInfo.km.toFixed(1)} km from store`
+          : '';
 
         return `
           <div class="delivery-card${cardClass(status)}" data-status="${status}" data-order-id="${order.id}">
             <div class="card-header">
-              <div class="card-order">
-                <div class="order-num">${order.order_number}</div>
-                <div class="client-tag">${clientName(order)}</div>
+              <div style="display:flex; align-items:flex-start; gap:0.3rem; min-width:0;">
+                ${reorderable ? '<span class="drag-handle" title="Drag to reorder">⠿</span>' : ''}
+                <div class="card-order">
+                  <div class="order-num">${order.order_number}</div>
+                  <div class="client-tag">${clientName(order)}${distanceLabel ? ` · ${distanceLabel}` : ''}</div>
+                </div>
               </div>
               ${statusBadge(status)}
             </div>
@@ -1087,14 +1173,110 @@
                 <button class="action-btn btn-note-client" onclick="sendClientUpdate('${order.id}', this)">💬 Send Update to Client</button>
               </div>
             </div>
-            <div class="card-actions">${renderActions(order, status)}</div>
+            <div class="card-actions">
+              ${renderActions(order, status)}
+              ${reorderable ? `<button class="action-btn btn-unavailable" onclick="promptLocationLink('${order.id}')">📍 ${order.maps_link ? 'Update' : 'Add'} Location Link</button>` : ''}
+            </div>
           </div>
         `;
       }).join('');
 
       applyFilter();
       updateStats();
+      initDeliverySortable();
     }
+
+    // ── Drag-and-drop route ordering ──────────────────────────────────
+    function initDeliverySortable() {
+      const list = document.getElementById('deliveryList');
+      if (!list || typeof Sortable === 'undefined') return;
+      if (routeSortable) { routeSortable.destroy(); routeSortable = null; }
+      routeSortable = new Sortable(list, {
+        animation: 150,
+        handle: '.drag-handle',
+        draggable: '.delivery-card[data-status="queued"], .delivery-card[data-status="out"]',
+        onEnd: saveRouteOrderFromDom
+      });
+    }
+
+    async function saveRouteOrderFromDom() {
+      const ids = Array.from(document.querySelectorAll('#deliveryList .delivery-card'))
+        .filter(el => el.dataset.status === 'queued' || el.dataset.status === 'out')
+        .map(el => el.dataset.orderId);
+      if (!ids.length || savingRouteOrder) return;
+      savingRouteOrder = true;
+      try {
+        const { error } = await supabase.rpc('driver_set_route_order', { p_order_ids: ids });
+        if (error) throw error;
+        // Reflect the new positions locally so re-renders (filter switches,
+        // etc.) keep this order without needing to reload from the server.
+        ids.forEach((id, index) => {
+          const order = orders.find(o => o.id === id);
+          if (order) order.driver_route_position = (index + 1) * 1000;
+        });
+      } catch (error) {
+        console.error('Route order save failed:', error);
+        showToast('Could not save your new order — it may reset on next refresh.');
+      } finally {
+        savingRouteOrder = false;
+      }
+    }
+
+    // ── Driver-entered Google/Waze link ───────────────────────────────
+    function parseLatLngFromMapsLink(link) {
+      if (!link) return null;
+      const patterns = [
+        /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/,
+        /@(-?\d+\.\d+),(-?\d+\.\d+)/,
+        /[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/,
+        /[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/,
+        /to=ll\.(-?\d+\.\d+),(-?\d+\.\d+)/
+      ];
+      for (const re of patterns) {
+        const m = link.match(re);
+        if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+      }
+      return null;
+    }
+
+    window.promptLocationLink = function(orderId) {
+      const order = findOrder(orderId);
+      if (!order) return showToast('Order not found. Refresh and try again.');
+      const inputId = `location-link-${orderId}`;
+      openModal(
+        '📍 Add Location Link',
+        `Paste the Google Maps or Waze link ${escapeHtml(order.customer_name || 'the customer')} sent you.`,
+        `<input id="${inputId}" type="text" value="${escapeHtml(order.maps_link || '')}" placeholder="https://maps.google.com/... or https://waze.com/..." style="width:100%; padding:0.75rem; border:2px solid #e0e0e0; border-radius:8px; box-sizing:border-box; margin-bottom:0.9rem;">
+         <button class="modal-btn confirm" onclick="saveLocationLink('${orderId}', '${inputId}')">Save Link</button>
+         <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>`
+      );
+    };
+
+    window.saveLocationLink = async function(orderId, inputId) {
+      const link = document.getElementById(inputId)?.value.trim();
+      if (!link) return showToast('Paste a location link first.');
+      const coords = parseLatLngFromMapsLink(link);
+      try {
+        const { error } = await supabase.rpc('driver_update_order_location', {
+          p_order_id: orderId,
+          p_maps_link: link,
+          p_latitude: coords?.lat ?? null,
+          p_longitude: coords?.lng ?? null
+        });
+        if (error) throw error;
+        const order = findOrder(orderId);
+        if (order) {
+          order.maps_link = link;
+          if (coords) { order.latitude = coords.lat; order.longitude = coords.lng; }
+        }
+        closeModal();
+        showToast(coords ? 'Location link saved — pinpoint captured.' : 'Location link saved.');
+        renderOrders();
+      } catch (error) {
+        console.error('Location link save error:', error);
+        window.vdNotify('Link Not Saved', error.message || 'Could not save this location link.', 'error');
+      }
+    };
 
     function updateFilterTabs() {
       const counts = {
@@ -1211,7 +1393,7 @@
         console.warn('Driver delivery RPC could not load; using direct assignment fallback:', ordersRes.error);
         ordersRes = await supabase
           .from('orders')
-          .select('id, order_number, external_item_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, payment_type, customer_amount_due, driver_delivery_pay, driver_amount_to_collect, pickup_required, pickup_parcel_count, pickup_fee, scheduled_delivery_date, parcel_status, delivery_outcome, delivery_attempt_count, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_recipient_name, delivery_signed_at, delivery_signature_data_url, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, redelivery_status, redelivery_notes, order_status, assigned_driver_id, customer_notes, driver_notes, tracking_token, created_at')
+          .select('id, order_number, external_item_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, pricing_rate_band, driver_route_position, payment_type, customer_amount_due, driver_delivery_pay, driver_amount_to_collect, pickup_required, pickup_parcel_count, pickup_fee, scheduled_delivery_date, parcel_status, delivery_outcome, delivery_attempt_count, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_recipient_name, delivery_signed_at, delivery_signature_data_url, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, redelivery_status, redelivery_notes, order_status, assigned_driver_id, customer_notes, driver_notes, tracking_token, created_at')
           .eq('assigned_driver_id', driver.id)
           .order('created_at', { ascending: false });
         if (ordersRes.error) throw ordersRes.error;
