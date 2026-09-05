@@ -798,7 +798,6 @@
     let clientsById = new Map();
     let activeFilter = 'all';
     let activeWorkView = 'deliveries';
-    let deliverySignaturePad = null;
     let routeSortable = null;
     let savingRouteOrder = false;
     let collapsedOrderIds = new Set();
@@ -1664,72 +1663,6 @@
       );
     };
 
-    function initDeliverySignaturePad() {
-      const canvas = document.getElementById('deliverySignatureCanvas');
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      const ratio = Math.max(window.devicePixelRatio || 1, 1);
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = Math.round(rect.width * ratio);
-      canvas.height = Math.round(rect.height * ratio);
-      ctx.scale(ratio, ratio);
-      ctx.lineWidth = 2.2;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.strokeStyle = '#122C2A';
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(0, 0, rect.width, rect.height);
-      deliverySignaturePad = { canvas, ctx, drawing: false, signed: false };
-
-      const point = event => {
-        const bounds = canvas.getBoundingClientRect();
-        const source = event.touches?.[0] || event.changedTouches?.[0] || event;
-        return { x: source.clientX - bounds.left, y: source.clientY - bounds.top };
-      };
-      const start = event => {
-        event.preventDefault();
-        const p = point(event);
-        deliverySignaturePad.drawing = true;
-        deliverySignaturePad.signed = true;
-        ctx.beginPath();
-        ctx.moveTo(p.x, p.y);
-      };
-      const move = event => {
-        if (!deliverySignaturePad?.drawing) return;
-        event.preventDefault();
-        const p = point(event);
-        ctx.lineTo(p.x, p.y);
-        ctx.stroke();
-      };
-      const stop = event => {
-        if (!deliverySignaturePad) return;
-        event.preventDefault();
-        deliverySignaturePad.drawing = false;
-      };
-      canvas.addEventListener('mousedown', start);
-      canvas.addEventListener('mousemove', move);
-      window.addEventListener('mouseup', stop);
-      canvas.addEventListener('touchstart', start, { passive: false });
-      canvas.addEventListener('touchmove', move, { passive: false });
-      canvas.addEventListener('touchend', stop, { passive: false });
-      canvas.addEventListener('touchcancel', stop, { passive: false });
-    }
-
-    window.clearDeliverySignature = function() {
-      if (!deliverySignaturePad) return;
-      const { canvas, ctx } = deliverySignaturePad;
-      const rect = canvas.getBoundingClientRect();
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(0, 0, rect.width, rect.height);
-      deliverySignaturePad.signed = false;
-    };
-
-    function deliverySignatureDataUrl() {
-      if (!deliverySignaturePad?.signed) return null;
-      return deliverySignaturePad.canvas.toDataURL('image/png');
-    }
-
     window.markDelivered = function(orderRef, maybeOrderNumberOrCollect = 0, maybeCollectAmount = 0) {
       const order = resolveOrderRef(orderRef, maybeOrderNumberOrCollect);
       if (!order) {
@@ -1737,34 +1670,29 @@
         return;
       }
       const collectAmount = typeof maybeOrderNumberOrCollect === 'number' ? maybeOrderNumberOrCollect : maybeCollectAmount;
-      const codText = collectAmount > 0 ? ` Confirm how ${money(collectAmount)} was collected before completing this delivery.` : ' No payment to collect.';
-      const methodBox = collectAmount > 0
-        ? `<div class="collection-method-box">
+
+      // Nothing to collect on this delivery - no recipient name, signature, or
+      // confirmation step needed. Mark it delivered immediately.
+      if (!(Number(collectAmount) > 0)) {
+        window.confirmDeliveredWithCollection(order.id, 0);
+        return;
+      }
+
+      // Money to collect still needs the driver to record how it was paid.
+      const methodBox = `<div class="collection-method-box">
              <div class="collection-method-title">Collection Method Required</div>
              <div class="collection-method-options">
                <label><input type="radio" name="collectionMethod" value="Cash" /> 💵 Cash</label>
                <label><input type="radio" name="collectionMethod" value="LINX" />LINX</label>
              </div>
-           </div>`
-        : '';
-      const proofBox = `<label style="display:flex; gap:0.6rem; align-items:flex-start; padding:0.8rem; margin:0.8rem 0; background:#eef8f6; border-radius:8px; text-align:left;"><input type="checkbox" id="deliveryProofConfirmed" style="margin-top:0.2rem;"> <span>I confirm that I handed this parcel to the customer or authorized recipient.</span></label>`;
-      const signatureBox = `
-        <div style="text-align:left; margin:0.8rem 0;">
-          <label style="display:block; font-weight:800; margin-bottom:0.35rem;">Recipient Name</label>
-          <input id="deliveryRecipientName" type="text" placeholder="Name of person receiving package" style="width:100%; padding:0.75rem; border:2px solid #e0e0e0; border-radius:8px; box-sizing:border-box; margin-bottom:0.75rem;">
-          <label style="display:block; font-weight:800; margin-bottom:0.35rem;">Recipient Signature</label>
-          <canvas id="deliverySignatureCanvas" style="width:100%; height:170px; background:#fff; border:2px solid #d7e3e1; border-radius:8px; touch-action:none; display:block;"></canvas>
-          <button class="modal-btn" id="clearDeliverySignatureButton" type="button" style="margin-top:0.55rem;">Clear Signature</button>
-        </div>`;
+           </div>`;
       openModal(
         '✅ Mark as Delivered',
-        `Confirm delivery of ${order.order_number} is complete.${codText}`,
-        `${methodBox}${signatureBox}${proofBox}<button class="modal-btn confirm" id="confirmDeliveryButton" type="button">Confirm Delivery</button>
+        `Confirm delivery of ${order.order_number} is complete. Confirm how ${money(collectAmount)} was collected before completing this delivery.`,
+        `${methodBox}<button class="modal-btn confirm" id="confirmDeliveryButton" type="button">Confirm Delivery</button>
          <button class="modal-btn cancel" type="button" onclick="closeModal()">Cancel</button>`
       );
       setTimeout(() => {
-        initDeliverySignaturePad();
-        document.getElementById('clearDeliverySignatureButton')?.addEventListener('click', window.clearDeliverySignature);
         document.getElementById('confirmDeliveryButton')?.addEventListener('click', () => {
           window.confirmDeliveredWithCollection(order.id, collectAmount);
         });
@@ -1780,20 +1708,6 @@
 
     window.confirmDeliveredWithCollection = function(orderId, collectAmount = 0) {
       let note = 'Driver confirmed parcel handover to customer or authorized recipient.';
-      const recipientName = document.getElementById('deliveryRecipientName')?.value.trim() || '';
-      const signatureDataUrl = deliverySignatureDataUrl();
-      if (recipientName.length < 2) {
-        showToast('Enter the recipient name.');
-        return;
-      }
-      if (!signatureDataUrl) {
-        showToast('Recipient signature is required.');
-        return;
-      }
-      if (!document.getElementById('deliveryProofConfirmed')?.checked) {
-        showToast('Confirm parcel handover before completing delivery.');
-        return;
-      }
       let method = 'none';
       if (Number(collectAmount) > 0) {
         method = document.querySelector('input[name="collectionMethod"]:checked')?.value;
@@ -1803,7 +1717,7 @@
         }
         note = `Customer payment collected by driver: ${method} - ${money(collectAmount)}`;
       }
-      window.saveDeliveryOutcome(orderId, 'delivered', note, null, method, Number(collectAmount), true, recipientName, signatureDataUrl);
+      window.saveDeliveryOutcome(orderId, 'delivered', note, null, method, Number(collectAmount), true, null, null);
     };
 
     function openDeliveryException(orderId, outcome, title, defaultNote, includeDate = false) {
