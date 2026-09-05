@@ -2289,7 +2289,7 @@ function renderOverview() {
 
 function renderActive() {
   const active = orders.filter(order => activeStatuses.includes(order.order_status));
-  setText('#panel-active .section-sub', `${active.length} delivery${active.length === 1 ? '' : 'ies'} currently in progress.`);
+  setText('#panel-active .section-sub', `${active.length} deliver${active.length === 1 ? '' : 'ies'} currently in progress.`);
   const tbody = el('#panel-active table tbody');
   if (tbody) tbody.innerHTML = active.length ? active.map(order => orderTableRow(order)).join('') : emptyRow(7, 'No active deliveries right now.');
   const cards = el('#panel-active .order-cards');
