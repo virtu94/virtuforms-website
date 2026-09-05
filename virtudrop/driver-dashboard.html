@@ -743,7 +743,6 @@
   <div class="toast" id="toast"></div>
 
   <script src="vd-modal.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -1325,6 +1324,9 @@
         onEnd: (evt) => { moveSelectedGroupAfterDrag(evt); saveRouteOrderFromDom(); }
       });
     }
+    // Exposed so the deferred SortableJS <script> (loaded after this module,
+    // so it never blocks the dashboard) can wire dragging up once it lands.
+    window.initDeliverySortable = initDeliverySortable;
 
     async function saveRouteOrderFromDom() {
       const ids = Array.from(document.querySelectorAll('#deliveryList .delivery-card'))
@@ -2087,6 +2089,11 @@
       document.getElementById('deliveryList').innerHTML = `<div class="delivery-card"><div class="card-header"><div>${error.message || 'Could not load driver dashboard.'}</div></div></div>`;
     });
   </script>
+
+  <!-- Loaded after the app script and deferred: drag-reorder is a nice-to-have,
+       and initDeliverySortable() already checks for Sortable being undefined,
+       so a slow/blocked CDN fetch here never holds up the rest of the dashboard. -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js" defer onload="window.initDeliverySortable && window.initDeliverySortable()"></script>
 
 </body>
 </html>
