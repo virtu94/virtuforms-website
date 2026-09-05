@@ -855,6 +855,9 @@
         <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11v9H3z"></path><path d="M14 10h4l3 3v3h-7z"></path><circle cx="7" cy="18" r="2"></circle><circle cx="18" cy="18" r="2"></circle></svg></span> Driver Assignment
         <span class="nav-badge alert">8</span>
       </button>
+      <button class="nav-item" data-panel="driver-tab" id="driverTabNavItem" style="display:none;">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 17h1a3 3 0 0 0 6 0h4a3 3 0 0 0 6 0h1v-6l-3-5H8L5 11z"></path><circle cx="7.5" cy="17" r="1.8"></circle><circle cx="17.5" cy="17" r="1.8"></circle></svg></span> Driver Tab
+      </button>
       <button class="nav-item" data-panel="driver-import">
         <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v13"></path><path d="m7 8 5-5 5 5"></path><path d="M5 21h14"></path></svg></span> Active Delivery Import
       </button>
@@ -1216,6 +1219,16 @@
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <div class="panel" id="panel-driver-tab">
+        <div class="section-heading">
+          <h2>Driver Tab</h2>
+          <p>Use this when you're covering deliveries yourself. It's the same driver dashboard drivers use — assigned deliveries, pickups, and outcome recording all work the same way here. Deliveries you complete here don't carry a driver payout; VirtuDrop keeps the full delivery fee since you're an owner, not a paid driver.</p>
+        </div>
+        <div class="card" style="padding:0; overflow:hidden;">
+          <iframe id="driverTabIframe" title="Driver Dashboard" src="driver-dashboard.html?embedded=1" style="width:100%; height:calc(100vh - 220px); min-height:600px; border:0; display:block;"></iframe>
         </div>
       </div>
 
@@ -1972,6 +1985,7 @@
       'sorting-manifests': 'Sorting & Manifests',
       'returns-redelivery': 'Returns & Redelivery',
       'driver-assign': 'Driver Assignment',
+      'driver-tab': 'Driver Tab',
       'driver-import': 'Active Delivery Import',
       'managed-accounts': 'Managed Accounts',
       'cod-mgmt': 'Accounting',
@@ -2972,19 +2986,24 @@
       }
     }
 
+    function driverLabel(driver) {
+      const profile = driverProfilesById.get(driver.profile_id);
+      const base = (driver.name && driver.name.trim())
+        || [profile?.first_name, profile?.last_name].filter(Boolean).join(' ')
+        || 'Driver';
+      return driver.owner_fill_in ? `${base} (Owner)` : base;
+    }
+
     function driverName(driverId) {
       const driver = drivers.find(d => d.id === driverId);
       if (!driver) return 'Assigned';
-      const profile = driverProfilesById.get(driver.profile_id);
-      return [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'Driver';
+      return driverLabel(driver);
     }
 
     function driverOptions() {
       if (!drivers.length) return '<option value="">No active drivers</option>';
       return '<option value="">— Driver —</option>' + drivers.map(driver => {
-        const profile = driverProfilesById.get(driver.profile_id);
-        const label = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'Driver';
-        return `<option value="${driver.id}">${label}</option>`;
+        return `<option value="${driver.id}">${escapeHtml(driverLabel(driver))}</option>`;
       }).join('');
     }
 
@@ -6442,9 +6461,7 @@
       const available = drivers.filter(driver => driver.id !== currentDriverId);
       if (!available.length) return '<option value="">No other active drivers</option>';
       return '<option value="">— Receiving driver —</option>' + available.map(driver => {
-        const profile = driverProfilesById.get(driver.profile_id);
-        const label = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || driver.name || 'Driver';
-        return `<option value="${driver.id}">${escapeHtml(label)}</option>`;
+        return `<option value="${driver.id}">${escapeHtml(driverLabel(driver))}</option>`;
       }).join('');
     }
 
@@ -6664,11 +6681,18 @@
       zones = zoneRows;
       orders = orderRows;
       allProfiles = profileRows;
-      driverProfilesById = new Map(profileRows.filter(item => item.role === 'driver').map(item => [item.id, item]));
+      // Note: this intentionally is NOT filtered to role === 'driver'. A profile whose
+      // primary role is admin or business can also hold an active drivers row (used for
+      // owner fill-in coverage), so any profile can back a driver record here.
+      driverProfilesById = new Map(profileRows.map(item => [item.id, item]));
       drivers = driverRows.filter(driver => {
         const profile = driverProfilesById.get(driver.profile_id);
         return driver.status === 'active' && profile?.status === 'active';
       });
+
+      const ownDriverRow = driverRows.find(driver => driver.profile_id === profile.id && driver.status === 'active');
+      const driverTabNav = document.getElementById('driverTabNavItem');
+      if (driverTabNav) driverTabNav.style.display = ownDriverRow ? '' : 'none';
 
       syncAccountingControls();
       renderAllOrders();

@@ -1213,6 +1213,7 @@ const panelTitles = {
   'cod-records': 'COD Records',
   remittance: 'Remittance',
   failed: 'Failed & Rescheduled',
+  'driver-tab': 'Driver Tab',
   plan: 'My Plan',
   notifications: 'Notifications',
   settings: 'Settings'
@@ -3419,6 +3420,23 @@ async function loadBusinessData() {
 
   business = businessData;
   renderSidebarAccount();
+
+  // Most business accounts never have a drivers row. The rare one that also
+  // covers deliveries (owner fill-in coverage) does, and only that account
+  // should see the Driver Tab.
+  const driverTabNav = document.getElementById('driverTabNavItem');
+  if (driverTabNav) {
+    supabase
+      .from('drivers')
+      .select('id, status')
+      .eq('profile_id', currentUser.id)
+      .eq('status', 'active')
+      .maybeSingle()
+      .then(({ data }) => {
+        driverTabNav.style.display = data ? '' : 'none';
+      })
+      .catch(error => console.warn('Driver tab visibility check failed:', error));
+  }
 
   renderAll();
 

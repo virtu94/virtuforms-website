@@ -539,6 +539,10 @@
       }
     }
 
+    /* Hide the page's own top bar when this page is loaded inside a Driver Tab
+       (an iframe on the admin or business dashboard), since the parent page
+       already has its own header/nav around it. */
+    html.embedded-view .topbar { display: none; }
   </style>
 </head>
 <body>
@@ -730,6 +734,10 @@
       window.addEventListener('focus', () => { hasActiveSession(); });
     }
     installSessionRestoreGuard();
+
+    if (new URLSearchParams(window.location.search).get('embedded') === '1') {
+      document.documentElement.classList.add('embedded-view');
+    }
 
     let toastTimer;
     let currentDriver = null;
@@ -1157,14 +1165,14 @@
         .eq('id', userId)
         .single();
 
-      if (profileError || profile?.role !== 'driver' || profile?.status !== 'active') {
+      if (profileError || profile?.status !== 'active') {
         document.getElementById('deliveryList').innerHTML = '<div class="delivery-card"><div class="card-header"><div>Driver access is required for this dashboard.</div></div></div>';
         return;
       }
 
       const { data: driver, error: driverError } = await supabase
         .from('drivers')
-        .select('id, profile_id, status')
+        .select('id, profile_id, status, owner_fill_in')
         .eq('profile_id', profile.id)
         .eq('status', 'active')
         .single();
@@ -1183,13 +1191,20 @@
       document.querySelector('.driver-avatar').textContent = driverInitials;
       const accountName = document.getElementById('driverAccountName');
       if (accountName) accountName.textContent = fullName;
+      const accountRole = document.querySelector('.driver-account-role');
+      if (accountRole) accountRole.textContent = driver.owner_fill_in ? 'Owner (fill-in driver)' : 'Driver';
+
+      // Owners covering deliveries don't earn driver pay - VirtuDrop keeps the full
+      // delivery fee - so the payment/earnings panel is not relevant for this account.
+      const financePanel = document.getElementById('driverFinancePanel');
+      if (financePanel) financePanel.style.display = driver.owner_fill_in ? 'none' : '';
 
       let [ordersRes, pickupsRes, manifestsRes, clientsRes, financeRes] = await Promise.all([
         supabase.rpc('driver_list_my_deliveries'),
         supabase.rpc('driver_list_my_pickups'),
         supabase.rpc('driver_list_my_delivery_manifests'),
         supabase.from('business_clients').select('id, business_name'),
-        supabase.rpc('driver_get_my_finance')
+        driver.owner_fill_in ? Promise.resolve({ data: null, error: null }) : supabase.rpc('driver_get_my_finance')
       ]);
 
       if (ordersRes.error) {

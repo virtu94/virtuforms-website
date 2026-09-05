@@ -980,6 +980,9 @@
       <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg></span> Notifications
       <span class="nav-badge">0</span>
     </button>
+    <button class="nav-item" data-panel="driver-tab" id="driverTabNavItem" style="display:none;">
+      <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 17h1a3 3 0 0 0 6 0h4a3 3 0 0 0 6 0h1v-6l-3-5H8L5 11z"></path><circle cx="7.5" cy="17" r="1.8"></circle><circle cx="17.5" cy="17" r="1.8"></circle></svg></span> Driver Tab
+    </button>
     <button class="nav-item" data-panel="settings">
       <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a8 8 0 0 0 .1-2l2-1.5-2-3.4-2.4 1a7 7 0 0 0-1.7-1L15 5.5h-6l-.4 2.6a7 7 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.5a8 8 0 0 0 .1 2l-2 1.5 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.4 2.6h6l.4-2.6a7 7 0 0 0 1.7-1l2.4 1 2-3.4z"></path></svg></span> Settings
     </button>
@@ -1749,6 +1752,17 @@
       </div>
       <div class="card">
         <p style="color:#6a6a6a;">Loading notifications...</p>
+      </div>
+    </div>
+
+    <!-- DRIVER TAB (only shown to this account when it also covers deliveries) -->
+    <div class="panel" id="panel-driver-tab">
+      <div class="section-heading">
+        Driver Tab
+        <div class="section-sub">Same driver dashboard drivers use — assigned deliveries, pickups, and outcome recording all work the same way here. Deliveries completed here don't carry a driver payout; VirtuDrop keeps the full delivery fee.</div>
+      </div>
+      <div class="card" style="padding:0; overflow:hidden;">
+        <iframe id="driverTabIframe" title="Driver Dashboard" src="driver-dashboard.html?embedded=1" style="width:100%; height:calc(100vh - 220px); min-height:600px; border:0; display:block;"></iframe>
       </div>
     </div>
 
