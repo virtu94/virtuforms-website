@@ -1233,7 +1233,7 @@
             ${notes}
             <div class="driver-update-box">
               <label>Driver Update / Customer Conversation Notes</label>
-              <textarea placeholder="Example: Customer asked to deliver after 3 PM, customer requested updated address, customer said to leave package with security..."></textarea>
+              <textarea placeholder="Example: Customer asked to deliver after 3 PM, customer requested updated address, customer said to leave package with security...">${escapeHtml(order.driver_notes || '')}</textarea>
               <div class="driver-update-actions">
                 <button class="action-btn btn-note-save" onclick="saveDriverNote('${order.id}', this)">📝 Save Note</button>
                 <button class="action-btn btn-note-client" onclick="sendClientUpdate('${order.id}', this)">💬 Send Update to Client</button>
@@ -2018,6 +2018,7 @@
       try {
         await saveAdminUpdateForOrder(orderId, note);
         showToast('Admin update saved.');
+        renderOrders();
       } catch (error) {
         console.error('Driver note save error:', error);
         window.vdNotify('Update Not Saved', error.message || 'Could not save the admin update.', 'error');
