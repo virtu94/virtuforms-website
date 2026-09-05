@@ -1008,51 +1008,6 @@
       return Boolean(order.maps_link) || Boolean(order.latitude && order.longitude);
     }
 
-    async function callLocationResolver(payload) {
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/resolve-google-location`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY },
-        body: JSON.stringify(payload)
-      });
-      let data = null;
-      try { data = await response.json(); } catch { data = null; }
-      if (!response.ok || !data?.success) {
-        throw new Error(data?.message || 'Could not confirm this location.');
-      }
-      return data;
-    }
-
-    window.tryLocateOrder = async function(orderId, btn) {
-      const order = findOrder(orderId);
-      if (!order) return showToast('Order not found. Refresh and try again.');
-      const addressText = [order.house_number, order.street_name, order.area_name].filter(Boolean).join(', ')
-        || order.delivery_address
-        || order.area_name;
-      if (!addressText) return showToast('No address on file to look up — call the customer for their pin.');
-      const originalLabel = btn ? btn.textContent : '';
-      if (btn) { btn.disabled = true; btn.textContent = '🔍 Looking up...'; }
-      try {
-        const result = await callLocationResolver({ address: addressText });
-        const mapsLink = `https://www.google.com/maps/search/?api=1&query=${result.latitude},${result.longitude}`;
-        const { error } = await supabase.rpc('driver_update_order_location', {
-          p_order_id: orderId,
-          p_maps_link: mapsLink,
-          p_latitude: result.latitude,
-          p_longitude: result.longitude
-        });
-        if (error) throw error;
-        order.maps_link = mapsLink;
-        order.latitude = result.latitude;
-        order.longitude = result.longitude;
-        showToast('Location confirmed — Open in Maps will now go straight there.');
-        renderOrders();
-      } catch (error) {
-        console.error('Location lookup failed:', error);
-        window.vdNotify('Could Not Confirm Location', error.message || 'Could not confirm this address — call the customer for their pin.', 'error');
-        if (btn) { btn.disabled = false; btn.textContent = originalLabel; }
-      }
-    };
-
     function manifestForOrder(orderId) {
       return driverManifests.find(manifest => (manifest.order_ids || []).includes(orderId)) || null;
     }
@@ -1244,7 +1199,7 @@
             </div>
             <div class="collapsed-summary">
               <span class="collapsed-customer">${escapeHtml(order.customer_name || '—')}</span>
-              <span class="collapsed-area">${escapeHtml(order.area_name || addressLabel(order))}</span>
+              <span class="collapsed-area">${escapeHtml(addressLabel(order))}</span>
             </div>
             <div class="customer-info">
               ${manifest ? `<div class="info-row" style="grid-column:1/-1;"><div class="info-label">Manifest</div><div class="info-value">${escapeHtml(manifest.manifest_number)} · ${escapeHtml(String(manifest.status).replaceAll('_', ' '))}</div></div>` : ''}
@@ -1288,7 +1243,6 @@
             <div class="card-actions">
               ${renderActions(order, status)}
               ${reorderable ? `<button class="action-btn btn-unavailable" onclick="promptLocationLink('${order.id}')">📍 ${order.maps_link ? 'Update' : 'Add'} Location Link</button>` : ''}
-              ${reorderable && !hasReliableLocation(order) ? `<button class="action-btn btn-unavailable" onclick="tryLocateOrder('${order.id}', this)">🔍 Try to Locate from Address</button>` : ''}
             </div>
           </div>
         `;
