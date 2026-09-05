@@ -1,0 +1,2094 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-store" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <title>Driver Dashboard | VirtuDrop</title>
+  <link rel="icon" href="/virtudrop/assets/logo.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --teal-dark:   #122C2A;
+      --navy:        #1A1A2A;
+      --teal-mid:    #1F8F52;
+      --teal-bright: #6FD39A;
+      --teal-pale:   #F1F7F3;
+      --teal-light:  #E8F3EC;
+      --orange:      #e07a3a;
+      --orange-pale: #fff8f0;
+      --red:         #e05555;
+      --red-pale:    #fde8e8;
+      --green:       #27ae60;
+      --green-pale:  #d4edda;
+      --yellow:      #f0c040;
+      --yellow-pale: #fff3cd;
+      --blue:        #3498db;
+      --blue-pale:   #cce5ff;
+      --white:       #ffffff;
+      --black:       #1a1a1a;
+      --grey:        #4a4a4a;
+      --grey-light:  #f8f9fa;
+      --grey-mid:    #e0e0e0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f0f4f3; color: var(--black);
+      line-height: 1.6; min-height: 100vh;
+    }
+
+    /* ── Top bar ── */
+    .topbar {
+      background: linear-gradient(90deg, var(--teal-dark) 0%, var(--navy) 100%); padding: 0 1.5rem;
+      height: 64px; display: flex; align-items: center;
+      justify-content: space-between; gap: 1rem;
+      position: sticky; top: 0; z-index: 5000;
+    }
+    .topbar-brand { display: flex; align-items: center; gap: 0.8rem; }
+    .brand-logo { height: 45px; width: min(174px, 42vw); object-fit: contain; flex-shrink: 0; }
+    .brand-mark {
+      width: 45px; height: 45px; background: var(--teal-mid);
+      border-radius: 8px; display: flex; align-items: center;
+      justify-content: center; font-weight: 800; font-size: 0.88rem;
+      color: var(--white); flex-shrink: 0;
+    }
+    .brand-name { font-size: 1rem; font-weight: 700; color: var(--white); line-height: 1.18; }
+    .brand-name span { display: block; font-weight: 500; color: var(--teal-bright); font-size: 0.78rem; margin-left: 0; }
+    .brand-name small { display: block; margin-top: 0.18rem; color: #C8D4D3; font-size: 0.6rem; font-weight: 500; }
+
+    .topbar-driver {
+      display: flex; align-items: center; gap: 0.8rem;
+    }
+    .driver-info { text-align: right; }
+    .driver-name { font-size: 0.9rem; font-weight: 600; color: var(--white); }
+    .driver-zone { font-size: 0.75rem; color: var(--teal-bright); font-weight: 600; }
+    .driver-avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--blue), #5dade2);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 0.9rem; color: var(--white); flex-shrink: 0;
+      border: 0; cursor: pointer; box-shadow: 0 8px 18px rgba(0,0,0,0.16);
+    }
+    .driver-avatar:hover { filter: brightness(1.05); }
+    .driver-account-menu { position: relative; display: flex; align-items: center; flex-shrink: 0; }
+    .driver-account-dropdown {
+      position: absolute; top: calc(100% + 0.65rem); right: 0; width: 245px;
+      background: var(--white); border: 1px solid var(--grey-mid); border-radius: 12px;
+      box-shadow: 0 18px 45px rgba(13,43,40,0.2); padding: 0.45rem; z-index: 3000; display: none;
+    }
+    .driver-account-menu.open .driver-account-dropdown { display: block; }
+    .driver-account-name { padding: 0.65rem 0.75rem 0.5rem; color: var(--teal-dark); font-weight: 800; font-size: 0.88rem; }
+    .driver-account-role { display: block; margin-top: 0.12rem; color: var(--grey); font-weight: 600; font-size: 0.74rem; }
+    .driver-account-dropdown a,
+    .driver-account-dropdown button {
+      width: 100%; border: 0; background: transparent; color: var(--black); text-align: left; text-decoration: none;
+      display: block; padding: 0.62rem 0.75rem; border-radius: 8px; font: 700 0.86rem/1.2 Inter, Arial, sans-serif; cursor: pointer;
+    }
+    .driver-account-dropdown a:hover,
+    .driver-account-dropdown button:hover { background: var(--teal-pale); color: var(--teal-mid); }
+    .driver-account-divider { height: 1px; background: #edf4f3; margin: 0.45rem 0; }
+    .driver-account-logout { color: #c0392b !important; }
+    @media (max-width: 640px) {
+      .driver-account-dropdown {
+        position: fixed; top: 4.85rem; right: 0.85rem; width: min(270px, calc(100vw - 1.7rem));
+        max-height: calc(100vh - 5.8rem); overflow-y: auto;
+      }
+    }
+    /* ── Day summary strip ── */
+    .day-strip {
+      background: var(--white); border-bottom: 1px solid var(--grey-mid);
+      padding: 0.8rem 1.5rem; display: flex; gap: 1.5rem;
+      align-items: center; overflow-x: auto; flex-wrap: wrap;
+    }
+    .day-stat { display: flex; flex-direction: column; align-items: center; min-width: 70px; }
+    .day-stat-val { font-size: 1.4rem; font-weight: 800; color: var(--black); line-height: 1; }
+    .day-stat-val.green  { color: var(--green); }
+    .day-stat-val.orange { color: var(--orange); }
+    .day-stat-val.blue   { color: var(--blue); }
+    .day-stat-val.red    { color: var(--red); }
+    .day-stat-label { font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--grey); margin-top: 0.2rem; }
+    .day-divider { width: 1px; height: 32px; background: var(--grey-mid); flex-shrink: 0; }
+
+    .day-strip-date { margin-left: auto; font-size: 0.82rem; color: var(--grey); white-space: nowrap; }
+
+    .driver-finance-panel {
+      margin: 1rem 1.5rem 0; background: var(--white); border: 1px solid var(--grey-mid);
+      border-radius: 10px; padding: 1rem; box-shadow: 0 4px 14px rgba(13,43,40,0.06);
+    }
+    .driver-finance-head { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; margin-bottom:0.8rem; }
+    .driver-finance-title { font-weight:800; color:var(--teal-dark); font-size:1rem; }
+    .driver-finance-sub { color:var(--grey); font-size:0.78rem; margin-top:0.18rem; }
+    .driver-finance-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:0.75rem; }
+    .driver-finance-metric { border:1px solid #edf4f3; border-radius:8px; padding:0.7rem; min-width:0; }
+    .driver-finance-label { font-size:0.68rem; text-transform:uppercase; font-weight:800; color:var(--grey); }
+    .driver-finance-value { font-size:1.05rem; font-weight:800; color:var(--black); margin-top:0.25rem; overflow-wrap:anywhere; }
+    @media (max-width: 780px) { .driver-finance-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 520px) {
+      .driver-finance-panel { margin:0.85rem 1rem 0; }
+      .driver-finance-head { flex-direction:column; }
+      .driver-finance-grid { grid-template-columns:1fr; }
+    }
+
+    /* ── Filter tabs ── */
+    .filter-tabs {
+      display: flex; gap: 0.4rem; padding: 1rem 1.5rem 0;
+      overflow-x: auto; flex-shrink: 0;
+    }
+    .filter-tab {
+      padding: 0.45rem 1.1rem; border-radius: 20px; border: 2px solid var(--grey-mid);
+      background: var(--white); color: var(--grey); font-family: 'Inter', sans-serif;
+      font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .filter-tab.active { background: var(--teal-dark); border-color: var(--teal-dark); color: var(--white); }
+    .filter-tab:not(.active):hover { border-color: var(--teal-mid); color: var(--teal-mid); }
+    .work-tabs { display:flex; gap:0.6rem; padding:1rem 1.5rem 0; }
+    .work-tab { border:1px solid var(--grey-mid); background:var(--white); color:var(--grey); border-radius:6px; padding:0.6rem 1rem; font-weight:700; cursor:pointer; }
+    .work-tab.active { background:var(--teal-mid); border-color:var(--teal-mid); color:var(--white); }
+
+    /* ── Delivery list ── */
+    .delivery-list { padding: 1rem 1.5rem 6rem; display: flex; flex-direction: column; gap: 1rem; }
+
+    /* ── Delivery card ── */
+    .delivery-card {
+      background: var(--white); border-radius: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      overflow: hidden; transition: box-shadow 0.2s;
+      border-left: 5px solid var(--teal-mid);
+    }
+    .delivery-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,0.1); }
+    .delivery-card.status-delivered { border-left-color: var(--green); opacity: 0.7; }
+    .delivery-card.status-failed    { border-left-color: var(--red); }
+    .delivery-card.status-out       { border-left-color: var(--blue); }
+    .delivery-card.status-rescheduled { border-left-color: var(--yellow); }
+
+    .card-header {
+      padding: 1.2rem 1.4rem 0.8rem;
+      display: flex; align-items: flex-start;
+      justify-content: space-between; gap: 1rem;
+    }
+    .card-order { display: flex; flex-direction: column; gap: 0.2rem; }
+    .drag-handle {
+      cursor: grab; color: var(--grey); font-size: 1.3rem; line-height: 1;
+      padding: 0.2rem 0.4rem; margin-right: -0.2rem; user-select: none; flex-shrink: 0;
+      touch-action: none;
+    }
+    .drag-handle:active { cursor: grabbing; }
+    .sortable-ghost { opacity: 0.4; }
+    .sortable-chosen { box-shadow: 0 8px 24px rgba(0,0,0,0.18); }
+
+    .card-collapse-toggle {
+      border: 0; background: transparent; color: var(--grey); font-size: 1.1rem;
+      line-height: 1; padding: 0.3rem 0.3rem; cursor: pointer; flex-shrink: 0;
+      transition: transform 0.15s;
+    }
+    .card-collapse-toggle:hover { color: var(--teal-mid); }
+    .delivery-card.collapsed .card-collapse-toggle { transform: rotate(-90deg); }
+    .collapsed-summary {
+      display: none; padding: 0 1.4rem 1rem; gap: 0.4rem 0.7rem; flex-wrap: wrap;
+      align-items: baseline; font-size: 0.85rem;
+    }
+    .collapsed-summary .collapsed-customer { font-weight: 700; color: var(--black); }
+    .collapsed-summary .collapsed-area { color: var(--grey); }
+    .delivery-card.collapsed .collapsed-summary { display: flex; }
+    .delivery-card.collapsed .customer-info,
+    .delivery-card.collapsed .delivery-notes,
+    .delivery-card.collapsed .driver-update-box,
+    .delivery-card.collapsed .card-actions {
+      display: none;
+    }
+    #collapseAllBtn { margin-left: auto; }
+    #selectModeBtn.active { background: var(--teal-dark); border-color: var(--teal-dark); color: var(--white); }
+    .select-checkbox-wrap { display: flex; align-items: center; margin-right: 0.2rem; flex-shrink: 0; }
+    .select-checkbox { width: 20px; height: 20px; cursor: pointer; accent-color: var(--teal-dark); }
+    .delivery-card.selected { outline: 2px solid var(--teal-dark); outline-offset: -2px; }
+
+    /* ── "No reliable location" state for Open in Maps ── */
+    .btn-maps-disabled {
+      background: var(--grey-mid) !important; color: var(--grey) !important;
+      cursor: not-allowed; position: relative; opacity: 0.75;
+    }
+    .btn-maps-disabled .no-location-tip {
+      display: none; position: absolute; bottom: 100%; left: 0; transform: translateY(-0.4rem);
+      background: var(--black); color: var(--white); font-size: 0.72rem; font-weight: 500;
+      padding: 0.4rem 0.6rem; border-radius: 6px; white-space: nowrap; z-index: 5;
+    }
+    .btn-maps-disabled:hover .no-location-tip,
+    .btn-maps-disabled:focus .no-location-tip { display: block; }
+    .order-num { font-family: 'Courier New', monospace; font-size: 0.82rem; color: var(--teal-mid); font-weight: 700; }
+    .client-tag { font-size: 0.75rem; color: var(--grey); }
+
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      padding: 0.3rem 0.8rem; border-radius: 20px;
+      font-size: 0.75rem; font-weight: 700; white-space: nowrap; flex-shrink: 0;
+    }
+    .badge-queued      { background: var(--teal-pale);   color: var(--teal-mid); }
+    .badge-out         { background: var(--blue-pale);   color: #004085; }
+    .badge-delivered   { background: var(--green-pale);  color: #155724; }
+    .badge-failed      { background: var(--red-pale);    color: #8b2020; }
+    .badge-rescheduled { background: var(--yellow-pale); color: #856404; }
+    .badge-collected   { background: var(--yellow-pale); color: #856404; }
+
+    /* ── Customer info ── */
+    .customer-info {
+      padding: 0 1.4rem 1rem;
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 0.5rem 1.5rem;
+    }
+    .info-row { display: flex; flex-direction: column; gap: 0.1rem; }
+    .info-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--grey); }
+    .info-value { font-size: 0.9rem; font-weight: 600; color: var(--black); }
+    .info-value.customer-name-display {
+      color: var(--black);
+      font-size: 1.05rem;
+      font-weight: 800;
+      line-height: 1.3;
+      overflow-wrap: anywhere;
+    }
+    .info-value.address { font-size: 0.85rem; font-weight: 500; color: var(--black); line-height: 1.4; }
+    .info-value.cod     { color: var(--orange); font-size: 1rem; font-weight: 800; }
+    .info-value.no-cod  { color: var(--grey); font-size: 0.85rem; font-weight: 500; }
+
+    /* ── Notes ── */
+    .delivery-notes {
+      margin: 0 1.4rem 1rem;
+      padding: 0.7rem 1rem; background: var(--yellow-pale);
+      border-left: 3px solid var(--yellow); border-radius: 8px;
+      font-size: 0.85rem; color: #7a5a00; line-height: 1.5;
+    }
+
+
+    /* ── Driver Update Notes ── */
+    .driver-update-box {
+      margin: 0 1.4rem 1rem;
+      padding: 1rem;
+      background: var(--teal-pale);
+      border-left: 3px solid var(--teal-mid);
+      border-radius: 10px;
+    }
+
+    .driver-update-box label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--teal-dark);
+      margin-bottom: 0.5rem;
+    }
+
+    .driver-update-box textarea {
+      width: 100%;
+      min-height: 80px;
+      resize: vertical;
+      border: 2px solid var(--grey-mid);
+      border-radius: 10px;
+      padding: 0.8rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.88rem;
+      color: var(--black);
+      outline: none;
+      background: var(--white);
+    }
+
+    .driver-update-box textarea:focus {
+      border-color: var(--teal-mid);
+      box-shadow: 0 0 0 3px rgba(31,143,82,0.12);
+    }
+
+    .driver-update-actions {
+      display: flex;
+      gap: 0.6rem;
+      margin-top: 0.8rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-note-save {
+      background: var(--teal-pale);
+      color: var(--teal-mid);
+      border-color: var(--teal-mid);
+    }
+
+    .btn-note-save:hover {
+      background: var(--teal-mid);
+      color: var(--white);
+    }
+
+    .btn-note-client {
+      background: #e8fdf1;
+      color: #1a8a3a;
+      border-color: #a3d9b5;
+    }
+
+    .btn-note-client:hover {
+      background: #1a8a3a;
+      color: var(--white);
+    }
+
+    /* ── Action buttons ── */
+    .card-actions {
+      padding: 0 1.4rem 1.4rem;
+      display: flex; flex-wrap: wrap; gap: 0.6rem;
+    }
+    .action-btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.65rem 1.1rem; border-radius: 10px;
+      font-family: 'Inter', sans-serif; font-size: 0.82rem;
+      font-weight: 700; cursor: pointer; transition: all 0.2s;
+      border: 2px solid transparent; flex: 1; min-width: 120px;
+      justify-content: center; white-space: nowrap;
+    }
+    .btn-maps      { background: #e8f4fd; color: #1a6fa8; border-color: #b3d9f5; }
+    .btn-maps:hover { background: #1a6fa8; color: var(--white); }
+    .btn-call      { background: var(--green-pale); color: var(--green); border-color: #a3d9b5; }
+    .btn-call:hover { background: var(--green); color: var(--white); }
+    .btn-collected { background: var(--yellow-pale); color: #856404; border-color: #f0c040; }
+    .btn-collected:hover { background: #f0c040; color: var(--black); }
+    .btn-delivered { background: var(--green-pale); color: #155724; border-color: #a3d9b5; }
+    .btn-delivered:hover { background: var(--green); color: var(--white); }
+    .btn-failed    { background: var(--red-pale); color: var(--red); border-color: #f5a5a5; }
+    .btn-failed:hover { background: var(--red); color: var(--white); }
+    .btn-reschedule { background: var(--orange-pale); color: var(--orange); border-color: #f5c5a3; }
+    .btn-reschedule:hover { background: var(--orange); color: var(--white); }
+    .btn-unavailable { background: #f0f0f0; color: var(--grey); border-color: var(--grey-mid); }
+    .btn-unavailable:hover { background: var(--grey); color: var(--white); }
+    .btn-whatsapp  { background: #e8fdf1; color: #1a8a3a; border-color: #a3d9b5; }
+    .btn-whatsapp:hover { background: #1a8a3a; color: var(--white); }
+
+    /* ── Empty state ── */
+    .empty-state {
+      text-align: center; padding: 4rem 2rem;
+      display: none;
+    }
+    .empty-state.show { display: block; }
+    .empty-icon { font-size: 3rem; margin-bottom: 1rem; display: block; }
+    .empty-state h3 { font-size: 1.2rem; font-weight: 700; color: var(--black); margin-bottom: 0.5rem; }
+    .empty-state p  { font-size: 0.9rem; color: var(--grey); line-height: 1.7; }
+
+    /* ── Bottom CTA bar ── */
+    .bottom-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--white); border-top: 1px solid var(--grey-mid);
+      padding: 0.8rem 1.5rem; display: flex; gap: 0.8rem; justify-content: center;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.08); z-index: 100;
+    }
+    .bottom-btn {
+      flex: 0 1 360px; width: min(100%, 360px); padding: 0.8rem; border-radius: 10px;
+      font-family: 'Inter', sans-serif; font-size: 0.88rem;
+      font-weight: 700; cursor: pointer; transition: all 0.2s;
+      border: 2px solid transparent; text-align: center;
+    }
+    .bottom-btn.primary { background: var(--teal-mid); color: var(--white); border-color: var(--teal-mid); }
+    .bottom-btn.primary:hover { background: #176B42; }
+    .bottom-btn.ghost   { background: var(--grey-light); color: var(--grey); border-color: var(--grey-mid); }
+    .bottom-btn.ghost:hover { border-color: var(--teal-mid); color: var(--teal-mid); }
+
+    /* ── Modal ── */
+    body.modal-open { overflow: hidden; }
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5); z-index: 500;
+      align-items: flex-end; justify-content: center; padding: 0;
+      overflow-y: auto; overscroll-behavior: contain;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: var(--white); border-radius: 20px 20px 0 0;
+      padding: 2rem 1.5rem 2.5rem; width: 100%; max-width: 600px;
+      max-height: calc(100dvh - 1rem); overflow-y: auto; overscroll-behavior: contain;
+      scrollbar-gutter: stable;
+      box-shadow: 0 -10px 40px rgba(0,0,0,0.2);
+      animation: slideUp 0.3s ease-out;
+    }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .modal-handle {
+      width: 40px; height: 4px; background: var(--grey-mid);
+      border-radius: 2px; margin: 0 auto 1.5rem;
+    }
+    .modal h3 { font-size: 1.1rem; font-weight: 700; color: var(--black); margin-bottom: 0.5rem; }
+    .modal p  { font-size: 0.9rem; color: var(--grey); line-height: 1.6; margin-bottom: 1.5rem; }
+    .modal-actions { display: flex; flex-direction: column; gap: 0.6rem; }
+    .modal-btn {
+      width: 100%; padding: 0.9rem; border-radius: 10px;
+      font-family: 'Inter', sans-serif; font-size: 0.92rem;
+      font-weight: 700; cursor: pointer; transition: all 0.2s;
+      border: 2px solid transparent;
+    }
+    .modal-btn.confirm  { background: var(--teal-mid); color: var(--white); border-color: var(--teal-mid); }
+    .modal-btn.confirm:hover  { background: #176B42; }
+    .modal-btn.danger   { background: var(--red-pale); color: var(--red); border-color: var(--red); }
+    .modal-btn.danger:hover   { background: var(--red); color: var(--white); }
+    .modal-btn.cancel   { background: var(--grey-light); color: var(--grey); border-color: var(--grey-mid); }
+    .modal-btn.cancel:hover   { border-color: var(--grey); }
+    .collection-method-box {
+      background: var(--teal-pale);
+      border: 1px solid rgba(45,166,155,0.25);
+      border-radius: 10px;
+      padding: 0.9rem;
+      margin-bottom: 1rem;
+    }
+    .collection-method-title {
+      font-size: 0.82rem;
+      font-weight: 800;
+      color: var(--teal-dark);
+      margin-bottom: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .collection-method-options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.6rem;
+    }
+    .collection-method-options label {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      background: var(--white);
+      border: 2px solid var(--grey-mid);
+      border-radius: 10px;
+      padding: 0.75rem;
+      font-weight: 700;
+      color: var(--black);
+      cursor: pointer;
+    }
+    .collection-method-options input {
+      accent-color: var(--teal-mid);
+    }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
+      background: linear-gradient(180deg, var(--teal-dark) 0%, var(--navy) 100%); color: var(--white);
+      padding: 0.8rem 1.4rem; border-radius: 10px;
+      font-size: 0.88rem; font-weight: 500;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      display: none; z-index: 999; white-space: nowrap;
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    @media (max-width: 480px) {
+      .customer-info { grid-template-columns: 1fr; }
+      .action-btn { flex: 1 1 calc(50% - 0.3rem); }
+      .day-strip { gap: 1rem; }
+    }
+  
+
+    /* Mobile launch safety layer - Codex */
+    html, body { max-width: 100%; overflow-x: hidden; }
+    .topbar, .day-strip, .filter-tabs, .delivery-list, .delivery-card, .card-header, .customer-info, .action-row, .driver-update-box { min-width: 0; max-width: 100%; }
+    .delivery-card, .customer-name, .address-text, .info-value, .notes-content { overflow-wrap: anywhere; }
+    button, textarea, input, select { max-width: 100%; }
+
+    @media (max-width: 640px) {
+      .topbar { height: auto; min-height: 64px; padding: 0.75rem 1rem; align-items: flex-start; }
+      .brand-name { font-size: 1rem; line-height: 1.15; }
+      .brand-name span { display: block; margin-left: 0; font-size: 0.72rem; }
+      .topbar-driver { min-width: 0; }
+      .driver-info { display: none; }
+      .day-strip { padding: 0.75rem 1rem; gap: 0.8rem; flex-wrap: nowrap; }
+      .day-strip-date { display: none; }
+      .filter-tabs { padding: 0.85rem 1rem 0; }
+      .delivery-list { padding: 1rem; }
+      .card-header { padding: 1rem; gap: 0.8rem; }
+      .order-id { font-size: 0.9rem; }
+      .customer-info { grid-template-columns: 1fr; padding: 0 1rem 1rem; }
+      .address-block, .notes-block, .driver-update-box { margin-left: 1rem; margin-right: 1rem; }
+      .action-row { padding: 1rem; gap: 0.55rem; }
+      .action-btn { flex: 1 1 100%; min-width: 0; min-height: 44px; white-space: normal; }
+      .toast { width: calc(100vw - 2rem); max-width: 420px; }
+    }
+
+    @media (max-width: 420px) {
+      .day-stat { min-width: 58px; }
+      .day-stat-val { font-size: 1.15rem; }
+      .day-stat-label { font-size: 0.6rem; }
+      .day-divider { display: none; }
+      .delivery-list { padding: 0.75rem; }
+      .filter-tab { padding: 0.45rem 0.85rem; }
+    }
+
+  
+
+    /* Hybrid mobile cards and report tables - Codex */
+    .delivery-card,
+    .customer-name,
+    .address-text,
+    .info-value,
+    .notes-content {
+      word-break: normal;
+      overflow-wrap: break-word;
+    }
+    .order-num,
+    .client-tag,
+    .status-badge,
+    .action-btn {
+      word-break: normal;
+      overflow-wrap: normal;
+    }
+    .order-num,
+    .status-badge {
+      white-space: nowrap;
+      line-height: 1.25;
+    }
+    .card-header {
+      gap: 0.75rem;
+    }
+    .card-order {
+      min-width: 0;
+    }
+
+    @media (max-width: 640px) {
+      .card-header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .status-badge {
+        justify-self: start;
+        max-width: 100%;
+      }
+      .action-btn {
+        justify-content: center;
+      }
+    }
+
+    /* Keep driver cards clear of fixed bottom bar - Codex */
+    :root {
+      --driver-bottom-bar-space: 7.5rem;
+    }
+    .delivery-list {
+      padding-bottom: calc(var(--driver-bottom-bar-space) + env(safe-area-inset-bottom));
+    }
+    .bottom-bar {
+      padding-bottom: calc(0.8rem + env(safe-area-inset-bottom));
+    }
+    @media (max-width: 640px) {
+      :root {
+        --driver-bottom-bar-space: 6.2rem;
+      }
+      .bottom-btn {
+        flex: 1 1 auto;
+        width: 100%;
+      }
+      .delivery-list {
+        padding-bottom: calc(var(--driver-bottom-bar-space) + env(safe-area-inset-bottom));
+      }
+    }
+    @media (max-width: 420px) {
+      .delivery-list {
+        padding-bottom: calc(var(--driver-bottom-bar-space) + env(safe-area-inset-bottom));
+      }
+    }
+
+    /* Hide the page's own top bar when this page is loaded inside a Driver Tab
+       (an iframe on the admin or business dashboard), since the parent page
+       already has its own header/nav around it. */
+    html.embedded-view .topbar { display: none; }
+  </style>
+</head>
+<body>
+
+  <!-- ── Top bar ── -->
+  <div class="topbar">
+    <div class="topbar-brand">
+      <img class="brand-logo" src="/virtudrop/assets/logo.png" alt="VirtuDrop" />
+      <div class="brand-name">VirtuDrop <span>Driver Dashboard</span><small>A logistics service by VirtuForms Ltd.</small></div>
+    </div>
+    <div class="topbar-driver">
+      <div class="driver-info">
+        <div class="driver-name">Driver A</div>
+        <div class="driver-zone">East &amp; West Zones</div>
+      </div>
+      <div class="driver-account-menu" id="driverAccountMenu">
+        <button class="driver-avatar" id="driverAccountBtn" type="button" aria-haspopup="true" aria-expanded="false" onclick="event.stopPropagation(); const menu=this.closest('.driver-account-menu'); const isOpen=menu.classList.toggle('open'); this.setAttribute('aria-expanded', String(isOpen));">DA</button>
+        <div class="driver-account-dropdown" role="menu">
+          <div class="driver-account-name">
+            <span id="driverAccountName">Driver</span>
+            <span class="driver-account-role">Driver</span>
+          </div>
+          <a role="menuitem" href="index.html">Home</a>
+          <a role="menuitem" href="about.html">About</a>
+          <a role="menuitem" href="pricing.html">Pricing</a>
+          <a role="menuitem" href="zones.html">Zones</a>
+          <a role="menuitem" href="calculator.html">Calculator</a>
+          <a role="menuitem" href="business-clients.html">Business Clients</a>
+          <a role="menuitem" href="how-it-works.html">How It Works</a>
+          <a role="menuitem" href="faq.html">FAQ</a>
+          <a role="menuitem" href="contact.html">Contact</a>
+          <div class="driver-account-divider"></div>
+          <a role="menuitem" href="driver-dashboard.html">Dashboard</a>
+          <button class="driver-account-logout" id="driverAccountLogoutBtn" type="button" role="menuitem">Log Out</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Day summary ── -->
+  <div class="day-strip">
+    <div class="day-stat">
+      <div class="day-stat-val blue" id="statTotal">8</div>
+      <div class="day-stat-label">Assigned</div>
+    </div>
+    <div class="day-divider"></div>
+    <div class="day-stat">
+      <div class="day-stat-val orange" id="statPending">5</div>
+      <div class="day-stat-label">Remaining</div>
+    </div>
+    <div class="day-divider"></div>
+    <div class="day-stat">
+      <div class="day-stat-val green" id="statDone">2</div>
+      <div class="day-stat-label">Delivered</div>
+    </div>
+    <div class="day-divider"></div>
+    <div class="day-stat">
+      <div class="day-stat-val red" id="statFailed">1</div>
+      <div class="day-stat-label">Failed</div>
+    </div>
+    <div class="day-divider"></div>
+    <div class="day-stat">
+      <div class="day-stat-val" id="statCOD">$935</div>
+      <div class="day-stat-label">Total Collected</div>
+    </div>
+    <div class="day-strip-date" id="todayDate"></div>
+  </div>
+
+  <div class="driver-finance-panel" id="driverFinancePanel">
+    <div class="driver-finance-head">
+      <div>
+        <div class="driver-finance-title">Driver Payments</div>
+        <div class="driver-finance-sub" id="driverFinanceCycle">Loading driver payment cycle...</div>
+      </div>
+      <div class="driver-finance-sub" id="driverFinanceReset"></div>
+    </div>
+    <div class="driver-finance-grid">
+      <div class="driver-finance-metric">
+        <div class="driver-finance-label">Outstanding</div>
+        <div class="driver-finance-value" id="driverOutstandingBalance">TTD 0</div>
+      </div>
+      <div class="driver-finance-metric">
+        <div class="driver-finance-label">Earned This Cycle</div>
+        <div class="driver-finance-value" id="driverCycleEarned">TTD 0</div>
+      </div>
+      <div class="driver-finance-metric">
+        <div class="driver-finance-label">Recent Payment</div>
+        <div class="driver-finance-value" id="driverRecentPayment">None yet</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="work-tabs">
+    <button class="work-tab active" id="deliveryWorkTab" type="button" onclick="switchWorkView('deliveries')">Deliveries</button>
+    <button class="work-tab" id="pickupWorkTab" type="button" onclick="switchWorkView('pickups')">Pickups (0)</button>
+  </div>
+
+  <div id="deliveryWorkView">
+    <!-- ── Filter tabs ── -->
+    <div class="filter-tabs">
+      <button class="filter-tab active" onclick="filterCards('all', this)">All (0)</button>
+      <button class="filter-tab" onclick="filterCards('queued', this)">Queued (0)</button>
+      <button class="filter-tab" onclick="filterCards('out', this)">Out for Delivery (0)</button>
+      <button class="filter-tab" onclick="filterCards('delivered', this)">Delivered (0)</button>
+      <button class="filter-tab" onclick="filterCards('failed', this)">Failed (0)</button>
+      <button class="filter-tab" id="collapseAllBtn" type="button" onclick="toggleCollapseAll()" title="Minimize all cards to make dragging easier">Minimize All</button>
+      <button class="filter-tab" id="selectModeBtn" type="button" onclick="toggleSelectMode()" title="Select multiple deliveries to drag as a group">Select</button>
+    </div>
+
+    <!-- ── Delivery list ── -->
+    <div class="delivery-list" id="deliveryList">
+      <div class="delivery-card">
+        <div class="card-header"><div>Loading assigned orders...</div></div>
+      </div>
+    </div>
+
+    <div class="empty-state" id="emptyState">
+      <span class="empty-icon">📭</span>
+      <h3>No deliveries in this category</h3>
+      <p>Check another filter or contact admin if an assignment is missing.</p>
+    </div>
+  </div>
+
+  <div id="pickupWorkView" style="display:none;">
+    <div class="delivery-list" id="pickupList">
+      <div class="delivery-card"><div class="card-header"><div>Loading assigned pickups...</div></div></div>
+    </div>
+    <div class="empty-state" id="pickupEmptyState">
+      <span class="empty-icon"></span>
+      <h3>No assigned pickups</h3>
+      <p>New pickup work will appear here after admin assigns it.</p>
+    </div>
+  </div>
+
+  <!-- ── Bottom bar ── -->
+  <div class="bottom-bar">
+    <button class="bottom-btn primary" id="driverUpdateAdminBtn" type="button">📡 Update Admin</button>
+  </div>
+
+  <!-- ── Action modal (bottom sheet) ── -->
+  <div class="modal-overlay" id="modal" onclick="closeModalIfBg(event)">
+    <div class="modal" id="modalContent">
+      <div class="modal-handle"></div>
+      <h3 id="modalTitle">Confirm Action</h3>
+      <p id="modalBody">Are you sure?</p>
+      <div class="modal-actions" id="modalActions"></div>
+    </div>
+  </div>
+
+  <!-- ── Toast ── -->
+  <div class="toast" id="toast"></div>
+
+  <script src="vd-modal.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+    const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_riDvZH96FeYGnF0bLYQErg_tlRv71CX';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    function showLoggedOutGate() {
+      document.body.style.margin = '0';
+      document.body.style.display = 'block';
+      document.body.style.minHeight = '100vh';
+      document.body.style.background = '#f4f8f7';
+      document.body.innerHTML = `
+        <div style="min-height:100vh; display:flex; align-items:center; justify-content:center; background:#f4f8f7; padding:1.5rem; font-family:Inter, Arial, sans-serif;">
+          <div style="width:min(440px,100%); background:#fff; border-radius:14px; box-shadow:0 12px 35px rgba(13,43,40,0.14); padding:2rem; text-align:center; border-top:4px solid #1F8F52;">
+            <h1 style="margin:0 0 0.8rem; color:#122C2A; font-size:1.6rem;">Please log in again</h1>
+            <p style="margin:0 0 1.4rem; color:#4a4a4a; line-height:1.6;">Your driver dashboard session has ended. Log back in to view protected information.</p>
+            <button style="border:0; border-radius:10px; background:#1F8F52; color:#fff; padding:0.85rem 1.4rem; font-weight:700; cursor:pointer;" onclick="window.location.href='auth.html?returnTo=driver-dashboard.html'">Log In</button>
+          </div>
+        </div>
+      `;
+    }
+
+    async function hasActiveSession() {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        showLoggedOutGate();
+        return false;
+      }
+      return true;
+    }
+
+    function installSessionRestoreGuard() {
+      window.addEventListener('pageshow', () => { hasActiveSession(); });
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') hasActiveSession();
+      });
+      window.addEventListener('focus', () => { hasActiveSession(); });
+    }
+    installSessionRestoreGuard();
+
+    if (new URLSearchParams(window.location.search).get('embedded') === '1') {
+      document.documentElement.classList.add('embedded-view');
+    }
+
+    let toastTimer;
+    let currentDriver = null;
+    let currentProfile = null;
+    let orders = [];
+    let pickups = [];
+    let driverManifests = [];
+    let driverFinance = null;
+    let clientsById = new Map();
+    let activeFilter = 'all';
+    let activeWorkView = 'deliveries';
+    let deliverySignaturePad = null;
+    let routeSortable = null;
+    let savingRouteOrder = false;
+    let collapsedOrderIds = new Set();
+    let selectModeActive = false;
+    let selectedOrderIds = new Set();
+
+    // ── Distance-from-store default sort ──────────────────────────────
+    // Fixed pickup point (YD Harvest). Update here if the pickup location
+    // ever changes.
+    const STORE_LAT = 10.5306022;
+    const STORE_LNG = -61.3784294;
+    // Orders without a GPS pin fall back to a rough distance estimate based
+    // on the pricing zone's rate band, so they still land in a sensible
+    // spot instead of always sorting to the very end.
+    const RATE_BAND_FALLBACK_KM = { standard: 15, extended: 30, remote: 45 };
+
+    function haversineKm(lat1, lon1, lat2, lon2) {
+      const toRad = deg => deg * Math.PI / 180;
+      const R = 6371;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat / 2) ** 2
+        + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function orderDistanceInfo(order) {
+      const lat = Number(order.latitude);
+      const lng = Number(order.longitude);
+      if (Number.isFinite(lat) && Number.isFinite(lng) && (lat !== 0 || lng !== 0)) {
+        return { km: haversineKm(STORE_LAT, STORE_LNG, lat, lng), estimated: false };
+      }
+      if (order.pricing_rate_band && RATE_BAND_FALLBACK_KM[order.pricing_rate_band] != null) {
+        return { km: RATE_BAND_FALLBACK_KM[order.pricing_rate_band], estimated: true };
+      }
+      return { km: 999, estimated: true }; // unknown - sort last among active deliveries
+    }
+
+    function orderDistanceKm(order) {
+      return orderDistanceInfo(order).km;
+    }
+
+    // Builds the on-screen delivery order: any card the driver has already
+    // dragged keeps its saved spot (driver_route_position, ascending); any
+    // card that's never been touched by a drag is slotted into that list at
+    // the point its distance from the store would naturally place it.
+    // Delivered/failed/rescheduled cards are not part of this - they always
+    // render after, in their normal recency order.
+    function computeDeliveryDisplayOrder(allOrders) {
+      const active = allOrders.filter(o => normalizeStatus(o) !== 'delivered' && normalizeStatus(o) !== 'failed' && normalizeStatus(o) !== 'rescheduled');
+      const done = allOrders.filter(o => normalizeStatus(o) === 'delivered' || normalizeStatus(o) === 'failed' || normalizeStatus(o) === 'rescheduled');
+
+      const positioned = active
+        .filter(o => o.driver_route_position != null)
+        .sort((a, b) => a.driver_route_position - b.driver_route_position);
+      const unpositioned = active
+        .filter(o => o.driver_route_position == null)
+        .sort((a, b) => orderDistanceKm(a) - orderDistanceKm(b));
+
+      const merged = positioned.slice();
+      unpositioned.forEach(order => {
+        const dist = orderDistanceKm(order);
+        let insertAt = merged.length;
+        for (let i = 0; i < merged.length; i++) {
+          if (dist < orderDistanceKm(merged[i])) { insertAt = i; break; }
+        }
+        merged.splice(insertAt, 0, order);
+      });
+
+      return merged.concat(done);
+    }
+
+    document.getElementById('todayDate').textContent =
+      new Date().toLocaleDateString('en-TT', { weekday:'long', day:'numeric', month:'short', year:'numeric' });
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.style.display = 'block';
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.style.display = 'none', 3500);
+    }
+    window.showToast = showToast;
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+      })[char]);
+    }
+
+    function openModal(title, body, actions) {
+      document.getElementById('modalTitle').textContent = title;
+      document.getElementById('modalBody').textContent = body;
+      document.getElementById('modalActions').innerHTML = actions;
+      document.body.classList.add('modal-open');
+      document.getElementById('modal').classList.add('show');
+    }
+    window.openModal = openModal;
+    window.closeModal = function() {
+      document.getElementById('modal').classList.remove('show');
+      document.body.classList.remove('modal-open');
+    };
+    window.closeModalIfBg = function(e) { if (e.target === document.getElementById('modal')) closeModal(); };
+
+    function normalizeStatus(order) {
+      const orderStatus = typeof order === 'string' ? order : order?.order_status;
+      const parcelStatus = typeof order === 'string' ? '' : order?.parcel_status;
+      if (orderStatus === 'out_for_delivery' || parcelStatus === 'handed_to_driver') return 'out';
+      if (orderStatus === 'delivered' || parcelStatus === 'delivered') return 'delivered';
+      if (orderStatus === 'failed') return 'failed';
+      if (orderStatus === 'rescheduled') return 'rescheduled';
+      return 'queued';
+    }
+
+    function statusBadge(status) {
+      if (status === 'out') return '<span class="status-badge badge-out">Out for Delivery</span>';
+      if (status === 'delivered') return '<span class="status-badge badge-delivered">✅ Delivered</span>';
+      if (status === 'failed') return '<span class="status-badge badge-failed">Failed Attempt</span>';
+      if (status === 'rescheduled') return '<span class="status-badge badge-rescheduled">🔄 Rescheduled</span>';
+      return '<span class="status-badge badge-queued">Queued</span>';
+    }
+
+    function cardClass(status) {
+      if (status === 'out') return ' status-out';
+      if (status === 'delivered') return ' status-delivered';
+      if (status === 'failed') return ' status-failed';
+      if (status === 'rescheduled') return ' status-rescheduled';
+      return '';
+    }
+
+    function paymentLabel(type) {
+      if (type === 'delivery_only') return 'Package Paid Online';
+      if (type === 'prepaid') return 'Fully Paid Online';
+      return 'Cash on Delivery';
+    }
+
+    function amountToCollect(order) {
+      if (order.driver_amount_to_collect !== null && order.driver_amount_to_collect !== undefined) {
+        return Number(order.driver_amount_to_collect || 0);
+      }
+      if (order.customer_amount_due !== null && order.customer_amount_due !== undefined) {
+        return Number(order.customer_amount_due || 0);
+      }
+      return 0;
+    }
+
+    function money(value) {
+      const n = Number(value || 0);
+      return n > 0 ? `TTD ${n.toFixed(2)}` : 'Nothing';
+    }
+
+    function financeMoney(value) {
+      const n = Number(value || 0);
+      return `TTD ${n.toFixed(2).replace('.00', '')}`;
+    }
+
+    function renderDriverFinance() {
+      if (!driverFinance) {
+        const cycle = document.getElementById('driverFinanceCycle');
+        if (cycle) cycle.textContent = 'Payment records will appear after the admin runs the driver finance update.';
+        return;
+      }
+      const cycle = driverFinance.cycle || {};
+      const recentPayment = (driverFinance.recent_payments || []).find(payment => !payment.voided_at);
+      const setText = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+      };
+      setText('driverFinanceCycle', `${cycle.cycle_start || '—'} to ${cycle.cycle_end || '—'} · ${driverFinance.completed_deliveries_cycle || 0} completed deliveries`);
+      setText('driverFinanceReset', `Resets ${cycle.reset_date || '—'}`);
+      setText('driverOutstandingBalance', financeMoney(driverFinance.outstanding_balance));
+      setText('driverCycleEarned', financeMoney(driverFinance.earned_cycle));
+    }
+
+    function cleanPhone(phone) {
+      return String(phone || '').replace(/\D/g, '');
+    }
+
+    function phoneForLink(phone) {
+      const digits = cleanPhone(phone);
+      if (digits.startsWith('868')) return digits;
+      return '868' + digits;
+    }
+
+    function clientName(order) {
+      return clientsById.get(order.business_client_id)?.business_name || 'Not listed';
+    }
+
+    function addressLabel(order) {
+      return [order.house_number, order.street_name, order.area_name].filter(Boolean).join(', ')
+        || order.delivery_address
+        || order.area_name
+        || (order.maps_link ? 'Google Maps pin provided' : 'Location pending');
+    }
+
+    function mapsTarget(order) {
+      if (order.maps_link) return order.maps_link;
+      if (order.latitude && order.longitude) return `https://www.google.com/maps/search/?api=1&query=${order.latitude},${order.longitude}`;
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressLabel(order) + ', Trinidad')}`;
+    }
+
+    // A real pin (a link the customer/driver actually supplied, or
+    // coordinates confirmed by one of those) vs. nothing but a guessed
+    // text-address search, which is what was opening "general area only".
+    function hasReliableLocation(order) {
+      return Boolean(order.maps_link) || Boolean(order.latitude && order.longitude);
+    }
+
+    function manifestForOrder(orderId) {
+      return driverManifests.find(manifest => (manifest.order_ids || []).includes(orderId)) || null;
+    }
+
+    function pickupMapsTarget(pickup) {
+      if (pickup.pickup_maps_link) return pickup.pickup_maps_link;
+      if (pickup.pickup_latitude && pickup.pickup_longitude) {
+        return `https://www.google.com/maps/search/?api=1&query=${pickup.pickup_latitude},${pickup.pickup_longitude}`;
+      }
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((pickup.pickup_address || '') + ', Trinidad')}`;
+    }
+
+    window.switchWorkView = function(view) {
+      activeWorkView = view === 'pickups' ? 'pickups' : 'deliveries';
+      document.getElementById('deliveryWorkView').style.display = activeWorkView === 'deliveries' ? '' : 'none';
+      document.getElementById('pickupWorkView').style.display = activeWorkView === 'pickups' ? '' : 'none';
+      document.getElementById('deliveryWorkTab').classList.toggle('active', activeWorkView === 'deliveries');
+      document.getElementById('pickupWorkTab').classList.toggle('active', activeWorkView === 'pickups');
+      document.getElementById('driverUpdateAdminBtn').style.display = activeWorkView === 'deliveries' ? '' : 'none';
+    };
+
+    function pickupStatusBadge(status) {
+      if (status === 'picked_up') return '<span class="status-badge badge-out">Picked Up</span>';
+      if (status === 'arrived_at_hub') return '<span class="status-badge badge-delivered">Arrived at Hub</span>';
+      return '<span class="status-badge badge-queued">Assigned Pickup</span>';
+    }
+
+    function renderPickupActions(pickup) {
+      const phone = phoneForLink(pickup.pickup_contact_phone);
+      const maps = pickupMapsTarget(pickup);
+      const contactActions = `
+        <button class="action-btn btn-maps" onclick="openMaps('${maps.replaceAll("'", "\\'")}')">Open in Maps</button>
+        <button class="action-btn btn-call" onclick="callCustomer('${phone}')">Call Contact</button>
+        <button class="action-btn btn-whatsapp" onclick="whatsappCustomer('${phone}')">WhatsApp Contact</button>
+      `;
+      if (pickup.pickup_status === 'assigned') {
+        return contactActions + `<button class="action-btn btn-collected" onclick="confirmPickupStatus('${pickup.id}', 'picked_up')">Mark Picked Up</button>`;
+      }
+      if (pickup.pickup_status === 'picked_up') {
+        return contactActions + `<button class="action-btn btn-delivered" onclick="confirmPickupStatus('${pickup.id}', 'arrived_at_hub')">Mark Arrived at Hub</button>`;
+      }
+      return '<span class="status-badge badge-delivered">Ready for hub check-in</span>';
+    }
+
+    function renderPickups() {
+      const list = document.getElementById('pickupList');
+      const empty = document.getElementById('pickupEmptyState');
+      const activeCount = pickups.filter(pickup => ['assigned', 'picked_up'].includes(pickup.pickup_status)).length;
+      const deliveryTab = document.getElementById('deliveryWorkTab');
+      const pickupTab = document.getElementById('pickupWorkTab');
+      if (deliveryTab) {
+        deliveryTab.textContent = activeCount ? `Deliveries | ${activeCount} pickup${activeCount === 1 ? '' : 's'}` : 'Deliveries';
+      }
+      pickupTab.textContent = `Pickups (${activeCount})`;
+      pickupTab.style.borderColor = activeCount ? 'var(--teal-mid)' : '';
+      pickupTab.style.color = activeCount ? 'var(--teal-dark)' : '';
+      list.innerHTML = pickups.map(pickup => {
+        const scheduledDate = pickup.pickup_scheduled_date
+          ? new Date(pickup.pickup_scheduled_date + 'T12:00:00').toLocaleDateString('en-TT')
+          : 'Date pending';
+        const pickupAddress = pickup.pickup_address || pickup.pickup_maps_link || (pickup.pickup_latitude && pickup.pickup_longitude ? `${pickup.pickup_latitude}, ${pickup.pickup_longitude}` : '');
+        return `
+          <div class="delivery-card${pickup.pickup_status === 'picked_up' ? ' status-out' : pickup.pickup_status === 'arrived_at_hub' ? ' status-delivered' : ''}">
+            <div class="card-header">
+              <div class="card-order"><div class="order-num">${escapeHtml(pickup.order_number)}</div><div class="client-tag">${escapeHtml(pickup.business_name)}</div></div>
+              ${pickupStatusBadge(pickup.pickup_status)}
+            </div>
+            <div class="customer-info">
+              <div class="info-row"><div class="info-label">Pickup Contact</div><div class="info-value">${escapeHtml(pickup.pickup_contact_name || 'Not entered')}</div></div>
+              <div class="info-row"><div class="info-label">Phone</div><div class="info-value">${escapeHtml(pickup.pickup_contact_phone || 'Not entered')}</div></div>
+              <div class="info-row" style="grid-column:1/-1;"><div class="info-label">Pickup Address</div><div class="info-value address">${escapeHtml(pickupAddress || 'Address missing')}</div></div>
+              <div class="info-row"><div class="info-label">Scheduled</div><div class="info-value">${escapeHtml(scheduledDate)}</div></div>
+              <div class="info-row"><div class="info-label">Window</div><div class="info-value">${escapeHtml(pickup.pickup_scheduled_window || pickup.pickup_window || 'Not entered')}</div></div>
+              <div class="info-row"><div class="info-label">Parcels</div><div class="info-value">${escapeHtml(String(pickup.pickup_parcel_count || 1))}</div></div>
+              <div class="info-row"><div class="info-label">Pickup Fee</div><div class="info-value">${escapeHtml(money(pickup.pickup_fee))}</div></div>
+            </div>
+            ${pickup.pickup_instructions ? `<div class="delivery-notes">${escapeHtml(pickup.pickup_instructions)}</div>` : ''}
+            <div class="card-actions">${renderPickupActions(pickup)}</div>
+          </div>
+        `;
+      }).join('');
+      empty.classList.toggle('show', pickups.length === 0);
+    }
+
+    window.confirmPickupStatus = function(orderId, nextStatus) {
+      const pickup = pickups.find(item => item.id === orderId);
+      if (!pickup) return showToast('Pickup not found. Refresh and try again.');
+      const label = nextStatus === 'picked_up' ? 'mark this parcel picked up' : 'mark this parcel arrived at the hub';
+      openModal('Confirm Pickup Update', `Are you ready to ${label}?`, `<button class="modal-btn primary" onclick="savePickupStatus('${orderId}', '${nextStatus}')">Confirm</button><button class="modal-btn" onclick="closeModal()">Cancel</button>`);
+    };
+
+    window.savePickupStatus = async function(orderId, nextStatus) {
+      try {
+        const { error } = await supabase.rpc('driver_update_order_pickup', {
+          p_order_id: orderId,
+          p_pickup_status: nextStatus
+        });
+        if (error) throw error;
+        closeModal();
+        showToast(nextStatus === 'picked_up' ? 'Pickup marked collected.' : 'Pickup marked arrived at hub.');
+        await loadDriverData();
+        switchWorkView('pickups');
+      } catch (error) {
+        console.error('Pickup status update error:', error);
+        window.vdNotify('Pickup Update Failed', error.message || 'Could not update this pickup.', 'error');
+      }
+    };
+
+    function renderActions(order, status) {
+      const collect = amountToCollect(order);
+      const phone = phoneForLink(order.customer_phone);
+      const maps = mapsTarget(order);
+
+      if (status === 'delivered') {
+        return `<button class="action-btn btn-whatsapp" onclick="whatsappCustomer('${phone}')" style="opacity:0.8;">💬 WhatsApp Customer</button>`;
+      }
+
+      if (status === 'failed' || status === 'rescheduled') {
+        if (order.delivery_return_required) {
+          return `<button class="action-btn btn-collected" onclick="markReturnedToHub('${order.id}')">Mark Returned to Hub</button>`;
+        }
+        return '<span class="status-badge badge-queued">Parcel returned to hub</span>';
+      }
+
+      const mapsButton = hasReliableLocation(order)
+        ? `<button class="action-btn btn-maps" onclick="openMaps('${maps.replaceAll("'", "\\'")}')">Open in Maps</button>`
+        : `<span class="action-btn btn-maps btn-maps-disabled" tabindex="0">Open in Maps<span class="no-location-tip">No location available — call customer for pin</span></span>`;
+
+      const common = `
+        ${mapsButton}
+        <button class="action-btn btn-call" onclick="callCustomer('${phone}')">Call Customer</button>
+        <button class="action-btn btn-whatsapp" onclick="whatsappCustomer('${phone}')">💬 WhatsApp Customer</button>
+      `;
+
+      if (status === 'queued') {
+        const manifest = manifestForOrder(order.id);
+        if (manifest && manifest.status !== 'collected' && order.parcel_status !== 'handed_to_driver') {
+          return `<span class="status-badge ${manifest.status === 'ready' ? 'badge-out' : 'badge-queued'}">Manifest ${manifest.status === 'ready' ? 'ready - awaiting handover' : 'being prepared'}</span>`;
+        }
+        return common + `<button class="action-btn btn-collected" onclick="markCollected('${order.id}')">Mark Collected</button>`;
+      }
+
+      return common + `
+        <button class="action-btn btn-delivered" type="button" data-driver-action="delivered" data-order-id="${order.id}" data-collect="${collect}">Mark Delivered</button>
+        <button class="action-btn btn-unavailable" onclick="markNoResponse('${order.id}')">No Response</button>
+        <button class="action-btn btn-failed" onclick="markRefused('${order.id}')">Refused</button>
+        <button class="action-btn btn-reschedule" onclick="markRescheduleRequested('${order.id}')">Reschedule Requested</button>
+      `;
+    }
+
+    function renderOrders() {
+      const list = document.getElementById('deliveryList');
+      const displayOrder = computeDeliveryDisplayOrder(orders);
+      list.innerHTML = displayOrder.map(order => {
+        const status = normalizeStatus(order);
+        const manifest = manifestForOrder(order.id);
+        const collect = amountToCollect(order);
+        const notes = [order.redelivery_status === 'scheduled' ? `Redelivery attempt${order.redelivery_notes ? `: ${order.redelivery_notes}` : ''}` : '', order.customer_notes || '']
+          .filter(Boolean)
+          .map(note => `<div class="delivery-notes">${escapeHtml(note)}</div>`)
+          .join('');
+        const collectClass = collect > 0 ? 'cod' : 'no-cod';
+        const collectLabel = collect > 0 ? money(collect) : `${money(collect)} — ${paymentLabel(order.payment_type).toLowerCase()}`;
+        const reorderable = ['queued', 'out'].includes(status);
+        const distanceInfo = orderDistanceInfo(order);
+        const distanceLabel = distanceInfo.km < 900
+          ? `${distanceInfo.estimated ? '~' : ''}${distanceInfo.km.toFixed(1)} km from store`
+          : '';
+
+        const isCollapsed = collapsedOrderIds.has(order.id);
+
+        const isSelected = selectedOrderIds.has(order.id);
+
+        return `
+          <div class="delivery-card${cardClass(status)}${isCollapsed ? ' collapsed' : ''}${isSelected ? ' selected' : ''}" data-status="${status}" data-order-id="${order.id}">
+            <div class="card-header">
+              <div style="display:flex; align-items:flex-start; gap:0.3rem; min-width:0;">
+                ${reorderable && selectModeActive ? `<span class="select-checkbox-wrap"><input type="checkbox" class="select-checkbox" ${isSelected ? 'checked' : ''} onchange="toggleOrderSelected(event, '${order.id}')" onclick="event.stopPropagation()"></span>` : ''}
+                ${reorderable ? '<span class="drag-handle" title="Drag to reorder">⠿</span>' : ''}
+                <div class="card-order">
+                  <div class="order-num">${order.order_number}</div>
+                  <div class="client-tag">${clientName(order)}${distanceLabel ? ` · ${distanceLabel}` : ''}</div>
+                </div>
+              </div>
+              <div style="display:flex; align-items:flex-start; gap:0.3rem; flex-shrink:0;">
+                ${statusBadge(status)}
+                <button class="card-collapse-toggle" type="button" onclick="toggleCardCollapsed(event, '${order.id}')" title="Expand/minimize this card">▾</button>
+              </div>
+            </div>
+            <div class="collapsed-summary">
+              <span class="collapsed-customer">${escapeHtml(order.customer_name || '—')}</span>
+              <span class="collapsed-area">${escapeHtml(addressLabel(order))}</span>
+            </div>
+            <div class="customer-info">
+              ${manifest ? `<div class="info-row" style="grid-column:1/-1;"><div class="info-label">Manifest</div><div class="info-value">${escapeHtml(manifest.manifest_number)} · ${escapeHtml(String(manifest.status).replaceAll('_', ' '))}</div></div>` : ''}
+              ${order.external_item_number ? `<div class="info-row"><div class="info-label">Item Number</div><div class="info-value">${escapeHtml(order.external_item_number)}</div></div>` : ''}
+              <div class="info-row">
+                <div class="info-label">Customer</div>
+                <div class="info-value customer-name-display">${escapeHtml(order.customer_name || '—')}</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">Phone</div>
+                <div class="info-value">${order.customer_phone || '—'}</div>
+              </div>
+              <div class="info-row" style="grid-column:1/-1;">
+                <div class="info-label">Delivery Address</div>
+                <div class="info-value address">${escapeHtml(addressLabel(order))}</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">Total to Collect</div>
+                <div class="info-value ${collectClass}">${collectLabel}</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">Driver Earns</div>
+                <div class="info-value">${money(order.driver_delivery_pay || 0)}</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">Scheduled Delivery</div>
+                <div class="info-value">${order.scheduled_delivery_date ? new Date(order.scheduled_delivery_date + 'T12:00:00').toLocaleDateString('en-TT') : 'Not scheduled'}</div>
+              </div>
+              ${order.delivery_outcome ? `<div class="info-row"><div class="info-label">Latest Outcome</div><div class="info-value">${escapeHtml(String(order.delivery_outcome).replaceAll('_', ' '))}</div></div>` : ''}
+              ${order.delivery_recipient_name ? `<div class="info-row"><div class="info-label">Recipient</div><div class="info-value">${escapeHtml(order.delivery_recipient_name)}</div></div>` : ''}
+            </div>
+            ${notes}
+            <div class="driver-update-box">
+              <label>Driver Update / Customer Conversation Notes</label>
+              <textarea placeholder="Example: Customer asked to deliver after 3 PM, customer requested updated address, customer said to leave package with security..."></textarea>
+              <div class="driver-update-actions">
+                <button class="action-btn btn-note-save" onclick="saveDriverNote('${order.id}', this)">📝 Save Note</button>
+                <button class="action-btn btn-note-client" onclick="sendClientUpdate('${order.id}', this)">💬 Send Update to Client</button>
+              </div>
+            </div>
+            <div class="card-actions">
+              ${renderActions(order, status)}
+              ${reorderable ? `<button class="action-btn btn-unavailable" onclick="promptLocationLink('${order.id}')">📍 ${order.maps_link ? 'Update' : 'Add'} Location Link</button>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      applyFilter();
+      updateStats();
+      initDeliverySortable();
+      syncCollapseAllLabel();
+    }
+
+    // ── Collapse/expand cards (mainly to make dragging on a phone easier) ──
+    window.toggleCardCollapsed = function(event, orderId) {
+      event.stopPropagation();
+      const card = document.querySelector(`.delivery-card[data-order-id="${orderId}"]`);
+      if (!card) return;
+      const isCollapsed = card.classList.toggle('collapsed');
+      if (isCollapsed) collapsedOrderIds.add(orderId); else collapsedOrderIds.delete(orderId);
+      syncCollapseAllLabel();
+    };
+
+    function syncCollapseAllLabel() {
+      const btn = document.getElementById('collapseAllBtn');
+      if (!btn) return;
+      const cards = document.querySelectorAll('#deliveryList .delivery-card');
+      const anyExpanded = Array.from(cards).some(c => !c.classList.contains('collapsed'));
+      btn.textContent = anyExpanded ? 'Minimize All' : 'Expand All';
+    }
+
+    window.toggleCollapseAll = function() {
+      const cards = document.querySelectorAll('#deliveryList .delivery-card');
+      const anyExpanded = Array.from(cards).some(c => !c.classList.contains('collapsed'));
+      cards.forEach(card => {
+        const id = card.dataset.orderId;
+        if (anyExpanded) { card.classList.add('collapsed'); collapsedOrderIds.add(id); }
+        else { card.classList.remove('collapsed'); collapsedOrderIds.delete(id); }
+      });
+      syncCollapseAllLabel();
+    };
+
+    // ── Select multiple cards, then drag any one to move the whole group ──
+    window.toggleSelectMode = function() {
+      selectModeActive = !selectModeActive;
+      if (!selectModeActive) selectedOrderIds.clear();
+      renderOrders();
+    };
+
+    window.toggleOrderSelected = function(event, orderId) {
+      event.stopPropagation();
+      if (selectedOrderIds.has(orderId)) selectedOrderIds.delete(orderId); else selectedOrderIds.add(orderId);
+      const card = document.querySelector(`.delivery-card[data-order-id="${orderId}"]`);
+      if (card) card.classList.toggle('selected', selectedOrderIds.has(orderId));
+      updateFilterTabs();
+    };
+
+    // After a normal single-card drag lands, if the dragged card is part of
+    // a multi-selection, pull the rest of the selected cards along with it
+    // (in their existing relative order) so the whole group moves together.
+    function moveSelectedGroupAfterDrag(evt) {
+      const draggedId = evt.item?.dataset?.orderId;
+      if (!draggedId || !selectModeActive || selectedOrderIds.size < 2 || !selectedOrderIds.has(draggedId)) return;
+      const list = document.getElementById('deliveryList');
+      const others = Array.from(list.querySelectorAll('.delivery-card'))
+        .filter(el => el !== evt.item && selectedOrderIds.has(el.dataset.orderId));
+      if (!others.length) return;
+      others.forEach(el => el.remove());
+      let anchor = evt.item;
+      others.forEach(el => { anchor.insertAdjacentElement('afterend', el); anchor = el; });
+    }
+
+    // ── Drag-and-drop route ordering ──────────────────────────────────
+    function initDeliverySortable() {
+      const list = document.getElementById('deliveryList');
+      if (!list || typeof Sortable === 'undefined') return;
+      if (routeSortable) { routeSortable.destroy(); routeSortable = null; }
+      routeSortable = new Sortable(list, {
+        animation: 150,
+        handle: '.drag-handle',
+        draggable: '.delivery-card[data-status="queued"], .delivery-card[data-status="out"]',
+        onEnd: (evt) => { moveSelectedGroupAfterDrag(evt); saveRouteOrderFromDom(); }
+      });
+    }
+
+    async function saveRouteOrderFromDom() {
+      const ids = Array.from(document.querySelectorAll('#deliveryList .delivery-card'))
+        .filter(el => el.dataset.status === 'queued' || el.dataset.status === 'out')
+        .map(el => el.dataset.orderId);
+      if (!ids.length || savingRouteOrder) return;
+      savingRouteOrder = true;
+      try {
+        const { error } = await supabase.rpc('driver_set_route_order', { p_order_ids: ids });
+        if (error) throw error;
+        // Reflect the new positions locally so re-renders (filter switches,
+        // etc.) keep this order without needing to reload from the server.
+        ids.forEach((id, index) => {
+          const order = orders.find(o => o.id === id);
+          if (order) order.driver_route_position = (index + 1) * 1000;
+        });
+      } catch (error) {
+        console.error('Route order save failed:', error);
+        showToast('Could not save your new order — it may reset on next refresh.');
+      } finally {
+        savingRouteOrder = false;
+      }
+    }
+
+    // ── Driver-entered Google/Waze link ───────────────────────────────
+    function parseLatLngFromMapsLink(link) {
+      if (!link) return null;
+      const patterns = [
+        /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/,
+        /@(-?\d+\.\d+),(-?\d+\.\d+)/,
+        /[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/,
+        /[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/,
+        /to=ll\.(-?\d+\.\d+),(-?\d+\.\d+)/
+      ];
+      for (const re of patterns) {
+        const m = link.match(re);
+        if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+      }
+      return null;
+    }
+
+    window.promptLocationLink = function(orderId) {
+      const order = findOrder(orderId);
+      if (!order) return showToast('Order not found. Refresh and try again.');
+      const inputId = `location-link-${orderId}`;
+      openModal(
+        '📍 Add Location Link',
+        `Paste the Google Maps or Waze link ${escapeHtml(order.customer_name || 'the customer')} sent you.`,
+        `<input id="${inputId}" type="text" value="${escapeHtml(order.maps_link || '')}" placeholder="https://maps.google.com/... or https://waze.com/..." style="width:100%; padding:0.75rem; border:2px solid #e0e0e0; border-radius:8px; box-sizing:border-box; margin-bottom:0.9rem;">
+         <button class="modal-btn confirm" onclick="saveLocationLink('${orderId}', '${inputId}')">Save Link</button>
+         <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>`
+      );
+    };
+
+    window.saveLocationLink = async function(orderId, inputId) {
+      const link = document.getElementById(inputId)?.value.trim();
+      if (!link) return showToast('Paste a location link first.');
+      const coords = parseLatLngFromMapsLink(link);
+      try {
+        const { error } = await supabase.rpc('driver_update_order_location', {
+          p_order_id: orderId,
+          p_maps_link: link,
+          p_latitude: coords?.lat ?? null,
+          p_longitude: coords?.lng ?? null
+        });
+        if (error) throw error;
+        const order = findOrder(orderId);
+        if (order) {
+          order.maps_link = link;
+          if (coords) { order.latitude = coords.lat; order.longitude = coords.lng; }
+        }
+        closeModal();
+        showToast(coords ? 'Location link saved — pinpoint captured.' : 'Location link saved.');
+        renderOrders();
+      } catch (error) {
+        console.error('Location link save error:', error);
+        window.vdNotify('Link Not Saved', error.message || 'Could not save this location link.', 'error');
+      }
+    };
+
+    function updateFilterTabs() {
+      const counts = {
+        all: orders.length,
+        queued: orders.filter(o => normalizeStatus(o) === 'queued').length,
+        out: orders.filter(o => normalizeStatus(o) === 'out').length,
+        delivered: orders.filter(o => normalizeStatus(o) === 'delivered').length,
+        failed: orders.filter(o => ['failed', 'rescheduled'].includes(normalizeStatus(o))).length
+      };
+      document.querySelector('.filter-tabs').innerHTML = `
+        <button class="filter-tab ${activeFilter === 'all' ? 'active' : ''}" onclick="filterCards('all', this)">All (${counts.all})</button>
+        <button class="filter-tab ${activeFilter === 'queued' ? 'active' : ''}" onclick="filterCards('queued', this)">Queued (${counts.queued})</button>
+        <button class="filter-tab ${activeFilter === 'out' ? 'active' : ''}" onclick="filterCards('out', this)">Out for Delivery (${counts.out})</button>
+        <button class="filter-tab ${activeFilter === 'delivered' ? 'active' : ''}" onclick="filterCards('delivered', this)">Delivered (${counts.delivered})</button>
+        <button class="filter-tab ${activeFilter === 'failed' ? 'active' : ''}" onclick="filterCards('failed', this)">Failed (${counts.failed})</button>
+        <button class="filter-tab" id="collapseAllBtn" type="button" onclick="toggleCollapseAll()" title="Minimize all cards to make dragging easier">Minimize All</button>
+        <button class="filter-tab${selectModeActive ? ' active' : ''}" id="selectModeBtn" type="button" onclick="toggleSelectMode()" title="Select multiple deliveries to drag as a group">${selectModeActive ? `Done${selectedOrderIds.size ? ` (${selectedOrderIds.size})` : ''}` : 'Select'}</button>
+      `;
+      syncCollapseAllLabel();
+    }
+
+    function applyFilter() {
+      const cards = document.querySelectorAll('#deliveryList .delivery-card');
+      let visible = 0;
+      cards.forEach(card => {
+        const show = activeFilter === 'all' || card.dataset.status === activeFilter || (activeFilter === 'failed' && card.dataset.status === 'rescheduled');
+        card.style.display = show ? 'block' : 'none';
+        if (show) visible++;
+      });
+      document.getElementById('emptyState').classList.toggle('show', visible === 0);
+    }
+
+    window.filterCards = function(status, btn) {
+      activeFilter = status;
+      document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      applyFilter();
+    };
+
+    function updateStats() {
+      const delivered = orders.filter(o => normalizeStatus(o) === 'delivered').length;
+      const failed = orders.filter(o => ['failed', 'rescheduled'].includes(normalizeStatus(o))).length;
+      const remaining = orders.filter(o => !['delivered', 'failed', 'rescheduled'].includes(normalizeStatus(o))).length;
+      const collectedTotal = orders
+        .filter(o => normalizeStatus(o) === 'delivered')
+        .reduce((sum, o) => sum + amountToCollect(o), 0);
+
+      document.getElementById('statTotal').textContent = orders.length;
+      document.getElementById('statPending').textContent = remaining;
+      document.getElementById('statDone').textContent = delivered;
+      document.getElementById('statFailed').textContent = failed;
+      document.getElementById('statCOD').textContent = `TTD ${collectedTotal.toFixed(0)}`;
+      updateFilterTabs();
+    }
+
+    async function loadDriverData() {
+      document.getElementById('deliveryList').innerHTML = '<div class="delivery-card"><div class="card-header"><div>Loading assigned orders...</div></div></div>';
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        showLoggedOutGate();
+        return;
+      }
+
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData?.user?.id;
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, role, first_name, last_name, status')
+        .eq('id', userId)
+        .single();
+
+      if (profileError || profile?.status !== 'active') {
+        document.getElementById('deliveryList').innerHTML = '<div class="delivery-card"><div class="card-header"><div>Driver access is required for this dashboard.</div></div></div>';
+        return;
+      }
+
+      const { data: driver, error: driverError } = await supabase
+        .from('drivers')
+        .select('id, profile_id, status, owner_fill_in')
+        .eq('profile_id', profile.id)
+        .eq('status', 'active')
+        .single();
+
+      if (driverError || !driver) {
+        document.getElementById('deliveryList').innerHTML = '<div class="delivery-card"><div class="card-header"><div>No active driver record was found for this account.</div></div></div>';
+        return;
+      }
+
+      currentProfile = profile;
+      currentDriver = driver;
+      const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || 'Driver';
+      document.querySelector('.driver-name').textContent = fullName;
+      document.querySelector('.driver-zone').textContent = 'Assigned Orders';
+      const driverInitials = fullName.split(/\s+/).map(p => p[0]).join('').slice(0, 2).toUpperCase();
+      document.querySelector('.driver-avatar').textContent = driverInitials;
+      const accountName = document.getElementById('driverAccountName');
+      if (accountName) accountName.textContent = fullName;
+      const accountRole = document.querySelector('.driver-account-role');
+      if (accountRole) accountRole.textContent = driver.owner_fill_in ? 'Owner (fill-in driver)' : 'Driver';
+
+      // Owners covering deliveries don't earn driver pay - VirtuDrop keeps the full
+      // delivery fee - so the payment/earnings panel is not relevant for this account.
+      const financePanel = document.getElementById('driverFinancePanel');
+      if (financePanel) financePanel.style.display = driver.owner_fill_in ? 'none' : '';
+
+      let [ordersRes, pickupsRes, manifestsRes, clientsRes, financeRes] = await Promise.all([
+        supabase.rpc('driver_list_my_deliveries'),
+        supabase.rpc('driver_list_my_pickups'),
+        supabase.rpc('driver_list_my_delivery_manifests'),
+        supabase.from('business_clients').select('id, business_name'),
+        driver.owner_fill_in ? Promise.resolve({ data: null, error: null }) : supabase.rpc('driver_get_my_finance')
+      ]);
+
+      if (ordersRes.error) {
+        console.warn('Driver delivery RPC could not load; using direct assignment fallback:', ordersRes.error);
+        ordersRes = await supabase
+          .from('orders')
+          .select('id, order_number, external_item_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, pricing_rate_band, driver_route_position, payment_type, customer_amount_due, driver_delivery_pay, driver_amount_to_collect, pickup_required, pickup_parcel_count, pickup_fee, scheduled_delivery_date, parcel_status, delivery_outcome, delivery_attempt_count, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_recipient_name, delivery_signed_at, delivery_signature_data_url, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, redelivery_status, redelivery_notes, order_status, assigned_driver_id, customer_notes, driver_notes, tracking_token, created_at')
+          .eq('assigned_driver_id', driver.id)
+          .order('created_at', { ascending: false });
+        if (ordersRes.error) throw ordersRes.error;
+      }
+      if (pickupsRes.error) {
+        console.warn('Driver pickups could not load:', pickupsRes.error);
+      }
+      if (manifestsRes.error) throw manifestsRes.error;
+      if (clientsRes.error) throw clientsRes.error;
+      if (financeRes.error) {
+        console.warn('Driver finance could not load:', financeRes.error);
+        driverFinance = null;
+      } else {
+        driverFinance = financeRes.data || null;
+      }
+
+      clientsById = new Map((clientsRes.data || []).map(client => [client.id, client]));
+      orders = (Array.isArray(ordersRes.data) ? ordersRes.data : []).filter(order =>
+        !['cancelled', 'rejected'].includes(order.order_status)
+        && !['returned_to_client'].includes(order.parcel_status)
+      );
+      pickups = pickupsRes.error ? [] : (Array.isArray(pickupsRes.data) ? pickupsRes.data : []);
+      const visibleOrderIds = new Set(orders.map(order => order.id));
+      driverManifests = (Array.isArray(manifestsRes.data) ? manifestsRes.data : [])
+        .map(manifest => ({
+          ...manifest,
+          order_ids: (manifest.order_ids || []).filter(orderId => visibleOrderIds.has(orderId))
+        }))
+        .filter(manifest => (manifest.order_ids || []).length > 0);
+      renderDriverFinance();
+      renderOrders();
+      renderPickups();
+      switchWorkView(activeWorkView);
+      loadDriverNotificationBadge();
+    }
+
+    async function readOrderStatus(orderId) {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('id, order_status, assigned_driver_id')
+        .eq('id', orderId)
+        .limit(1);
+
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      return row?.order_status || null;
+    }
+
+    async function directOrderStatusUpdate(orderId, status, note = null) {
+      const payload = { order_status: status };
+      if (note !== null) payload.driver_notes = note;
+      const { error } = await supabase
+        .from('orders')
+        .update(payload)
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      const savedStatus = await readOrderStatus(orderId);
+      if (savedStatus !== status) {
+        throw new Error('The order status did not change in the database. Refresh the driver dashboard and try again.');
+      }
+    }
+
+    async function saveOrderStatus(orderId, status, note = null) {
+      const rpcResult = await supabase.rpc('driver_update_order_status', {
+        p_order_id: orderId,
+        p_order_status: status,
+        p_note: note
+      });
+
+      if (rpcResult.error) {
+        console.warn('RPC driver status update failed, trying direct update:', rpcResult.error);
+        await directOrderStatusUpdate(orderId, status, note);
+        return;
+      }
+
+      const savedStatus = await readOrderStatus(orderId);
+      if (savedStatus === status) return;
+
+      console.warn('RPC completed but order status did not change, trying direct update:', {
+        orderId,
+        expected: status,
+        actual: savedStatus
+      });
+
+      await directOrderStatusUpdate(orderId, status, note);
+    }
+
+    function findOrder(orderId) {
+      return orders.find(o => o.id === orderId);
+    }
+
+    function resolveOrderRef(orderRef, maybeOrderNumber = null) {
+      if (typeof orderRef === 'string') {
+        const direct = orders.find(o => o.id === orderRef || o.order_number === orderRef);
+        if (direct) return direct;
+      }
+
+      if (typeof maybeOrderNumber === 'string') {
+        const byNumber = orders.find(o => o.order_number === maybeOrderNumber || o.id === maybeOrderNumber);
+        if (byNumber) return byNumber;
+      }
+
+      return null;
+    }
+
+    window.openMaps = function(target) {
+      window.open(target, '_blank');
+    };
+
+    window.callCustomer = function(phone) {
+      window.location.href = `tel:+${phoneForLink(phone)}`;
+    };
+
+    window.whatsappCustomer = function(phone) {
+      const url = `https://wa.me/${phoneForLink(phone)}`;
+      window.open(url, '_blank');
+    };
+
+    window.markCollected = function(orderRef, maybeOrderNumber = null) {
+      const order = resolveOrderRef(orderRef, maybeOrderNumber);
+      if (!order) {
+        window.vdNotify('Order Not Ready', 'This card is not connected to a live assigned order. Refresh the driver dashboard and try again.', 'error');
+        return;
+      }
+      openModal(
+        'Mark as Collected',
+        `Confirm that package ${order.order_number} has been collected and is ready for delivery.`,
+        `<button class="modal-btn confirm" onclick="confirmStatus('${order.id}', 'out_for_delivery')">✅ Yes, Package Collected</button>
+         <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>`
+      );
+    };
+
+    function initDeliverySignaturePad() {
+      const canvas = document.getElementById('deliverySignatureCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      const ratio = Math.max(window.devicePixelRatio || 1, 1);
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = Math.round(rect.width * ratio);
+      canvas.height = Math.round(rect.height * ratio);
+      ctx.scale(ratio, ratio);
+      ctx.lineWidth = 2.2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = '#122C2A';
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, rect.width, rect.height);
+      deliverySignaturePad = { canvas, ctx, drawing: false, signed: false };
+
+      const point = event => {
+        const bounds = canvas.getBoundingClientRect();
+        const source = event.touches?.[0] || event.changedTouches?.[0] || event;
+        return { x: source.clientX - bounds.left, y: source.clientY - bounds.top };
+      };
+      const start = event => {
+        event.preventDefault();
+        const p = point(event);
+        deliverySignaturePad.drawing = true;
+        deliverySignaturePad.signed = true;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+      };
+      const move = event => {
+        if (!deliverySignaturePad?.drawing) return;
+        event.preventDefault();
+        const p = point(event);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+      };
+      const stop = event => {
+        if (!deliverySignaturePad) return;
+        event.preventDefault();
+        deliverySignaturePad.drawing = false;
+      };
+      canvas.addEventListener('mousedown', start);
+      canvas.addEventListener('mousemove', move);
+      window.addEventListener('mouseup', stop);
+      canvas.addEventListener('touchstart', start, { passive: false });
+      canvas.addEventListener('touchmove', move, { passive: false });
+      canvas.addEventListener('touchend', stop, { passive: false });
+      canvas.addEventListener('touchcancel', stop, { passive: false });
+    }
+
+    window.clearDeliverySignature = function() {
+      if (!deliverySignaturePad) return;
+      const { canvas, ctx } = deliverySignaturePad;
+      const rect = canvas.getBoundingClientRect();
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, rect.width, rect.height);
+      deliverySignaturePad.signed = false;
+    };
+
+    function deliverySignatureDataUrl() {
+      if (!deliverySignaturePad?.signed) return null;
+      return deliverySignaturePad.canvas.toDataURL('image/png');
+    }
+
+    window.markDelivered = function(orderRef, maybeOrderNumberOrCollect = 0, maybeCollectAmount = 0) {
+      const order = resolveOrderRef(orderRef, maybeOrderNumberOrCollect);
+      if (!order) {
+        window.vdNotify('Order Not Ready', 'This card is not connected to a live assigned order. Refresh the driver dashboard and try again.', 'error');
+        return;
+      }
+      const collectAmount = typeof maybeOrderNumberOrCollect === 'number' ? maybeOrderNumberOrCollect : maybeCollectAmount;
+      const codText = collectAmount > 0 ? ` Confirm how ${money(collectAmount)} was collected before completing this delivery.` : ' No payment to collect.';
+      const methodBox = collectAmount > 0
+        ? `<div class="collection-method-box">
+             <div class="collection-method-title">Collection Method Required</div>
+             <div class="collection-method-options">
+               <label><input type="radio" name="collectionMethod" value="Cash" /> 💵 Cash</label>
+               <label><input type="radio" name="collectionMethod" value="LINX" />LINX</label>
+             </div>
+           </div>`
+        : '';
+      const proofBox = `<label style="display:flex; gap:0.6rem; align-items:flex-start; padding:0.8rem; margin:0.8rem 0; background:#eef8f6; border-radius:8px; text-align:left;"><input type="checkbox" id="deliveryProofConfirmed" style="margin-top:0.2rem;"> <span>I confirm that I handed this parcel to the customer or authorized recipient.</span></label>`;
+      const signatureBox = `
+        <div style="text-align:left; margin:0.8rem 0;">
+          <label style="display:block; font-weight:800; margin-bottom:0.35rem;">Recipient Name</label>
+          <input id="deliveryRecipientName" type="text" placeholder="Name of person receiving package" style="width:100%; padding:0.75rem; border:2px solid #e0e0e0; border-radius:8px; box-sizing:border-box; margin-bottom:0.75rem;">
+          <label style="display:block; font-weight:800; margin-bottom:0.35rem;">Recipient Signature</label>
+          <canvas id="deliverySignatureCanvas" style="width:100%; height:170px; background:#fff; border:2px solid #d7e3e1; border-radius:8px; touch-action:none; display:block;"></canvas>
+          <button class="modal-btn" id="clearDeliverySignatureButton" type="button" style="margin-top:0.55rem;">Clear Signature</button>
+        </div>`;
+      openModal(
+        '✅ Mark as Delivered',
+        `Confirm delivery of ${order.order_number} is complete.${codText}`,
+        `${methodBox}${signatureBox}${proofBox}<button class="modal-btn confirm" id="confirmDeliveryButton" type="button">Confirm Delivery</button>
+         <button class="modal-btn cancel" type="button" onclick="closeModal()">Cancel</button>`
+      );
+      setTimeout(() => {
+        initDeliverySignaturePad();
+        document.getElementById('clearDeliverySignatureButton')?.addEventListener('click', window.clearDeliverySignature);
+        document.getElementById('confirmDeliveryButton')?.addEventListener('click', () => {
+          window.confirmDeliveredWithCollection(order.id, collectAmount);
+        });
+      }, 50);
+    };
+
+    document.addEventListener('click', event => {
+      const button = event.target.closest('[data-driver-action="delivered"]');
+      if (!button) return;
+      event.preventDefault();
+      window.markDelivered(button.dataset.orderId, Number(button.dataset.collect || 0));
+    });
+
+    window.confirmDeliveredWithCollection = function(orderId, collectAmount = 0) {
+      let note = 'Driver confirmed parcel handover to customer or authorized recipient.';
+      const recipientName = document.getElementById('deliveryRecipientName')?.value.trim() || '';
+      const signatureDataUrl = deliverySignatureDataUrl();
+      if (recipientName.length < 2) {
+        showToast('Enter the recipient name.');
+        return;
+      }
+      if (!signatureDataUrl) {
+        showToast('Recipient signature is required.');
+        return;
+      }
+      if (!document.getElementById('deliveryProofConfirmed')?.checked) {
+        showToast('Confirm parcel handover before completing delivery.');
+        return;
+      }
+      let method = 'none';
+      if (Number(collectAmount) > 0) {
+        method = document.querySelector('input[name="collectionMethod"]:checked')?.value;
+        if (!method) {
+          showToast('Select Cash or LINX before confirming delivery.');
+          return;
+        }
+        note = `Customer payment collected by driver: ${method} - ${money(collectAmount)}`;
+      }
+      window.saveDeliveryOutcome(orderId, 'delivered', note, null, method, Number(collectAmount), true, recipientName, signatureDataUrl);
+    };
+
+    function openDeliveryException(orderId, outcome, title, defaultNote, includeDate = false) {
+      const order = findOrder(orderId);
+      if (!order) return showToast('Order not found. Refresh and try again.');
+      const noteId = `outcome-note-${orderId}`;
+      const dateId = `outcome-date-${orderId}`;
+      const dateField = includeDate ? `<label style="display:block; text-align:left; font-weight:700; margin-bottom:0.35rem;">Customer preferred date</label><input id="${dateId}" type="date" min="${new Date().toISOString().slice(0, 10)}" style="width:100%; padding:0.75rem; border:2px solid #e0e0e0; border-radius:8px; box-sizing:border-box; margin-bottom:0.75rem;">` : '';
+      openModal(
+        title,
+        `Record this outcome for ${order.order_number}. The parcel must be returned to the hub afterward.`,
+        `${dateField}<textarea id="${noteId}" style="width:100%; padding:0.75rem; border:2px solid #e0e0e0; border-radius:8px; font-family:inherit; min-height:75px; box-sizing:border-box;" placeholder="Additional details">${escapeHtml(defaultNote)}</textarea><button class="modal-btn confirm" onclick="submitDeliveryException('${orderId}', '${outcome}', '${noteId}', '${includeDate ? dateId : ''}')">Confirm Outcome</button><button class="modal-btn cancel" onclick="closeModal()">Cancel</button>`
+      );
+    }
+
+    window.markNoResponse = function(orderId) {
+      openDeliveryException(orderId, 'no_response', 'No Response', 'Customer could not be reached at the delivery location.');
+    };
+
+    window.markRefused = function(orderId) {
+      openDeliveryException(orderId, 'refused', 'Customer Refused Parcel', 'Customer refused to accept the parcel.');
+    };
+
+    window.markRescheduleRequested = function(orderId) {
+      openDeliveryException(orderId, 'reschedule_requested', 'Reschedule Requested', 'Customer requested another delivery date.', true);
+    };
+
+    window.submitDeliveryException = function(orderId, outcome, noteId, dateId) {
+      const note = document.getElementById(noteId)?.value.trim() || '';
+      const requestedDate = dateId ? document.getElementById(dateId)?.value || null : null;
+      if (outcome === 'reschedule_requested' && !requestedDate) return showToast('Enter the customer preferred date.');
+      window.saveDeliveryOutcome(orderId, outcome, note, requestedDate, null, 0, false, null, null);
+    };
+
+    window.saveDeliveryOutcome = async function(orderId, outcome, note, requestedDate, collectionMethod, amountCollected, proofConfirmed, recipientName = null, signatureDataUrl = null) {
+      try {
+        const { error } = await supabase.rpc('driver_record_delivery_outcome', {
+          p_order_id: orderId,
+          p_outcome: outcome,
+          p_notes: note || null,
+          p_requested_redelivery_date: requestedDate || null,
+          p_collection_method: collectionMethod || null,
+          p_amount_collected: Number(amountCollected || 0),
+          p_proof_confirmed: Boolean(proofConfirmed),
+          p_recipient_name: recipientName || null,
+          p_signature_data_url: signatureDataUrl || null
+        });
+        if (error) throw error;
+        closeModal();
+        showToast(outcome === 'delivered' ? 'Delivery completed.' : 'Delivery outcome recorded. Return the parcel to the hub.');
+        await loadDriverData();
+      } catch (error) {
+        console.error('Delivery outcome error:', error);
+        window.vdNotify('Outcome Not Saved', error.message || 'Could not record this delivery outcome.', 'error');
+      }
+    };
+
+    window.markReturnedToHub = function(orderId) {
+      const order = findOrder(orderId);
+      if (!order) return showToast('Order not found. Refresh and try again.');
+      openModal('Return Parcel to Hub', `Confirm that ${order.order_number} has been returned to the VirtuDrop hub.`, `<button class="modal-btn confirm" onclick="confirmReturnedToHub('${orderId}')">Confirm Hub Return</button><button class="modal-btn cancel" onclick="closeModal()">Cancel</button>`);
+    };
+
+    window.confirmReturnedToHub = async function(orderId) {
+      try {
+        const { error } = await supabase.rpc('driver_mark_undelivered_returned', { p_order_id: orderId });
+        if (error) throw error;
+        closeModal();
+        showToast('Parcel return recorded.');
+        await loadDriverData();
+      } catch (error) {
+        window.vdNotify('Return Not Saved', error.message || 'Could not record the hub return.', 'error');
+      }
+    };
+
+    window.markUnavailable = function(orderRef, maybeOrderNumber = null) {
+      const order = resolveOrderRef(orderRef, maybeOrderNumber);
+      if (!order) {
+        window.vdNotify('Order Not Ready', 'This card is not connected to a live assigned order. Refresh the driver dashboard and try again.', 'error');
+        return;
+      }
+      window.confirmStatus(order.id, 'failed', 'Customer unavailable - did not answer');
+    };
+
+    window.markFailed = function(orderRef, maybeOrderNumber = null) {
+      const order = resolveOrderRef(orderRef, maybeOrderNumber);
+      if (!order) {
+        window.vdNotify('Order Not Ready', 'This card is not connected to a live assigned order. Refresh the driver dashboard and try again.', 'error');
+        return;
+      }
+      openModal(
+        'Mark as Failed',
+        'Select a reason for the failed delivery:',
+        `<button class="modal-btn danger" onclick="confirmStatus('${order.id}', 'failed', 'Customer unavailable')">📵 Customer unavailable</button>
+         <button class="modal-btn danger" onclick="confirmStatus('${order.id}', 'failed', 'Customer refused item')">🚫 Customer refused item</button>
+         <button class="modal-btn danger" onclick="confirmStatus('${order.id}', 'failed', 'Wrong address')">Wrong address</button>
+         <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>`
+      );
+    };
+
+    // ── Other / Custom Update ─────────────────────────────────────
+    window.markOtherUpdate = function(orderRef) {
+      const order = resolveOrderRef(orderRef);
+      if (!order) {
+        window.vdNotify('Order Not Found', 'Could not find this order. Please refresh.', 'error');
+        return;
+      }
+      const noteId = `other-note-${order.id}`;
+      openModal(
+        '📝 Add Update',
+        'Enter a note to update admin on this delivery:',
+        `<textarea id="${noteId}" style="width:100%; padding:0.75rem; border:2px solid #e0e0e0; border-radius:8px; font-family:inherit; font-size:0.92rem; min-height:80px; resize:vertical; box-sizing:border-box;" placeholder="e.g. Customer asked to reschedule, road blocked, package left with neighbour..."></textarea>
+         <div style="display:flex; gap:0.6rem; margin-top:0.8rem; flex-wrap:wrap;">
+           <button class="modal-btn primary" onclick="saveOtherUpdate('${order.id}', '${noteId}')">Save Update</button>
+           <button class="modal-btn" onclick="sendOtherUpdateWhatsApp('${order.id}', '${noteId}')">💬 Also WhatsApp Customer</button>
+           <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>
+         </div>`
+      );
+    };
+
+    window.saveOtherUpdate = async function(orderId, noteId) {
+      const note = document.getElementById(noteId)?.value.trim();
+      if (!note) { showToast('Please enter a note.'); return; }
+      closeModal();
+      try {
+        await saveAdminUpdateForOrder(orderId, note);
+        // Notify admin via notifications table
+        const order = findOrder(orderId);
+        if (order) {
+          order.driver_notes = note;
+          // Insert notification for admin — we find admin profile via profiles table
+          await supabase.from('notifications').insert({
+            profile_id: null, // admin will see all — use a query in admin dashboard
+            order_id: orderId,
+            message: `Driver update on ${order.order_number}: ${note}`,
+            type: 'info'
+          }).then(() => {}); // best-effort, don't block
+        }
+        showToast('Update saved and admin notified.');
+        renderOrders();
+      } catch (err) {
+        console.error('Other update error:', err);
+        window.vdNotify('Update Failed', err.message || 'Could not save the update.', 'error');
+      }
+    };
+
+    window.sendOtherUpdateWhatsApp = function(orderId, noteId) {
+      const note = document.getElementById(noteId)?.value.trim();
+      const order = findOrder(orderId);
+      if (!note) { showToast('Please enter a note first.'); return; }
+      window.saveOtherUpdate(orderId, noteId);
+      if (order?.customer_phone) {
+        const tracking = order.order_number && order.tracking_token
+          ? ` Track your order: ${window.location.origin + window.location.pathname.replace(/driver-dashboard\.html$/, 'track.html')}?order=${encodeURIComponent(order.order_number)}&token=${encodeURIComponent(order.tracking_token)}`
+          : '';
+        const message = `VirtuDrop update for ${order.order_number}: ${note}${tracking}`;
+        window.open(`https://wa.me/${phoneForLink(order.customer_phone)}?text=${encodeURIComponent(message)}`, '_blank');
+      }
+    };
+
+    // ── Driver notification badge ─────────────────────────────────
+    async function loadDriverNotificationBadge() {
+      try {
+        const { data: authData } = await supabase.auth.getUser();
+        if (!authData?.user) return;
+        const { data } = await supabase
+          .from('notifications')
+          .select('id')
+          .eq('profile_id', authData.user.id)
+          .eq('read', false);
+        const count = data?.length || 0;
+        const badge = document.querySelector('.driver-notif-badge');
+        if (badge) {
+          badge.textContent = count > 0 ? count : '';
+          badge.style.display = count > 0 ? '' : 'none';
+        }
+      } catch (err) {
+        console.warn('Driver notification badge error:', err);
+      }
+    }
+
+    window.confirmStatus = async function(orderId, status, note = null) {
+      closeModal();
+      try {
+        await saveOrderStatus(orderId, status, note);
+        const order = findOrder(orderId);
+        if (order) order.order_status = status;
+        showToast('Order updated.');
+        renderOrders();
+      } catch (error) {
+        console.error('Driver order update error:', error);
+        window.vdNotify('Order Not Updated', error.message || 'Could not update order status.', 'error');
+      }
+    };
+
+    async function saveAdminUpdateForOrder(orderId, note) {
+      const order = findOrder(orderId);
+      if (!order) throw new Error('Could not find this order.');
+      await saveOrderStatus(orderId, order.order_status || 'assigned', note);
+      order.driver_notes = note;
+    }
+
+    window.saveDriverNote = async function(orderId, btn) {
+      const note = btn.closest('.delivery-card').querySelector('textarea')?.value.trim();
+      if (!note) {
+        showToast('Please enter a note before saving.');
+        return;
+      }
+      btn.disabled = true;
+      const originalText = btn.textContent;
+      btn.textContent = 'Saving...';
+      try {
+        await saveAdminUpdateForOrder(orderId, note);
+        showToast('Admin update saved.');
+      } catch (error) {
+        console.error('Driver note save error:', error);
+        window.vdNotify('Update Not Saved', error.message || 'Could not save the admin update.', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    };
+
+    window.sendClientUpdate = function(orderId, btn) {
+      const order = findOrder(orderId);
+      const note = btn.closest('.delivery-card').querySelector('textarea')?.value.trim();
+      if (!note) {
+        showToast('Please enter an update before sending.');
+        return;
+      }
+      const tracking = order?.order_number && order?.tracking_token ? ` Track it here: ${window.location.origin + window.location.pathname.replace(/driver-dashboard\.html$/, 'track.html')}?order=${encodeURIComponent(order.order_number)}&token=${encodeURIComponent(order.tracking_token)}` : '';
+      const message = `VirtuDrop Update for ${order?.order_number || 'your delivery'}: ${note}${tracking}`;
+      const url = `https://wa.me/${phoneForLink(order?.customer_phone)}?text=${encodeURIComponent(message)}`;
+      window.open(url, '_blank');
+    };
+
+    const driverAccountMenu = document.getElementById('driverAccountMenu');
+    const driverAccountBtn = document.getElementById('driverAccountBtn');
+
+    document.addEventListener('click', event => {
+      if (!driverAccountMenu?.contains(event.target)) {
+        driverAccountMenu?.classList.remove('open');
+        driverAccountBtn?.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    document.getElementById('driverAccountLogoutBtn')?.addEventListener('click', async () => {
+      localStorage.setItem('vd-explicit-logout', String(Date.now()));
+      await supabase.auth.signOut();
+      window.location.href = 'auth.html';
+    });
+
+    document.getElementById('driverUpdateAdminBtn')?.addEventListener('click', async () => {
+      const cards = [...document.querySelectorAll('.delivery-card[data-order-id]')];
+      const updates = cards
+        .map(card => ({
+          orderId: card.dataset.orderId,
+          note: card.querySelector('textarea')?.value.trim() || ''
+        }))
+        .filter(item => item.note);
+
+      if (!updates.length) {
+        window.vdNotify('No Update Entered', 'Type an update in an order note box, then tap Update Admin again.', 'warning');
+        return;
+      }
+
+      const btn = document.getElementById('driverUpdateAdminBtn');
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Updating...';
+      try {
+        for (const update of updates) {
+          await saveAdminUpdateForOrder(update.orderId, update.note);
+        }
+        showToast(`${updates.length} admin update${updates.length === 1 ? '' : 's'} saved.`);
+      } catch (error) {
+        console.error('Update admin error:', error);
+        window.vdNotify('Admin Update Failed', error.message || 'Could not save the admin update.', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    });
+
+    loadDriverData().catch(error => {
+      console.error('Driver dashboard load error:', error);
+      document.getElementById('deliveryList').innerHTML = `<div class="delivery-card"><div class="card-header"><div>${error.message || 'Could not load driver dashboard.'}</div></div></div>`;
+    });
+  </script>
+
+</body>
+</html>
+
+
