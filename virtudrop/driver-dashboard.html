@@ -1638,7 +1638,11 @@
     };
 
     window.callCustomer = function(phone) {
-      window.location.href = `tel:+${phoneForLink(phone)}`;
+      // Trinidad and Tobago's real country calling code is +1-868 (it's part
+      // of the North American Numbering Plan) -- "868" on its own is not a
+      // country code, so dialing "+868..." gets misread by phones as "+86"
+      // (China) plus the leftover digits. Add the missing "1".
+      window.location.href = `tel:+1${phoneForLink(phone)}`;
     };
 
     window.whatsappCustomer = function(phone) {
