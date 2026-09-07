@@ -1397,8 +1397,8 @@
             <button class="btn btn-ghost" type="button" onclick="toggleAllManagedBatchRows()">Select All / None</button>
           </div>
           <div class="table-wrap" style="margin-top:0.75rem;"><table>
-            <thead><tr><th style="width:2rem;"></th><th style="width:4rem;"></th><th>Imported</th><th>Ready for Invoice</th><th>Ready for Return</th></tr></thead>
-            <tbody id="managedBatchFilterBody"><tr><td colspan="5">Select a managed account to see its import batches.</td></tr></tbody>
+            <thead><tr><th style="width:2rem;"></th><th style="width:4rem;"></th><th>Imported</th><th>Ready for Invoice</th><th>Ready for Return</th><th>Cash Owed to Business</th></tr></thead>
+            <tbody id="managedBatchFilterBody"><tr><td colspan="6">Select a managed account to see its import batches.</td></tr></tbody>
           </table></div>
         </div>
 
@@ -5194,9 +5194,8 @@
             <div class="order-row-actions">
               <button class="btn btn-primary btn-sm" onclick="openAdminOrderEdit('${order.id}')">Edit Order</button>
               <button class="btn btn-ghost btn-sm" onclick="printOrderLabel('${order.id}')">Download Label</button>
-              ${order.order_status === 'cancelled'
-                ? '<span class="badge badge-unpaid">Cancelled</span>'
-                : `<button class="btn btn-danger btn-sm" onclick="openAdminOrderCancel('${order.id}')">Cancel Order</button>`}
+              ${order.order_status === 'cancelled' ? '<span class="badge badge-unpaid">Cancelled</span>' : ''}
+              <button class="btn btn-danger btn-sm" onclick="openAdminOrderStatusChange('${order.id}')">Change Status</button>
               ${canRemoveDriverAssignment(order) ? `<button class="btn btn-ghost btn-sm" onclick="removeDriverFromOrder('${order.id}')">Remove Driver</button>` : ''}
               <button class="btn btn-ghost btn-sm" onclick="openCustomerTrackingWhatsApp('${order.id}')">Customer</button>
               <button class="btn btn-ghost btn-sm" onclick="whatsappClient('${order.id}')">Client</button>
@@ -5696,42 +5695,110 @@
       }
     }
 
-    window.openAdminOrderCancel = function(orderId) {
+    // Change Status modal (All Orders tab) -- one dropdown covering every
+    // status an admin might need to set by hand, with only the fields that
+    // status actually needs. Everything downstream (return flags, payment
+    // status, manifest/pickup cleanup, delivery-attempt history) is handled
+    // server-side by admin_set_order_status, the same way the driver app /
+    // cancellation flow already does it.
+    const ADMIN_STATUS_OPTIONS = [
+      ['', 'Select a new status...'],
+      ['delivered', 'Delivered'],
+      ['rescheduled', 'Rescheduled'],
+      ['no_response', 'Failed - No Response'],
+      ['refused', 'Failed - Refused'],
+      ['cancelled', 'Cancelled'],
+      ['active', 'Reset to Active / In Progress']
+    ];
+
+    window.openAdminOrderStatusChange = function(orderId) {
       const order = orders.find(item => item.id === orderId);
       if (!order) return showToast('Order not found.');
-      if (order.order_status === 'cancelled') return showToast('This order is already cancelled.');
-      document.getElementById('modalTitle').textContent = `Cancel ${order.order_number}`;
+      currentStatusChangeOrderId = orderId;
+      document.getElementById('modalTitle').textContent = `Change Status - ${order.order_number}`;
       document.getElementById('modalBody').innerHTML = `
         <div class="payment-modal-form" style="text-align:left;">
-          <p style="margin:0 0 0.7rem; color:var(--grey);">
-            This will remove the order from the driver dashboard and show the order as cancelled in the client portal.
-          </p>
-          <label>Cancellation Reason<textarea id="adminCancelReason" placeholder="Enter why this order is being cancelled"></textarea></label>
+          <p style="margin:0 0 0.7rem; color:var(--grey);">Current status: <strong>${escapeHtml((order.order_status || '').replaceAll('_', ' '))}</strong></p>
+          <label>New Status<select id="adminStatusNewStatus" onchange="syncAdminStatusChangeFields()">${ADMIN_STATUS_OPTIONS.map(([value, label]) => `<option value="${value}">${escapeHtml(label)}</option>`).join('')}</select></label>
+          <div id="adminStatusFieldsWrap"></div>
         </div>`;
-      document.getElementById('modalConfirm').textContent = 'Cancel Order';
+      document.getElementById('modalConfirm').textContent = 'Save Status';
       document.getElementById('modal').classList.add('show');
+      syncAdminStatusChangeFields();
       modalCb = async () => {
-        const reason = document.getElementById('adminCancelReason')?.value?.trim() || '';
-        if (reason.length < 3) {
-          window.vdNotify('Order Not Cancelled', 'Enter a cancellation reason.', 'warning');
-          return;
-        }
-        if (!window.confirm(`Cancel ${order.order_number}? This will remove it from any assigned driver.`)) return;
-        await cancelAdminOrder(orderId, reason);
+        await saveAdminOrderStatusChange(orderId);
       };
     };
 
-    async function cancelAdminOrder(orderId, reason) {
+    window.syncAdminStatusChangeFields = function() {
+      const status = document.getElementById('adminStatusNewStatus')?.value || '';
+      const order = orders.find(item => item.id === currentStatusChangeOrderId) || null;
+      const wrap = document.getElementById('adminStatusFieldsWrap');
+      if (!wrap) return;
+      if (status === 'delivered') {
+        const expected = Number(order?.driver_amount_to_collect || 0);
+        wrap.innerHTML = `
+          <label>Collection Method<select id="adminStatusCollectionMethod">
+            <option value="none">No Collection</option>
+            <option value="cash">Cash</option>
+            <option value="linx">LINX</option>
+          </select></label>
+          <label>Collected Amount<input id="adminStatusCollectedAmount" type="number" min="0" step="0.01" value="${expected.toFixed(2)}"></label>
+          <label>Notes (optional)<textarea id="adminStatusNotes" placeholder="Any notes about this delivery"></textarea></label>`;
+      } else if (status === 'rescheduled') {
+        wrap.innerHTML = `
+          <label>Redelivery Date<input id="adminStatusRedeliveryDate" type="date" min="${new Date().toISOString().slice(0, 10)}"></label>
+          <label>Notes (optional)<textarea id="adminStatusNotes" placeholder="Reason for rescheduling"></textarea></label>`;
+      } else if (status === 'no_response' || status === 'refused') {
+        wrap.innerHTML = `<label>Notes (optional)<textarea id="adminStatusNotes" placeholder="${status === 'refused' ? 'Why the customer refused the parcel' : 'Details about the failed delivery attempt'}"></textarea></label>`;
+      } else if (status === 'cancelled') {
+        wrap.innerHTML = `<label>Cancellation Reason<textarea id="adminStatusNotes" placeholder="Enter why this order is being cancelled"></textarea></label>`;
+      } else if (status === 'active') {
+        wrap.innerHTML = `
+          <p style="margin:0 0 0.7rem; color:var(--grey);">Puts the order back in normal circulation (kept with its current driver, if any) and clears its delivery outcome.</p>
+          <label>Notes (optional)<textarea id="adminStatusNotes" placeholder="Reason for resetting this order"></textarea></label>`;
+      } else {
+        wrap.innerHTML = '';
+      }
+    };
+
+    let currentStatusChangeOrderId = null;
+
+    async function saveAdminOrderStatusChange(orderId) {
+      const status = document.getElementById('adminStatusNewStatus')?.value || '';
+      if (!status) {
+        window.vdNotify('Status Not Changed', 'Select a new status.', 'warning');
+        return;
+      }
+      const notes = document.getElementById('adminStatusNotes')?.value?.trim() || '';
+      if (status === 'cancelled' && notes.length < 3) {
+        window.vdNotify('Status Not Changed', 'Enter a cancellation reason.', 'warning');
+        return;
+      }
+      const redeliveryDate = document.getElementById('adminStatusRedeliveryDate')?.value || null;
+      if (status === 'rescheduled' && !redeliveryDate) {
+        window.vdNotify('Status Not Changed', 'Enter the redelivery date.', 'warning');
+        return;
+      }
+      const collectionMethod = document.getElementById('adminStatusCollectionMethod')?.value || null;
+      const collectedAmountField = document.getElementById('adminStatusCollectedAmount');
+      const collectedAmount = collectedAmountField ? Number(collectedAmountField.value || 0) : null;
+      const order = orders.find(item => item.id === orderId);
+      if (!window.confirm(`Set ${order?.order_number || 'this order'} to "${ADMIN_STATUS_OPTIONS.find(([value]) => value === status)?.[1] || status}"?`)) return;
       try {
-        const { error } = await supabase.rpc('admin_cancel_order', {
+        const { error } = await supabase.rpc('admin_set_order_status', {
           p_order_id: orderId,
-          p_reason: reason
+          p_new_status: status,
+          p_notes: notes || null,
+          p_redelivery_date: redeliveryDate,
+          p_collection_method: collectionMethod,
+          p_collected_amount: collectedAmount
         });
         if (error) throw error;
-        showToast('Order cancelled.');
+        showToast('Order status updated.');
         await loadData();
       } catch (error) {
-        window.vdNotify('Order Not Cancelled', error.message || 'Could not cancel this order.', 'error');
+        window.vdNotify('Status Not Changed', error.message || 'Could not update this order status.', 'error');
       }
     }
 
@@ -7632,6 +7699,19 @@
       return keys.map(key => `${escapeHtml(key.replaceAll('_', ' '))}: ${counts.get(key)}`).join(' &middot; ');
     }
 
+    // How much cash VirtuDrop still owes this business for a batch: the same
+    // per-order remittance figure (clientPayout -- collected amount, net of
+    // VirtuDrop's delivery fee) already used everywhere else in the app for
+    // "how much do we owe this business client," summed for whichever of the
+    // batch's orders have actually been collected and not yet paid out.
+    // "ready" here means delivered/collected and awaiting remittance; once an
+    // order is marked "paid" it drops out of what's still owed.
+    function managedBatchCashOwed(batchOrders) {
+      return batchOrders
+        .filter(order => order.remittance_status === 'ready')
+        .reduce((sum, order) => sum + clientPayout(order), 0);
+    }
+
     // Shows every batch for this managed account -- not just ones with
     // something ready to export -- so a batch Bobs just imported (still
     // moving through parcel check-in / zone confirmation / driver
@@ -7641,7 +7721,7 @@
       const body = document.getElementById('managedBatchFilterBody');
       if (!body) return;
       if (!selectedManagedAccountId) {
-        body.innerHTML = '<tr><td colspan="5">Select a managed account to see its import batches.</td></tr>';
+        body.innerHTML = '<tr><td colspan="6">Select a managed account to see its import batches.</td></tr>';
         return;
       }
       const previouslyChecked = new Set(
@@ -7667,6 +7747,7 @@
         ? sortedBatches.map(batch => {
             const invoiceCount = batch.orders.filter(o => o.order_status === 'delivered' && !o.managed_invoice_exported_at).length;
             const returnCount = batch.orders.filter(o => ['failed', 'cancelled', 'rescheduled'].includes(o.order_status) && !o.managed_return_exported_at).length;
+            const cashOwed = managedBatchCashOwed(batch.orders);
             const isExpanded = expandedKeys.has(batch.key);
             return `<tr>
                 <td><input type="checkbox" class="managed-batch-check" data-batch-key="${escapeHtml(batch.key)}" onchange="renderManagedExportTables()" ${previouslyChecked.has(batch.key) ? '' : 'checked'}></td>
@@ -7674,12 +7755,13 @@
                 <td>${escapeHtml(formatImportedAt(batch.importedAt))}</td>
                 <td>${invoiceCount}</td>
                 <td>${returnCount}</td>
+                <td>${moneyFull(cashOwed)}</td>
               </tr>
               <tr class="managed-batch-detail-row" data-batch-key="${escapeHtml(batch.key)}" style="display:${isExpanded ? '' : 'none'};">
-                <td colspan="5" style="padding-left:2rem; color:var(--text-muted,#666); font-size:0.85em;">${managedBatchStatusBreakdown(batch.orders)}</td>
+                <td colspan="6" style="padding-left:2rem; color:var(--text-muted,#666); font-size:0.85em;">${managedBatchStatusBreakdown(batch.orders)}</td>
               </tr>`;
           }).join('')
-        : '<tr><td colspan="5">No batches yet for this managed account.</td></tr>';
+        : '<tr><td colspan="6">No batches yet for this managed account.</td></tr>';
     }
 
     window.toggleManagedBatchDetail = function(key) {
