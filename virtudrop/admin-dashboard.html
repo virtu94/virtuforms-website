@@ -1176,6 +1176,7 @@
           <p>Resolve undelivered parcels after the driver returns them to the hub.</p>
         </div>
         <div class="filter-bar">
+          <select class="filter-select" id="returnManagementDriverFilter" onchange="renderReturnManagement()"><option value="">All drivers</option></select>
           <select class="filter-select" id="returnManagementFilter" onchange="renderReturnManagement()">
             <option value="active">Action Required</option>
             <option value="awaiting_return">Awaiting Driver Return</option>
@@ -1186,11 +1187,34 @@
             <option value="all">All Return Records</option>
           </select>
           <input class="filter-input" id="returnManagementSearch" type="search" placeholder="Search order, client or customer" oninput="renderReturnManagement()" />
+          <span class="td-sub" id="returnAwaitingCount" style="align-self:center;"></span>
+        </div>
+        <div class="bulk-toolbar" id="returnBulkToolbar">
+          <label><input id="returnSelectAll" type="checkbox" onchange="toggleReturnVisibleBulk(this.checked)"> Select all visible</label>
+          <button class="btn btn-primary btn-sm" type="button" onclick="runReturnBatchConfirm()">Confirm Received</button>
+          <button class="btn btn-ghost btn-sm" type="button" onclick="clearReturnSelection()">Clear</button>
+          <span class="bulk-count" id="returnBulkCount">0 selected</span>
         </div>
         <div class="card">
           <div class="table-wrap"><table>
-            <thead><tr><th>Order</th><th>Client / Customer</th><th>Outcome</th><th>Parcel</th><th>Fees / Payer</th><th>Schedule / Hold</th><th>Actions</th></tr></thead>
-            <tbody id="returnManagementBody"><tr><td colspan="7">Loading returned parcels...</td></tr></tbody>
+            <thead><tr><th></th><th>Order</th><th>Client / Customer</th><th>Outcome</th><th>Parcel</th><th>Fees / Payer</th><th>Schedule / Hold</th><th>Actions</th></tr></thead>
+            <tbody id="returnManagementBody"><tr><td colspan="8">Loading returned parcels...</td></tr></tbody>
+          </table></div>
+        </div>
+
+        <div class="card" style="margin-top:1rem;">
+          <div class="card-title">Return History</div>
+          <div class="td-sub" style="margin-bottom:0.75rem;">Every batch of parcels confirmed received from a driver, for looking back later.</div>
+          <div class="filter-bar" style="margin-bottom:0.75rem;">
+            <select class="filter-select" id="returnHistoryDriverFilter" onchange="loadReturnBatches()"><option value="">All drivers</option></select>
+            <input class="filter-input" type="date" id="returnHistoryStart" onchange="loadReturnBatches()">
+            <input class="filter-input" type="date" id="returnHistoryEnd" onchange="loadReturnBatches()">
+            <button class="btn btn-ghost btn-sm" type="button" onclick="clearReturnHistoryRange()">All Time</button>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="loadReturnBatches()">Refresh</button>
+          </div>
+          <div class="table-wrap"><table>
+            <thead><tr><th></th><th>Batch</th><th>Driver</th><th>Parcels</th><th>Confirmed By</th><th>Confirmed At</th></tr></thead>
+            <tbody id="returnHistoryBody"><tr><td colspan="6">Loading return history...</td></tr></tbody>
           </table></div>
         </div>
       </div>
@@ -2048,6 +2072,10 @@
     let sortingVisibleIds = [];
     let manifestSelection = new Set();
     let manifestVisibleIds = [];
+    let returnSelection = new Set();
+    let returnVisibleIds = [];
+    let returnBatches = [];
+    let returnBatchExpanded = new Set();
     let driverAssignSelection = new Set();
     let driverAssignZoneFilter = 'all';
     let accountingCollectionSelection = new Set();
@@ -2694,6 +2722,15 @@
           .map(driver => `<option value="${escapeHtml(driver.id)}">${escapeHtml(driverName(driver.id))}</option>`)
           .join('');
       }
+      ['returnManagementDriverFilter', 'returnHistoryDriverFilter'].forEach(id => {
+        const select = document.getElementById(id);
+        if (!select) return;
+        const current = select.value;
+        select.innerHTML = '<option value="">All drivers</option>' + drivers
+          .map(driver => `<option value="${escapeHtml(driver.id)}">${escapeHtml(driverName(driver.id))}</option>`)
+          .join('');
+        select.value = current;
+      });
       const acctDate = document.getElementById('acctDate');
       if (acctDate && !acctDate.value) acctDate.value = new Date().toISOString().slice(0, 16);
       const categoryFilter = document.getElementById('acctFilterCategory');
@@ -6189,18 +6226,53 @@
       return '<span class="badge badge-confirmed">Completed</span>';
     }
 
+    function syncReturnBulkControls() {
+      updateBulkCount('returnBulkCount', 'returnSelectAll', returnSelection, returnVisibleIds);
+      syncBulkCheckboxes('.return-bulk-check', returnSelection);
+    }
+
+    window.toggleReturnBulk = function(orderId, checked) {
+      if (checked) returnSelection.add(orderId);
+      else returnSelection.delete(orderId);
+      syncReturnBulkControls();
+    };
+
+    window.toggleReturnVisibleBulk = function(checked) {
+      returnVisibleIds.forEach(orderId => checked ? returnSelection.add(orderId) : returnSelection.delete(orderId));
+      syncReturnBulkControls();
+    };
+
+    window.clearReturnSelection = function() {
+      returnSelection.clear();
+      syncReturnBulkControls();
+    };
+
     window.renderReturnManagement = function() {
       const body = document.getElementById('returnManagementBody');
       if (!body) return;
+      const driverId = document.getElementById('returnManagementDriverFilter')?.value || '';
       const filter = document.getElementById('returnManagementFilter')?.value || 'active';
       const search = String(document.getElementById('returnManagementSearch')?.value || '').trim().toLowerCase();
       const rows = orders.filter(order => {
+        if (driverId && order.assigned_driver_id !== driverId) return false;
         if (!returnRecordMatches(order, filter)) return false;
         if (!search) return true;
         return [order.order_number, clientName(order), order.customer_name, order.customer_phone, order.external_item_number, order.customer_notes, order.delivery_outcome_notes]
           .some(value => String(value || '').toLowerCase().includes(search));
       });
       const outcomeLabels = { no_response: 'No Response', refused: 'Refused', reschedule_requested: 'Reschedule Requested' };
+
+      // Only parcels actually awaiting return can be confirmed in bulk - same
+      // rule the confirm RPC enforces server-side.
+      returnVisibleIds = rows.filter(order => order.delivery_return_required).map(order => order.id);
+      returnSelection = new Set([...returnSelection].filter(id => orders.some(o => o.id === id && o.delivery_return_required)));
+
+      const awaitingCount = driverId
+        ? orders.filter(order => order.assigned_driver_id === driverId && order.delivery_return_required && !isCancelledOrder(order)).length
+        : orders.filter(order => order.delivery_return_required && !isCancelledOrder(order)).length;
+      const awaitingLabel = document.getElementById('returnAwaitingCount');
+      if (awaitingLabel) awaitingLabel.textContent = driverId ? `Awaiting return from ${driverName(driverId)}: ${awaitingCount}` : `Awaiting return (all drivers): ${awaitingCount}`;
+
       body.innerHTML = rows.map(order => {
         const payer = order.redelivery_fee_payer === 'client' ? 'Business client' : order.redelivery_fee_payer === 'customer' ? 'Customer' : 'Not selected';
         const schedule = order.redelivery_status === 'scheduled' && order.scheduled_delivery_date
@@ -6209,6 +6281,7 @@
             : order.hold_until ? `Hold until ${new Date(order.hold_until + 'T12:00:00').toLocaleDateString('en-TT')}`
               : order.return_to_client_status === 'ready' ? clientReturnMethodLabel(order) : 'Awaiting admin decision';
         return `<tr>
+          <td>${order.delivery_return_required ? `<input class="return-bulk-check" type="checkbox" value="${order.id}" ${returnSelection.has(order.id) ? 'checked' : ''} onchange="toggleReturnBulk('${order.id}', this.checked)">` : ''}</td>
           <td><div class="td-id">${escapeHtml(order.order_number)}</div><div class="td-sub">Attempt ${escapeHtml(String(order.delivery_attempt_count || 1))}</div></td>
           <td><div class="td-name">${escapeHtml(clientName(order))}</div><div class="td-sub">${escapeHtml(order.customer_name || '')} · ${escapeHtml(order.customer_phone || '')}</div></td>
           <td><span class="badge badge-pending">${escapeHtml(outcomeLabels[order.delivery_outcome] || order.delivery_outcome || 'Undelivered')}</span>${order.delivery_outcome_notes ? `<div class="td-sub">${escapeHtml(order.delivery_outcome_notes)}</div>` : ''}</td>
@@ -6217,7 +6290,86 @@
           <td><div class="td-name">${escapeHtml(schedule)}</div>${order.return_management_notes ? `<div class="td-sub">${escapeHtml(order.return_management_notes)}</div>` : ''}</td>
           <td>${returnActionButtons(order)}</td>
         </tr>`;
-      }).join('') || '<tr><td colspan="7">No returned parcels match this view.</td></tr>';
+      }).join('') || '<tr><td colspan="8">No returned parcels match this view.</td></tr>';
+      syncReturnBulkControls();
+    };
+
+    window.runReturnBatchConfirm = function() {
+      const selectedIds = selectedVisibleIds(returnSelection, returnVisibleIds);
+      if (!selectedIds.length) return showToast('Select at least one parcel to confirm.');
+      showModal('Confirm Received', `Confirm that ${selectedIds.length} parcel(s) were physically returned to the VirtuDrop hub?`, async () => {
+        try {
+          const { data, error } = await supabase.rpc('admin_confirm_returned_batch', { p_order_ids: selectedIds, p_notes: null });
+          if (error) throw error;
+          showToast(`${data?.order_count || selectedIds.length} parcel(s) confirmed as batch ${data?.batch_number || ''}.`);
+          clearReturnSelection();
+          await loadData();
+          await loadReturnBatches();
+        } catch (error) {
+          window.vdNotify('Batch Not Confirmed', error.message || 'Could not confirm this batch of returns.', 'error');
+        }
+      });
+    };
+
+    // ── Return History (past confirmed batches) ─────────────────────────
+    window.clearReturnHistoryRange = function() {
+      const start = document.getElementById('returnHistoryStart');
+      const end = document.getElementById('returnHistoryEnd');
+      if (start) start.value = '';
+      if (end) end.value = '';
+      loadReturnBatches();
+    };
+
+    window.toggleReturnBatchExpanded = function(batchId) {
+      if (returnBatchExpanded.has(batchId)) returnBatchExpanded.delete(batchId);
+      else returnBatchExpanded.add(batchId);
+      renderReturnBatches();
+    };
+
+    function renderReturnBatches() {
+      const body = document.getElementById('returnHistoryBody');
+      if (!body) return;
+      if (!returnBatches.length) {
+        body.innerHTML = '<tr><td colspan="6">No return batches recorded yet.</td></tr>';
+        return;
+      }
+      body.innerHTML = returnBatches.map(batch => {
+        const expanded = returnBatchExpanded.has(batch.id);
+        const detailRow = expanded ? `<tr><td></td><td colspan="5">
+          <div class="table-wrap"><table><thead><tr><th>Order</th><th>Customer</th><th>Outcome</th></tr></thead><tbody>
+            ${(batch.orders || []).map(order => `<tr><td class="td-id">${escapeHtml(order.order_number || '')}</td><td>${escapeHtml(order.customer_name || '')}</td><td>${escapeHtml(String(order.delivery_outcome || '').replaceAll('_', ' '))}</td></tr>`).join('') || '<tr><td colspan="3">No parcel details recorded.</td></tr>'}
+          </tbody></table></div>
+        </td></tr>` : '';
+        return `<tr>
+          <td><button class="btn btn-ghost btn-sm" type="button" onclick="toggleReturnBatchExpanded('${batch.id}')">${expanded ? '▾' : '▸'}</button></td>
+          <td class="td-id">${escapeHtml(batch.batch_number)}</td>
+          <td>${escapeHtml(batch.driver_name || 'Mixed / Unknown')}</td>
+          <td>${Number(batch.order_count || 0)}</td>
+          <td>${escapeHtml(batch.confirmed_by_name || '—')}</td>
+          <td>${batch.confirmed_at ? new Date(batch.confirmed_at).toLocaleString('en-TT') : '—'}</td>
+        </tr>${detailRow}`;
+      }).join('');
+    }
+
+    window.loadReturnBatches = async function() {
+      const body = document.getElementById('returnHistoryBody');
+      if (body) body.innerHTML = '<tr><td colspan="6">Loading return history...</td></tr>';
+      const driverId = document.getElementById('returnHistoryDriverFilter')?.value || null;
+      const startDate = document.getElementById('returnHistoryStart')?.value || null;
+      const endDate = document.getElementById('returnHistoryEnd')?.value || null;
+      try {
+        const { data, error } = await supabase.rpc('admin_list_return_batches', {
+          p_driver_id: driverId,
+          p_start_date: startDate,
+          p_end_date: endDate
+        });
+        if (error) throw error;
+        returnBatches = Array.isArray(data) ? data : [];
+        renderReturnBatches();
+      } catch (error) {
+        console.error('Return batch history error:', error);
+        if (body) body.innerHTML = `<tr><td colspan="6">Could not load return history: ${escapeHtml(error.message || 'Unknown error')}</td></tr>`;
+      }
     };
 
     window.syncRedeliverySettlement = function() {
@@ -6814,6 +6966,7 @@
       loadAllDriversCashSummary();
       loadDriverCashSummary();
       renderReturnManagement();
+      loadReturnBatches();
       renderZoneConfirm();
       renderDriverAssign();
       renderAccounting();
