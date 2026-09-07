@@ -5363,7 +5363,7 @@
             <div class="td-sub">Collect: ${moneyFull(driverCollects(order))}</div>
             ${order.pickup_required ? `<div class="td-sub">Pickup: ${moneyFull(order.pickup_fee)} · ${pickupFeeStatusLabel(pickupFeeStatus(order), order.pickup_fee_settlement)} · ${order.pickup_parcel_count || 1} parcel(s)</div>` : ''}
           </td>
-          <td>${badgeForStatus(order)}<div class="td-sub" style="margin-top:0.3rem;">Parcel: ${escapeHtml(String(order.parcel_status || 'awaiting_parcel').replaceAll('_', ' '))}</div>${order.delivery_attempt_count ? `<div class="td-sub">Attempt ${order.delivery_attempt_count}${order.delivery_proof_confirmed_at ? ' · Handover confirmed' : ''}</div>` : ''}${order.delivery_recipient_name ? `<div class="td-sub">Recipient: ${escapeHtml(order.delivery_recipient_name)}</div>` : ''}${order.delivery_signature_data_url ? `<button class="btn btn-ghost btn-sm" type="button" onclick="viewDeliverySignature('${order.id}')">View Signature</button>` : ''}${order.delivery_return_required ? '<div class="td-sub" style="color:var(--red); font-weight:700;">Awaiting hub return</div>' : order.delivery_returned_hub_at ? '<div class="td-sub" style="color:var(--green); font-weight:700;">Returned to hub</div>' : ''}</td>
+          <td>${badgeForStatus(order)}<div class="td-sub" style="margin-top:0.3rem;">Parcel: ${escapeHtml(String(order.parcel_status || 'awaiting_parcel').replaceAll('_', ' '))}</div>${order.delivery_attempt_count ? `<div class="td-sub">Attempt ${order.delivery_attempt_count}${order.delivery_proof_confirmed_at ? ' · Handover confirmed' : ''}</div>` : ''}${order.delivery_recipient_name ? `<div class="td-sub">Recipient: ${escapeHtml(order.delivery_recipient_name)}</div>` : ''}${order.delivery_signature_data_url ? `<button class="btn btn-ghost btn-sm" type="button" onclick="viewDeliverySignature('${order.id}')">View Signature</button>` : ''}${orderNeedsHubReturn(order) ? '<div class="td-sub" style="color:var(--red); font-weight:700;">Awaiting hub return</div>' : order.delivery_returned_hub_at ? '<div class="td-sub" style="color:var(--green); font-weight:700;">Returned to hub</div>' : ''}</td>
           <td>${order.assigned_driver_id ? escapeHtml(driverName(order.assigned_driver_id)) : '—'}</td>
         </tr>
       `).join('') || '<tr><td colspan="7">No orders found.</td></tr>';
@@ -6396,23 +6396,41 @@
       popup.document.close();
     };
 
+    // Whether a parcel needs to come back to the hub, judged from what the
+    // order actually shows right now rather than trusting
+    // delivery_return_required alone -- that flag has drifted false in a
+    // few places (an admin changing just "Order Status" via Edit Order
+    // without also touching "Delivery Outcome", certain cancellation
+    // paths), which is how cancelled/refused/rescheduled/no-response
+    // parcels have gone missing from this tab with no way to check them
+    // back in. This recomputes the same thing from the outcome/status
+    // fields so a stale flag can't hide a parcel that's still out there.
+    function orderNeedsHubReturn(order) {
+      if (['returned_to_hub', 'returned_to_client'].includes(order.parcel_status)) return false;
+      if (order.parcel_status === 'delivered' || order.order_status === 'delivered') return false;
+      if (order.delivery_return_required) return true;
+      if (['no_response', 'refused', 'reschedule_requested'].includes(order.delivery_outcome)) return true;
+      if (['failed', 'rescheduled'].includes(order.order_status)) return true;
+      if (order.order_status === 'cancelled' && ['handed_to_driver', 'out_for_delivery'].includes(order.parcel_status)) return true;
+      return false;
+    }
+
     function returnRecordMatches(order, filter) {
       // A cancelled/rejected order still belongs here if a driver already
-      // has the physical parcel (delivery_return_required stays true until
-      // it's confirmed back at the hub) -- only drop it once nothing is
-      // still owed back.
-      if (isCancelledOrder(order) && !order.delivery_return_required) return false;
-      const hasReturnRecord = order.delivery_return_required
-        || ['returned_to_hub', 'held_for_client_instructions', 'redelivery_scheduled', 'returned_to_client'].includes(order.parcel_status)
+      // has the physical parcel -- only drop it once nothing is still owed
+      // back.
+      if (isCancelledOrder(order) && !orderNeedsHubReturn(order)) return false;
+      const hasReturnRecord = orderNeedsHubReturn(order)
+        || ['held_for_client_instructions', 'redelivery_scheduled', 'returned_to_client', 'returned_to_hub'].includes(order.parcel_status)
         || Boolean(order.redelivery_status || order.return_to_client_status);
       if (!hasReturnRecord) return false;
       if (filter === 'all') return true;
-      if (filter === 'awaiting_return') return order.delivery_return_required;
+      if (filter === 'awaiting_return') return orderNeedsHubReturn(order);
       if (filter === 'returned') return order.parcel_status === 'returned_to_hub' && order.return_disposition === 'awaiting_admin';
       if (filter === 'held') return order.parcel_status === 'held_for_client_instructions' && order.return_disposition === 'hold';
       if (filter === 'scheduled') return order.redelivery_status === 'scheduled';
       if (filter === 'client_return') return Boolean(order.return_to_client_status);
-      return order.delivery_return_required
+      return orderNeedsHubReturn(order)
         || order.return_disposition === 'awaiting_admin'
         || order.return_disposition === 'hold'
         || order.redelivery_status === 'scheduled'
@@ -6427,7 +6445,7 @@
       return 'Client collection/return';
     }
     function returnActionButtons(order) {
-      if (order.delivery_return_required) return `<div class="finance-actions"><span class="badge badge-unpaid">Driver must return parcel</span><button class="btn btn-primary btn-sm" onclick="confirmHubReturn('${order.id}')">Confirm Hub Receipt</button></div>`;
+      if (orderNeedsHubReturn(order)) return `<div class="finance-actions"><span class="badge badge-unpaid">Driver must return parcel</span><button class="btn btn-primary btn-sm" onclick="confirmHubReturn('${order.id}')">Confirm Hub Receipt</button></div>`;
       if (order.return_to_client_status === 'ready') {
         return `<button class="btn btn-primary btn-sm" onclick="completeClientReturn('${order.id}')">Confirm Returned to Client</button>`;
       }
@@ -6485,12 +6503,12 @@
 
       // Only parcels actually awaiting return can be confirmed in bulk - same
       // rule the confirm RPC enforces server-side.
-      returnVisibleIds = rows.filter(order => order.delivery_return_required).map(order => order.id);
-      returnSelection = new Set([...returnSelection].filter(id => orders.some(o => o.id === id && o.delivery_return_required)));
+      returnVisibleIds = rows.filter(order => orderNeedsHubReturn(order)).map(order => order.id);
+      returnSelection = new Set([...returnSelection].filter(id => orders.some(o => o.id === id && orderNeedsHubReturn(o))));
 
       const awaitingCount = driverId
-        ? orders.filter(order => order.assigned_driver_id === driverId && order.delivery_return_required).length
-        : orders.filter(order => order.delivery_return_required).length;
+        ? orders.filter(order => order.assigned_driver_id === driverId && orderNeedsHubReturn(order)).length
+        : orders.filter(order => orderNeedsHubReturn(order)).length;
       const awaitingLabel = document.getElementById('returnAwaitingCount');
       if (awaitingLabel) awaitingLabel.textContent = driverId ? `Awaiting return from ${driverName(driverId)}: ${awaitingCount}` : `Awaiting return (all drivers): ${awaitingCount}`;
 
@@ -6502,7 +6520,7 @@
             : order.hold_until ? `Hold until ${new Date(order.hold_until + 'T12:00:00').toLocaleDateString('en-TT')}`
               : order.return_to_client_status === 'ready' ? clientReturnMethodLabel(order) : 'Awaiting admin decision';
         return `<tr>
-          <td>${order.delivery_return_required ? `<input class="return-bulk-check" type="checkbox" value="${order.id}" ${returnSelection.has(order.id) ? 'checked' : ''} onchange="toggleReturnBulk('${order.id}', this.checked)">` : ''}</td>
+          <td>${orderNeedsHubReturn(order) ? `<input class="return-bulk-check" type="checkbox" value="${order.id}" ${returnSelection.has(order.id) ? 'checked' : ''} onchange="toggleReturnBulk('${order.id}', this.checked)">` : ''}</td>
           <td><div class="td-id">${escapeHtml(order.order_number)}</div><div class="td-sub">Attempt ${escapeHtml(String(order.delivery_attempt_count || 1))}</div></td>
           <td><div class="td-name">${escapeHtml(clientName(order))}</div><div class="td-sub">${escapeHtml(order.customer_name || '')} · ${escapeHtml(order.customer_phone || '')}</div></td>
           <td><span class="badge badge-pending">${escapeHtml(outcomeLabels[order.delivery_outcome] || order.delivery_outcome || 'Undelivered')}</span>${order.delivery_outcome_notes ? `<div class="td-sub">${escapeHtml(order.delivery_outcome_notes)}</div>` : ''}</td>
