@@ -1112,11 +1112,35 @@
           <h2>Driver Manifests</h2>
           <p>Select a driver to review their assigned orders, mark the manifest ready, confirm driver collection, or close the manifest.</p>
         </div>
+
+        <div class="card" style="margin-bottom:1rem;">
+          <div class="card-title">All Drivers — Cash Currently Held</div>
+          <div class="td-sub" style="margin-bottom:0.75rem;">Cash collected on delivery that has not yet been handed to VirtuDrop and reconciled. <button class="btn btn-ghost btn-sm" type="button" onclick="loadAllDriversCashSummary()">Refresh</button></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Driver</th><th>Cash on Hand</th></tr></thead>
+            <tbody id="allDriversCashBody"><tr><td colspan="2">Loading...</td></tr></tbody>
+          </table></div>
+        </div>
+
         <div class="filter-bar">
-          <select class="filter-select" id="manifestDriverFilter" onchange="renderManifests()"><option value="">Select driver</option></select>
+          <select class="filter-select" id="manifestDriverFilter" onchange="renderManifests(); loadDriverCashSummary();"><option value="">Select driver</option></select>
           <select class="filter-select" id="manifestStatusFilter" onchange="renderManifests()"><option value="active">Current Manifests</option><option value="draft">Draft</option><option value="ready">Ready</option><option value="collected">Collected by Driver</option><option value="closed">Closed</option><option value="all">All Manifests</option></select>
           <input class="filter-input" id="manifestSearch" type="search" placeholder="Search order or customer" oninput="renderManifests()" />
         </div>
+
+        <div class="card" id="driverCashSummaryCard" style="margin-bottom:1rem; display:none;">
+          <div class="card-title">Selected Driver — Cash &amp; Delivery Summary</div>
+          <div class="filter-bar" style="margin-bottom:0.75rem;">
+            <label class="td-sub" style="align-self:center;">From</label>
+            <input class="filter-input" type="date" id="driverSummaryStart" onchange="loadDriverCashSummary()">
+            <label class="td-sub" style="align-self:center;">To</label>
+            <input class="filter-input" type="date" id="driverSummaryEnd" onchange="loadDriverCashSummary()">
+            <button class="btn btn-ghost btn-sm" type="button" onclick="setDriverSummaryToday()">Today</button>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="clearDriverSummaryRange()">All Time</button>
+          </div>
+          <div id="driverCashSummaryBody">Loading...</div>
+        </div>
+
         <div class="bulk-toolbar" id="manifestBulkToolbar">
           <label><input id="manifestSelectAll" type="checkbox" onchange="toggleManifestVisibleBulk(this.checked)"> Select all visible</label>
           <select class="filter-select" id="manifestBulkAction">
@@ -5965,6 +5989,94 @@
       syncManifestBulkControls();
     };
 
+    // ── Driver cash-on-hand and delivery outcome summary ────────────────
+    window.loadAllDriversCashSummary = async function() {
+      const body = document.getElementById('allDriversCashBody');
+      if (!body) return;
+      body.innerHTML = '<tr><td colspan="2">Loading...</td></tr>';
+      try {
+        const { data, error } = await supabase.rpc('admin_driver_cash_on_hand_summary');
+        if (error) throw error;
+        const rows = Array.isArray(data) ? data : [];
+        if (!rows.length) {
+          body.innerHTML = '<tr><td colspan="2">No active drivers found.</td></tr>';
+          return;
+        }
+        body.innerHTML = rows.map(row => `
+          <tr>
+            <td class="td-name">${escapeHtml(row.driver_name || 'Driver')}</td>
+            <td>${moneyFull(row.cash_on_hand)}</td>
+          </tr>
+        `).join('');
+      } catch (error) {
+        console.error('All-drivers cash summary error:', error);
+        body.innerHTML = `<tr><td colspan="2">Could not load cash summary: ${escapeHtml(error.message || 'Unknown error')}</td></tr>`;
+      }
+    };
+
+    window.setDriverSummaryToday = function() {
+      const today = new Date().toISOString().slice(0, 10);
+      const start = document.getElementById('driverSummaryStart');
+      const end = document.getElementById('driverSummaryEnd');
+      if (start) start.value = today;
+      if (end) end.value = today;
+      loadDriverCashSummary();
+    };
+
+    window.clearDriverSummaryRange = function() {
+      const start = document.getElementById('driverSummaryStart');
+      const end = document.getElementById('driverSummaryEnd');
+      if (start) start.value = '';
+      if (end) end.value = '';
+      loadDriverCashSummary();
+    };
+
+    window.loadDriverCashSummary = async function() {
+      const card = document.getElementById('driverCashSummaryCard');
+      const body = document.getElementById('driverCashSummaryBody');
+      const driverId = document.getElementById('manifestDriverFilter')?.value || '';
+      if (!card || !body) return;
+      if (!driverId) {
+        card.style.display = 'none';
+        return;
+      }
+      card.style.display = '';
+      body.innerHTML = 'Loading...';
+      const startDate = document.getElementById('driverSummaryStart')?.value || null;
+      const endDate = document.getElementById('driverSummaryEnd')?.value || null;
+      try {
+        const { data, error } = await supabase.rpc('admin_driver_delivery_summary', {
+          p_driver_id: driverId,
+          p_start_date: startDate,
+          p_end_date: endDate
+        });
+        if (error) throw error;
+        const summary = data || {};
+        const rangeLabel = startDate || endDate
+          ? `${startDate || 'the beginning'} to ${endDate || 'now'}`
+          : 'all time';
+        body.innerHTML = `
+          <div class="td-sub" style="margin-bottom:0.75rem;">Showing ${escapeHtml(rangeLabel)} for ${escapeHtml(driverName(driverId))}.</div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Cash Currently Held</th><th>Delivered</th><th>Rescheduled</th><th>Failed</th><th>No Response</th><th>Refused</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>${moneyFull(summary.cash_on_hand)}</td>
+                <td>${Number(summary.delivered_count || 0)} (${moneyFull(summary.delivered_cash_collected)} cash)</td>
+                <td>${Number(summary.rescheduled_count || 0)}</td>
+                <td>${Number(summary.failed_count || 0)}</td>
+                <td>${Number(summary.no_response_count || 0)}</td>
+                <td>${Number(summary.refused_count || 0)}</td>
+              </tr>
+            </tbody>
+          </table></div>
+        `;
+      } catch (error) {
+        console.error('Driver cash summary error:', error);
+        body.innerHTML = `Could not load this driver's summary: ${escapeHtml(error.message || 'Unknown error')}`;
+      }
+    };
+
     window.setManifestStatus = function(manifestId, status) {
       const manifest = deliveryManifests.find(item => item.id === manifestId);
       if (!manifest) return showToast('Manifest not found.');
@@ -6699,6 +6811,8 @@
       renderPickupManagement();
       renderSortingQueue();
       renderManifests();
+      loadAllDriversCashSummary();
+      loadDriverCashSummary();
       renderReturnManagement();
       renderZoneConfirm();
       renderDriverAssign();
