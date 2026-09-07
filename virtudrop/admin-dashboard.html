@@ -1655,6 +1655,32 @@
         </div>
 
         <div class="card">
+          <div class="card-title">Driver Cash Remittance</div>
+          <div class="accounting-note">Select a driver to see the cash they're still holding from delivered COD / delivery-fee collections, then confirm what VirtuDrop actually received from them (one at a time, or several together).</div>
+          <div class="finance-filter-grid">
+            <div class="finance-field">
+              <label for="remitDriverFilter">Driver</label>
+              <select class="filter-select" id="remitDriverFilter" onchange="renderDriverCashRemittance()">
+                <option value="">Select a driver...</option>
+              </select>
+            </div>
+            <button class="btn btn-ghost" type="button" onclick="toggleAllRemitDriverCashRows()">Select All / None</button>
+            <button class="btn btn-primary" type="button" onclick="openBulkRemitDriverCashReceived()">Confirm Cash Received</button>
+            <span id="remitDriverCashBulkCount" style="align-self:center; color:var(--grey);">0 selected</span>
+          </div>
+          <div id="remitDriverCashSummaryWrap" style="display:none; margin:0.25rem 0 0.75rem;">
+            <strong id="remitDriverCashSummary"></strong>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th style="width:2rem;"></th><th>Order #</th><th>Customer</th><th>Expected</th><th>Collected Via</th><th>Delivered</th><th>Action</th></tr>
+              </thead>
+              <tbody id="remitDriverCashBody"><tr><td colspan="7">Select a driver to see cash they are holding.</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card" style="margin-top:1rem;">
           <div class="card-title">Client Payout Summary</div>
           <div class="finance-filter-grid">
             <div class="finance-field">
@@ -2721,6 +2747,14 @@
         acctDriver.innerHTML = '<option value="">No driver</option>' + drivers
           .map(driver => `<option value="${escapeHtml(driver.id)}">${escapeHtml(driverName(driver.id))}</option>`)
           .join('');
+      }
+      const remitDriverFilter = document.getElementById('remitDriverFilter');
+      if (remitDriverFilter) {
+        const currentRemitDriver = remitDriverFilter.value;
+        remitDriverFilter.innerHTML = '<option value="">Select a driver...</option>' + drivers
+          .map(driver => `<option value="${escapeHtml(driver.id)}">${escapeHtml(driverName(driver.id))}</option>`)
+          .join('');
+        remitDriverFilter.value = currentRemitDriver;
       }
       ['returnManagementDriverFilter', 'returnHistoryDriverFilter'].forEach(id => {
         const select = document.getElementById(id);
@@ -4126,6 +4160,122 @@
       showToast(`Collection reconciled for ${order.order_number}.`);
       await loadData();
     }
+
+    // Driver Cash Remittance (Remittance tab) -- pick a driver, see exactly
+    // what they're still holding from delivered COD / delivery-fee orders
+    // (same "not yet reconciled" definition used everywhere else in the
+    // app), and confirm/reconcile it one at a time or as a batch. Reuses
+    // admin_reconcile_order_collection, the same RPC the Accounting tab's
+    // per-order and bulk reconcile actions already call.
+    let remitDriverCashSelection = new Set();
+    let remitDriverCashVisibleIds = [];
+
+    function driverUnreconciledCollections(driverId) {
+      return orders.filter(order =>
+        order.assigned_driver_id === driverId
+        && ['cod', 'delivery_only'].includes(order.payment_type)
+        && isDelivered(order)
+        && driverCollects(order) > 0
+        && driverCashRecordForOrder(order.id)?.status !== 'balanced'
+      );
+    }
+
+    function syncRemitDriverCashBulkControls() {
+      updateBulkCount('remitDriverCashBulkCount', 'remitDriverCashSelectAll', remitDriverCashSelection, remitDriverCashVisibleIds);
+      syncBulkCheckboxes('.remit-driver-cash-check', remitDriverCashSelection);
+    }
+
+    window.toggleRemitDriverCashBulk = function(orderId, checked) {
+      if (checked) remitDriverCashSelection.add(orderId);
+      else remitDriverCashSelection.delete(orderId);
+      syncRemitDriverCashBulkControls();
+    };
+
+    window.toggleAllRemitDriverCashRows = function() {
+      const allSelected = remitDriverCashVisibleIds.length > 0 && remitDriverCashVisibleIds.every(id => remitDriverCashSelection.has(id));
+      remitDriverCashVisibleIds.forEach(id => allSelected ? remitDriverCashSelection.delete(id) : remitDriverCashSelection.add(id));
+      syncRemitDriverCashBulkControls();
+    };
+
+    window.renderDriverCashRemittance = function() {
+      const driverId = document.getElementById('remitDriverFilter')?.value || '';
+      const body = document.getElementById('remitDriverCashBody');
+      const summaryWrap = document.getElementById('remitDriverCashSummaryWrap');
+      const summaryEl = document.getElementById('remitDriverCashSummary');
+      if (!body) return;
+      if (!driverId) {
+        body.innerHTML = '<tr><td colspan="7">Select a driver to see cash they are holding.</td></tr>';
+        remitDriverCashVisibleIds = [];
+        remitDriverCashSelection.clear();
+        if (summaryWrap) summaryWrap.style.display = 'none';
+        syncRemitDriverCashBulkControls();
+        return;
+      }
+      const rows = driverUnreconciledCollections(driverId);
+      remitDriverCashVisibleIds = rows.map(order => order.id);
+      const totalHeld = rows.reduce((sum, order) => sum + driverCollects(order), 0);
+      if (summaryWrap && summaryEl) {
+        summaryWrap.style.display = '';
+        summaryEl.textContent = `${driverName(driverId)} is currently holding ${moneyFull(totalHeld)} across ${rows.length} order${rows.length === 1 ? '' : 's'}.`;
+      }
+      body.innerHTML = rows.length ? rows.map(order => `
+        <tr>
+          <td><label class="bulk-order-check"><input class="remit-driver-cash-check" type="checkbox" value="${order.id}" ${remitDriverCashSelection.has(order.id) ? 'checked' : ''} onchange="toggleRemitDriverCashBulk('${order.id}', this.checked)"><span>${escapeHtml(order.order_number)}</span></label></td>
+          <td>${escapeHtml(order.customer_name || '—')}</td>
+          <td>${moneyFull(driverCollects(order))}</td>
+          <td>${escapeHtml(String(order.delivery_collection_method || 'pending').replaceAll('_', ' '))}</td>
+          <td>${order.last_delivery_attempt_at ? new Date(order.last_delivery_attempt_at).toLocaleDateString('en-TT') : '—'}</td>
+          <td><button class="btn btn-primary btn-sm" onclick="openMarkDriverCashReceived('${order.id}')">Reconcile</button></td>
+        </tr>
+      `).join('') : '<tr><td colspan="7">This driver has no unreconciled cash right now.</td></tr>';
+      syncRemitDriverCashBulkControls();
+    };
+
+    window.openBulkRemitDriverCashReceived = function() {
+      const selectedIds = selectedVisibleIds(remitDriverCashSelection, remitDriverCashVisibleIds);
+      if (!selectedIds.length) return showToast('Select at least one order to confirm.');
+      const selectedOrders = orders.filter(order => selectedIds.includes(order.id));
+      const total = selectedOrders.reduce((sum, order) => sum + driverCollects(order), 0);
+      document.getElementById('modalTitle').textContent = 'Confirm Cash Received';
+      document.getElementById('modalBody').innerHTML = `
+        <p style="margin:0 0 0.7rem; color:var(--grey);">Confirm ${selectedOrders.length} order(s) totalling ${moneyFull(total)} were handed in.</p>
+        <div class="payment-modal-form">
+          <label>Method<select id="remitBulkDriverCashMethod">
+            <option value="cash">Cash</option>
+            <option value="linx">LINX</option>
+            <option value="bank_transfer">Bank Transfer</option>
+            <option value="other">Other</option>
+          </select></label>
+          <label>Reference / Note<input id="remitBulkDriverCashReference" type="text" placeholder="Receipt, handover note, or reference"></label>
+          <label>Admin Notes<textarea id="remitBulkDriverCashNotes" placeholder="Optional note applied to every selected reconciliation"></textarea></label>
+        </div>`;
+      document.getElementById('modalConfirm').textContent = 'Confirm Received';
+      document.getElementById('modal').classList.add('show');
+      modalCb = async () => {
+        const method = document.getElementById('remitBulkDriverCashMethod')?.value || 'cash';
+        const reference = document.getElementById('remitBulkDriverCashReference')?.value.trim() || null;
+        const notes = document.getElementById('remitBulkDriverCashNotes')?.value.trim() || null;
+        let reconciled = 0;
+        const failed = [];
+        for (const order of selectedOrders) {
+          const { error } = await supabase.rpc('admin_reconcile_order_collection', {
+            p_order_id: order.id,
+            p_received_amount: driverCollects(order),
+            p_handover_method: method,
+            p_reference: reference,
+            p_notes: notes
+          });
+          if (error) failed.push(order.order_number + ': ' + (error.message || 'failed'));
+          else reconciled += 1;
+        }
+        if (reconciled) showToast(reconciled + ' collection' + (reconciled === 1 ? '' : 's') + ' reconciled.');
+        if (failed.length) {
+          window.vdNotify('Some Collections Not Reconciled', failed.slice(0, 5).join(' | ') + (failed.length > 5 ? ' | More errors omitted.' : ''), 'error');
+        }
+        remitDriverCashSelection.clear();
+        await loadData();
+      };
+    };
 
     window.viewDriverCashRecord = function(recordId) {
       const record = driverCashRecords.find(item => item.id === recordId);
@@ -6247,7 +6397,11 @@
     };
 
     function returnRecordMatches(order, filter) {
-      if (isCancelledOrder(order)) return false;
+      // A cancelled/rejected order still belongs here if a driver already
+      // has the physical parcel (delivery_return_required stays true until
+      // it's confirmed back at the hub) -- only drop it once nothing is
+      // still owed back.
+      if (isCancelledOrder(order) && !order.delivery_return_required) return false;
       const hasReturnRecord = order.delivery_return_required
         || ['returned_to_hub', 'held_for_client_instructions', 'redelivery_scheduled', 'returned_to_client'].includes(order.parcel_status)
         || Boolean(order.redelivery_status || order.return_to_client_status);
@@ -6335,8 +6489,8 @@
       returnSelection = new Set([...returnSelection].filter(id => orders.some(o => o.id === id && o.delivery_return_required)));
 
       const awaitingCount = driverId
-        ? orders.filter(order => order.assigned_driver_id === driverId && order.delivery_return_required && !isCancelledOrder(order)).length
-        : orders.filter(order => order.delivery_return_required && !isCancelledOrder(order)).length;
+        ? orders.filter(order => order.assigned_driver_id === driverId && order.delivery_return_required).length
+        : orders.filter(order => order.delivery_return_required).length;
       const awaitingLabel = document.getElementById('returnAwaitingCount');
       if (awaitingLabel) awaitingLabel.textContent = driverId ? `Awaiting return from ${driverName(driverId)}: ${awaitingCount}` : `Awaiting return (all drivers): ${awaitingCount}`;
 
@@ -7037,6 +7191,7 @@
       renderZoneConfirm();
       renderDriverAssign();
       renderAccounting();
+      renderDriverCashRemittance();
       renderAccounts();
       applySettingsToControls();
       updateBadgesAndStats();
