@@ -6539,13 +6539,18 @@
       showModal('Confirm Received', `Confirm that ${selectedIds.length} parcel(s) were physically returned to the VirtuDrop hub?`, async () => {
         try {
           const { data, error } = await supabase.rpc('admin_confirm_returned_batch', { p_order_ids: selectedIds, p_notes: null });
+          console.log('admin_confirm_returned_batch response:', { data, error });
           if (error) throw error;
-          showToast(`${data?.order_count || selectedIds.length} parcel(s) confirmed as batch ${data?.batch_number || ''}.`);
+          if (!data || !data.batch_id || !(data.order_count > 0)) {
+            throw new Error('The server did not confirm any parcels in this batch. Nothing was changed -- please try again or check the console.');
+          }
+          showToast(`${data.order_count} parcel(s) confirmed as batch ${data.batch_number || ''}.`);
           clearReturnSelection();
           await loadData();
           await loadReturnBatches();
         } catch (error) {
-          window.vdNotify('Batch Not Confirmed', error.message || 'Could not confirm this batch of returns.', 'error');
+          const detail = [error.message, error.details, error.hint].filter(Boolean).join(' | ');
+          window.vdNotify('Batch Not Confirmed', detail || 'Could not confirm this batch of returns.', 'error');
         }
       });
     };
@@ -6622,12 +6627,20 @@
       if (!order) return showToast('Undelivered order not found.');
       showModal('Confirm Hub Receipt', `Confirm that ${order.order_number} was physically returned to the VirtuDrop hub?`, async () => {
         try {
-          const { error } = await supabase.rpc('admin_confirm_undelivered_returned', { p_order_id: orderId });
+          const { data, error } = await supabase.rpc('admin_confirm_undelivered_returned', { p_order_id: orderId });
+          // Surface the raw response in the console every time -- if this
+          // ever again looks like it "went through" but nothing changed,
+          // open DevTools console and this line has the real answer.
+          console.log('admin_confirm_undelivered_returned response:', { data, error });
           if (error) throw error;
+          if (!data || !data.id) {
+            throw new Error('The server did not confirm this update. Nothing was changed -- please try again or check the console.');
+          }
           showToast(`${order.order_number} received back at the hub.`);
           await loadData();
         } catch (error) {
-          window.vdNotify('Hub Return Not Confirmed', error.message || 'Could not confirm this parcel return.', 'error');
+          const detail = [error.message, error.details, error.hint].filter(Boolean).join(' | ');
+          window.vdNotify('Hub Return Not Confirmed', detail || 'Could not confirm this parcel return.', 'error');
         }
       });
     };
