@@ -4170,13 +4170,19 @@
     let remitDriverCashSelection = new Set();
     let remitDriverCashVisibleIds = [];
 
+    // This list MUST use the exact same "still holding cash" definition as
+    // admin_driver_cash_on_hand_summary / admin_driver_delivery_summary
+    // (delivery_outcome = delivered, collection method = cash, payment_status
+    // = collected_by_driver) -- otherwise reconciling orders here can leave
+    // the driver's cash-on-hand total unchanged (because the orders shown
+    // here weren't the ones counted in that total) or can permanently hide
+    // orders that ARE counted in that total but never show up to reconcile.
     function driverUnreconciledCollections(driverId) {
       return orders.filter(order =>
         order.assigned_driver_id === driverId
-        && ['cod', 'delivery_only'].includes(order.payment_type)
-        && isDelivered(order)
-        && driverCollects(order) > 0
-        && driverCashRecordForOrder(order.id)?.status !== 'balanced'
+        && order.delivery_outcome === 'delivered'
+        && String(order.delivery_collection_method || '').toLowerCase() === 'cash'
+        && order.payment_status === 'collected_by_driver'
       );
     }
 
