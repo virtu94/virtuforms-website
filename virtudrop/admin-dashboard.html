@@ -1195,6 +1195,18 @@
           <button class="btn btn-ghost btn-sm" type="button" onclick="clearReturnSelection()">Clear</button>
           <span class="bulk-count" id="returnBulkCount">0 selected</span>
         </div>
+        <div class="bulk-toolbar" id="returnDecisionBulkToolbar">
+          <label><input id="returnDecisionSelectAll" type="checkbox" onchange="toggleReturnDecisionVisibleBulk(this.checked)"> Select all visible (awaiting decision)</label>
+          <select class="filter-select" id="returnDecisionAction">
+            <option value="schedule_redelivery">Schedule Redelivery</option>
+            <option value="hold_14">Hold 14 Days</option>
+            <option value="hold_stock">Hold as Stock</option>
+            <option value="return_to_client">Return to Client</option>
+          </select>
+          <button class="btn btn-primary btn-sm" type="button" onclick="applyReturnDecisionBulkAction()">Apply to Selected</button>
+          <button class="btn btn-ghost btn-sm" type="button" onclick="clearReturnDecisionSelection()">Clear</button>
+          <span class="bulk-count" id="returnDecisionBulkCount">0 selected</span>
+        </div>
         <div class="card">
           <div class="table-wrap"><table>
             <thead><tr><th></th><th>Order</th><th>Client / Customer</th><th>Outcome</th><th>Parcel</th><th>Fees / Payer</th><th>Schedule / Hold</th><th>Actions</th></tr></thead>
@@ -2100,6 +2112,8 @@
     let manifestVisibleIds = [];
     let returnSelection = new Set();
     let returnVisibleIds = [];
+    let returnDecisionSelection = new Set();
+    let returnDecisionVisibleIds = [];
     let returnBatches = [];
     let returnBatchExpanded = new Set();
     let driverAssignSelection = new Set();
@@ -6492,6 +6506,39 @@
       syncReturnBulkControls();
     };
 
+    // A parcel is "awaiting an admin decision" when it's back at the hub
+    // (or held) but hasn't yet been scheduled for redelivery, prepared for
+    // return to the client, or otherwise resolved -- i.e. exactly the rows
+    // that render the Schedule Redelivery / Hold 14 Days / Hold as Stock /
+    // Return to Client button group in returnActionButtons().
+    function orderAwaitingReturnDecision(order) {
+      if (orderNeedsHubReturn(order)) return false;
+      if (order.return_to_client_status === 'ready') return false;
+      if (order.redelivery_status === 'scheduled') return false;
+      return ['returned_to_hub', 'held_for_client_instructions'].includes(order.parcel_status);
+    }
+
+    function syncReturnDecisionBulkControls() {
+      updateBulkCount('returnDecisionBulkCount', 'returnDecisionSelectAll', returnDecisionSelection, returnDecisionVisibleIds);
+      syncBulkCheckboxes('.return-decision-check', returnDecisionSelection);
+    }
+
+    window.toggleReturnDecisionBulk = function(orderId, checked) {
+      if (checked) returnDecisionSelection.add(orderId);
+      else returnDecisionSelection.delete(orderId);
+      syncReturnDecisionBulkControls();
+    };
+
+    window.toggleReturnDecisionVisibleBulk = function(checked) {
+      returnDecisionVisibleIds.forEach(orderId => checked ? returnDecisionSelection.add(orderId) : returnDecisionSelection.delete(orderId));
+      syncReturnDecisionBulkControls();
+    };
+
+    window.clearReturnDecisionSelection = function() {
+      returnDecisionSelection.clear();
+      syncReturnDecisionBulkControls();
+    };
+
     window.renderReturnManagement = function() {
       const body = document.getElementById('returnManagementBody');
       if (!body) return;
@@ -6512,6 +6559,12 @@
       returnVisibleIds = rows.filter(order => orderNeedsHubReturn(order)).map(order => order.id);
       returnSelection = new Set([...returnSelection].filter(id => orders.some(o => o.id === id && orderNeedsHubReturn(o))));
 
+      // Same idea for parcels awaiting an admin decision (Schedule Redelivery /
+      // Hold / Return to Client) -- a separate bulk selection since it's a
+      // different subset of rows with different actions available.
+      returnDecisionVisibleIds = rows.filter(order => orderAwaitingReturnDecision(order)).map(order => order.id);
+      returnDecisionSelection = new Set([...returnDecisionSelection].filter(id => orders.some(o => o.id === id && orderAwaitingReturnDecision(o))));
+
       const awaitingCount = driverId
         ? orders.filter(order => order.assigned_driver_id === driverId && orderNeedsHubReturn(order)).length
         : orders.filter(order => orderNeedsHubReturn(order)).length;
@@ -6526,7 +6579,11 @@
             : order.hold_until ? `Hold until ${new Date(order.hold_until + 'T12:00:00').toLocaleDateString('en-TT')}`
               : order.return_to_client_status === 'ready' ? clientReturnMethodLabel(order) : 'Awaiting admin decision';
         return `<tr>
-          <td>${orderNeedsHubReturn(order) ? `<input class="return-bulk-check" type="checkbox" value="${order.id}" ${returnSelection.has(order.id) ? 'checked' : ''} onchange="toggleReturnBulk('${order.id}', this.checked)">` : ''}</td>
+          <td>${orderNeedsHubReturn(order)
+            ? `<input class="return-bulk-check" type="checkbox" value="${order.id}" ${returnSelection.has(order.id) ? 'checked' : ''} onchange="toggleReturnBulk('${order.id}', this.checked)">`
+            : orderAwaitingReturnDecision(order)
+              ? `<input class="return-decision-check" type="checkbox" value="${order.id}" ${returnDecisionSelection.has(order.id) ? 'checked' : ''} onchange="toggleReturnDecisionBulk('${order.id}', this.checked)">`
+              : ''}</td>
           <td><div class="td-id">${escapeHtml(order.order_number)}</div><div class="td-sub">Attempt ${escapeHtml(String(order.delivery_attempt_count || 1))}</div></td>
           <td><div class="td-name">${escapeHtml(clientName(order))}</div><div class="td-sub">${escapeHtml(order.customer_name || '')} · ${escapeHtml(order.customer_phone || '')}</div></td>
           <td><span class="badge badge-pending">${escapeHtml(outcomeLabels[order.delivery_outcome] || order.delivery_outcome || 'Undelivered')}</span>${order.delivery_outcome_notes ? `<div class="td-sub">${escapeHtml(order.delivery_outcome_notes)}</div>` : ''}</td>
@@ -6537,6 +6594,7 @@
         </tr>`;
       }).join('') || '<tr><td colspan="8">No returned parcels match this view.</td></tr>';
       syncReturnBulkControls();
+      syncReturnDecisionBulkControls();
     };
 
     window.runReturnBatchConfirm = function() {
@@ -6755,6 +6813,112 @@
         }
       });
     };
+
+    // ── Returns & Redelivery: bulk action for parcels awaiting a decision ──
+    // Pick multiple "awaiting admin decision" rows (Schedule Redelivery /
+    // Hold 14 Days / Hold as Stock / Return to Client), choose one action
+    // from the dropdown, and apply it to every selected parcel with a single
+    // set of inputs (same date/fee/payer for a redelivery batch, same
+    // return method for a client-return batch). Each order still goes
+    // through its own RPC call and its own success/failure check, so one bad
+    // order in the batch never blocks the rest.
+    window.applyReturnDecisionBulkAction = function() {
+      const selectedIds = selectedVisibleIds(returnDecisionSelection, returnDecisionVisibleIds);
+      if (!selectedIds.length) return showToast('Select at least one parcel awaiting a decision.');
+      const action = document.getElementById('returnDecisionAction')?.value || '';
+      const selectedOrders = orders.filter(order => selectedIds.includes(order.id));
+
+      if (action === 'hold_14' || action === 'hold_stock') {
+        const extraStock = action === 'hold_stock';
+        showModal(
+          extraStock ? 'Hold as Extra Stock' : 'Hold Returned Parcels',
+          `${extraStock ? 'Keep' : 'Hold'} ${selectedOrders.length} parcel(s) ${extraStock ? 'at VirtuDrop as client-approved extra stock without the standard 14-day deadline' : 'for 14 days while awaiting client instructions'}?`,
+          async () => {
+            let succeeded = 0;
+            const failed = [];
+            for (const order of selectedOrders) {
+              const { error } = await supabase.rpc('admin_hold_returned_order', { p_order_id: order.id, p_extra_stock: extraStock, p_notes: null });
+              if (error) failed.push(order.order_number + ': ' + (error.message || 'failed'));
+              else succeeded += 1;
+            }
+            if (succeeded) showToast(`${succeeded} parcel(s) placed on hold.`);
+            if (failed.length) window.vdNotify('Some Parcels Not Held', failed.slice(0, 5).join(' | ') + (failed.length > 5 ? ' | More errors omitted.' : ''), 'error');
+            returnDecisionSelection.clear();
+            await loadData();
+          }
+        );
+        return;
+      }
+
+      if (action === 'schedule_redelivery') return openBulkRedeliverySchedule(selectedOrders);
+      if (action === 'return_to_client') return openBulkClientReturn(selectedOrders);
+      showToast('Select an action first.');
+    };
+
+    function openBulkRedeliverySchedule(selectedOrders) {
+      const preferred = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+      showModal(`Schedule Redelivery for ${selectedOrders.length} Parcel(s)`, '', async () => {
+        const date = document.getElementById('redeliveryDate')?.value || '';
+        const fee = Number(document.getElementById('redeliveryFee')?.value || 0);
+        const payer = document.getElementById('redeliveryPayer')?.value || '';
+        const settlement = payer === 'client' ? document.getElementById('redeliverySettlement')?.value || '' : null;
+        const notes = document.getElementById('redeliveryNotes')?.value.trim() || null;
+        let succeeded = 0;
+        const failed = [];
+        for (const order of selectedOrders) {
+          const { error } = await supabase.rpc('admin_schedule_order_redelivery', {
+            p_order_id: order.id, p_delivery_date: date, p_fee: fee, p_payer: payer, p_settlement: settlement, p_notes: notes
+          });
+          if (error) failed.push(order.order_number + ': ' + (error.message || 'failed'));
+          else succeeded += 1;
+        }
+        if (succeeded) showToast(`${succeeded} parcel(s) scheduled for redelivery.`);
+        if (failed.length) window.vdNotify('Some Parcels Not Scheduled', failed.slice(0, 5).join(' | ') + (failed.length > 5 ? ' | More errors omitted.' : ''), 'error');
+        returnDecisionSelection.clear();
+        await loadData();
+      });
+      document.getElementById('modalBody').innerHTML = `<div class="payment-modal-form" style="text-align:left;">
+        <p style="margin:0 0 0.5rem; color:var(--grey);">Applies the same date, fee, payer and notes to all ${selectedOrders.length} selected parcels.</p>
+        <label>Redelivery Date<input id="redeliveryDate" type="date" min="${new Date().toISOString().slice(0, 10)}" value="${escapeHtml(preferred)}"></label>
+        <label>Second-Attempt Fee<input id="redeliveryFee" type="number" min="0" step="0.01" value="40.00"></label>
+        <label>Who Pays?<select id="redeliveryPayer" onchange="syncRedeliverySettlement()"><option value="customer">Customer</option><option value="client">Business Client</option></select></label>
+        <label id="redeliverySettlementWrap">Client Settlement<select id="redeliverySettlement"><option value="deduct_from_remittance">Deduct from remittance</option><option value="pay_separately">Pay separately</option></select></label>
+        <label>Admin Notes<textarea id="redeliveryNotes" placeholder="Reason, customer arrangement or delivery instructions"></textarea></label>
+      </div>`;
+      syncRedeliverySettlement();
+    }
+
+    function openBulkClientReturn(selectedOrders) {
+      showModal(`Return ${selectedOrders.length} Parcel(s) to Client`, '', async () => {
+        const method = document.getElementById('clientReturnMethod')?.value || 'office_collection';
+        const dropoffFeeType = method === 'client_dropoff' ? document.getElementById('clientReturnDropoffFee')?.value || 'free' : null;
+        const settlement = method === 'client_dropoff' && dropoffFeeType === 'paid'
+          ? document.getElementById('clientReturnSettlement')?.value || ''
+          : null;
+        const notes = document.getElementById('clientReturnNotes')?.value.trim() || null;
+        let succeeded = 0;
+        const failed = [];
+        for (const order of selectedOrders) {
+          const { error } = await supabase.rpc('admin_prepare_order_return_to_client', {
+            p_order_id: order.id, p_settlement: settlement, p_notes: notes, p_return_method: method, p_dropoff_fee_type: dropoffFeeType
+          });
+          if (error) failed.push(order.order_number + ': ' + (error.message || 'failed'));
+          else succeeded += 1;
+        }
+        if (succeeded) showToast(`${succeeded} parcel(s) prepared for return to the client.`);
+        if (failed.length) window.vdNotify('Some Parcels Not Prepared', failed.slice(0, 5).join(' | ') + (failed.length > 5 ? ' | More errors omitted.' : ''), 'error');
+        returnDecisionSelection.clear();
+        await loadData();
+      });
+      document.getElementById('modalBody').innerHTML = `<div class="payment-modal-form" style="text-align:left;">
+        <p style="margin:0 0 0.5rem; color:var(--grey);">Applies the same return method and notes to all ${selectedOrders.length} selected parcels.</p>
+        <label>Return Method<select id="clientReturnMethod" onchange="syncClientReturnOptions()"><option value="office_collection">Collected via office</option><option value="client_dropoff">Dropped off to client</option></select></label>
+        <label id="clientReturnDropoffFeeWrap" style="display:none;">Drop-off Fee<select id="clientReturnDropoffFee" onchange="syncClientReturnOptions()"><option value="free">Free drop-off</option><option value="paid">Paid drop-off - TTD 20.00</option></select></label>
+        <label id="clientReturnSettlementWrap" style="display:none;">Fee Settlement<select id="clientReturnSettlement"><option value="deduct_from_remittance">Deduct from remittance</option><option value="pay_separately">Pay separately</option></select></label>
+        <label>Return Notes<textarea id="clientReturnNotes" placeholder="Office collection, drop-off arrangement, contact person, or timing"></textarea></label>
+      </div>`;
+      syncClientReturnOptions();
+    }
 
     function updateDriverAssignBulkControls() {
       const visible = new Set(driverAssignVisibleIds);
