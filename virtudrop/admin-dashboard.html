@@ -1397,8 +1397,8 @@
             <button class="btn btn-ghost" type="button" onclick="toggleAllManagedBatchRows()">Select All / None</button>
           </div>
           <div class="table-wrap" style="margin-top:0.75rem;"><table>
-            <thead><tr><th style="width:2rem;"></th><th style="width:4rem;"></th><th>Imported</th><th>Ready for Invoice</th><th>Ready for Return</th><th>Cash Owed to Business</th></tr></thead>
-            <tbody id="managedBatchFilterBody"><tr><td colspan="6">Select a managed account to see its import batches.</td></tr></tbody>
+            <thead><tr><th style="width:2rem;"></th><th style="width:4rem;"></th><th>Imported</th><th>Ready for Invoice</th><th>Ready for Return</th><th>Cash Owed to Business</th><th>Regenerate (any batch, any time)</th></tr></thead>
+            <tbody id="managedBatchFilterBody"><tr><td colspan="7">Select a managed account to see its import batches.</td></tr></tbody>
           </table></div>
         </div>
 
@@ -7891,17 +7891,33 @@
       return keys.map(key => `${escapeHtml(key.replaceAll('_', ' '))}: ${counts.get(key)}`).join(' &middot; ');
     }
 
-    // How much cash VirtuDrop still owes this business for a batch: the same
-    // per-order remittance figure (clientPayout -- collected amount, net of
-    // VirtuDrop's delivery fee) already used everywhere else in the app for
-    // "how much do we owe this business client," summed for whichever of the
-    // batch's orders have actually been collected and not yet paid out.
-    // "ready" here means delivered/collected and awaiting remittance; once an
-    // order is marked "paid" it drops out of what's still owed.
+    // How much a single managed order is worth to the business, net of
+    // VirtuDrop's flat delivery fee -- MUST match the invoice spreadsheet's
+    // own "Total without delivery" formula (F8 = F7 - F9) exactly:
+    //   - a normal order's package_value is already the customer total with
+    //     the flat fee subtracted at import time, so it's used as-is.
+    //   - an exchange/refund order has no item value at all ($0), but still
+    //     cost a completed delivery, so its flat fee comes off as a straight
+    //     deduction (a negative amount) instead of vanishing.
+    function managedOrderOwed(order) {
+      if (order.bulk_special_type) return -amount(order.estimated_fee || 0);
+      return amount(order.package_value);
+    }
+
+    // How much cash VirtuDrop still owes this business for a batch: every
+    // delivered order's managedOrderOwed(), summed, for whichever orders
+    // haven't actually been paid out yet via a remittance batch. This does
+    // NOT depend on remittance_status/clientPayout -- those are geared
+    // toward the courier-COD reconciliation flow, which managed-account
+    // orders mostly never pass through (Middleman collects its own cash),
+    // and clientPayout floors a negative (deduction-only) order to $0
+    // instead of letting it actually reduce what's owed. Un-invoiced or
+    // already-invoiced orders both still count here -- printing the invoice
+    // is just paperwork, the business still owes the cash until it's paid.
     function managedBatchCashOwed(batchOrders) {
       return batchOrders
-        .filter(order => order.remittance_status === 'ready')
-        .reduce((sum, order) => sum + clientPayout(order), 0);
+        .filter(order => order.order_status === 'delivered' && !order.remittance_batch_id)
+        .reduce((sum, order) => sum + managedOrderOwed(order), 0);
     }
 
     // Shows every batch for this managed account -- not just ones with
@@ -7913,7 +7929,7 @@
       const body = document.getElementById('managedBatchFilterBody');
       if (!body) return;
       if (!selectedManagedAccountId) {
-        body.innerHTML = '<tr><td colspan="6">Select a managed account to see its import batches.</td></tr>';
+        body.innerHTML = '<tr><td colspan="7">Select a managed account to see its import batches.</td></tr>';
         return;
       }
       const previouslyChecked = new Set(
@@ -7939,6 +7955,8 @@
         ? sortedBatches.map(batch => {
             const invoiceCount = batch.orders.filter(o => o.order_status === 'delivered' && !o.managed_invoice_exported_at).length;
             const returnCount = batch.orders.filter(o => ['failed', 'cancelled', 'rescheduled'].includes(o.order_status) && !o.managed_return_exported_at).length;
+            const invoiceEligibleTotal = batch.orders.filter(o => o.order_status === 'delivered').length;
+            const returnEligibleTotal = batch.orders.filter(o => ['failed', 'cancelled', 'rescheduled'].includes(o.order_status)).length;
             const cashOwed = managedBatchCashOwed(batch.orders);
             const isExpanded = expandedKeys.has(batch.key);
             return `<tr>
@@ -7948,12 +7966,16 @@
                 <td>${invoiceCount}</td>
                 <td>${returnCount}</td>
                 <td>${moneyFull(cashOwed)}</td>
+                <td class="finance-actions">
+                  <button type="button" class="btn btn-ghost btn-sm" title="Re-print this batch's invoice exactly as it stands today -- does not mark anything as exported or touch today's pending export lists." ${invoiceEligibleTotal ? '' : 'disabled'} onclick="regenerateManagedBatchExport('${escapeHtml(batch.key)}', 'invoice')">Invoice</button>
+                  <button type="button" class="btn btn-ghost btn-sm" title="Re-print this batch's return sheet exactly as it stands today -- does not mark anything as exported or touch today's pending export lists." ${returnEligibleTotal ? '' : 'disabled'} onclick="regenerateManagedBatchExport('${escapeHtml(batch.key)}', 'return')">Return</button>
+                </td>
               </tr>
               <tr class="managed-batch-detail-row" data-batch-key="${escapeHtml(batch.key)}" style="display:${isExpanded ? '' : 'none'};">
-                <td colspan="6" style="padding-left:2rem; color:var(--text-muted,#666); font-size:0.85em;">${managedBatchStatusBreakdown(batch.orders)}</td>
+                <td colspan="7" style="padding-left:2rem; color:var(--text-muted,#666); font-size:0.85em;">${managedBatchStatusBreakdown(batch.orders)}</td>
               </tr>`;
           }).join('')
-        : '<tr><td colspan="6">No batches yet for this managed account.</td></tr>';
+        : '<tr><td colspan="7">No batches yet for this managed account.</td></tr>';
     }
 
     window.toggleManagedBatchDetail = function(key) {
@@ -8088,6 +8110,36 @@
         await loadData();
       } catch (error) {
         window.vdNotify('Return Sheet Not Exported', error.message || 'Could not generate the return export.', 'error');
+      }
+    };
+
+    // Re-print any batch's invoice or return spreadsheet, any time --
+    // including one already exported, or one imported months ago. Unlike
+    // the two functions above, this is a pure read-only re-print: it does
+    // NOT call admin_mark_managed_orders_exported and does NOT reload data,
+    // so it can never affect what shows up in today's pending export lists
+    // or double-charge/hide anything. It always includes every order in the
+    // batch that matches the export type's statuses, regardless of whether
+    // it was exported before.
+    window.regenerateManagedBatchExport = function(batchKey, exportType) {
+      if (!selectedManagedAccountId) return showToast('Select a managed account first.');
+      const statuses = exportType === 'invoice' ? ['delivered'] : ['failed', 'cancelled', 'rescheduled'];
+      const matched = managedAccountOrders()
+        .filter(order => managedBatchKey(order) === batchKey && statuses.includes(order.order_status))
+        .sort(naturalSortByExternalOrderNumber);
+      if (!matched.length) {
+        return showToast(exportType === 'invoice'
+          ? 'No delivered orders in this batch to invoice.'
+          : 'No failed, cancelled, or rescheduled orders in this batch to return.');
+      }
+      try {
+        const templateB64 = exportType === 'invoice' ? MANAGED_INVOICE_TEMPLATE_B64 : MANAGED_RETURN_TEMPLATE_B64;
+        const { wb, count } = fillManagedTemplate(templateB64, matched, exportType === 'return');
+        const stamp = new Date().toISOString().slice(0, 10);
+        downloadWorkbook(wb, `middleman-${exportType}-REPRINT-${stamp}.xlsx`);
+        showToast(`Reprinted ${exportType === 'invoice' ? 'invoice' : 'return sheet'} for ${count} orders (nothing marked as exported).`);
+      } catch (error) {
+        window.vdNotify('Reprint Failed', error.message || 'Could not regenerate this export.', 'error');
       }
     };
 
