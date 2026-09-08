@@ -1202,6 +1202,7 @@
             <option value="hold_14">Hold 14 Days</option>
             <option value="hold_stock">Hold as Stock</option>
             <option value="return_to_client">Return to Client</option>
+            <option value="confirm_client_return">Confirm Returned to Client</option>
           </select>
           <button class="btn btn-primary btn-sm" type="button" onclick="applyReturnDecisionBulkAction()">Apply to Selected</button>
           <button class="btn btn-ghost btn-sm" type="button" onclick="clearReturnDecisionSelection()">Clear</button>
@@ -6506,16 +6507,17 @@
       syncReturnBulkControls();
     };
 
-    // A parcel is "awaiting an admin decision" when it's back at the hub
-    // (or held) but hasn't yet been scheduled for redelivery, prepared for
-    // return to the client, or otherwise resolved -- i.e. exactly the rows
-    // that render the Schedule Redelivery / Hold 14 Days / Hold as Stock /
-    // Return to Client button group in returnActionButtons().
+    // A parcel needs bulk attention here whenever it still has SOME admin
+    // action left to take on it -- either picking what to do with it
+    // (Schedule Redelivery / Hold 14 Days / Hold as Stock / Return to
+    // Client), or, once "Return to Client" has been prepared, confirming it
+    // was actually handed over. Scheduled-for-redelivery rows are excluded
+    // since those just need a driver assigned, not a decision here.
     function orderAwaitingReturnDecision(order) {
       if (orderNeedsHubReturn(order)) return false;
-      if (order.return_to_client_status === 'ready') return false;
       if (order.redelivery_status === 'scheduled') return false;
-      return ['returned_to_hub', 'held_for_client_instructions'].includes(order.parcel_status);
+      return order.return_to_client_status === 'ready'
+        || ['returned_to_hub', 'held_for_client_instructions'].includes(order.parcel_status);
     }
 
     function syncReturnDecisionBulkControls() {
@@ -6852,6 +6854,7 @@
 
       if (action === 'schedule_redelivery') return openBulkRedeliverySchedule(selectedOrders);
       if (action === 'return_to_client') return openBulkClientReturn(selectedOrders);
+      if (action === 'confirm_client_return') return runBulkConfirmClientReturn(selectedOrders);
       showToast('Select an action first.');
     };
 
@@ -6918,6 +6921,26 @@
         <label>Return Notes<textarea id="clientReturnNotes" placeholder="Office collection, drop-off arrangement, contact person, or timing"></textarea></label>
       </div>`;
       syncClientReturnOptions();
+    }
+
+    // Bulk version of completeClientReturn() -- for parcels already prepared
+    // for return (return_to_client_status === 'ready'), confirm in one go
+    // that every selected one was physically handed over to its business
+    // client, instead of clicking "Confirm Returned to Client" one at a time.
+    function runBulkConfirmClientReturn(selectedOrders) {
+      showModal('Confirm Client Returns', `Confirm that ${selectedOrders.length} parcel(s) were physically returned to their business clients?`, async () => {
+        let succeeded = 0;
+        const failed = [];
+        for (const order of selectedOrders) {
+          const { error } = await supabase.rpc('admin_complete_order_return_to_client', { p_order_id: order.id });
+          if (error) failed.push(order.order_number + ': ' + (error.message || 'failed'));
+          else succeeded += 1;
+        }
+        if (succeeded) showToast(`${succeeded} parcel(s) confirmed returned to client.`);
+        if (failed.length) window.vdNotify('Some Parcels Not Confirmed', failed.slice(0, 5).join(' | ') + (failed.length > 5 ? ' | More errors omitted.' : ''), 'error');
+        returnDecisionSelection.clear();
+        await loadData();
+      });
     }
 
     function updateDriverAssignBulkControls() {
