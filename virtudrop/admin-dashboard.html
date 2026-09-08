@@ -6114,6 +6114,8 @@
         const savedEstimate = Number(order.estimated_fee);
         const rateDefault = order.pricing_rate_band === 'extended' ? 50 : Number(appSettings.default_delivery_fee || 40) || 40;
         const suggestedFee = Number.isFinite(savedEstimate) && savedEstimate > 0 ? savedEstimate : rateDefault;
+        const savedDriverPay = Number(order.driver_delivery_pay);
+        const suggestedDriverPay = Number.isFinite(savedDriverPay) && savedDriverPay > 0 ? savedDriverPay : 22.50;
         const rateLabel = order.pricing_rate_band === 'extended' ? 'Extended $50'
           : order.pricing_rate_band === 'remote' ? 'Remote quote'
             : order.pricing_rate_band === 'override' ? 'Business/custom rate'
@@ -6154,7 +6156,7 @@
             <div class="zone-card-actions">
               <select class="zone-select">${zoneOptions()}</select>
               <input class="zone-select fee-input" type="number" min="0" step="0.01" value="${suggestedFee.toFixed(2)}" title="Final delivery fee" />
-              <input class="zone-select driver-pay-input" type="number" min="0" step="0.01" value="${Number(order.driver_delivery_pay || 0).toFixed(2)}" placeholder="Driver pay" title="Amount the driver earns for this delivery" />
+              <input class="zone-select driver-pay-input" type="number" min="0" step="0.01" value="${suggestedDriverPay.toFixed(2)}" placeholder="Driver pay" title="Amount the driver earns for this delivery" />
               <input class="zone-select override-reason-input" type="text" maxlength="180" placeholder="Override/quote reason" title="Required when changing the estimate or quoting a remote order" />
               <button class="btn btn-primary btn-sm" onclick="confirmZone('${order.id}')">✅ Confirm Zone</button>
               <button class="btn btn-warn btn-sm" onclick="rejectOrder('${order.id}')">Reject</button>
