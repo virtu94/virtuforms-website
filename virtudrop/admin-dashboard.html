@@ -2949,12 +2949,24 @@
       return clientsById.get(order.business_client_id)?.business_name || 'Not listed';
     }
 
+    // wa.me requires the FULL international number (country code included,
+    // no "+"). Trinidad & Tobago's country calling code is 1, so a working
+    // link needs "1868XXXXXXX" -- stripping the "1" (as this used to do)
+    // leaves just the 868 area code with no country code, which WhatsApp
+    // can't resolve to a contact.
     function phoneForWhatsApp(phone) {
-      const digits = String(phone || '').replace(/\D/g, '');
+      let digits = String(phone || '').replace(/\D/g, '');
       if (!digits) return '';
-      if (digits.startsWith('1868') && digits.length === 11) return digits.slice(1);
-      if (digits.startsWith('868') && digits.length === 10) return digits;
-      if (digits.length === 7) return `868${digits}`;
+      if (digits.startsWith('1868') && digits.length === 11) return digits;
+      if (digits.startsWith('868') && digits.length === 10) return `1${digits}`;
+      if (digits.length === 7) return `1868${digits}`;
+      if (digits.length > 11) {
+        // Corrupted/concatenated entry (e.g. two numbers pasted together) --
+        // fall back to the last 7 digits as the local subscriber number so
+        // we still produce one well-formed number instead of passing
+        // garbage digits to WhatsApp.
+        return `1868${digits.slice(-7)}`;
+      }
       return digits;
     }
 

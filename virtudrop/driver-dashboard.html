@@ -998,10 +998,35 @@
       return String(phone || '').replace(/\D/g, '');
     }
 
+    // Always returns the plain 10-digit "868XXXXXXX" local number, with no
+    // country code. Some order records already have the phone saved with
+    // the "1" country-code digit in front ("18683681278") -- if that isn't
+    // stripped first, the "868" below gets stacked on top of an
+    // already-complete number (e.g. "868" + "18683681278"), which is why
+    // WhatsApp/call links could end up showing "868" twice.
     function phoneForLink(phone) {
-      const digits = cleanPhone(phone);
-      if (digits.startsWith('868')) return digits;
-      return '868' + digits;
+      let digits = cleanPhone(phone);
+      if (digits.length === 11 && digits.startsWith('1868')) {
+        digits = digits.slice(1);
+      }
+      if (digits.startsWith('868') && digits.length === 10) return digits;
+      if (digits.length > 10) {
+        // Corrupted/concatenated entry (e.g. two numbers pasted together) --
+        // fall back to the last 7 digits as the local subscriber number so
+        // we still produce one well-formed 868 number instead of
+        // compounding the corruption further.
+        digits = digits.slice(-7);
+      }
+      return digits.startsWith('868') ? digits : '868' + digits;
+    }
+
+    // wa.me requires the FULL international number (country code included,
+    // no "+"). Trinidad & Tobago's country calling code is 1, so this is
+    // "1" + the 868 local number from phoneForLink -- NOT phoneForLink's
+    // output on its own, which omits the country code and won't resolve on
+    // WhatsApp at all.
+    function phoneForWhatsApp(phone) {
+      return '1' + phoneForLink(phone);
     }
 
     function clientName(order) {
@@ -1684,7 +1709,7 @@
     };
 
     window.whatsappCustomer = function(phone) {
-      const url = `https://wa.me/${phoneForLink(phone)}`;
+      const url = `https://wa.me/${phoneForWhatsApp(phone)}`;
       window.open(url, '_blank');
     };
 
@@ -1913,7 +1938,7 @@
           ? ` Track your order: ${window.location.origin + window.location.pathname.replace(/driver-dashboard\.html$/, 'track.html')}?order=${encodeURIComponent(order.order_number)}&token=${encodeURIComponent(order.tracking_token)}`
           : '';
         const message = `VirtuDrop update for ${order.order_number}: ${note}${tracking}`;
-        window.open(`https://wa.me/${phoneForLink(order.customer_phone)}?text=${encodeURIComponent(message)}`, '_blank');
+        window.open(`https://wa.me/${phoneForWhatsApp(order.customer_phone)}?text=${encodeURIComponent(message)}`, '_blank');
       }
     };
 
@@ -1990,7 +2015,7 @@
       }
       const tracking = order?.order_number && order?.tracking_token ? ` Track it here: ${window.location.origin + window.location.pathname.replace(/driver-dashboard\.html$/, 'track.html')}?order=${encodeURIComponent(order.order_number)}&token=${encodeURIComponent(order.tracking_token)}` : '';
       const message = `VirtuDrop Update for ${order?.order_number || 'your delivery'}: ${note}${tracking}`;
-      const url = `https://wa.me/${phoneForLink(order?.customer_phone)}?text=${encodeURIComponent(message)}`;
+      const url = `https://wa.me/${phoneForWhatsApp(order?.customer_phone)}?text=${encodeURIComponent(message)}`;
       window.open(url, '_blank');
     };
 
