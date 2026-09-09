@@ -1146,6 +1146,7 @@
           <select class="filter-select" id="manifestBulkAction">
             <option value="">Choose manifest action</option>
             <option value="ready">Mark selected ready</option>
+            <option value="mark_all_collected">Check off all parcels as handed over</option>
             <option value="collected">Confirm selected driver collection</option>
             <option value="close">Close selected eligible manifests</option>
           </select>
@@ -5065,12 +5066,16 @@
       const selectedManifests = selectedIds.map(id => deliveryManifests.find(item => item.id === id)).filter(Boolean);
       const valid = selectedManifests.filter(manifest => {
         if (action === 'ready') return manifest.status === 'draft';
+        if (action === 'mark_all_collected') return ['draft', 'ready'].includes(manifest.status) && manifestUncollectedCount(manifest) > 0;
         if (action === 'collected') return manifest.status === 'ready';
         if (action === 'close') return manifest.status === 'collected' && manifest.close_summary?.can_close;
         return false;
       });
       if (!valid.length) return showToast('No selected manifests are eligible for that action.');
-      const label = action === 'ready' ? 'mark ready' : action === 'collected' ? 'confirm driver collection for' : 'close';
+      const label = action === 'ready' ? 'mark ready'
+        : action === 'mark_all_collected' ? 'check off every parcel as handed over on'
+        : action === 'collected' ? 'confirm driver collection for'
+        : 'close';
       showModal('Update Selected Manifests', `Apply ${label} to ${valid.length} selected manifest(s)?`, async () => {
         let updated = 0;
         const failed = [];
@@ -5078,6 +5083,9 @@
           try {
             if (action === 'close') {
               const { error } = await supabase.rpc('admin_close_delivery_manifest', { p_manifest_id: manifest.id, p_notes: null });
+              if (error) throw error;
+            } else if (action === 'mark_all_collected') {
+              const { error } = await supabase.rpc('admin_mark_all_manifest_orders_collected', { p_manifest_id: manifest.id });
               if (error) throw error;
             } else {
               const { error } = await supabase.rpc('admin_set_manifest_status', { p_manifest_id: manifest.id, p_status: action });
@@ -6182,6 +6190,63 @@
       syncZoneConfirmBulkControls();
     }
 
+    // Per-parcel handover checklist: lets the admin check off each item as
+    // it's physically handed to the driver, instead of the old one-click
+    // "Confirm Driver Collection" that assumed everything listed made it
+    // into the driver's hands. admin_set_manifest_status() also enforces
+    // this server-side, so this is a UI convenience on top of a real gate.
+    function manifestCollectedCount(manifest) {
+      return (manifest.orders || []).filter(order => order.collected_at).length;
+    }
+
+    function manifestUncollectedCount(manifest) {
+      return (manifest.orders || []).length - manifestCollectedCount(manifest);
+    }
+
+    function manifestOrderCollectedCellHtml(manifest, order) {
+      const checked = Boolean(order.collected_at);
+      if (manifest.status === 'collected' || manifest.status === 'closed') {
+        return checked
+          ? `<span class="badge badge-active" title="${order.collected_at ? new Date(order.collected_at).toLocaleString('en-TT') : ''}">✓ Handed over</span>`
+          : '<span class="badge badge-pending">Not checked</span>';
+      }
+      if (!['draft', 'ready'].includes(manifest.status)) return checked ? '✓' : '—';
+      return `<label class="bulk-order-check" style="font-weight:600;"><input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleManifestOrderCollected('${manifest.id}', '${order.id}', this.checked)"> ${checked ? 'Handed over' : 'Not yet'}</label>`;
+    }
+
+    window.markAllManifestOrdersCollected = function(manifestId) {
+      const manifest = deliveryManifests.find(item => item.id === manifestId);
+      if (!manifest) return showToast('Manifest not found.');
+      const remaining = manifestUncollectedCount(manifest);
+      if (remaining <= 0) return showToast('Every parcel on this manifest is already checked off.');
+      showModal('Mark All Handed Over', `Check off all ${remaining} remaining parcel(s) on ${manifest.manifest_number} as physically handed to the driver?`, async () => {
+        try {
+          const { error } = await supabase.rpc('admin_mark_all_manifest_orders_collected', { p_manifest_id: manifestId });
+          if (error) throw error;
+          showToast('All parcels checked off as handed over.');
+          await loadData();
+        } catch (error) {
+          window.vdNotify('Not Updated', error.message || 'Could not check off these parcels.', 'error');
+          await loadData();
+        }
+      });
+    };
+
+    window.toggleManifestOrderCollected = async function(manifestId, orderId, checked) {
+      try {
+        const { error } = await supabase.rpc('admin_toggle_manifest_order_collected', {
+          p_manifest_id: manifestId,
+          p_order_id: orderId,
+          p_collected: checked
+        });
+        if (error) throw error;
+        await loadData();
+      } catch (error) {
+        window.vdNotify('Parcel Not Updated', error.message || 'Could not update this parcel.', 'error');
+        await loadData();
+      }
+    };
+
     function manifestStatusBadge(status) {
       const labels = { draft: 'Draft', ready: 'Ready for Collection', collected: 'Collected by Driver', closed: 'Closed' };
       const cls = status === 'collected' || status === 'closed' ? 'badge-confirmed' : status === 'ready' ? 'badge-active' : 'badge-pending';
@@ -6265,11 +6330,12 @@
         <div class="card" style="margin-bottom:1rem;" data-manifest-id="${manifest.id}">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap; margin-bottom:1rem;">
             <div><label class="bulk-order-check"><input class="manifest-bulk-check" type="checkbox" value="${manifest.id}" ${manifestSelection.has(manifest.id) ? 'checked' : ''} onchange="toggleManifestBulk('${manifest.id}', this.checked)"><span class="td-id" style="font-size:1rem;">${escapeHtml(manifest.manifest_number)}</span></label><div class="td-name">${escapeHtml(manifest.driver_name || 'Driver')} · ${new Date(manifest.route_date + 'T12:00:00').toLocaleDateString('en-TT')}</div><div class="td-sub">${(manifest.orders || []).length} parcel order(s)</div></div>
-            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">${manifestStatusBadge(manifest.status)}<button class="btn btn-ghost btn-sm" onclick="printManifest('${manifest.id}')">Print</button>${manifest.status === 'draft' ? `<button class="btn btn-primary btn-sm" onclick="setManifestStatus('${manifest.id}', 'ready')">Mark Ready</button>` : ''}${manifest.status === 'ready' ? `<button class="btn btn-primary btn-sm" onclick="setManifestStatus('${manifest.id}', 'collected')">Confirm Driver Collection</button>` : ''}${manifest.status === 'collected' && manifest.close_summary?.can_close ? `<button class="btn btn-primary btn-sm" onclick="closeDeliveryManifest('${manifest.id}')">Close Manifest</button>` : ''}</div>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">${manifestStatusBadge(manifest.status)}<button class="btn btn-ghost btn-sm" onclick="printManifest('${manifest.id}')">Print</button>${manifest.status === 'draft' ? `<button class="btn btn-primary btn-sm" onclick="setManifestStatus('${manifest.id}', 'ready')">Mark Ready</button>` : ''}${['draft', 'ready'].includes(manifest.status) && manifestUncollectedCount(manifest) > 0 ? `<button class="btn btn-ghost btn-sm" onclick="markAllManifestOrdersCollected('${manifest.id}')">Mark All Handed Over</button>` : ''}${manifest.status === 'ready' ? `<button class="btn btn-primary btn-sm" ${manifestUncollectedCount(manifest) > 0 ? 'disabled title="Check off every parcel as handed over first"' : ''} onclick="setManifestStatus('${manifest.id}', 'collected')">Confirm Driver Collection</button>` : ''}${manifest.status === 'collected' && manifest.close_summary?.can_close ? `<button class="btn btn-primary btn-sm" onclick="closeDeliveryManifest('${manifest.id}')">Close Manifest</button>` : ''}</div>
           </div>
+          ${manifest.status === 'ready' ? `<div class="td-sub" style="margin-bottom:0.75rem;">${manifestCollectedCount(manifest)} of ${(manifest.orders || []).length} parcel(s) checked off as handed over${manifestUncollectedCount(manifest) > 0 ? ' — finish checking off every parcel before confirming driver collection.' : ' — all parcels handed over, ready to confirm.'}</div>` : ''}
           ${manifestCloseSummaryHtml(manifest)}
-          <div class="table-wrap"><table><thead><tr><th>Sequence</th><th>Zone</th><th>Order</th><th>Customer</th><th>Address</th><th>Parcels</th><th>Collect</th><th>Delivery</th><th>Cash</th>${manifest.status === 'draft' ? '<th>Action</th>' : ''}</tr></thead><tbody>
-            ${(manifest.orders || []).map(order => `<tr><td>${order.route_sequence}</td><td>${escapeHtml(order.zone_code ? `Zone ${order.zone_code}` : '—')}</td><td class="td-id">${escapeHtml(order.order_number)}</td><td><div class="td-name">${escapeHtml(order.customer_name || '')}</div><div class="td-sub">${escapeHtml(order.customer_phone || '')}</div>${orderItemPackageHtml(order)}</td><td>${escapeHtml(orderLabelAddress(order))}</td><td>${escapeHtml(String(order.parcel_count || 1))}</td><td>${moneyFull(order.amount_to_collect)}</td><td><div class="td-sub">${escapeHtml(String(order.order_status || '').replaceAll('_', ' '))}</div><div class="td-sub">${escapeHtml(String(order.parcel_status || '').replaceAll('_', ' '))}</div>${order.delivery_return_required ? '<div class="td-sub" style="color:#b42318;">Return required</div>' : ''}</td><td>${Number(order.amount_to_collect || 0) > 0 && order.order_status === 'delivered' ? escapeHtml(order.reconciliation_status || 'unreconciled') : '—'}</td>${manifest.status === 'draft' ? `<td><button class="btn btn-ghost btn-sm" onclick="removeManifestOrder('${manifest.id}', '${order.id}')">Remove</button></td>` : ''}</tr>`).join('') || `<tr><td colspan="${manifest.status === 'draft' ? 10 : 9}">No parcels on this manifest.</td></tr>`}
+          <div class="table-wrap"><table><thead><tr><th>Sequence</th><th>Zone</th><th>Order</th><th>Customer</th><th>Address</th><th>Parcels</th><th>Collect</th><th>Delivery</th><th>Cash</th><th>Handed Over</th>${manifest.status === 'draft' ? '<th>Action</th>' : ''}</tr></thead><tbody>
+            ${(manifest.orders || []).map(order => `<tr><td>${order.route_sequence}</td><td>${escapeHtml(order.zone_code ? `Zone ${order.zone_code}` : '—')}</td><td class="td-id">${escapeHtml(order.order_number)}</td><td><div class="td-name">${escapeHtml(order.customer_name || '')}</div><div class="td-sub">${escapeHtml(order.customer_phone || '')}</div>${orderItemPackageHtml(order)}</td><td>${escapeHtml(orderLabelAddress(order))}</td><td>${escapeHtml(String(order.parcel_count || 1))}</td><td>${moneyFull(order.amount_to_collect)}</td><td><div class="td-sub">${escapeHtml(String(order.order_status || '').replaceAll('_', ' '))}</div><div class="td-sub">${escapeHtml(String(order.parcel_status || '').replaceAll('_', ' '))}</div>${order.delivery_return_required ? '<div class="td-sub" style="color:#b42318;">Return required</div>' : ''}</td><td>${Number(order.amount_to_collect || 0) > 0 && order.order_status === 'delivered' ? escapeHtml(order.reconciliation_status || 'unreconciled') : '—'}</td><td>${manifestOrderCollectedCellHtml(manifest, order)}</td>${manifest.status === 'draft' ? `<td><button class="btn btn-ghost btn-sm" onclick="removeManifestOrder('${manifest.id}', '${order.id}')">Remove</button></td>` : ''}</tr>`).join('') || `<tr><td colspan="${manifest.status === 'draft' ? 11 : 10}">No parcels on this manifest.</td></tr>`}
           </tbody></table></div>
           ${manifest.handed_to_driver_at ? `<div class="td-sub" style="margin-top:0.75rem;">Handover confirmed ${new Date(manifest.handed_to_driver_at).toLocaleString('en-TT')}</div>` : ''}
         </div>`).join('') || (deliveryManifests.length
