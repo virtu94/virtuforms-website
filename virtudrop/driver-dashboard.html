@@ -840,10 +840,33 @@
       return orderDistanceInfo(order).km;
     }
 
+    // Areas are given a fixed position in the delivery route (Central -> South
+    // -> East -> North/West, nearest-to-pickup first within each zone), based
+    // on the confirmed zone + area_name matched server-side against
+    // zone_areas.sort_order (see resolve_area_route_order() / driver_list_my_deliveries()).
+    // Orders whose area couldn't be matched to a route position sort after
+    // every area that does have one.
+    const AREA_ROUTE_ORDER_FALLBACK = 999999;
+
+    function orderAreaRouteOrder(order) {
+      const value = Number(order.area_route_order);
+      return Number.isFinite(value) ? value : AREA_ROUTE_ORDER_FALLBACK;
+    }
+
+    // Primary sort key is the area's fixed route position (zone-grouped);
+    // GPS distance from the pickup point is only used to break ties between
+    // deliveries that land in the same area/position.
+    function compareRouteOrder(a, b) {
+      const areaDiff = orderAreaRouteOrder(a) - orderAreaRouteOrder(b);
+      if (areaDiff !== 0) return areaDiff;
+      return orderDistanceKm(a) - orderDistanceKm(b);
+    }
+
     // Builds the on-screen delivery order: any card the driver has already
     // dragged keeps its saved spot (driver_route_position, ascending); any
     // card that's never been touched by a drag is slotted into that list at
-    // the point its distance from the store would naturally place it.
+    // the point its area/zone route position (GPS distance as a tiebreaker)
+    // would naturally place it.
     // Delivered/failed/rescheduled cards are not part of this - they always
     // render after, in their normal recency order.
     function computeDeliveryDisplayOrder(allOrders) {
@@ -855,14 +878,13 @@
         .sort((a, b) => a.driver_route_position - b.driver_route_position);
       const unpositioned = active
         .filter(o => o.driver_route_position == null)
-        .sort((a, b) => orderDistanceKm(a) - orderDistanceKm(b));
+        .sort(compareRouteOrder);
 
       const merged = positioned.slice();
       unpositioned.forEach(order => {
-        const dist = orderDistanceKm(order);
         let insertAt = merged.length;
         for (let i = 0; i < merged.length; i++) {
-          if (dist < orderDistanceKm(merged[i])) { insertAt = i; break; }
+          if (compareRouteOrder(order, merged[i]) < 0) { insertAt = i; break; }
         }
         merged.splice(insertAt, 0, order);
       });
