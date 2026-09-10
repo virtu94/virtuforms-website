@@ -1431,7 +1431,7 @@
 
         <div class="card" id="managedReturnExportCard" style="display:none; margin-top:1rem;">
           <div class="card-title">Return Export</div>
-          <div class="accounting-note">Every failed / cancelled / rescheduled order not yet returned, from the batches checked above, is pre-checked the same way — untick anything to hold back. Fills in Middleman's Return template the same way — only checked orders are included and marked exported.</div>
+          <div class="accounting-note">Every order not yet delivered and not yet returned, from the batches checked above, is pre-checked the same way — untick anything to hold back. This includes orders still out for delivery (their Comment stays blank until an outcome is known), not just failed / cancelled / rescheduled ones — an order moves itself out of here and into the Invoice list the moment it's marked delivered. Fills in Middleman's Return template the same way — only checked orders are included and marked exported.</div>
           <div class="finance-actions" style="margin-top:0.75rem;">
             <button class="btn btn-ghost" type="button" onclick="toggleAllManagedExportRows('return')">Select All / None</button>
             <button class="btn btn-primary" type="button" onclick="exportManagedReturnXlsx()">Export Selected as Return (.xlsx)</button>
@@ -8135,12 +8135,35 @@
       return bytes.buffer;
     }
 
+    // Invoice = delivered. Return = everything else (zone pending, confirmed,
+    // assigned, failed, cancelled, rescheduled) -- an order still out for
+    // delivery falls under the return batch until it's marked delivered, at
+    // which point it stops matching here and starts matching the invoice
+    // side instead. No separate "move" step needed -- it's the same status
+    // check both places read.
+    function managedOrderExportBucket(order) {
+      return order.order_status === 'delivered' ? 'invoice' : 'return';
+    }
+
+    // Invoice = delivered orders not yet invoiced. Return = everything else
+    // not yet return-exported -- including orders still out for delivery
+    // (zone pending / confirmed / assigned), so a batch's return sheet shows
+    // the whole not-yet-invoiced picture from day one instead of only the
+    // final failed/cancelled/rescheduled outcomes.
     function pendingManagedOrders(exportType) {
       if (!selectedManagedAccountId) return [];
       const businessIds = new Set(managedAccountBusinessClients(selectedManagedAccountId).map(b => b.id));
       const exportedField = exportType === 'invoice' ? 'managed_invoice_exported_at' : 'managed_return_exported_at';
-      const statuses = exportType === 'invoice' ? ['delivered'] : ['failed', 'cancelled', 'rescheduled'];
-      return orders.filter(o => businessIds.has(o.business_client_id) && statuses.includes(o.order_status) && !o[exportedField]);
+      return orders.filter(o => businessIds.has(o.business_client_id) && !o[exportedField] && managedOrderExportBucket(o) === exportType);
+    }
+
+    // Only a resolved outcome (failed/cancelled/rescheduled) has a real note
+    // to show -- an order still out for delivery hasn't failed or been
+    // rescheduled yet, so its note cell should read blank, not carry over a
+    // stale driver/rejection note from some earlier attempt.
+    const MANAGED_RETURN_RESOLVED_STATUSES = ['failed', 'cancelled', 'rescheduled'];
+    function managedOrderReturnNote(order) {
+      return MANAGED_RETURN_RESOLVED_STATUSES.includes(order.order_status) ? managedOrderComment(order) : '';
     }
 
     function managedBatchKey(order) {
@@ -8357,10 +8380,10 @@
               <td>${escapeHtml(managedOrderBusinessName(order))}</td>
               <td>${escapeHtml(order.customer_name || '')}</td>
               <td>${escapeHtml(String(order.order_status || '').replaceAll('_', ' '))}</td>
-              <td>${escapeHtml(managedOrderComment(order))}</td>
+              <td>${escapeHtml(managedOrderReturnNote(order))}</td>
               <td>${escapeHtml(formatImportedAt(order.imported_at))}</td>
             </tr>`).join('')
-          : '<tr><td colspan="7">No failed, cancelled, or rescheduled orders are ready to return yet (from the batches checked above).</td></tr>';
+          : '<tr><td colspan="7">No orders are ready to return yet (from the batches checked above).</td></tr>';
       }
     }
 
@@ -8386,7 +8409,7 @@
       sorted.forEach((order, i) => {
         const row = 3 + i;
         const rowValues = includeComment
-          ? [[order.external_order_number || order.order_number, managedOrderTotalValue(order), order.customer_name, managedOrderComment(order)]]
+          ? [[order.external_order_number || order.order_number, managedOrderTotalValue(order), order.customer_name, managedOrderReturnNote(order)]]
           : [[order.external_order_number || order.order_number, managedOrderTotalValue(order), order.customer_name]];
         XLSX.utils.sheet_add_aoa(ws, rowValues, { origin: 'A' + row });
         const bCell = ws['B' + row];
@@ -8455,14 +8478,13 @@
     // it was exported before.
     window.regenerateManagedBatchExport = function(batchKey, exportType) {
       if (!selectedManagedAccountId) return showToast('Select a managed account first.');
-      const statuses = exportType === 'invoice' ? ['delivered'] : ['failed', 'cancelled', 'rescheduled'];
       const matched = managedAccountOrders()
-        .filter(order => managedBatchKey(order) === batchKey && statuses.includes(order.order_status))
+        .filter(order => managedBatchKey(order) === batchKey && managedOrderExportBucket(order) === exportType)
         .sort(naturalSortByExternalOrderNumber);
       if (!matched.length) {
         return showToast(exportType === 'invoice'
           ? 'No delivered orders in this batch to invoice.'
-          : 'No failed, cancelled, or rescheduled orders in this batch to return.');
+          : 'No orders in this batch to return.');
       }
       try {
         const templateB64 = exportType === 'invoice' ? MANAGED_INVOICE_TEMPLATE_B64 : MANAGED_RETURN_TEMPLATE_B64;
