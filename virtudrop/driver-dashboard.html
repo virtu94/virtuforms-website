@@ -964,10 +964,20 @@
     function normalizeStatus(order) {
       const orderStatus = typeof order === 'string' ? order : order?.order_status;
       const parcelStatus = typeof order === 'string' ? '' : order?.parcel_status;
-      if (orderStatus === 'out_for_delivery' || parcelStatus === 'handed_to_driver') return 'out';
+      // order_status is the authoritative delivery state machine. parcel_status
+      // ('handed_to_driver', 'delivered', ...) tracks physical custody of the
+      // parcel and is only meant as a fallback signal for "out for delivery"
+      // when order_status hasn't caught up yet -- it deliberately stays
+      // 'handed_to_driver' after a failed/refused/rescheduled attempt (the
+      // driver is still physically holding the parcel pending return to the
+      // hub), so it must NOT be checked before order_status's terminal
+      // outcomes, or a refused/no-response/rescheduled order gets stuck
+      // showing as "Out for Delivery" forever even though order_status
+      // correctly moved to 'failed'/'rescheduled'.
       if (orderStatus === 'delivered' || parcelStatus === 'delivered') return 'delivered';
       if (orderStatus === 'failed') return 'failed';
       if (orderStatus === 'rescheduled') return 'rescheduled';
+      if (orderStatus === 'out_for_delivery' || parcelStatus === 'handed_to_driver') return 'out';
       return 'queued';
     }
 
