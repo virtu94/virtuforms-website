@@ -3349,6 +3349,7 @@ function renderAll() {
   renderDashboardSection('Order catalog selector', renderOrderCatalogSelector);
   renderDashboardSection('Link catalog selector', renderLinkCatalogSelector);
   loadNotificationBadge();
+  window.vdUpdateScrollJumpVisibility?.();
 }
 
 async function safeDataRequest(label, requestPromise, fallbackData = []) {
@@ -4259,6 +4260,7 @@ window.switchPanel = function(id) {
   if (currentUser && business && ['active', 'history', 'delivery-link'].includes(id)) {
     loadBusinessData().catch(error => console.warn('Business dashboard refresh failed:', error));
   }
+  window.vdUpdateScrollJumpVisibility?.();
 };
 
 window.closeModal = function() {

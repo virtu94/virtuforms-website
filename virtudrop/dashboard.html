@@ -527,6 +527,25 @@
       .business-track-label { font-size:0.64rem; }
     }
 
+    /* ── Scroll to top/bottom shortcuts ── */
+    .scroll-jump-group {
+      position: fixed; right: 1rem; bottom: 1.2rem;
+      display: flex; flex-direction: column; gap: 0.5rem; z-index: 250;
+      opacity: 0; pointer-events: none; transform: translateY(6px);
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .scroll-jump-group.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
+    .scroll-jump-btn {
+      width: 42px; height: 42px; border-radius: 50%; border: 1px solid #e0e0e0;
+      background: #fff; color: #122C2A; font-size: 1.1rem; font-weight: 700;
+      cursor: pointer; box-shadow: 0 4px 14px rgba(13,43,40,0.16);
+      display: flex; align-items: center; justify-content: center; line-height: 1;
+    }
+    .scroll-jump-btn:hover { background: #F1F7F3; }
+    @media (max-width: 768px) {
+      .scroll-jump-group { bottom: 4.6rem; }
+    }
+
     /* ── Mobile bottom nav ── */
     .bottom-nav {
       display: none;
@@ -924,6 +943,12 @@
 
 <!-- Sidebar overlay for mobile -->
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- ── Scroll to top/bottom shortcuts ── -->
+<div class="scroll-jump-group" id="scrollJumpGroup">
+  <button class="scroll-jump-btn" type="button" title="Back to top" onclick="window.scrollTo({top:0, behavior:'smooth'})">↑</button>
+  <button class="scroll-jump-btn" type="button" title="Jump to bottom" onclick="window.scrollTo({top:document.body.scrollHeight, behavior:'smooth'})">↓</button>
+</div>
 
 <!-- ── Sidebar ── -->
 <aside class="sidebar" id="sidebar">
@@ -1916,6 +1941,18 @@
         }
       });
     });
+
+    // Show the jump-to-top/bottom shortcuts only once there's enough page
+    // to actually scroll, and only after scrolling down a bit.
+    function updateScrollJumpVisibility() {
+      var group = document.getElementById('scrollJumpGroup');
+      if (!group) return;
+      var scrollable = document.body.scrollHeight - window.innerHeight > 200;
+      group.classList.toggle('show', scrollable && window.scrollY > 300);
+    }
+    window.addEventListener('scroll', updateScrollJumpVisibility, { passive: true });
+    window.addEventListener('resize', updateScrollJumpVisibility);
+    window.vdUpdateScrollJumpVisibility = updateScrollJumpVisibility;
 
     var logoutBtn = document.getElementById('businessLogoutBtn');
     if (logoutBtn) {

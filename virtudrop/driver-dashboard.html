@@ -377,6 +377,23 @@
       padding: 0.8rem 1.5rem; display: flex; gap: 0.8rem; justify-content: center;
       box-shadow: 0 -4px 20px rgba(0,0,0,0.08); z-index: 100;
     }
+
+    /* ── Scroll to top/bottom shortcuts (long delivery lists) ── */
+    .scroll-jump-group {
+      position: fixed; right: 1rem;
+      bottom: calc(var(--driver-bottom-bar-space, 6rem) + env(safe-area-inset-bottom));
+      display: flex; flex-direction: column; gap: 0.5rem; z-index: 400;
+      opacity: 0; pointer-events: none; transform: translateY(6px);
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .scroll-jump-group.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
+    .scroll-jump-btn {
+      width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--grey-mid);
+      background: var(--white); color: var(--teal-dark); font-size: 1.1rem; font-weight: 700;
+      cursor: pointer; box-shadow: 0 4px 14px rgba(13,43,40,0.16);
+      display: flex; align-items: center; justify-content: center; line-height: 1;
+    }
+    .scroll-jump-btn:hover { background: var(--teal-pale); }
     .bottom-btn {
       flex: 0 1 360px; width: min(100%, 360px); padding: 0.8rem; border-radius: 10px;
       font-family: 'Inter', sans-serif; font-size: 0.88rem;
@@ -725,6 +742,12 @@
     </div>
   </div>
 
+  <!-- ── Scroll to top/bottom shortcuts ── -->
+  <div class="scroll-jump-group" id="scrollJumpGroup">
+    <button class="scroll-jump-btn" type="button" title="Back to top" onclick="window.scrollTo({top:0, behavior:'smooth'})">↑</button>
+    <button class="scroll-jump-btn" type="button" title="Jump to bottom" onclick="window.scrollTo({top:document.body.scrollHeight, behavior:'smooth'})">↓</button>
+  </div>
+
   <!-- ── Bottom bar ── -->
   <div class="bottom-bar">
     <button class="bottom-btn primary" id="driverUpdateAdminBtn" type="button">📡 Update Admin</button>
@@ -784,6 +807,18 @@
       window.addEventListener('focus', () => { hasActiveSession(); });
     }
     installSessionRestoreGuard();
+
+    // Show the jump-to-top/bottom shortcuts only once there's enough page
+    // to actually scroll, and only after the driver has scrolled a bit --
+    // no point cluttering the screen on a short list or right at the top.
+    function updateScrollJumpVisibility() {
+      const group = document.getElementById('scrollJumpGroup');
+      if (!group) return;
+      const scrollable = document.body.scrollHeight - window.innerHeight > 200;
+      group.classList.toggle('show', scrollable && window.scrollY > 300);
+    }
+    window.addEventListener('scroll', updateScrollJumpVisibility, { passive: true });
+    window.addEventListener('resize', updateScrollJumpVisibility);
 
     const isEmbeddedView = new URLSearchParams(window.location.search).get('embedded') === '1';
     if (isEmbeddedView) {
@@ -1299,6 +1334,7 @@
       updateStats();
       initDeliverySortable();
       syncCollapseAllLabel();
+      if (typeof updateScrollJumpVisibility === 'function') updateScrollJumpVisibility();
     }
 
     // ── Collapse/expand cards (mainly to make dragging on a phone easier) ──
