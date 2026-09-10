@@ -1411,8 +1411,8 @@
             <button class="btn btn-ghost" type="button" onclick="toggleAllManagedBatchRows()">Select All / None</button>
           </div>
           <div class="table-wrap" style="margin-top:0.75rem;"><table>
-            <thead><tr><th style="width:2rem;"></th><th style="width:4rem;"></th><th>Imported</th><th>Ready for Invoice</th><th>Ready for Return</th><th>Cash Owed to Business</th><th>Regenerate (any batch, any time)</th></tr></thead>
-            <tbody id="managedBatchFilterBody"><tr><td colspan="7">Select a managed account to see its import batches.</td></tr></tbody>
+            <thead><tr><th style="width:2rem;"></th><th style="width:4rem;"></th><th>Imported</th><th>Ready for Invoice</th><th>Ready for Return</th><th>Not Delivered</th><th>Cash Owed to Business</th><th>Regenerate (any batch, any time)</th></tr></thead>
+            <tbody id="managedBatchFilterBody"><tr><td colspan="8">Select a managed account to see its import batches.</td></tr></tbody>
           </table></div>
         </div>
 
@@ -8259,7 +8259,7 @@
       const body = document.getElementById('managedBatchFilterBody');
       if (!body) return;
       if (!selectedManagedAccountId) {
-        body.innerHTML = '<tr><td colspan="7">Select a managed account to see its import batches.</td></tr>';
+        body.innerHTML = '<tr><td colspan="8">Select a managed account to see its import batches.</td></tr>';
         return;
       }
       const previouslyChecked = new Set(
@@ -8287,6 +8287,7 @@
             const returnCount = batch.orders.filter(o => ['failed', 'cancelled', 'rescheduled'].includes(o.order_status) && !o.managed_return_exported_at).length;
             const invoiceEligibleTotal = batch.orders.filter(o => o.order_status === 'delivered').length;
             const returnEligibleTotal = batch.orders.filter(o => ['failed', 'cancelled', 'rescheduled'].includes(o.order_status)).length;
+            const notDeliveredCount = batch.orders.length - invoiceEligibleTotal - returnEligibleTotal;
             const cashOwed = managedBatchCashOwed(batch.orders);
             const isExpanded = expandedKeys.has(batch.key);
             return `<tr>
@@ -8295,6 +8296,7 @@
                 <td>${escapeHtml(formatImportedAt(batch.importedAt))}</td>
                 <td>${invoiceCount}</td>
                 <td>${returnCount}</td>
+                <td title="Still working their way through delivery -- not yet delivered, failed, cancelled, or rescheduled">${notDeliveredCount}</td>
                 <td>${moneyFull(cashOwed)}</td>
                 <td class="finance-actions">
                   <button type="button" class="btn btn-ghost btn-sm" title="Re-print this batch's invoice exactly as it stands today -- does not mark anything as exported or touch today's pending export lists." ${invoiceEligibleTotal ? '' : 'disabled'} onclick="regenerateManagedBatchExport('${escapeHtml(batch.key)}', 'invoice')">Invoice</button>
@@ -8302,10 +8304,10 @@
                 </td>
               </tr>
               <tr class="managed-batch-detail-row" data-batch-key="${escapeHtml(batch.key)}" style="display:${isExpanded ? '' : 'none'};">
-                <td colspan="7" style="padding-left:2rem; color:var(--text-muted,#666); font-size:0.85em;">${managedBatchStatusBreakdown(batch.orders)}</td>
+                <td colspan="8" style="padding-left:2rem; color:var(--text-muted,#666); font-size:0.85em;">${managedBatchStatusBreakdown(batch.orders)}</td>
               </tr>`;
           }).join('')
-        : '<tr><td colspan="7">No batches yet for this managed account.</td></tr>';
+        : '<tr><td colspan="8">No batches yet for this managed account.</td></tr>';
     }
 
     window.toggleManagedBatchDetail = function(key) {
