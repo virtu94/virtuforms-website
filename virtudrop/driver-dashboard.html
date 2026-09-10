@@ -2016,9 +2016,18 @@
       // saveOrderStatus() -> driver_update_order_status() (which APPENDS
       // p_note to whatever's already stored) duplicated the entire note
       // every single save, which is what ballooned driver_notes to 48MB
-      // across 35 orders. Use a straight replace instead -- the status
-      // itself isn't changing here, only the note text.
-      await directOrderStatusUpdate(orderId, order.order_status || 'assigned', note);
+      // across 35 orders.
+      //
+      // A plain client-side .update() (directOrderStatusUpdate) is NOT a
+      // safe replacement here: drivers have no RLS update policy on
+      // `orders` at all (only admins do), so that call silently updates 0
+      // rows and reports success. Use the dedicated replace-note RPC
+      // instead, which runs as SECURITY DEFINER.
+      const { error } = await supabase.rpc('driver_replace_order_note', {
+        p_order_id: orderId,
+        p_note: note
+      });
+      if (error) throw error;
       order.driver_notes = note;
     }
 
