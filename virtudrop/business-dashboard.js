@@ -1213,7 +1213,6 @@ const panelTitles = {
   'cod-records': 'COD Records',
   remittance: 'Remittance',
   failed: 'Failed & Rescheduled',
-  'driver-tab': 'Driver Tab',
   plan: 'My Plan',
   notifications: 'Notifications',
   settings: 'Settings'
@@ -3395,7 +3394,7 @@ async function loadBusinessData() {
 
   const { data: profileData, error: profileError } = await supabase
     .from('profiles')
-    .select('id, role, first_name, last_name, phone, status')
+    .select('id, role, first_name, last_name, phone, status, active_view')
     .eq('id', currentUser.id)
     .single();
 
@@ -3422,10 +3421,13 @@ async function loadBusinessData() {
   renderSidebarAccount();
 
   // Most business accounts never have a drivers row. The rare one that also
-  // covers deliveries (owner fill-in coverage) does, and only that account
-  // should see the Driver Tab.
+  // covers deliveries (owner fill-in coverage) does -- currently only YD
+  // Harvest -- and only that account should see the driver-view switch.
+  // Scoped to both an active driver row AND the YD Harvest identity so this
+  // never lights up for some other business client that happens to pick up
+  // a driver row later on.
   const driverTabNav = document.getElementById('driverTabNavItem');
-  if (driverTabNav) {
+  if (driverTabNav && isYdHarvestIdentity(business)) {
     supabase
       .from('drivers')
       .select('id, status')
@@ -3434,9 +3436,23 @@ async function loadBusinessData() {
       .maybeSingle()
       .then(({ data }) => {
         driverTabNav.style.display = data ? '' : 'none';
+        if (data && profile.active_view === 'driver') {
+          // This account last switched to the driver view -- send it
+          // straight there instead of showing the client dashboard first.
+          window.location.replace('driver-dashboard.html');
+        }
       })
       .catch(error => console.warn('Driver tab visibility check failed:', error));
   }
+
+  window.vdSwitchToDriverView = async function() {
+    try {
+      await supabase.rpc('set_dashboard_view_preference', { p_view: 'driver' });
+    } catch (error) {
+      console.warn('Could not persist driver view preference:', error);
+    }
+    window.location.href = 'driver-dashboard.html';
+  };
 
   renderAll();
 
@@ -4242,19 +4258,6 @@ window.switchPanel = function(id) {
   window.scrollTo(0, 0);
   if (currentUser && business && ['active', 'history', 'delivery-link'].includes(id)) {
     loadBusinessData().catch(error => console.warn('Business dashboard refresh failed:', error));
-  }
-
-  // The driver tab's iframe loads its own full battery of database calls
-  // (deliveries, pickups, manifests, finance...). Loading it eagerly on
-  // every dashboard page load -- even when nobody opens this tab -- was
-  // doubling the number of simultaneous database requests on every page
-  // load, which was a major contributor to timeouts. Load it lazily, only
-  // the first time this tab is actually opened.
-  if (id === 'driver-tab') {
-    const driverFrame = document.getElementById('driverTabIframe');
-    if (driverFrame && !driverFrame.src) {
-      driverFrame.src = driverFrame.dataset.src;
-    }
   }
 };
 

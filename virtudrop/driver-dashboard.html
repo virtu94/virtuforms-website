@@ -623,6 +623,7 @@
           <a role="menuitem" href="contact.html">Contact</a>
           <div class="driver-account-divider"></div>
           <a role="menuitem" href="driver-dashboard.html">Dashboard</a>
+          <button role="menuitem" id="switchToClientViewBtn" type="button" style="display:none;" onclick="window.vdSwitchToClientView && window.vdSwitchToClientView()">Switch to Client View</button>
           <button class="driver-account-logout" id="driverAccountLogoutBtn" type="button" role="menuitem">Log Out</button>
         </div>
       </div>
@@ -784,7 +785,8 @@
     }
     installSessionRestoreGuard();
 
-    if (new URLSearchParams(window.location.search).get('embedded') === '1') {
+    const isEmbeddedView = new URLSearchParams(window.location.search).get('embedded') === '1';
+    if (isEmbeddedView) {
       document.documentElement.classList.add('embedded-view');
     }
 
@@ -1538,7 +1540,7 @@
 
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('id, role, first_name, last_name, status')
+        .select('id, role, first_name, last_name, status, active_view')
         .eq('id', userId)
         .single();
 
@@ -1561,6 +1563,25 @@
 
       currentProfile = profile;
       currentDriver = driver;
+
+      // Dual-role accounts (owner_fill_in = an owner who also covers
+      // deliveries -- currently only YD Harvest) get a way back to the
+      // client dashboard, and land straight there if that's the view they
+      // last switched to. Gated on role === 'business' too, since some
+      // admin accounts also carry an owner_fill_in driver row for testing
+      // but have no business dashboard to switch to. Skip this entirely
+      // when embedded (e.g. inside the admin dashboard's Driver Tab
+      // iframe), where switching views away from the parent page makes no
+      // sense.
+      if (driver.owner_fill_in && profile.role === 'business' && !isEmbeddedView) {
+        const switchBtn = document.getElementById('switchToClientViewBtn');
+        if (switchBtn) switchBtn.style.display = '';
+        if (profile.active_view === 'client') {
+          window.location.replace('dashboard.html');
+          return;
+        }
+      }
+
       const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || 'Driver';
       document.querySelector('.driver-name').textContent = fullName;
       document.querySelector('.driver-zone').textContent = 'Assigned Orders';
@@ -1698,6 +1719,15 @@
 
     window.openMaps = function(target) {
       window.open(target, '_blank');
+    };
+
+    window.vdSwitchToClientView = async function() {
+      try {
+        await supabase.rpc('set_dashboard_view_preference', { p_view: 'client' });
+      } catch (error) {
+        console.warn('Could not persist client view preference:', error);
+      }
+      window.location.href = 'dashboard.html';
     };
 
     window.callCustomer = function(phone) {
