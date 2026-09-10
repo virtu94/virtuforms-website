@@ -1980,7 +1980,15 @@
     async function saveAdminUpdateForOrder(orderId, note) {
       const order = findOrder(orderId);
       if (!order) throw new Error('Could not find this order.');
-      await saveOrderStatus(orderId, order.order_status || 'assigned', note);
+      // This "Save Note" flow's textarea is pre-filled with the FULL existing
+      // driver_notes, so the driver is always resubmitting the whole note
+      // box, not adding a short new line. Routing that through
+      // saveOrderStatus() -> driver_update_order_status() (which APPENDS
+      // p_note to whatever's already stored) duplicated the entire note
+      // every single save, which is what ballooned driver_notes to 48MB
+      // across 35 orders. Use a straight replace instead -- the status
+      // itself isn't changing here, only the note text.
+      await directOrderStatusUpdate(orderId, order.order_status || 'assigned', note);
       order.driver_notes = note;
     }
 
