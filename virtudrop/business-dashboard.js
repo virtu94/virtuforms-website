@@ -4243,6 +4243,19 @@ window.switchPanel = function(id) {
   if (currentUser && business && ['active', 'history', 'delivery-link'].includes(id)) {
     loadBusinessData().catch(error => console.warn('Business dashboard refresh failed:', error));
   }
+
+  // The driver tab's iframe loads its own full battery of database calls
+  // (deliveries, pickups, manifests, finance...). Loading it eagerly on
+  // every dashboard page load -- even when nobody opens this tab -- was
+  // doubling the number of simultaneous database requests on every page
+  // load, which was a major contributor to timeouts. Load it lazily, only
+  // the first time this tab is actually opened.
+  if (id === 'driver-tab') {
+    const driverFrame = document.getElementById('driverTabIframe');
+    if (driverFrame && !driverFrame.src) {
+      driverFrame.src = driverFrame.dataset.src;
+    }
+  }
 };
 
 window.closeModal = function() {

@@ -1761,7 +1761,7 @@
         Driver Tab
       </div>
       <div class="card" style="padding:0; overflow:hidden;">
-        <iframe id="driverTabIframe" title="Driver Dashboard" src="driver-dashboard.html?embedded=1" style="width:100%; height:calc(100vh - 220px); min-height:600px; border:0; display:block;"></iframe>
+        <iframe id="driverTabIframe" title="Driver Dashboard" data-src="driver-dashboard.html?embedded=1" style="width:100%; height:calc(100vh - 220px); min-height:600px; border:0; display:block;"></iframe>
       </div>
     </div>
 
@@ -1906,6 +1906,13 @@
       if (sidebar) sidebar.classList.remove('open');
       if (overlay) overlay.classList.remove('active');
       window.scrollTo(0, 0);
+
+      if (id === 'driver-tab') {
+        var driverFrame = document.getElementById('driverTabIframe');
+        if (driverFrame && !driverFrame.src) {
+          driverFrame.src = driverFrame.dataset.src;
+        }
+      }
     }
 
     window.vdFallbackSwitchPanel = fallbackSwitchPanel;
