@@ -8459,9 +8459,20 @@
         const { wb, count } = fillManagedTemplate(MANAGED_RETURN_TEMPLATE_B64, matched, true);
         const stamp = new Date().toISOString().slice(0, 10);
         downloadWorkbook(wb, `middleman-return-${stamp}.xlsx`);
-        const { error } = await supabase.rpc('admin_mark_managed_orders_exported', { p_order_ids: matched.map(o => o.id), p_export_type: 'return' });
-        if (error) throw error;
-        showToast(`Return sheet exported: ${count} orders.`);
+        // Only mark the orders with a known, resolved outcome as exported.
+        // An order still out for delivery goes into today's sheet as a
+        // heads-up placeholder, but nothing has actually been "returned" for
+        // it yet -- so it stays unmarked and will show up again (this time
+        // with its real outcome and note) in whatever export is run once a
+        // driver finishes with it later tonight. That's what makes a later
+        // "send an updated version" export work without manual bookkeeping.
+        const resolvedIds = matched.filter(o => MANAGED_RETURN_RESOLVED_STATUSES.includes(o.order_status)).map(o => o.id);
+        if (resolvedIds.length) {
+          const { error } = await supabase.rpc('admin_mark_managed_orders_exported', { p_order_ids: resolvedIds, p_export_type: 'return' });
+          if (error) throw error;
+        }
+        const stillOutCount = matched.length - resolvedIds.length;
+        showToast(`Return sheet exported: ${count} orders.${stillOutCount ? ` ${stillOutCount} still out for delivery -- they'll appear again, updated, in your next export.` : ''}`);
         await loadData();
       } catch (error) {
         window.vdNotify('Return Sheet Not Exported', error.message || 'Could not generate the return export.', 'error');
