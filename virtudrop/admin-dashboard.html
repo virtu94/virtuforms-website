@@ -8169,6 +8169,20 @@
       return MANAGED_RETURN_RESOLVED_STATUSES.includes(order.order_status) ? managedOrderComment(order) : '';
     }
 
+    // Middleman's sheets are keyed on THEIR order number, never VirtuDrop's
+    // internal one -- on re-export especially, a mix of the two would break
+    // their reconciliation. So this never falls back to order.order_number;
+    // a missing external number stays blank in the file, and shows a loud
+    // on-screen warning instead so Bobs catches and fixes it (via the order's
+    // "Middleman Order #" field) before it goes out.
+    function managedOrderExternalNumber(order) {
+      return order.external_order_number || '';
+    }
+    function managedOrderExternalNumberCell(order) {
+      const num = managedOrderExternalNumber(order);
+      return num ? escapeHtml(num) : '<span style="color:var(--orange);font-weight:600;">Missing Middleman #</span>';
+    }
+
     function managedBatchKey(order) {
       return order.import_batch_id || 'unbatched';
     }
@@ -8366,7 +8380,7 @@
         invoiceBody.innerHTML = invoiceRows.length
           ? invoiceRows.map(order => `<tr>
               <td><input type="checkbox" class="managed-export-check" data-export-type="invoice" data-order-id="${order.id}" checked></td>
-              <td>${escapeHtml(order.external_order_number || order.order_number)}</td>
+              <td>${managedOrderExternalNumberCell(order)}</td>
               <td>${escapeHtml(managedOrderBusinessName(order))}</td>
               <td>${escapeHtml(order.customer_name || '')}</td>
               <td>${typeof managedOrderTotalValue(order) === 'number' ? moneyFull(managedOrderTotalValue(order)) : managedOrderTotalValue(order)}</td>
@@ -8379,7 +8393,7 @@
         returnBody.innerHTML = returnRows.length
           ? returnRows.map(order => `<tr>
               <td><input type="checkbox" class="managed-export-check" data-export-type="return" data-order-id="${order.id}" checked></td>
-              <td>${escapeHtml(order.external_order_number || order.order_number)}</td>
+              <td>${managedOrderExternalNumberCell(order)}</td>
               <td>${escapeHtml(managedOrderBusinessName(order))}</td>
               <td>${escapeHtml(order.customer_name || '')}</td>
               <td>${escapeHtml(String(order.order_status || '').replaceAll('_', ' '))}</td>
@@ -8412,8 +8426,8 @@
       sorted.forEach((order, i) => {
         const row = 3 + i;
         const rowValues = includeComment
-          ? [[order.external_order_number || order.order_number, managedOrderTotalValue(order), order.customer_name, managedOrderReturnNote(order)]]
-          : [[order.external_order_number || order.order_number, managedOrderTotalValue(order), order.customer_name]];
+          ? [[managedOrderExternalNumber(order), managedOrderTotalValue(order), order.customer_name, managedOrderReturnNote(order)]]
+          : [[managedOrderExternalNumber(order), managedOrderTotalValue(order), order.customer_name]];
         XLSX.utils.sheet_add_aoa(ws, rowValues, { origin: 'A' + row });
         const bCell = ws['B' + row];
         if (bCell && bCell.t === 'n') bCell.z = '"$"#,##0.00';
