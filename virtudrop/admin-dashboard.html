@@ -1381,6 +1381,7 @@
             <div class="finance-field"><label for="managedAddBusiness">Business</label><select class="filter-select" id="managedAddBusiness"></select></div>
             <div class="finance-field"><label for="managedAddExternalOrderNumber">Middleman Order #</label><input class="filter-input" id="managedAddExternalOrderNumber" type="text"></div>
             <div class="finance-field"><label for="managedAddTotal">Total ($, or Exchange / Refund)</label><input class="filter-input" id="managedAddTotal" type="text"></div>
+            <div class="finance-field"><label for="managedAddNotes">Notes for Driver (optional)</label><input class="filter-input" id="managedAddNotes" type="text" placeholder="e.g. call before arriving, leave with security"></div>
           </div>
           <div class="finance-actions" style="margin-top:0.75rem;">
             <button class="btn btn-primary" type="button" onclick="submitManagedManualOrder()">Add Order</button>
@@ -1391,7 +1392,7 @@
           <div class="card-title">CSV Batch Import</div>
           <div class="csv-drop">
             <input class="filter-input" type="file" id="managedImportFile" accept=".csv,text/csv">
-            <div class="csv-help">Required columns: name, contact, item, area, business, external_order_number, total. Address is optional (combined with area for the delivery location). Business must match one of this managed account's businesses (e.g. "C&amp;H Electronics" or "Scents") — a single file can mix rows for both. external_order_number is Middleman's own order number (not VirtuDrop's) and is required — it's used later for remittance. Enter "Exchange" in the total column for a warranty/item exchange with no item price attached, or "Refund" when Middleman supplies cash for the driver to hand the customer while collecting the item back — either way VirtuDrop's flat fee is deducted from that business's remittance instead of being charged to the customer. Order number, price, and notes are filled in automatically — do not include a notes column.</div>
+            <div class="csv-help">Required columns: name, contact, item, area, business, external_order_number, total. Address and notes are optional. Address is combined with area for the delivery location. Notes goes straight onto the order as the driver's delivery note — the driver sees it on their delivery (e.g. "call before arriving", "leave with security", "fragile"). Business must match one of this managed account's businesses (e.g. "C&amp;H Electronics" or "Scents") — a single file can mix rows for both. external_order_number is Middleman's own order number (not VirtuDrop's) and is required — it's used later for remittance. Enter "Exchange" in the total column for a warranty/item exchange with no item price attached, or "Refund" when Middleman supplies cash for the driver to hand the customer while collecting the item back — either way VirtuDrop's flat fee is deducted from that business's remittance instead of being charged to the customer. Order number and price are filled in automatically.</div>
             <div class="finance-actions">
               <button class="btn btn-ghost" type="button" onclick="downloadManagedImportTemplate()">Download Template</button>
               <button class="btn btn-primary" type="button" onclick="previewManagedImport()">Preview CSV</button>
@@ -1399,8 +1400,8 @@
             </div>
           </div>
           <div class="table-wrap" style="margin-top:1rem;"><table>
-            <thead><tr><th>Status</th><th>Name</th><th>Contact</th><th>Item</th><th>Area</th><th>Business</th><th>Order #</th><th>Total</th><th>Notes (auto)</th><th>Issue</th></tr></thead>
-            <tbody id="managedImportPreviewBody"><tr><td colspan="10">Upload a CSV file to preview orders.</td></tr></tbody>
+            <thead><tr><th>Status</th><th>Name</th><th>Contact</th><th>Item</th><th>Area</th><th>Business</th><th>Order #</th><th>Total</th><th>Notes for Driver</th><th>Notes (auto, internal)</th><th>Issue</th></tr></thead>
+            <tbody id="managedImportPreviewBody"><tr><td colspan="11">Upload a CSV file to preview orders.</td></tr></tbody>
           </table></div>
         </div>
 
@@ -8014,7 +8015,13 @@
         isExchange,
         isRefund,
         total,
-        notes: isExchange
+        // What the driver actually sees on their delivery (customer_notes)
+        // -- a real instruction from Middleman/the business, e.g. "call
+        // before arriving" or "leave with security". Optional.
+        deliveryNotes: String(row.notes || '').trim() || null,
+        // Internal-only reference summary (admin_notes) -- not shown to
+        // drivers, just a quick order/item/price recap for admin review.
+        autoSummary: isExchange
           ? `${name || '—'} | ${item || '—'} | Exchange — no item price`
           : isRefund
             ? `${name || '—'} | ${item || '—'} | Refund — cash given to customer, item collected`
@@ -8045,7 +8052,8 @@
         p_rows: rows.map(row => ({
           name: row.name, contact: row.contact, item: row.item, area: row.area, address: row.address,
           business: row.business, external_order_number: row.externalOrderNumber,
-          total: row.isExchange ? 'exchange' : row.isRefund ? 'refund' : row.total
+          total: row.isExchange ? 'exchange' : row.isRefund ? 'refund' : row.total,
+          notes: row.deliveryNotes
         }))
       });
       if (error) throw error;
@@ -8062,14 +8070,15 @@
         address: document.getElementById('managedAddAddress')?.value,
         business: document.getElementById('managedAddBusiness')?.value,
         external_order_number: document.getElementById('managedAddExternalOrderNumber')?.value,
-        total: document.getElementById('managedAddTotal')?.value
+        total: document.getElementById('managedAddTotal')?.value,
+        notes: document.getElementById('managedAddNotes')?.value
       });
       const issues = validateManagedRow(row);
       if (issues.length) return showToast(issues.join(', '));
       try {
         const result = await importManagedRows([row]);
         showToast(`${result.imported_count} order added.`);
-        ['managedAddName', 'managedAddContact', 'managedAddItem', 'managedAddArea', 'managedAddAddress', 'managedAddExternalOrderNumber', 'managedAddTotal'].forEach(id => {
+        ['managedAddName', 'managedAddContact', 'managedAddItem', 'managedAddArea', 'managedAddAddress', 'managedAddExternalOrderNumber', 'managedAddTotal', 'managedAddNotes'].forEach(id => {
           const el = document.getElementById(id);
           if (el) el.value = '';
         });
@@ -8080,10 +8089,10 @@
     };
 
     window.downloadManagedImportTemplate = function() {
-      const csv = 'name,contact,item,area,address,business,external_order_number,total\n'
-        + 'Customer Name,868-000-0000,Item description,Area,"Optional full address",C&H Electronics,MM-10231,145.00\n'
-        + 'Customer Name,868-000-0000,Item description,Area,"Optional full address",Scents,MM-10232,Exchange\n'
-        + 'Customer Name,868-000-0000,Item description,Area,"Optional full address",C&H Electronics,MM-10233,Refund\n';
+      const csv = 'name,contact,item,area,address,business,external_order_number,total,notes\n'
+        + 'Customer Name,868-000-0000,Item description,Area,"Optional full address",C&H Electronics,MM-10231,145.00,"Optional note for the driver"\n'
+        + 'Customer Name,868-000-0000,Item description,Area,"Optional full address",Scents,MM-10232,Exchange,\n'
+        + 'Customer Name,868-000-0000,Item description,Area,"Optional full address",C&H Electronics,MM-10233,Refund,\n';
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -8111,13 +8120,14 @@
           <td>${item.issues.length ? '<span class="badge badge-failed">Invalid</span>' : '<span class="badge badge-confirmed">Ready</span>'}</td>
           <td>${escapeHtml(item.row.name)}</td><td>${escapeHtml(item.row.contact)}</td><td>${escapeHtml(item.row.item)}</td>
           <td>${escapeHtml(item.row.area)}</td><td>${escapeHtml(item.row.business)}</td><td>${escapeHtml(item.row.externalOrderNumber)}</td>
-          <td>${item.row.isExchange ? 'Exchange' : item.row.isRefund ? 'Refund' : moneyFull(item.row.total)}</td><td>${escapeHtml(item.row.notes)}</td>
+          <td>${item.row.isExchange ? 'Exchange' : item.row.isRefund ? 'Refund' : moneyFull(item.row.total)}</td>
+          <td>${escapeHtml(item.row.deliveryNotes || '—')}</td><td>${escapeHtml(item.row.autoSummary)}</td>
           <td>${escapeHtml(item.issues.join(', ') || '—')}</td></tr>`).join('');
         confirmBtn.disabled = !managedImportRows.some(item => !item.issues.length);
       } catch (error) {
         managedImportRows = [];
         confirmBtn.disabled = true;
-        body.innerHTML = `<tr><td colspan="10">${escapeHtml(error.message || 'Could not read this CSV.')}</td></tr>`;
+        body.innerHTML = `<tr><td colspan="11">${escapeHtml(error.message || 'Could not read this CSV.')}</td></tr>`;
       }
     };
 
@@ -8129,7 +8139,7 @@
         showToast(`${result.imported_count} orders imported.`);
         managedImportRows = [];
         document.getElementById('confirmManagedImportBtn').disabled = true;
-        document.getElementById('managedImportPreviewBody').innerHTML = '<tr><td colspan="10">Import completed. Add a Google Maps pin to each order from All Orders, then continue through zone confirmation and driver assignment.</td></tr>';
+        document.getElementById('managedImportPreviewBody').innerHTML = '<tr><td colspan="11">Import completed. Add a Google Maps pin to each order from All Orders, then continue through zone confirmation and driver assignment.</td></tr>';
         document.getElementById('managedImportFile').value = '';
         await loadData();
         showPanel('zone-confirm');
