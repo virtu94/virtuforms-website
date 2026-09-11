@@ -1418,7 +1418,7 @@
 
         <div class="card" id="managedExportsCard" style="display:none; margin-top:1rem;">
           <div class="card-title">Invoice Export</div>
-          <div class="accounting-note">Every delivered order not yet invoiced, from the batches checked above, is pre-checked here too — so a routine batch is just hit Export. Untick anything you want to hold back for a later run. Fills in Middleman's Invoice template — combining every business under this managed account, sorted by the imported order number, with no business shown. Only checked orders are included and marked as exported; anything left unchecked stays available for a later batch.</div>
+          <div class="accounting-note">Every delivered order from the batches checked above, pre-checked here too — the full current list every time, whether or not it was in an earlier invoice for this batch, so hitting Export again later (once more drivers finish) gives you a complete, updated invoice rather than only what's new since last time. Untick anything you want to hold back. Fills in Middleman's Invoice template — combining every business under this managed account, sorted by the imported order number, with no business shown.</div>
           <div class="finance-actions" style="margin-top:0.75rem;">
             <button class="btn btn-ghost" type="button" onclick="toggleAllManagedExportRows('invoice')">Select All / None</button>
             <button class="btn btn-primary" type="button" onclick="exportManagedInvoiceXlsx()">Export Selected as Invoice (.xlsx)</button>
@@ -1431,7 +1431,7 @@
 
         <div class="card" id="managedReturnExportCard" style="display:none; margin-top:1rem;">
           <div class="card-title">Return Export</div>
-          <div class="accounting-note">Every order not yet delivered and not yet returned, from the batches checked above, is pre-checked the same way — untick anything to hold back. This includes orders still out for delivery (their Comment stays blank until an outcome is known), not just failed / cancelled / rescheduled ones — an order moves itself out of here and into the Invoice list the moment it's marked delivered. Fills in Middleman's Return template the same way — only checked orders are included and marked exported.</div>
+          <div class="accounting-note">Every order not yet delivered, from the batches checked above, pre-checked the same way — the full current list every time, whether or not it was in an earlier return sheet for this batch. This includes orders still out for delivery (their Comment stays blank until an outcome is known), not just failed / cancelled / rescheduled ones — an order moves itself out of here and into the Invoice list the moment it's marked delivered, so hitting Export again later gives you a complete, updated return sheet. Fills in Middleman's Return template the same way.</div>
           <div class="finance-actions" style="margin-top:0.75rem;">
             <button class="btn btn-ghost" type="button" onclick="toggleAllManagedExportRows('return')">Select All / None</button>
             <button class="btn btn-primary" type="button" onclick="exportManagedReturnXlsx()">Export Selected as Return (.xlsx)</button>
@@ -8145,16 +8145,19 @@
       return order.order_status === 'delivered' ? 'invoice' : 'return';
     }
 
-    // Invoice = delivered orders not yet invoiced. Return = everything else
-    // not yet return-exported -- including orders still out for delivery
-    // (zone pending / confirmed / assigned), so a batch's return sheet shows
-    // the whole not-yet-invoiced picture from day one instead of only the
-    // final failed/cancelled/rescheduled outcomes.
+    // Always the FULL current picture for the export type, regardless of
+    // whether an order was already included in an earlier invoice/return
+    // run -- not just what's new. That's on purpose: Bobs needs to hit
+    // Export again later (after more drivers finish deliveries) and get an
+    // updated invoice/return sheet that still has everything from the
+    // earlier version PLUS whatever just changed status, not a delta-only
+    // file he'd have to merge by hand. An order moves itself from the
+    // return list to the invoice list the moment it's marked delivered --
+    // same status check both places read, no separate "move" step.
     function pendingManagedOrders(exportType) {
       if (!selectedManagedAccountId) return [];
       const businessIds = new Set(managedAccountBusinessClients(selectedManagedAccountId).map(b => b.id));
-      const exportedField = exportType === 'invoice' ? 'managed_invoice_exported_at' : 'managed_return_exported_at';
-      return orders.filter(o => businessIds.has(o.business_client_id) && !o[exportedField] && managedOrderExportBucket(o) === exportType);
+      return orders.filter(o => businessIds.has(o.business_client_id) && managedOrderExportBucket(o) === exportType);
     }
 
     // Only a resolved outcome (failed/cancelled/rescheduled) has a real note
