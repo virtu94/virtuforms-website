@@ -6278,6 +6278,14 @@
       return (manifest.orders || []).length - manifestCollectedCount(manifest);
     }
 
+    // Checking these off one at a time used to fire a save-and-reload on
+    // EVERY click -- fine for one parcel, disruptive when handing over a
+    // whole manifest, since the list redraws and loses your place after
+    // each tick. Now the checkbox is purely local (no network call at all)
+    // -- tick through the whole stack at your own pace, then hit "Mark
+    // Selected as Handed Over" once to save everything you've ticked in one
+    // go. data-was-collected records the state as of the last load, so the
+    // submit step only sends the rows that actually changed.
     function manifestOrderCollectedCellHtml(manifest, order) {
       const checked = Boolean(order.collected_at);
       if (manifest.status === 'collected' || manifest.status === 'closed') {
@@ -6286,8 +6294,16 @@
           : '<span class="badge badge-pending">Not checked</span>';
       }
       if (!['draft', 'ready'].includes(manifest.status)) return checked ? '✓' : '—';
-      return `<label class="bulk-order-check" style="font-weight:600;"><input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleManifestOrderCollected('${manifest.id}', '${order.id}', this.checked)"> ${checked ? 'Handed over' : 'Not yet'}</label>`;
+      return `<label class="bulk-order-check" style="font-weight:600;"><input type="checkbox" class="manifest-handover-check" data-manifest-id="${manifest.id}" data-order-id="${order.id}" data-was-collected="${checked}" ${checked ? 'checked' : ''} onchange="onManifestHandoverCheckChanged(this)"> <span class="manifest-handover-label">${checked ? 'Handed over' : 'Not yet'}</span></label>`;
     }
+
+    // Purely cosmetic -- just flips the label text next to the box the
+    // admin just clicked. No RPC, no reload, so ticking through a stack of
+    // parcels never jumps or loses scroll position.
+    window.onManifestHandoverCheckChanged = function(checkbox) {
+      const label = checkbox.parentElement?.querySelector('.manifest-handover-label');
+      if (label) label.textContent = checkbox.checked ? 'Handed over' : 'Not yet';
+    };
 
     window.markAllManifestOrdersCollected = function(manifestId) {
       const manifest = deliveryManifests.find(item => item.id === manifestId);
@@ -6307,19 +6323,32 @@
       });
     };
 
-    window.toggleManifestOrderCollected = async function(manifestId, orderId, checked) {
-      try {
-        const { error } = await supabase.rpc('admin_toggle_manifest_order_collected', {
-          p_manifest_id: manifestId,
-          p_order_id: orderId,
-          p_collected: checked
-        });
-        if (error) throw error;
+    // Saves every checkbox you've ticked (or unticked) on this manifest
+    // since it last loaded, in one batch -- the point being you check off
+    // parcels as you physically hand them to the driver, at your own pace,
+    // and only save once you're done with the stack.
+    window.submitManifestHandoverSelections = function(manifestId) {
+      const boxes = Array.from(document.querySelectorAll(`.manifest-handover-check[data-manifest-id="${manifestId}"]`));
+      const changed = boxes.filter(box => box.checked !== (box.dataset.wasCollected === 'true'));
+      if (!changed.length) return showToast('No changes to save -- tick off parcels as you hand them over first.');
+      const manifest = deliveryManifests.find(item => item.id === manifestId);
+      const label = manifest?.manifest_number || 'this manifest';
+      showModal('Save Handover Selections', `Save ${changed.length} parcel(s) as handed over/not handed over on ${label}?`, async () => {
+        const results = await Promise.allSettled(changed.map(box =>
+          supabase.rpc('admin_toggle_manifest_order_collected', {
+            p_manifest_id: manifestId,
+            p_order_id: box.dataset.orderId,
+            p_collected: box.checked
+          })
+        ));
+        const failed = results.filter(r => r.status === 'rejected' || r.value?.error);
+        if (failed.length) {
+          window.vdNotify('Some Parcels Not Updated', `${changed.length - failed.length} of ${changed.length} saved. ${failed.length} failed -- try those again.`, 'error');
+        } else {
+          showToast(`${changed.length} parcel(s) saved.`);
+        }
         await loadData();
-      } catch (error) {
-        window.vdNotify('Parcel Not Updated', error.message || 'Could not update this parcel.', 'error');
-        await loadData();
-      }
+      });
     };
 
     function manifestStatusBadge(status) {
@@ -6405,7 +6434,7 @@
         <div class="card" style="margin-bottom:1rem;" data-manifest-id="${manifest.id}">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap; margin-bottom:1rem;">
             <div><label class="bulk-order-check"><input class="manifest-bulk-check" type="checkbox" value="${manifest.id}" ${manifestSelection.has(manifest.id) ? 'checked' : ''} onchange="toggleManifestBulk('${manifest.id}', this.checked)"><span class="td-id" style="font-size:1rem;">${escapeHtml(manifest.manifest_number)}</span></label><div class="td-name">${escapeHtml(manifest.driver_name || 'Driver')} · ${new Date(manifest.route_date + 'T12:00:00').toLocaleDateString('en-TT')}</div><div class="td-sub">${(manifest.orders || []).length} parcel order(s)</div></div>
-            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">${manifestStatusBadge(manifest.status)}<button class="btn btn-ghost btn-sm" onclick="printManifest('${manifest.id}')">Print</button>${manifest.status === 'draft' ? `<button class="btn btn-primary btn-sm" onclick="setManifestStatus('${manifest.id}', 'ready')">Mark Ready</button>` : ''}${['draft', 'ready'].includes(manifest.status) && manifestUncollectedCount(manifest) > 0 ? `<button class="btn btn-ghost btn-sm" onclick="markAllManifestOrdersCollected('${manifest.id}')">Mark All Handed Over</button>` : ''}${manifest.status === 'ready' ? `<button class="btn btn-primary btn-sm" ${manifestUncollectedCount(manifest) > 0 ? 'disabled title="Check off every parcel as handed over first"' : ''} onclick="setManifestStatus('${manifest.id}', 'collected')">Confirm Driver Collection</button>` : ''}${manifest.status === 'collected' && manifest.close_summary?.can_close ? `<button class="btn btn-primary btn-sm" onclick="closeDeliveryManifest('${manifest.id}')">Close Manifest</button>` : ''}</div>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">${manifestStatusBadge(manifest.status)}<button class="btn btn-ghost btn-sm" onclick="printManifest('${manifest.id}')">Print</button>${manifest.status === 'draft' ? `<button class="btn btn-primary btn-sm" onclick="setManifestStatus('${manifest.id}', 'ready')">Mark Ready</button>` : ''}${['draft', 'ready'].includes(manifest.status) ? `<button class="btn btn-primary btn-sm" onclick="submitManifestHandoverSelections('${manifest.id}')">Mark Selected as Handed Over</button>` : ''}${['draft', 'ready'].includes(manifest.status) && manifestUncollectedCount(manifest) > 0 ? `<button class="btn btn-ghost btn-sm" onclick="markAllManifestOrdersCollected('${manifest.id}')">Mark All Handed Over</button>` : ''}${manifest.status === 'ready' ?`<button class="btn btn-primary btn-sm" ${manifestUncollectedCount(manifest) > 0 ? 'disabled title="Check off every parcel as handed over first"' : ''} onclick="setManifestStatus('${manifest.id}', 'collected')">Confirm Driver Collection</button>` : ''}${manifest.status === 'collected' && manifest.close_summary?.can_close ? `<button class="btn btn-primary btn-sm" onclick="closeDeliveryManifest('${manifest.id}')">Close Manifest</button>` : ''}</div>
           </div>
           ${manifest.status === 'ready' ? `<div class="td-sub" style="margin-bottom:0.75rem;">${manifestCollectedCount(manifest)} of ${(manifest.orders || []).length} parcel(s) checked off as handed over${manifestUncollectedCount(manifest) > 0 ? ' — finish checking off every parcel before confirming driver collection.' : ' — all parcels handed over, ready to confirm.'}</div>` : ''}
           ${manifestCloseSummaryHtml(manifest)}
