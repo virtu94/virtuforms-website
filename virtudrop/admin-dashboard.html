@@ -2260,7 +2260,7 @@
     function updateSortArrows(containerSelector, sortState) {
       document.querySelectorAll(`${containerSelector} [data-sort-arrow]`).forEach(span => {
         const key = span.dataset.sortArrow;
-        if (!sortState || sortState.key !== key) { span.textContent = ''; span.classList.remove('active'); return; }
+        if (!sortState || sortState.key !== key) { span.textContent = '⇅'; span.classList.remove('active'); return; }
         span.textContent = sortState.dir === 'desc' ? '▼' : '▲';
         span.classList.add('active');
       });
