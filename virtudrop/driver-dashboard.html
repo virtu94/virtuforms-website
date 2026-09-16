@@ -715,6 +715,7 @@
       <button class="filter-tab" onclick="filterCards('failed', this)">Failed (0)</button>
       <button class="filter-tab" id="collapseAllBtn" type="button" onclick="toggleCollapseAll()" title="Minimize all cards to make dragging easier">Minimize All</button>
       <button class="filter-tab" id="selectModeBtn" type="button" onclick="toggleSelectMode()" title="Select multiple deliveries to drag as a group">Select</button>
+      <button class="filter-tab" id="resetRouteOrderBtn" type="button" onclick="resetRouteOrder()" title="Undo your manual drag order and go back to the suggested nearest-to-farthest order">↺ Reset Order</button>
     </div>
 
     <!-- ── Delivery list ── -->
@@ -1445,6 +1446,29 @@
       }
     }
 
+    // Undoes any manual drag order for this driver's active deliveries,
+    // falling back to the dashboard's suggested (area/zone + distance)
+    // order. Mirrors saveRouteOrderFromDom, just clearing instead of setting.
+    window.resetRouteOrder = async function() {
+      if (savingRouteOrder) return;
+      savingRouteOrder = true;
+      const btn = document.getElementById('resetRouteOrderBtn');
+      if (btn) btn.disabled = true;
+      try {
+        const { error } = await supabase.rpc('driver_reset_route_order');
+        if (error) throw error;
+        orders.forEach(order => { order.driver_route_position = null; });
+        showToast('Route reset to the suggested order.');
+        renderOrders();
+      } catch (error) {
+        console.error('Route order reset failed:', error);
+        showToast('Could not reset your route order. Try again.');
+      } finally {
+        savingRouteOrder = false;
+        if (btn) btn.disabled = false;
+      }
+    };
+
     // ── Driver-entered Google/Waze link ───────────────────────────────
     function parseLatLngFromMapsLink(link) {
       if (!link) return null;
@@ -1517,6 +1541,7 @@
         <button class="filter-tab ${activeFilter === 'failed' ? 'active' : ''}" onclick="filterCards('failed', this)">Failed (${counts.failed})</button>
         <button class="filter-tab" id="collapseAllBtn" type="button" onclick="toggleCollapseAll()" title="Minimize all cards to make dragging easier">Minimize All</button>
         <button class="filter-tab${selectModeActive ? ' active' : ''}" id="selectModeBtn" type="button" onclick="toggleSelectMode()" title="Select multiple deliveries to drag as a group">${selectModeActive ? `Done${selectedOrderIds.size ? ` (${selectedOrderIds.size})` : ''}` : 'Select'}</button>
+        <button class="filter-tab" id="resetRouteOrderBtn" type="button" onclick="resetRouteOrder()" title="Undo your manual drag order and go back to the suggested nearest-to-farthest order">↺ Reset Order</button>
       `;
       syncCollapseAllLabel();
     }

@@ -321,6 +321,24 @@
     }
     .filter-select:focus { outline: none; border-color: var(--teal-mid); }
 
+    /* ── Per-column filter row & sortable headers ── */
+    .col-filter-row th {
+      padding: 0.35rem 0.4rem; background: var(--grey-light);
+      border-bottom: 2px solid var(--grey-mid);
+    }
+    .col-filter-input {
+      width: 100%; box-sizing: border-box; padding: 0.3rem 0.5rem;
+      border: 1px solid var(--grey-mid); border-radius: 6px;
+      font-family: 'Inter', sans-serif; font-size: 0.75rem;
+      color: var(--black); background: var(--white);
+      transition: border-color 0.2s;
+    }
+    .col-filter-input:focus { outline: none; border-color: var(--teal-mid); }
+    th.sortable-th { cursor: pointer; user-select: none; white-space: nowrap; }
+    th.sortable-th:hover { color: var(--teal-mid); }
+    .sort-arrow { font-size: 0.7rem; margin-left: 0.25rem; opacity: 0.5; }
+    .sort-arrow.active { opacity: 1; color: var(--teal-mid); }
+
     /* ── Zone confirm card ── */
     .zone-card {
       background: var(--white); border-radius: 14px; padding: 1.4rem;
@@ -1165,7 +1183,24 @@
             <span class="bulk-count" id="sortingBulkCount">0 selected</span>
           </div>
           <div class="table-wrap"><table>
-            <thead><tr><th>Order</th><th>Client / Customer</th><th>Delivery Area</th><th>Parcels</th><th>Zone</th><th>Action</th></tr></thead>
+            <thead>
+              <tr>
+                <th class="sortable-th" onclick="setSortingQueueSort('order')">Order<span class="sort-arrow" data-sort-arrow="order"></span></th>
+                <th class="sortable-th" onclick="setSortingQueueSort('client')">Client / Customer<span class="sort-arrow" data-sort-arrow="client"></span></th>
+                <th class="sortable-th" onclick="setSortingQueueSort('area')">Delivery Area<span class="sort-arrow" data-sort-arrow="area"></span></th>
+                <th class="sortable-th" onclick="setSortingQueueSort('parcels')">Parcels<span class="sort-arrow" data-sort-arrow="parcels"></span></th>
+                <th class="sortable-th" onclick="setSortingQueueSort('zone')">Zone<span class="sort-arrow" data-sort-arrow="zone"></span></th>
+                <th>Action</th>
+              </tr>
+              <tr class="col-filter-row">
+                <th><input class="col-filter-input" type="text" placeholder="Filter..." data-sorting-filter="order" oninput="renderSortingQueue()"></th>
+                <th><input class="col-filter-input" type="text" placeholder="Filter..." data-sorting-filter="client" oninput="renderSortingQueue()"></th>
+                <th><input class="col-filter-input" type="text" placeholder="Filter..." data-sorting-filter="area" oninput="renderSortingQueue()"></th>
+                <th><input class="col-filter-input" type="text" placeholder="Filter..." data-sorting-filter="parcels" oninput="renderSortingQueue()"></th>
+                <th><input class="col-filter-input" type="text" placeholder="Filter..." data-sorting-filter="zone" oninput="renderSortingQueue()"></th>
+                <th></th>
+              </tr>
+            </thead>
             <tbody id="sortingQueueBody"><tr><td colspan="6">Loading sorting queue...</td></tr></tbody>
           </table></div>
         </div>
@@ -1263,21 +1298,36 @@
             <table>
               <thead>
                 <tr>
-                  <th>Order ID</th>
-                  <th>Client</th>
-                  <th>Customer</th>
-                  <th>Package</th>
-                  <th>Zone / Address</th>
-                  <th>Status</th>
-                  <th>Collect</th>
-                  <th>Current Driver</th>
+                  <th class="sortable-th" onclick="setDriverAssignSort('order')">Order ID<span class="sort-arrow" data-sort-arrow="order"></span></th>
+                  <th class="sortable-th" onclick="setDriverAssignSort('client')">Client<span class="sort-arrow" data-sort-arrow="client"></span></th>
+                  <th class="sortable-th" onclick="setDriverAssignSort('customer')">Customer<span class="sort-arrow" data-sort-arrow="customer"></span></th>
+                  <th class="sortable-th" onclick="setDriverAssignSort('package')">Package<span class="sort-arrow" data-sort-arrow="package"></span></th>
+                  <th class="sortable-th" onclick="setDriverAssignSort('items')">Items<span class="sort-arrow" data-sort-arrow="items"></span></th>
+                  <th class="sortable-th" onclick="setDriverAssignSort('zone')">Zone / Address<span class="sort-arrow" data-sort-arrow="zone"></span></th>
+                  <th class="sortable-th" onclick="setDriverAssignSort('status')">Status<span class="sort-arrow" data-sort-arrow="status"></span></th>
+                  <th class="sortable-th" onclick="setDriverAssignSort('collect')">Collect<span class="sort-arrow" data-sort-arrow="collect"></span></th>
+                  <th class="sortable-th" onclick="setDriverAssignSort('driver')">Current Driver<span class="sort-arrow" data-sort-arrow="driver"></span></th>
                   <th>Assign / Change Driver</th>
                   <th>Route Date / Reason</th>
                   <th>Action</th>
                 </tr>
+                <tr class="col-filter-row">
+                  <th><input class="col-filter-input" type="text" placeholder="Filter..." data-driver-filter="order" oninput="renderDriverAssign()"></th>
+                  <th><input class="col-filter-input" type="text" placeholder="Filter..." data-driver-filter="client" oninput="renderDriverAssign()"></th>
+                  <th><input class="col-filter-input" type="text" placeholder="Filter..." data-driver-filter="customer" oninput="renderDriverAssign()"></th>
+                  <th><input class="col-filter-input" type="text" placeholder="Filter..." data-driver-filter="package" oninput="renderDriverAssign()"></th>
+                  <th><input class="col-filter-input" type="text" placeholder="Filter..." data-driver-filter="items" oninput="renderDriverAssign()"></th>
+                  <th><input class="col-filter-input" type="text" placeholder="Filter..." data-driver-filter="zone" oninput="renderDriverAssign()"></th>
+                  <th><input class="col-filter-input" type="text" placeholder="Filter..." data-driver-filter="status" oninput="renderDriverAssign()"></th>
+                  <th><input class="col-filter-input" type="text" placeholder="Filter..." data-driver-filter="collect" oninput="renderDriverAssign()"></th>
+                  <th><input class="col-filter-input" type="text" placeholder="Filter..." data-driver-filter="driver" oninput="renderDriverAssign()"></th>
+                  <th></th>
+                  <th></th>
+                  <th></th>
+                </tr>
               </thead>
               <tbody>
-                <tr><td colspan="11">Loading driver assignments...</td></tr>
+                <tr><td colspan="12">Loading driver assignments...</td></tr>
               </tbody>
             </table>
           </div>
@@ -2172,6 +2222,49 @@
     let accountingCollectionSelection = new Set();
     let accountingCollectionVisibleIds = [];
     let driverAssignVisibleIds = [];
+    let driverAssignSort = { key: '', dir: 'asc' };
+    let sortingQueueSort = { key: '', dir: 'asc' };
+
+    function readColumnFilters(selector, attr) {
+      const filters = {};
+      document.querySelectorAll(selector).forEach(input => {
+        const key = input.getAttribute(attr);
+        const value = String(input.value || '').trim().toLowerCase();
+        if (key && value) filters[key] = value;
+      });
+      return filters;
+    }
+
+    function applyColumnFilters(items, getters, filters) {
+      const keys = Object.keys(filters);
+      if (!keys.length) return items;
+      return items.filter(item => keys.every(key => {
+        const getter = getters[key];
+        if (!getter) return true;
+        return String(getter(item) ?? '').toLowerCase().includes(filters[key]);
+      }));
+    }
+
+    function applyColumnSort(items, sortState, getters) {
+      if (!sortState || !sortState.key || !getters[sortState.key]) return items;
+      const getter = getters[sortState.key];
+      const dir = sortState.dir === 'desc' ? -1 : 1;
+      return [...items].sort((a, b) => {
+        const va = getter(a);
+        const vb = getter(b);
+        if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+        return String(va ?? '').localeCompare(String(vb ?? ''), undefined, { numeric: true, sensitivity: 'base' }) * dir;
+      });
+    }
+
+    function updateSortArrows(containerSelector, sortState) {
+      document.querySelectorAll(`${containerSelector} [data-sort-arrow]`).forEach(span => {
+        const key = span.dataset.sortArrow;
+        if (!sortState || sortState.key !== key) { span.textContent = ''; span.classList.remove('active'); return; }
+        span.textContent = sortState.dir === 'desc' ? '▼' : '▲';
+        span.classList.add('active');
+      });
+    }
     let appSettings = {
       daily_cutoff_time: '12:00',
       same_day_enabled: false,
@@ -6379,15 +6472,39 @@
       `;
     }
 
+    const sortingQueueColumnGetters = {
+      order: order => String(order.order_number || ''),
+      client: order => `${clientName(order) || ''} ${order.customer_name || ''}`,
+      area: order => String(orderLabelAddress(order) || ''),
+      parcels: order => Number(order.checked_in_parcel_count || 1),
+      zone: order => {
+        const zone = zones.find(item => item.id === (order.confirmed_zone_id || order.zone_id));
+        return String(zone?.code ? `Zone ${zone.code}` : order.pricing_rate_band || 'Confirmed');
+      },
+    };
+
+    window.setSortingQueueSort = function(key) {
+      if (sortingQueueSort.key === key) {
+        sortingQueueSort.dir = sortingQueueSort.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortingQueueSort = { key, dir: 'asc' };
+      }
+      renderSortingQueue();
+    };
+
     window.renderSortingQueue = function() {
       const body = document.getElementById('sortingQueueBody');
       if (!body) return;
-      const sortable = orders.filter(order => !isCancelledOrder(order) && order.parcel_status === 'parcel_received' && order.zone_status === 'confirmed');
+      const eligible = orders.filter(order => !isCancelledOrder(order) && order.parcel_status === 'parcel_received' && order.zone_status === 'confirmed');
+      const columnFilters = readColumnFilters('#panel-sorting-manifests [data-sorting-filter]', 'data-sorting-filter');
+      const columnFiltered = applyColumnFilters(eligible, sortingQueueColumnGetters, columnFilters);
+      const sortable = applyColumnSort(columnFiltered, sortingQueueSort, sortingQueueColumnGetters);
       sortingVisibleIds = sortable.map(order => order.id);
       body.innerHTML = sortable.map(order => {
         const zone = zones.find(item => item.id === (order.confirmed_zone_id || order.zone_id));
         return `<tr><td class="td-id"><label class="bulk-order-check"><input class="sorting-bulk-check" type="checkbox" value="${order.id}" ${sortingSelection.has(order.id) ? 'checked' : ''} onchange="toggleSortingBulk('${order.id}', this.checked)"><span>${escapeHtml(order.order_number)}</span></label></td><td><div class="td-name">${escapeHtml(clientName(order))}</div><div class="td-sub">${escapeHtml(order.customer_name || "")}</div>${orderItemPackageHtml(order)}</td><td>${escapeHtml(orderLabelAddress(order))}</td><td>${escapeHtml(String(order.checked_in_parcel_count || 1))}</td><td><span class="badge badge-confirmed">${escapeHtml(zone?.code ? `Zone ${zone.code}` : order.pricing_rate_band || 'Confirmed')}</span></td><td><button class="btn btn-primary btn-sm" onclick="markOrderSorted('${order.id}')">Mark Sorted</button></td></tr>`;
       }).join('') || '<tr><td colspan="6">No received, zone-confirmed parcels are waiting to be sorted.</td></tr>';
+      updateSortArrows('#panel-sorting-manifests thead', sortingQueueSort);
       syncSortingBulkControls();
     };
 
@@ -7286,6 +7403,36 @@
       renderDriverAssign();
     };
 
+    function driverAssignStatusText(order) {
+      const isAssigned = Boolean(order.assigned_driver_id);
+      const collected = order.parcel_status === 'handed_to_driver';
+      return collected ? 'Collected by driver'
+        : isAssigned ? 'Assigned'
+          : order.redelivery_status === 'scheduled' ? `Redelivery · Attempt ${Number(order.delivery_attempt_count || 0) + 1}`
+            : 'Ready to assign';
+    }
+
+    const driverAssignColumnGetters = {
+      order: order => String(order.order_number || ''),
+      client: order => String(clientName(order) || ''),
+      customer: order => String(order.customer_name || ''),
+      package: order => String(orderPackageAssignmentText(order) || ''),
+      items: order => String(order.external_item_number || ''),
+      zone: order => `${orderDeliveryZoneText(order) || ''} ${orderLabelAddress(order) || ''}`,
+      status: order => driverAssignStatusText(order),
+      collect: order => Number(driverCollects(order) || 0),
+      driver: order => order.assigned_driver_id ? String(driverName(order.assigned_driver_id) || '') : 'Unassigned',
+    };
+
+    window.setDriverAssignSort = function(key) {
+      if (driverAssignSort.key === key) {
+        driverAssignSort.dir = driverAssignSort.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        driverAssignSort = { key, dir: 'asc' };
+      }
+      renderDriverAssign();
+    };
+
     function renderDriverAssign() {
       const tbody = document.querySelector('#panel-driver-assign tbody');
       const allManageable = orders.filter(isDriverAssignmentManageable);
@@ -7312,17 +7459,17 @@
         const count = button.querySelector('[data-zone-count]');
         if (count) count.textContent = '(' + (zoneCounts[code] || 0) + ')';
       });
-      const manageable = driverAssignZoneFilter === 'all'
+      const zoneFiltered = driverAssignZoneFilter === 'all'
         ? allManageable
         : allManageable.filter(order => orderDeliveryZoneCode(order) === driverAssignZoneFilter);
+      const columnFilters = readColumnFilters('#panel-driver-assign [data-driver-filter]', 'data-driver-filter');
+      const columnFiltered = applyColumnFilters(zoneFiltered, driverAssignColumnGetters, columnFilters);
+      const manageable = applyColumnSort(columnFiltered, driverAssignSort, driverAssignColumnGetters);
       driverAssignVisibleIds = manageable.map(order => order.id);
       tbody.innerHTML = manageable.map(order => {
         const isAssigned = Boolean(order.assigned_driver_id);
         const collected = order.parcel_status === 'handed_to_driver';
-        const status = collected ? 'Collected by driver'
-          : isAssigned ? 'Assigned'
-            : order.redelivery_status === 'scheduled' ? `Redelivery · Attempt ${Number(order.delivery_attempt_count || 0) + 1}`
-              : 'Ready to assign';
+        const status = driverAssignStatusText(order);
         const controls = isAssigned
           ? `<div class="td-sub" style="margin-bottom:0.35rem;">Route: ${escapeHtml(order.scheduled_delivery_date || 'Not set')}</div><input class="filter-input transfer-reason" type="text" maxlength="180" placeholder="Reason for changing driver" style="width:210px;">`
           : `<input type="date" class="filter-input route-date" style="width:150px;" value="${order.scheduled_delivery_date || new Date().toISOString().slice(0, 10)}">`;
@@ -7337,6 +7484,7 @@
             <td>${escapeHtml(clientName(order))}</td>
             <td class="driver-customer-cell"><div class="td-name">${escapeHtml(order.customer_name || '—')}</div><div class="td-sub">${escapeHtml(order.customer_phone || '')}</div></td>
             <td class="driver-package-cell"><div class="td-name">${escapeHtml(orderPackageAssignmentText(order))}</div></td>
+            <td class="driver-items-cell">${escapeHtml(order.external_item_number || '—')}</td>
             <td class="driver-zone-cell"><div class="td-name">${escapeHtml(orderDeliveryZoneText(order))}</div><div class="td-sub">${escapeHtml(orderLabelAddress(order))}</div></td>
             <td><span class="badge ${collected ? 'badge-active' : isAssigned ? 'badge-confirmed' : 'badge-pending'}">${escapeHtml(status)}</span></td>
             <td>${moneyFull(driverCollects(order))}${order.redelivery_fee > 0 ? `<div class="td-sub">Includes ${moneyFull(order.redelivery_fee)} redelivery</div>` : ''}</td>
@@ -7345,7 +7493,8 @@
             <td>${controls}</td>
             <td><div style="display:flex; gap:0.4rem; flex-wrap:wrap;"><button class="btn btn-primary btn-sm" onclick="assignDriver('${order.id}')">${isAssigned ? 'Change Driver' : 'Assign'}</button><button class="btn btn-ghost btn-sm" type="button" onclick="openAdminOrderEdit('${order.id}')">Edit Order</button><button class="btn btn-ghost btn-sm" type="button" onclick="showDriverAssignmentNotes('${order.id}')">Notes</button>${canRemoveDriverAssignment(order) ? `<button class="btn btn-ghost btn-sm" onclick="removeDriverFromOrder('${order.id}')">Remove</button>` : ''}</div></td>
           </tr>`;
-      }).join('') || '<tr><td colspan="11">No parcels are currently available for driver assignment or reassignment.</td></tr>';
+      }).join('') || '<tr><td colspan="12">No parcels are currently available for driver assignment or reassignment.</td></tr>';
+      updateSortArrows('#panel-driver-assign thead', driverAssignSort);
       syncDriverAssignBulkControls();
     }
 
@@ -7482,7 +7631,7 @@
 
     function clearStaticAdminData() {
       document.querySelector('#panel-all-orders tbody').innerHTML = '<tr><td colspan="7">Loading orders...</td></tr>';
-      document.querySelector('#panel-driver-assign tbody').innerHTML = '<tr><td colspan="11">Loading driver assignments...</td></tr>';
+      document.querySelector('#panel-driver-assign tbody').innerHTML = '<tr><td colspan="12">Loading driver assignments...</td></tr>';
       document.getElementById('parcelCheckinBody').innerHTML = '<tr><td colspan="7">Loading parcel records...</td></tr>';
       document.getElementById('pickupManagementBody').innerHTML = '<tr><td colspan="7">Loading pickup requests...</td></tr>';
       document.getElementById('sortingQueueBody').innerHTML = '<tr><td colspan="6">Loading sorting queue...</td></tr>';
@@ -8759,7 +8908,7 @@
       const message = escapeHtml(error.message || 'Could not load admin dashboard data.');
       showZoneMessage(message);
       document.querySelector('#panel-all-orders tbody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
-      document.querySelector('#panel-driver-assign tbody').innerHTML = `<tr><td colspan="11">${message}</td></tr>`;
+      document.querySelector('#panel-driver-assign tbody').innerHTML = `<tr><td colspan="12">${message}</td></tr>`;
       document.getElementById('parcelCheckinBody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
       document.getElementById('pickupManagementBody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
       document.getElementById('sortingQueueBody').innerHTML = `<tr><td colspan="6">${message}</td></tr>`;
