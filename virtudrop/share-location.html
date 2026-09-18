@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Share Your Delivery Location | VirtuDrop</title>
+  <meta name="description" content="Share your GPS location with VirtuDrop so your driver can find you.">
+  <link rel="icon" href="assets/logo.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      line-height: 1.6; color: #1a1a1a; background: #f8f9fa;
+      min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem 1.25rem;
+    }
+    .card {
+      max-width: 460px; width: 100%; background: #fff; border-radius: 16px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.08); padding: 2.25rem 1.75rem; text-align: center;
+    }
+    .logo { width: 44px; height: 44px; border-radius: 10px; margin: 0 auto 1rem; display: block; }
+    h1 { font-size: 1.3rem; font-weight: 800; margin-bottom: 0.5rem; color: #1F8F52; }
+    .sub { font-size: 0.92rem; color: #555; margin-bottom: 1.5rem; }
+    .order-chip {
+      display: inline-block; background: #eef7f1; color: #1F8F52; font-weight: 700;
+      font-size: 0.82rem; padding: 0.35rem 0.85rem; border-radius: 999px; margin-bottom: 1.5rem;
+    }
+    .share-btn {
+      width: 100%; padding: 0.95rem 1rem; border-radius: 10px; border: none;
+      background: #1F8F52; color: #fff; font-weight: 700; font-size: 1rem; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .share-btn:hover { background: #17703F; }
+    .share-btn:disabled { background: #9fcbb0; cursor: default; }
+    .status {
+      margin-top: 1.25rem; padding: 1rem; border-radius: 10px; font-size: 0.9rem;
+      display: none; text-align: left; line-height: 1.6;
+    }
+    .status.show { display: block; }
+    .status.success { background: #eefbf2; border-left: 4px solid #1F8F52; color: #145c34; }
+    .status.error { background: #fff3f3; border-left: 4px solid #e05555; color: #8b2020; }
+    .fine-print { margin-top: 1.5rem; font-size: 0.76rem; color: #999; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <img src="assets/logo.png" class="logo" alt="VirtuDrop" onerror="this.style.display='none'">
+    <h1>Share Your Delivery Location</h1>
+    <p class="sub">Help our driver find you quickly. This only takes a moment — VirtuDrop only uses this to guide the delivery.</p>
+    <div class="order-chip" id="orderChip">Order —</div>
+    <div>
+      <button class="share-btn" id="shareBtn" onclick="shareLocation()">📍 Share My Location</button>
+    </div>
+    <div class="status" id="statusBox"></div>
+    <p class="fine-print">Having trouble? You can also just reply to VirtuDrop's WhatsApp message with your address.</p>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+    const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_riDvZH96FeYGnF0bLYQErg_tlRv71CX';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const params = new URLSearchParams(window.location.search);
+    const orderNumber = (params.get('order') || '').toUpperCase();
+    const token = params.get('token') || '';
+
+    const orderChip = document.getElementById('orderChip');
+    const shareBtn = document.getElementById('shareBtn');
+    const statusBox = document.getElementById('statusBox');
+
+    orderChip.textContent = orderNumber ? `Order ${orderNumber}` : 'Order not found';
+
+    function showStatus(kind, message) {
+      statusBox.className = `status show ${kind}`;
+      statusBox.textContent = message;
+    }
+
+    if (!orderNumber || !token) {
+      shareBtn.disabled = true;
+      showStatus('error', 'This link looks incomplete. Please use the link exactly as sent to you on WhatsApp, or contact VirtuDrop for help.');
+    }
+
+    window.shareLocation = function() {
+      if (!navigator.geolocation) {
+        showStatus('error', 'Your browser does not support sharing location. Please contact VirtuDrop directly.');
+        return;
+      }
+      shareBtn.disabled = true;
+      shareBtn.textContent = 'Getting your location…';
+      navigator.geolocation.getCurrentPosition(async (position) => {
+        try {
+          const { data, error } = await supabase.rpc('public_submit_order_location', {
+            p_order_number: orderNumber,
+            p_tracking_token: token,
+            p_latitude: position.coords.latitude,
+            p_longitude: position.coords.longitude
+          });
+          if (error) throw error;
+          shareBtn.textContent = '✓ Location Shared';
+          showStatus('success', `Thank you! Your location has been added to order ${data?.order_number || orderNumber}. Your VirtuDrop driver will be able to navigate straight to you.`);
+        } catch (error) {
+          shareBtn.disabled = false;
+          shareBtn.textContent = '📍 Share My Location';
+          showStatus('error', error.message || 'Something went wrong saving your location. Please try again.');
+        }
+      }, (geoError) => {
+        shareBtn.disabled = false;
+        shareBtn.textContent = '📍 Share My Location';
+        const message = geoError.code === geoError.PERMISSION_DENIED
+          ? 'Location access was blocked. Please allow location access in your browser settings and try again, or reply to VirtuDrop on WhatsApp with your address instead.'
+          : 'Could not get your location. Please try again, or reply to VirtuDrop on WhatsApp with your address instead.';
+        showStatus('error', message);
+      }, { enableHighAccuracy: true, timeout: 15000 });
+    };
+  </script>
+</body>
+</html>

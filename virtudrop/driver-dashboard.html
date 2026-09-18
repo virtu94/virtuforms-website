@@ -1102,6 +1102,21 @@
       return Boolean(order.maps_link) || Boolean(order.latitude && order.longitude);
     }
 
+    // Doc's "Driver Dashboard Behaviour": show Mapped/Location Required so the
+    // driver knows whether Navigate/Open in Maps will actually go anywhere
+    // useful, without hiding the written address either way.
+    function locationLabel(order) {
+      const status = order.location_status || 'location_required';
+      if (status === 'verified') return '<span class="status-badge badge-delivered">✓ Verified</span>';
+      if (status === 'mapped' && order.location_confidence !== 'high') {
+        return '<span class="status-badge badge-collected">⚠ Review Location</span>';
+      }
+      if (status === 'mapped' || hasReliableLocation(order)) {
+        return '<span class="status-badge badge-delivered">✓ Mapped</span>';
+      }
+      return '<span class="status-badge badge-failed">⚠ Location Required</span>';
+    }
+
     function manifestForOrder(orderId) {
       return driverManifests.find(manifest => (manifest.order_ids || []).includes(orderId)) || null;
     }
@@ -1309,6 +1324,10 @@
               <div class="info-row" style="grid-column:1/-1;">
                 <div class="info-label">Delivery Address</div>
                 <div class="info-value address">${escapeHtml(addressLabel(order))}</div>
+              </div>
+              <div class="info-row" style="grid-column:1/-1;">
+                <div class="info-label">Location</div>
+                <div class="info-value">${locationLabel(order)}</div>
               </div>
               <div class="info-row">
                 <div class="info-label">Total to Collect</div>
@@ -1750,7 +1769,7 @@
         console.warn('Driver delivery RPC could not load; using direct assignment fallback:', ordersRes.error);
         ordersRes = await supabase
           .from('orders')
-          .select('id, order_number, external_item_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, pricing_rate_band, driver_route_position, optimized_position, manually_reordered, payment_type, customer_amount_due, driver_delivery_pay, driver_amount_to_collect, pickup_required, pickup_parcel_count, pickup_fee, scheduled_delivery_date, parcel_status, delivery_outcome, delivery_attempt_count, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_recipient_name, delivery_signed_at, delivery_signature_data_url, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, redelivery_status, redelivery_notes, order_status, assigned_driver_id, customer_notes, driver_notes, tracking_token, created_at')
+          .select('id, order_number, external_item_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, location_status, location_confidence, pricing_rate_band, driver_route_position, optimized_position, manually_reordered, payment_type, customer_amount_due, driver_delivery_pay, driver_amount_to_collect, pickup_required, pickup_parcel_count, pickup_fee, scheduled_delivery_date, parcel_status, delivery_outcome, delivery_attempt_count, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_recipient_name, delivery_signed_at, delivery_signature_data_url, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, redelivery_status, redelivery_notes, order_status, assigned_driver_id, customer_notes, driver_notes, tracking_token, created_at')
           .eq('assigned_driver_id', driver.id)
           .order('created_at', { ascending: false });
         if (ordersRes.error) throw ordersRes.error;

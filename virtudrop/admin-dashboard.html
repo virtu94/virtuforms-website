@@ -321,7 +321,11 @@
     }
     .filter-select:focus { outline: none; border-color: var(--teal-mid); }
 
-    /* ── Per-column filter row & sortable headers ── */
+    /* ── Sortable headers & per-column filters ── */
+    th.sortable-th { cursor: pointer; user-select: none; white-space: nowrap; }
+    th.sortable-th:hover { color: var(--teal-mid); }
+    .sort-arrow { font-size: 0.7rem; margin-left: 0.25rem; opacity: 0.5; }
+    .sort-arrow.active { opacity: 1; color: var(--teal-mid); }
     .col-filter-row th {
       padding: 0.35rem 0.4rem; background: var(--grey-light);
       border-bottom: 2px solid var(--grey-mid);
@@ -334,10 +338,6 @@
       transition: border-color 0.2s;
     }
     .col-filter-input:focus { outline: none; border-color: var(--teal-mid); }
-    th.sortable-th { cursor: pointer; user-select: none; white-space: nowrap; }
-    th.sortable-th:hover { color: var(--teal-mid); }
-    .sort-arrow { font-size: 0.7rem; margin-left: 0.25rem; opacity: 0.5; }
-    .sort-arrow.active { opacity: 1; color: var(--teal-mid); }
 
     /* ── Zone confirm card ── */
     .zone-card {
@@ -1192,14 +1192,6 @@
                 <th class="sortable-th" onclick="setSortingQueueSort('zone')">Zone<span class="sort-arrow" data-sort-arrow="zone"></span></th>
                 <th>Action</th>
               </tr>
-              <tr class="col-filter-row">
-                <th><input class="col-filter-input" type="text" placeholder="Filter..." data-sorting-filter="order" oninput="renderSortingQueue()"></th>
-                <th><input class="col-filter-input" type="text" placeholder="Filter..." data-sorting-filter="client" oninput="renderSortingQueue()"></th>
-                <th><input class="col-filter-input" type="text" placeholder="Filter..." data-sorting-filter="area" oninput="renderSortingQueue()"></th>
-                <th><input class="col-filter-input" type="text" placeholder="Filter..." data-sorting-filter="parcels" oninput="renderSortingQueue()"></th>
-                <th><input class="col-filter-input" type="text" placeholder="Filter..." data-sorting-filter="zone" oninput="renderSortingQueue()"></th>
-                <th></th>
-              </tr>
             </thead>
             <tbody id="sortingQueueBody"><tr><td colspan="6">Loading sorting queue...</td></tr></tbody>
           </table></div>
@@ -1302,7 +1294,6 @@
                   <th class="sortable-th" onclick="setDriverAssignSort('client')">Client<span class="sort-arrow" data-sort-arrow="client"></span></th>
                   <th class="sortable-th" onclick="setDriverAssignSort('customer')">Customer<span class="sort-arrow" data-sort-arrow="customer"></span></th>
                   <th class="sortable-th" onclick="setDriverAssignSort('package')">Package<span class="sort-arrow" data-sort-arrow="package"></span></th>
-                  <th class="sortable-th" onclick="setDriverAssignSort('items')">Items<span class="sort-arrow" data-sort-arrow="items"></span></th>
                   <th class="sortable-th" onclick="setDriverAssignSort('zone')">Zone / Address<span class="sort-arrow" data-sort-arrow="zone"></span></th>
                   <th class="sortable-th" onclick="setDriverAssignSort('status')">Status<span class="sort-arrow" data-sort-arrow="status"></span></th>
                   <th class="sortable-th" onclick="setDriverAssignSort('collect')">Collect<span class="sort-arrow" data-sort-arrow="collect"></span></th>
@@ -1311,23 +1302,9 @@
                   <th>Route Date / Reason</th>
                   <th>Action</th>
                 </tr>
-                <tr class="col-filter-row">
-                  <th><input class="col-filter-input" type="text" placeholder="Filter..." data-driver-filter="order" oninput="renderDriverAssign()"></th>
-                  <th><input class="col-filter-input" type="text" placeholder="Filter..." data-driver-filter="client" oninput="renderDriverAssign()"></th>
-                  <th><input class="col-filter-input" type="text" placeholder="Filter..." data-driver-filter="customer" oninput="renderDriverAssign()"></th>
-                  <th><input class="col-filter-input" type="text" placeholder="Filter..." data-driver-filter="package" oninput="renderDriverAssign()"></th>
-                  <th><input class="col-filter-input" type="text" placeholder="Filter..." data-driver-filter="items" oninput="renderDriverAssign()"></th>
-                  <th><input class="col-filter-input" type="text" placeholder="Filter..." data-driver-filter="zone" oninput="renderDriverAssign()"></th>
-                  <th><input class="col-filter-input" type="text" placeholder="Filter..." data-driver-filter="status" oninput="renderDriverAssign()"></th>
-                  <th><input class="col-filter-input" type="text" placeholder="Filter..." data-driver-filter="collect" oninput="renderDriverAssign()"></th>
-                  <th><input class="col-filter-input" type="text" placeholder="Filter..." data-driver-filter="driver" oninput="renderDriverAssign()"></th>
-                  <th></th>
-                  <th></th>
-                  <th></th>
-                </tr>
               </thead>
               <tbody>
-                <tr><td colspan="12">Loading driver assignments...</td></tr>
+                <tr><td colspan="11">Loading driver assignments...</td></tr>
               </tbody>
             </table>
           </div>
@@ -2224,24 +2201,17 @@
     let driverAssignVisibleIds = [];
     let driverAssignSort = { key: '', dir: 'asc' };
     let sortingQueueSort = { key: '', dir: 'asc' };
+    let manifestOrderSort = { key: '', dir: 'asc' };
+    let manifestColumnFilters = {};
+    let manifestFilterFocusKey = null;
 
-    function readColumnFilters(selector, attr) {
-      const filters = {};
-      document.querySelectorAll(selector).forEach(input => {
-        const key = input.getAttribute(attr);
-        const value = String(input.value || '').trim().toLowerCase();
-        if (key && value) filters[key] = value;
-      });
-      return filters;
-    }
-
-    function applyColumnFilters(items, getters, filters) {
-      const keys = Object.keys(filters);
+    function filterByColumns(items, getters, filters) {
+      const keys = Object.keys(filters).filter(key => filters[key]);
       if (!keys.length) return items;
       return items.filter(item => keys.every(key => {
         const getter = getters[key];
         if (!getter) return true;
-        return String(getter(item) ?? '').toLowerCase().includes(filters[key]);
+        return String(getter(item) ?? '').toLowerCase().includes(filters[key].toLowerCase());
       }));
     }
 
@@ -3163,6 +3133,59 @@
       window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
     };
 
+    // ── Optional Request Location (doc: "Optional Request Location Function") ──
+    function locationRequestLink(order) {
+      if (!order?.order_number || !order?.tracking_token) return '';
+      const base = window.location.origin + window.location.pathname.replace(/admin-dashboard\.html$/, 'share-location.html');
+      return `${base}?order=${encodeURIComponent(order.order_number)}&token=${encodeURIComponent(order.tracking_token)}`;
+    }
+
+    // Never a required step -- only offered while there's genuinely no
+    // usable location yet (mapped/legacy/verified orders don't need it).
+    function needsLocationRequest(order) {
+      const status = order.location_status || 'location_required';
+      return status === 'location_required' && !hasLegacyLocation(order);
+    }
+
+    // No delivery-receipt exists for a plain wa.me link, so a stalled
+    // request is surfaced passively: still unresolved a day after it was sent.
+    function locationRequestNote(order) {
+      if (!order.location_requested_at || !needsLocationRequest(order)) return '';
+      const hours = Math.max(0, Math.round((Date.now() - new Date(order.location_requested_at).getTime()) / 36e5));
+      const label = hours < 1 ? 'just now' : hours < 24 ? `${hours}h ago` : `${Math.round(hours / 24)}d ago`;
+      const stale = hours >= 24;
+      return `<div style="margin-top:0.3rem; font-size:0.76rem; color:${stale ? '#8b2020' : 'var(--grey)'};">${stale ? '⏳ Still awaiting response — ' : '📨 Requested '}${label}</div>`;
+    }
+
+    window.requestOrderLocation = async function(orderId) {
+      const order = orders.find(item => item.id === orderId);
+      const phone = phoneForWhatsApp(order?.customer_phone);
+      if (!order || !phone) {
+        showToast('This order does not have a valid customer phone number.');
+        return;
+      }
+      const link = locationRequestLink(order);
+      if (!link) {
+        showToast('This order is missing its tracking link.');
+        return;
+      }
+      const firstName = String(order.customer_name || 'there').trim().split(/\s+/)[0] || 'there';
+      const packageLabel = order.external_item_number || 'your order';
+      const total = moneyFull(driverCollects(order));
+      const message = `Hi ${firstName}, VirtuDrop is preparing your delivery for ${packageLabel} — total ${total}. To help our driver find you, please share your location using the link below:\n${link}\n\nThank you!\n— VirtuDrop`;
+      try {
+        const { error } = await supabase.rpc('admin_mark_location_requested', { p_order_id: order.id });
+        if (error) throw error;
+        order.location_requested_at = new Date().toISOString();
+      } catch (error) {
+        console.warn('Could not stamp location request:', error);
+      }
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
+      if (typeof renderZoneConfirm === 'function' && document.getElementById('panel-zone-confirm')?.classList.contains('active')) {
+        renderZoneConfirm();
+      }
+    };
+
     // ── WhatsApp to client ────────────────────────────────────────
     window.whatsappClient = function(orderId) {
       const order = orders.find(o => o.id === orderId);
@@ -3385,6 +3408,52 @@
       }
       return '<span class="badge badge-unpaid">Pending</span>';
     }
+
+    // Orders created before this tracking existed were deliberately left at the
+    // default 'location_required' status (per instruction: don't backfill history).
+    // Many of them do have a real pin from the old maps_link/lat-lng workflow, so
+    // treat that as an unconfirmed-but-present location rather than flagging a
+    // perfectly navigable order as needing resolution.
+    function hasLegacyLocation(order) {
+      return Boolean(order.maps_link) || (order.latitude != null && order.longitude != null);
+    }
+
+    function locationStatusBadge(order) {
+      const status = order.location_status || 'location_required';
+      const confidence = order.location_confidence || '';
+      if (status === 'verified') {
+        return '<span class="badge badge-active">✓ Verified</span>';
+      }
+      if (status === 'mapped') {
+        if (confidence === 'high') {
+          return '<span class="badge badge-confirmed">✓ Mapped</span>';
+        }
+        return '<span class="badge badge-pending">⚠ Review Location</span>';
+      }
+      if (hasLegacyLocation(order)) {
+        return '<span class="badge badge-pending">⚠ Review Location</span>';
+      }
+      return '<span class="badge badge-failed">⚠ Location Required</span>';
+    }
+
+    // Whether an order already has a location worth verifying (mapped/legacy,
+    // and not already verified).
+    function canVerifyOrderLocation(order) {
+      const status = order.location_status || 'location_required';
+      if (status === 'verified') return false;
+      return status === 'mapped' || hasLegacyLocation(order);
+    }
+
+    window.verifyOrderLocation = async function(orderId) {
+      try {
+        const { error } = await supabase.rpc('admin_verify_order_location', { p_order_id: orderId });
+        if (error) throw error;
+        showToast('Location marked as verified.');
+        await loadData();
+      } catch (error) {
+        window.vdNotify('Could Not Verify Location', error.message || 'This order has no mapped location to verify.', 'error');
+      }
+    };
 
     function driverCashRecordForOrder(orderId) {
       return driverCashRecords.find(record => record.order_id === orderId) || null;
@@ -6316,10 +6385,12 @@
                 <label class="bulk-order-check"><input class="zone-confirm-bulk-check" type="checkbox" value="${order.id}" ${zoneConfirmSelection.has(order.id) ? 'checked' : ''} onchange="toggleZoneConfirmBulk('${order.id}', this.checked)"><span class="zone-card-order">${order.order_number}</span></label>
                 <span class="badge badge-pending">Pending</span>
                 <span class="badge badge-confirmed">${rateLabel}</span>
+                ${locationStatusBadge(order)}
               </div>
               <div class="zone-card-client">${clientName(order)} &middot; Customer: ${order.customer_name || '—'} &middot; ${order.customer_phone || ''}</div>
               <div class="zone-card-address">${escapeHtml(address)}</div>
-              <div class="zone-card-coords">${coords}</div>
+              <div class="zone-card-coords">${coords}${canVerifyOrderLocation(order) ? ` <button type="button" style="background:none; border:none; color:var(--teal-mid); text-decoration:underline; cursor:pointer; font-size:0.78rem; padding:0;" onclick="verifyOrderLocation('${order.id}')">Verify Location</button>` : ''}${needsLocationRequest(order) ? ` <button type="button" style="background:none; border:none; color:var(--teal-mid); text-decoration:underline; cursor:pointer; font-size:0.78rem; padding:0;" onclick="requestOrderLocation('${order.id}')">Request Location</button>` : ''}</div>
+              ${locationRequestNote(order)}
               <div style="margin-top:0.55rem; display:flex; gap:0.8rem; flex-wrap:wrap; font-size:0.8rem; color:var(--grey);">
                 <span><strong>Package:</strong> ${moneyFull(order.package_value || order.cod_amount)}</span>
                 <span><strong>Estimated delivery:</strong> ${order.estimated_fee > 0 ? moneyFull(order.estimated_fee) : rateLabel}</span>
@@ -6496,9 +6567,7 @@
       const body = document.getElementById('sortingQueueBody');
       if (!body) return;
       const eligible = orders.filter(order => !isCancelledOrder(order) && order.parcel_status === 'parcel_received' && order.zone_status === 'confirmed');
-      const columnFilters = readColumnFilters('#panel-sorting-manifests [data-sorting-filter]', 'data-sorting-filter');
-      const columnFiltered = applyColumnFilters(eligible, sortingQueueColumnGetters, columnFilters);
-      const sortable = applyColumnSort(columnFiltered, sortingQueueSort, sortingQueueColumnGetters);
+      const sortable = applyColumnSort(eligible, sortingQueueSort, sortingQueueColumnGetters);
       sortingVisibleIds = sortable.map(order => order.id);
       body.innerHTML = sortable.map(order => {
         const zone = zones.find(item => item.id === (order.confirmed_zone_id || order.zone_id));
@@ -6521,6 +6590,37 @@
       }
     };
 
+    const manifestOrderColumnGetters = {
+      sequence: order => Number(order.route_sequence || 0),
+      zone: order => String(order.zone_code || ''),
+      order: order => String(order.order_number || ''),
+      customer: order => `${order.customer_name || ''} ${order.customer_phone || ''}`,
+      address: order => String(orderLabelAddress(order) || ''),
+      parcels: order => Number(order.parcel_count || 1),
+      collect: order => Number(order.amount_to_collect || 0),
+      delivery: order => `${order.order_status || ''} ${order.parcel_status || ''}`.replaceAll('_', ' '),
+      cash: order => (Number(order.amount_to_collect || 0) > 0 && order.order_status === 'delivered') ? String(order.reconciliation_status || 'unreconciled') : '',
+      handedover: order => order.collected_at ? 'handed over' : 'not yet',
+    };
+
+    window.setManifestOrderSort = function(key) {
+      if (manifestOrderSort.key === key) {
+        manifestOrderSort.dir = manifestOrderSort.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        manifestOrderSort = { key, dir: 'asc' };
+      }
+      manifestFilterFocusKey = null;
+      renderManifests();
+    };
+
+    window.setManifestColumnFilter = function(key, value) {
+      const trimmed = String(value || '').trim();
+      if (trimmed) manifestColumnFilters[key] = trimmed;
+      else delete manifestColumnFilters[key];
+      manifestFilterFocusKey = key;
+      renderManifests();
+    };
+
     window.renderManifests = function() {
       const list = document.getElementById('manifestList');
       if (!list) return;
@@ -6534,10 +6634,12 @@
         list.innerHTML = '<div class="card"><strong>Select a driver to manage a manifest.</strong><div class="td-sub" style="margin-top:0.5rem;">After selecting a driver, you will see their assigned orders and can mark the manifest ready, confirm driver collection, or close it.</div></div>';
         return;
       }
-      const rows = deliveryManifests.map(manifest => ({
-        ...manifest,
-        orders: (manifest.orders || []).filter(order => !isCancelledOrder(order))
-      })).filter(manifest => {
+      const rows = deliveryManifests.map(manifest => {
+        let manifestOrders = (manifest.orders || []).filter(order => !isCancelledOrder(order));
+        manifestOrders = filterByColumns(manifestOrders, manifestOrderColumnGetters, manifestColumnFilters);
+        manifestOrders = applyColumnSort(manifestOrders, manifestOrderSort, manifestOrderColumnGetters);
+        return { ...manifest, orders: manifestOrders };
+      }).filter(manifest => {
         if (manifest.driver_id !== selectedDriverId) return false;
         if (!(manifest.orders || []).length) return false;
         if (filter === 'active' && !['draft', 'ready', 'collected'].includes(manifest.status)) return false;
@@ -7341,7 +7443,22 @@
       const missingReason = selectedOrders.find(item => item.order.assigned_driver_id && item.reason.length < 3);
       if (missingReason) return showToast(`Enter a reason for changing ${missingReason.order.order_number}.`);
 
-      showModal('Assign Selected Items', `Assign or change ${selectedOrders.length} selected item(s)?`, async () => {
+      const unresolvedCount = selectedOrders.filter(item => (item.order.location_status || 'location_required') === 'location_required').length;
+      if (unresolvedCount > 0) {
+        const mappedCount = selectedOrders.length - unresolvedCount;
+        showModal(
+          'Unmapped Delivery Locations',
+          `${unresolvedCount} of ${selectedOrders.length} selected deliveries do not have a mapped location (${mappedCount} Map Ready / ${unresolvedCount} Location Required). Dispatching without a mapped location makes it harder for drivers to find the address. Cancel to review locations first, or continue to assign anyway.`,
+          () => runSelectedDriverAssignments(selectedOrders)
+        );
+        document.getElementById('modalConfirm').textContent = 'Assign Anyway';
+        return;
+      }
+
+      showModal('Assign Selected Items', `Assign or change ${selectedOrders.length} selected item(s)?`, () => runSelectedDriverAssignments(selectedOrders));
+    };
+
+    async function runSelectedDriverAssignments(selectedOrders) {
         let assigned = 0;
         const failed = [];
         for (const item of selectedOrders) {
@@ -7369,8 +7486,7 @@
         clearDriverAssignSelection();
         await loadData();
         showPanel('driver-assign');
-      });
-    };
+    }
 
     window.removeSelectedDrivers = function() {
       const visible = new Set(driverAssignVisibleIds);
@@ -7417,7 +7533,6 @@
       client: order => String(clientName(order) || ''),
       customer: order => String(order.customer_name || ''),
       package: order => String(orderPackageAssignmentText(order) || ''),
-      items: order => String(order.external_item_number || ''),
       zone: order => `${orderDeliveryZoneText(order) || ''} ${orderLabelAddress(order) || ''}`,
       status: order => driverAssignStatusText(order),
       collect: order => Number(driverCollects(order) || 0),
@@ -7462,9 +7577,7 @@
       const zoneFiltered = driverAssignZoneFilter === 'all'
         ? allManageable
         : allManageable.filter(order => orderDeliveryZoneCode(order) === driverAssignZoneFilter);
-      const columnFilters = readColumnFilters('#panel-driver-assign [data-driver-filter]', 'data-driver-filter');
-      const columnFiltered = applyColumnFilters(zoneFiltered, driverAssignColumnGetters, columnFilters);
-      const manageable = applyColumnSort(columnFiltered, driverAssignSort, driverAssignColumnGetters);
+      const manageable = applyColumnSort(zoneFiltered, driverAssignSort, driverAssignColumnGetters);
       driverAssignVisibleIds = manageable.map(order => order.id);
       tbody.innerHTML = manageable.map(order => {
         const isAssigned = Boolean(order.assigned_driver_id);
@@ -7484,8 +7597,7 @@
             <td>${escapeHtml(clientName(order))}</td>
             <td class="driver-customer-cell"><div class="td-name">${escapeHtml(order.customer_name || '—')}</div><div class="td-sub">${escapeHtml(order.customer_phone || '')}</div></td>
             <td class="driver-package-cell"><div class="td-name">${escapeHtml(orderPackageAssignmentText(order))}</div></td>
-            <td class="driver-items-cell">${escapeHtml(order.external_item_number || '—')}</td>
-            <td class="driver-zone-cell"><div class="td-name">${escapeHtml(orderDeliveryZoneText(order))}</div><div class="td-sub">${escapeHtml(orderLabelAddress(order))}</div></td>
+            <td class="driver-zone-cell"><div class="td-name">${escapeHtml(orderDeliveryZoneText(order))}</div><div class="td-sub">${escapeHtml(orderLabelAddress(order))}</div><div style="margin-top:0.25rem;">${locationStatusBadge(order)}</div></td>
             <td><span class="badge ${collected ? 'badge-active' : isAssigned ? 'badge-confirmed' : 'badge-pending'}">${escapeHtml(status)}</span></td>
             <td>${moneyFull(driverCollects(order))}${order.redelivery_fee > 0 ? `<div class="td-sub">Includes ${moneyFull(order.redelivery_fee)} redelivery</div>` : ''}</td>
             <td>${isAssigned ? escapeHtml(driverName(order.assigned_driver_id)) : 'Unassigned'}</td>
@@ -7493,7 +7605,7 @@
             <td>${controls}</td>
             <td><div style="display:flex; gap:0.4rem; flex-wrap:wrap;"><button class="btn btn-primary btn-sm" onclick="assignDriver('${order.id}')">${isAssigned ? 'Change Driver' : 'Assign'}</button><button class="btn btn-ghost btn-sm" type="button" onclick="openAdminOrderEdit('${order.id}')">Edit Order</button><button class="btn btn-ghost btn-sm" type="button" onclick="showDriverAssignmentNotes('${order.id}')">Notes</button>${canRemoveDriverAssignment(order) ? `<button class="btn btn-ghost btn-sm" onclick="removeDriverFromOrder('${order.id}')">Remove</button>` : ''}</div></td>
           </tr>`;
-      }).join('') || '<tr><td colspan="12">No parcels are currently available for driver assignment or reassignment.</td></tr>';
+      }).join('') || '<tr><td colspan="11">No parcels are currently available for driver assignment or reassignment.</td></tr>';
       updateSortArrows('#panel-driver-assign thead', driverAssignSort);
       syncDriverAssignBulkControls();
     }
@@ -7631,7 +7743,7 @@
 
     function clearStaticAdminData() {
       document.querySelector('#panel-all-orders tbody').innerHTML = '<tr><td colspan="7">Loading orders...</td></tr>';
-      document.querySelector('#panel-driver-assign tbody').innerHTML = '<tr><td colspan="12">Loading driver assignments...</td></tr>';
+      document.querySelector('#panel-driver-assign tbody').innerHTML = '<tr><td colspan="11">Loading driver assignments...</td></tr>';
       document.getElementById('parcelCheckinBody').innerHTML = '<tr><td colspan="7">Loading parcel records...</td></tr>';
       document.getElementById('pickupManagementBody').innerHTML = '<tr><td colspan="7">Loading pickup requests...</td></tr>';
       document.getElementById('sortingQueueBody').innerHTML = '<tr><td colspan="6">Loading sorting queue...</td></tr>';
@@ -8309,16 +8421,65 @@
       }
     };
 
+    // Automatic Address Resolution & Location Matching (proposed-improvements
+    // doc): right after a bulk import, resolve every new order's address to
+    // a mapped location in one pass -- exactly once each, never retried on a
+    // timer. Runs in small chunks so the preview area can show live progress
+    // instead of looking frozen on a large import, and a chunk that errors
+    // out just counts as unresolved rather than failing the whole pass.
+    async function resolveImportedOrderLocations(importedOrders) {
+      const previewBody = document.getElementById('managedImportPreviewBody');
+      const total = importedOrders.length;
+      const CHUNK_SIZE = 20;
+      let done = 0, high = 0, medium = 0, unresolved = 0;
+
+      for (let i = 0; i < importedOrders.length; i += CHUNK_SIZE) {
+        const chunk = importedOrders.slice(i, i + CHUNK_SIZE);
+        if (previewBody) {
+          previewBody.innerHTML = `<tr><td colspan="11">Resolving delivery locations… ${done} of ${total} checked.</td></tr>`;
+        }
+        try {
+          const { data, error } = await supabase.rpc('admin_geocode_orders', {
+            p_order_ids: chunk.map(order => order.id)
+          });
+          if (error) throw error;
+          high += data?.high || 0;
+          medium += data?.medium || 0;
+          unresolved += (data?.unresolved || 0) + (data?.skipped || 0);
+        } catch (err) {
+          console.warn('Location resolution batch failed:', err);
+          unresolved += chunk.length;
+        }
+        done += chunk.length;
+      }
+
+      return { total, high, medium, unresolved };
+    }
+
     window.confirmManagedImport = async function() {
       const validRows = managedImportRows.filter(item => !item.issues.length).map(item => item.row);
       if (!validRows.length) return showToast('No valid order rows are ready to import.');
       try {
         const result = await importManagedRows(validRows);
-        showToast(`${result.imported_count} orders imported.`);
+        showToast(`${result.imported_count} orders imported. Resolving delivery locations…`);
         managedImportRows = [];
         document.getElementById('confirmManagedImportBtn').disabled = true;
-        document.getElementById('managedImportPreviewBody').innerHTML = '<tr><td colspan="11">Import completed. Add a Google Maps pin to each order from All Orders, then continue through zone confirmation and driver assignment.</td></tr>';
         document.getElementById('managedImportFile').value = '';
+
+        const importedOrders = Array.isArray(result.orders) ? result.orders : [];
+        const summary = importedOrders.length
+          ? await resolveImportedOrderLocations(importedOrders)
+          : { total: 0, high: 0, medium: 0, unresolved: 0 };
+
+        const previewBody = document.getElementById('managedImportPreviewBody');
+        if (previewBody) {
+          previewBody.innerHTML = summary.total
+            ? `<tr><td colspan="11">${result.imported_count} orders imported. Locations: ${summary.high} high-confidence, ${summary.medium} need review, ${summary.unresolved} location required. Unresolved and "needs review" orders can still be pinned manually from All Orders before zone confirmation.</td></tr>`
+            : `<tr><td colspan="11">${result.imported_count} orders imported.</td></tr>`;
+        }
+        if (summary.total) {
+          showToast(`Locations resolved: ${summary.high} high-confidence, ${summary.medium} need review, ${summary.unresolved} location required.`);
+        }
         await loadData();
         showPanel('zone-confirm');
       } catch (error) {
@@ -8908,7 +9069,7 @@
       const message = escapeHtml(error.message || 'Could not load admin dashboard data.');
       showZoneMessage(message);
       document.querySelector('#panel-all-orders tbody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
-      document.querySelector('#panel-driver-assign tbody').innerHTML = `<tr><td colspan="12">${message}</td></tr>`;
+      document.querySelector('#panel-driver-assign tbody').innerHTML = `<tr><td colspan="11">${message}</td></tr>`;
       document.getElementById('parcelCheckinBody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
       document.getElementById('pickupManagementBody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
       document.getElementById('sortingQueueBody').innerHTML = `<tr><td colspan="6">${message}</td></tr>`;
