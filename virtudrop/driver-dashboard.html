@@ -715,7 +715,8 @@
       <button class="filter-tab" onclick="filterCards('failed', this)">Failed (0)</button>
       <button class="filter-tab" id="collapseAllBtn" type="button" onclick="toggleCollapseAll()" title="Minimize all cards to make dragging easier">Minimize All</button>
       <button class="filter-tab" id="selectModeBtn" type="button" onclick="toggleSelectMode()" title="Select multiple deliveries to drag as a group">Select</button>
-      <button class="filter-tab" id="resetRouteOrderBtn" type="button" onclick="resetRouteOrder()" title="Undo your manual drag order and go back to the suggested nearest-to-farthest order">↺ Reset Order</button>
+      <button class="filter-tab" id="optimizeRouteBtn" type="button" onclick="optimizeRoute()" title="Recalculate the best order for your remaining deliveries, starting from where you are right now">📍 Optimize Route</button>
+      <button class="filter-tab" id="resetRouteOrderBtn" type="button" onclick="resetRouteOrder()" title="Undo your manual drag order and go back to VirtuDrop's recommended route">↺ Reset Order</button>
     </div>
 
     <!-- ── Delivery list ── -->
@@ -1447,8 +1448,10 @@
     }
 
     // Undoes any manual drag order for this driver's active deliveries,
-    // falling back to the dashboard's suggested (area/zone + distance)
-    // order. Mirrors saveRouteOrderFromDom, just clearing instead of setting.
+    // putting each stop back at VirtuDrop's last computed recommendation
+    // (optimized_position) rather than clearing the order outright -- so
+    // this is instant and needs no GPS, unlike Optimize Route, which
+    // recalculates that recommendation from scratch.
     window.resetRouteOrder = async function() {
       if (savingRouteOrder) return;
       savingRouteOrder = true;
@@ -1457,9 +1460,8 @@
       try {
         const { error } = await supabase.rpc('driver_reset_route_order');
         if (error) throw error;
-        orders.forEach(order => { order.driver_route_position = null; });
-        showToast('Route reset to the suggested order.');
-        renderOrders();
+        showToast('Route reset to VirtuDrop\'s recommended order.');
+        await loadDriverData();
       } catch (error) {
         console.error('Route order reset failed:', error);
         showToast('Could not reset your route order. Try again.');
@@ -1468,6 +1470,73 @@
         if (btn) btn.disabled = false;
       }
     };
+
+    // Wraps navigator.geolocation in a promise that always resolves (never
+    // rejects) within timeoutMs -- callers fall back to the driver's last
+    // stored location (or the fixed pickup point) server-side when this
+    // comes back null, e.g. permission denied or no fix in time.
+    function captureCurrentPosition(timeoutMs = 8000) {
+      return new Promise(resolve => {
+        if (!navigator.geolocation) { resolve(null); return; }
+        const timer = setTimeout(() => resolve(null), timeoutMs);
+        navigator.geolocation.getCurrentPosition(
+          pos => { clearTimeout(timer); resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }); },
+          () => { clearTimeout(timer); resolve(null); },
+          { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 60000 }
+        );
+      });
+    }
+
+    // Phase 1.1 / 1.6: asks VirtuDrop to (re)calculate the best order for
+    // every delivery still on this driver's plate, starting from wherever
+    // they are right now. Safe to call any time -- deliveries already
+    // delivered/failed/rescheduled are never part of the working set, so
+    // they're never touched or reshuffled.
+    window.optimizeRoute = async function(opts = {}) {
+      const silent = Boolean(opts && opts.silent);
+      if (savingRouteOrder) return;
+      savingRouteOrder = true;
+      const btn = document.getElementById('optimizeRouteBtn');
+      if (btn) btn.disabled = true;
+      if (!silent) showToast('Finding your best route…');
+      try {
+        const position = await captureCurrentPosition();
+        const { data, error } = await supabase.rpc('driver_optimize_route', {
+          p_latitude: position ? position.lat : null,
+          p_longitude: position ? position.lng : null
+        });
+        if (error) throw error;
+        await loadDriverData();
+        const withoutLoc = Number(data?.without_location) || 0;
+        if (!silent) {
+          showToast(withoutLoc > 0
+            ? `Route optimized (${withoutLoc} ${withoutLoc === 1 ? 'stop has' : 'stops have'} no location pin yet, added at the end).`
+            : 'Route optimized for your current location.');
+        }
+      } catch (error) {
+        console.error('Route optimization failed:', error);
+        if (!silent) showToast('Could not optimize your route. Try again.');
+      } finally {
+        savingRouteOrder = false;
+        if (btn) btn.disabled = false;
+      }
+    };
+
+    // Runs the optimizer automatically, once per page load, the first time
+    // the driver's active deliveries include any stop VirtuDrop hasn't
+    // sequenced yet -- Phase 1.1's "the driver should no longer receive an
+    // arbitrary list of deliveries". Never fires again after that first
+    // pass; from there, re-optimizing is the driver's call (the Optimize
+    // Route button), e.g. after a no-response, reschedule, cancellation or
+    // new delivery changes what's left on the route (Phase 1.6).
+    let autoOptimizeAttempted = false;
+    function maybeAutoOptimizeRoute() {
+      if (autoOptimizeAttempted) return;
+      const active = orders.filter(o => !['delivered', 'failed', 'rescheduled'].includes(normalizeStatus(o)));
+      if (!active.length || !active.some(o => o.optimized_position == null)) return;
+      autoOptimizeAttempted = true;
+      optimizeRoute({ silent: true });
+    }
 
     // ── Driver-entered Google/Waze link ───────────────────────────────
     function parseLatLngFromMapsLink(link) {
@@ -1541,7 +1610,8 @@
         <button class="filter-tab ${activeFilter === 'failed' ? 'active' : ''}" onclick="filterCards('failed', this)">Failed (${counts.failed})</button>
         <button class="filter-tab" id="collapseAllBtn" type="button" onclick="toggleCollapseAll()" title="Minimize all cards to make dragging easier">Minimize All</button>
         <button class="filter-tab${selectModeActive ? ' active' : ''}" id="selectModeBtn" type="button" onclick="toggleSelectMode()" title="Select multiple deliveries to drag as a group">${selectModeActive ? `Done${selectedOrderIds.size ? ` (${selectedOrderIds.size})` : ''}` : 'Select'}</button>
-        <button class="filter-tab" id="resetRouteOrderBtn" type="button" onclick="resetRouteOrder()" title="Undo your manual drag order and go back to the suggested nearest-to-farthest order">↺ Reset Order</button>
+        <button class="filter-tab" id="optimizeRouteBtn" type="button" onclick="optimizeRoute()" title="Recalculate the best order for your remaining deliveries, starting from where you are right now">📍 Optimize Route</button>
+        <button class="filter-tab" id="resetRouteOrderBtn" type="button" onclick="resetRouteOrder()" title="Undo your manual drag order and go back to VirtuDrop's recommended route">↺ Reset Order</button>
       `;
       syncCollapseAllLabel();
     }
@@ -1680,7 +1750,7 @@
         console.warn('Driver delivery RPC could not load; using direct assignment fallback:', ordersRes.error);
         ordersRes = await supabase
           .from('orders')
-          .select('id, order_number, external_item_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, pricing_rate_band, driver_route_position, payment_type, customer_amount_due, driver_delivery_pay, driver_amount_to_collect, pickup_required, pickup_parcel_count, pickup_fee, scheduled_delivery_date, parcel_status, delivery_outcome, delivery_attempt_count, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_recipient_name, delivery_signed_at, delivery_signature_data_url, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, redelivery_status, redelivery_notes, order_status, assigned_driver_id, customer_notes, driver_notes, tracking_token, created_at')
+          .select('id, order_number, external_item_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, pricing_rate_band, driver_route_position, optimized_position, manually_reordered, payment_type, customer_amount_due, driver_delivery_pay, driver_amount_to_collect, pickup_required, pickup_parcel_count, pickup_fee, scheduled_delivery_date, parcel_status, delivery_outcome, delivery_attempt_count, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_recipient_name, delivery_signed_at, delivery_signature_data_url, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, redelivery_status, redelivery_notes, order_status, assigned_driver_id, customer_notes, driver_notes, tracking_token, created_at')
           .eq('assigned_driver_id', driver.id)
           .order('created_at', { ascending: false });
         if (ordersRes.error) throw ordersRes.error;
@@ -1715,6 +1785,7 @@
       renderPickups();
       switchWorkView(activeWorkView);
       loadDriverNotificationBadge();
+      maybeAutoOptimizeRoute();
     }
 
     async function readOrderStatus(orderId) {
