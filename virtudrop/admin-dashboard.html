@@ -6863,8 +6863,39 @@
 
       return "<p style=\"margin-bottom:0.75rem;\">" + items.length + " item" + (items.length === 1 ? '' : 's') +
         " currently with " + escapeHtml(driverName(driverId)) + " awaiting return.</p>" +
+        "<button class=\"btn btn-ghost btn-sm\" type=\"button\" style=\"margin-bottom:0.75rem;\" onclick=\"copyDriverReturnList()\">Copy List</button>" +
         "<div class=\"order-notes-list\">" + rows + "</div>";
     }
+
+    function driverReturnListCopyText(driverId) {
+      const items = orders
+        .filter(order => order.assigned_driver_id === driverId && orderNeedsHubReturn(order))
+        .sort((a, b) => String(a.order_number || '').localeCompare(String(b.order_number || '')));
+      return items.map(order =>
+        "- " + (order.customer_name || 'Unknown') + " - " + orderPackageAssignmentText(order)
+      ).join('\n');
+    }
+
+    window.copyDriverReturnList = function() {
+      const text = window._driverReturnCopyText || '';
+      if (!text) return showToast("No items to copy.");
+      const fallbackCopy = () => {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try { document.execCommand('copy'); showToast("List copied."); }
+        catch (err) { showToast("Could not copy list."); }
+        document.body.removeChild(textarea);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => showToast("List copied.")).catch(fallbackCopy);
+      } else {
+        fallbackCopy();
+      }
+    };
 
     window.showDriverReturnList = function() {
       const driverId = document.getElementById('manifestDriverFilter')?.value || '';
@@ -6874,6 +6905,7 @@
       document.getElementById("modalConfirm").textContent = "Close";
       document.getElementById("modalCancel").style.display = "none";
       document.getElementById("modal").classList.add("show");
+      window._driverReturnCopyText = driverReturnListCopyText(driverId);
       modalCb = null;
     };
 
