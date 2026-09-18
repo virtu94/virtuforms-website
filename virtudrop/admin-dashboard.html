@@ -1144,6 +1144,7 @@
           <select class="filter-select" id="manifestDriverFilter" onchange="renderManifests(); loadDriverCashSummary();"><option value="">Select driver</option></select>
           <select class="filter-select" id="manifestStatusFilter" onchange="renderManifests()"><option value="active">Current Manifests</option><option value="draft">Draft</option><option value="ready">Ready</option><option value="collected">Collected by Driver</option><option value="closed">Closed</option><option value="all">All Manifests</option></select>
           <input class="filter-input" id="manifestSearch" type="search" placeholder="Search order or customer" oninput="renderManifests()" />
+          <button class="btn btn-ghost btn-sm" type="button" onclick="showDriverReturnList()">Items to Return</button>
         </div>
 
         <div class="card" id="driverCashSummaryCard" style="margin-bottom:1rem; display:none;">
@@ -6838,6 +6839,43 @@
       if (order.order_status === 'cancelled' && ['handed_to_driver', 'out_for_delivery'].includes(order.parcel_status)) return true;
       return false;
     }
+
+    function driverReturnListHtml(driverId) {
+      const items = orders
+        .filter(order => order.assigned_driver_id === driverId && orderNeedsHubReturn(order))
+        .sort((a, b) => String(a.order_number || '').localeCompare(String(b.order_number || '')));
+
+      if (!items.length) {
+        return "<p>No items currently assigned to " + escapeHtml(driverName(driverId)) + " are awaiting return.</p>";
+      }
+
+      const rows = items.map(order => {
+        const statusText = String(order.order_status || '').replaceAll('_', ' ');
+        return "<div class=\"order-note-block\"><div class=\"order-note-title\">" +
+          escapeHtml(order.order_number || 'Order') +
+          " — " + escapeHtml(order.customer_name || '') +
+          "</div><div class=\"order-note-text\">" +
+          escapeHtml(orderPackageAssignmentText(order)) +
+          "<br>" + escapeHtml(orderLabelAddress(order) || '') +
+          "<br><span style=\"color:#b42318;\">" + escapeHtml(statusText || 'Awaiting return') + "</span>" +
+          "</div></div>";
+      }).join('');
+
+      return "<p style=\"margin-bottom:0.75rem;\">" + items.length + " item" + (items.length === 1 ? '' : 's') +
+        " currently with " + escapeHtml(driverName(driverId)) + " awaiting return.</p>" +
+        "<div class=\"order-notes-list\">" + rows + "</div>";
+    }
+
+    window.showDriverReturnList = function() {
+      const driverId = document.getElementById('manifestDriverFilter')?.value || '';
+      if (!driverId) return showToast("Select a driver first.");
+      document.getElementById("modalTitle").textContent = "Items to Return - " + driverName(driverId);
+      document.getElementById("modalBody").innerHTML = driverReturnListHtml(driverId);
+      document.getElementById("modalConfirm").textContent = "Close";
+      document.getElementById("modalCancel").style.display = "none";
+      document.getElementById("modal").classList.add("show");
+      modalCb = null;
+    };
 
     function returnRecordMatches(order, filter) {
       // A cancelled/rejected order still belongs here if a driver already
