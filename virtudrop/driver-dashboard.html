@@ -1506,11 +1506,13 @@
       });
     }
 
-    // Phase 1.1 / 1.6: asks VirtuDrop to (re)calculate the best order for
-    // every delivery still on this driver's plate, starting from wherever
-    // they are right now. Safe to call any time -- deliveries already
-    // delivered/failed/rescheduled are never part of the working set, so
-    // they're never touched or reshuffled.
+    // Phase 1.1 / 1.6: an explicit, driver-requested full recalculation of
+    // the best order for every delivery still on this driver's plate,
+    // starting from wherever they are right now. This is the one case
+    // where discarding the driver's current arrangement is correct -- they
+    // asked for it -- so it always recomputes from scratch. Deliveries
+    // already delivered/failed/rescheduled are never part of the working
+    // set, so they're never touched.
     window.optimizeRoute = async function(opts = {}) {
       const silent = Boolean(opts && opts.silent);
       if (savingRouteOrder) return;
@@ -1541,20 +1543,44 @@
       }
     };
 
-    // Runs the optimizer automatically, once per page load, the first time
-    // the driver's active deliveries include any stop VirtuDrop hasn't
-    // sequenced yet -- Phase 1.1's "the driver should no longer receive an
-    // arbitrary list of deliveries". Never fires again after that first
-    // pass; from there, re-optimizing is the driver's call (the Optimize
-    // Route button), e.g. after a no-response, reschedule, cancellation or
-    // new delivery changes what's left on the route (Phase 1.6).
-    let autoOptimizeAttempted = false;
-    function maybeAutoOptimizeRoute() {
-      if (autoOptimizeAttempted) return;
+    // Runs automatically, silently, whenever loadDriverData() finds a
+    // delivery that's never been positioned yet (driver_route_position is
+    // null) -- i.e. it was just assigned/confirmed onto this driver's plate,
+    // or handed to them from another driver. Unlike Optimize Route above,
+    // this NEVER touches a stop the driver already has a position for: it
+    // only slots the new one(s) into the driver's existing order at
+    // whichever spot adds the least extra travel (driver_place_new_deliveries
+    // on the server), so getting a new delivery no longer resets a route
+    // the driver already arranged. Safe to call every load -- once
+    // everything active has a position, there's nothing left to place, so
+    // it's a no-op.
+    function maybeAutoPlaceNewDeliveries() {
+      if (savingRouteOrder) return;
       const active = orders.filter(o => !['delivered', 'failed', 'rescheduled'].includes(normalizeStatus(o)));
-      if (!active.length || !active.some(o => o.optimized_position == null)) return;
-      autoOptimizeAttempted = true;
-      optimizeRoute({ silent: true });
+      if (!active.length || !active.some(o => o.driver_route_position == null)) return;
+      placeNewDeliveries();
+    }
+
+    async function placeNewDeliveries() {
+      if (savingRouteOrder) return;
+      savingRouteOrder = true;
+      try {
+        const position = await captureCurrentPosition();
+        const { data, error } = await supabase.rpc('driver_place_new_deliveries', {
+          p_latitude: position ? position.lat : null,
+          p_longitude: position ? position.lng : null
+        });
+        if (error) throw error;
+        await loadDriverData();
+        const placed = Number(data?.placed) || 0;
+        if (placed > 0) {
+          showToast(`${placed} new ${placed === 1 ? 'delivery' : 'deliveries'} added to your route.`);
+        }
+      } catch (error) {
+        console.error('Placing new deliveries failed:', error);
+      } finally {
+        savingRouteOrder = false;
+      }
     }
 
     // ── Driver-entered Google/Waze link ───────────────────────────────
@@ -1804,7 +1830,7 @@
       renderPickups();
       switchWorkView(activeWorkView);
       loadDriverNotificationBadge();
-      maybeAutoOptimizeRoute();
+      maybeAutoPlaceNewDeliveries();
     }
 
     async function readOrderStatus(orderId) {
