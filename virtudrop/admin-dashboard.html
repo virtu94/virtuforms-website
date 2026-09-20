@@ -1019,6 +1019,7 @@
             <option value="">Choose bulk action</option>
             <option value="cancel">Cancel selected</option>
             <option value="mark_delivered">Mark selected as delivered</option>
+            <option value="reset_active">Reset selected to Active / In Progress</option>
             <option value="clear_driver">Remove selected from driver</option>
             <option value="recalc_schedule">Recalculate delivery schedule</option>
             <option value="print_labels">Download selected labels (JPEG)</option>
@@ -5645,10 +5646,16 @@
         }
         payload.collection_method = normalizedMethod;
       }
+      if (action === 'reset_active') {
+        const reason = window.prompt(`Reason for resetting ${selectedIds.length} order(s) to Active (optional)`, '');
+        if (reason === null) return;
+        if (reason.trim()) payload.reason = reason.trim();
+      }
 
       const labels = {
         cancel: 'cancel',
         mark_delivered: 'mark as delivered',
+        reset_active: 'reset to Active / In Progress',
         clear_driver: 'remove from driver assignment',
         recalc_schedule: 'recalculate delivery schedule for'
       };
