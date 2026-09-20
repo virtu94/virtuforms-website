@@ -1149,8 +1149,14 @@
           <button class="btn btn-ghost btn-sm" type="button" onclick="showDriverReturnList()">Items to Return</button>
         </div>
 
+        <div class="card" id="driverBatchStatsCard" style="margin-bottom:1rem; display:none;">
+          <div class="card-title">Selected Driver — Current Deliveries Out</div>
+          <div class="td-sub" style="margin-bottom:0.75rem;">Only orders on this driver's current (non-closed) manifest(s) — not their history.</div>
+          <div id="driverBatchStatsBody">Loading...</div>
+        </div>
+
         <div class="card" id="driverCashSummaryCard" style="margin-bottom:1rem; display:none;">
-          <div class="card-title">Selected Driver — Cash &amp; Delivery Summary</div>
+          <div class="card-title">Selected Driver — Cash &amp; Delivery Summary (Over Time)</div>
           <div class="filter-bar" style="margin-bottom:0.75rem;">
             <label class="td-sub" style="align-self:center;">From</label>
             <input class="filter-input" type="date" id="driverSummaryStart" onchange="loadDriverCashSummary()">
@@ -6728,12 +6734,73 @@
       renderManifests();
     };
 
+    // Current-batch snapshot for the selected driver: only orders sitting on
+    // their non-closed manifest(s) right now, broken down by where each one
+    // currently stands. This is deliberately separate from the "Cash &
+    // Delivery Summary (Over Time)" card below, which totals across all of a
+    // driver's history -- here we only want what's out with them today.
+    function renderDriverBatchStats(driverId) {
+      const card = document.getElementById('driverBatchStatsCard');
+      const body = document.getElementById('driverBatchStatsBody');
+      if (!card || !body) return;
+      if (!driverId) {
+        card.style.display = 'none';
+        return;
+      }
+      card.style.display = '';
+
+      const currentOrders = deliveryManifests
+        .filter(manifest => manifest.driver_id === driverId && ['draft', 'ready', 'collected'].includes(manifest.status))
+        .flatMap(manifest => manifest.orders || [])
+        .filter(order => !isCancelledOrder(order));
+
+      if (!currentOrders.length) {
+        body.innerHTML = '<p>No orders on an open manifest for this driver right now.</p>';
+        return;
+      }
+
+      const counts = {
+        outForDelivery: 0,
+        delivered: 0,
+        refused: 0,
+        noResponse: 0,
+        rescheduled: 0,
+        awaitingHandover: 0
+      };
+      currentOrders.forEach(order => {
+        if (order.delivery_outcome === 'refused') counts.refused += 1;
+        else if (order.delivery_outcome === 'no_response') counts.noResponse += 1;
+        else if (order.order_status === 'rescheduled' || order.delivery_outcome === 'reschedule_requested') counts.rescheduled += 1;
+        else if (order.order_status === 'delivered') counts.delivered += 1;
+        else if (order.order_status === 'out_for_delivery') counts.outForDelivery += 1;
+        else counts.awaitingHandover += 1;
+      });
+
+      body.innerHTML = `
+        <div class="table-wrap"><table>
+          <thead><tr><th>Total</th><th>Out for Delivery</th><th>Delivered</th><th>Refused</th><th>No Response</th><th>Rescheduled</th><th>Awaiting Handover</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>${currentOrders.length}</td>
+              <td>${counts.outForDelivery}</td>
+              <td>${counts.delivered}</td>
+              <td>${counts.refused}</td>
+              <td>${counts.noResponse}</td>
+              <td>${counts.rescheduled}</td>
+              <td>${counts.awaitingHandover}</td>
+            </tr>
+          </tbody>
+        </table></div>
+      `;
+    }
+
     window.renderManifests = function() {
       const list = document.getElementById('manifestList');
       if (!list) return;
       const selectedDriverId = document.getElementById('manifestDriverFilter')?.value || '';
       const filter = document.getElementById('manifestStatusFilter')?.value || 'active';
       const search = String(document.getElementById('manifestSearch')?.value || '').trim().toLowerCase();
+      renderDriverBatchStats(selectedDriverId);
       if (!selectedDriverId) {
         manifestVisibleIds = [];
         manifestSelection.clear();
