@@ -1143,7 +1143,7 @@
         </div>
 
         <div class="filter-bar">
-          <select class="filter-select" id="manifestDriverFilter" onchange="renderManifests(); loadDriverCashSummary();"><option value="">Select driver</option></select>
+          <select class="filter-select" id="manifestDriverFilter" onchange="renderManifests();"><option value="">Select driver</option></select>
           <select class="filter-select" id="manifestStatusFilter" onchange="renderManifests()"><option value="active">Current Manifests</option><option value="draft">Draft</option><option value="ready">Ready</option><option value="collected">Collected by Driver</option><option value="closed">Closed</option><option value="all">All Manifests</option></select>
           <input class="filter-input" id="manifestSearch" type="search" placeholder="Search order or customer" oninput="renderManifests()" />
           <button class="btn btn-ghost btn-sm" type="button" onclick="showDriverReturnList()">Items to Return</button>
@@ -1153,19 +1153,6 @@
           <div class="card-title">Selected Driver — Current Deliveries Out</div>
           <div class="td-sub" style="margin-bottom:0.75rem;">Only orders on this driver's current (non-closed) manifest(s) — not their history.</div>
           <div id="driverBatchStatsBody">Loading...</div>
-        </div>
-
-        <div class="card" id="driverCashSummaryCard" style="margin-bottom:1rem; display:none;">
-          <div class="card-title">Selected Driver — Cash &amp; Delivery Summary (Over Time)</div>
-          <div class="filter-bar" style="margin-bottom:0.75rem;">
-            <label class="td-sub" style="align-self:center;">From</label>
-            <input class="filter-input" type="date" id="driverSummaryStart" onchange="loadDriverCashSummary()">
-            <label class="td-sub" style="align-self:center;">To</label>
-            <input class="filter-input" type="date" id="driverSummaryEnd" onchange="loadDriverCashSummary()">
-            <button class="btn btn-ghost btn-sm" type="button" onclick="setDriverSummaryToday()">Today</button>
-            <button class="btn btn-ghost btn-sm" type="button" onclick="clearDriverSummaryRange()">All Time</button>
-          </div>
-          <div id="driverCashSummaryBody">Loading...</div>
         </div>
 
         <div class="bulk-toolbar" id="manifestBulkToolbar">
@@ -6249,7 +6236,7 @@
       ['no_response', 'Failed - No Response'],
       ['refused', 'Failed - Refused'],
       ['cancelled', 'Cancelled'],
-      ['active', 'Reset to Active / In Progress']
+      ['active', 'Reset to Active (Out for Delivery)']
     ];
 
     window.openAdminOrderStatusChange = function(orderId) {
@@ -6295,8 +6282,11 @@
       } else if (status === 'cancelled') {
         wrap.innerHTML = `<label>Cancellation Reason<textarea id="adminStatusNotes" placeholder="Enter why this order is being cancelled"></textarea></label>`;
       } else if (status === 'active') {
+        const stillWithDriver = Boolean(order?.assigned_driver_id) && order?.parcel_status === 'handed_to_driver';
         wrap.innerHTML = `
-          <p style="margin:0 0 0.7rem; color:var(--grey);">Puts the order back in normal circulation (kept with its current driver, if any) and clears its delivery outcome.</p>
+          <p style="margin:0 0 0.7rem; color:var(--grey);">${stillWithDriver
+            ? 'The driver never returned this parcel, so this puts it straight back to <strong>Out for Delivery</strong> with the same driver and clears its delivery outcome.'
+            : 'Clears the delivery outcome and puts the order back in normal circulation' + (order?.assigned_driver_id ? ' (kept with its current driver, awaiting hand-off)' : '') + '. The parcel isn\'t currently with a driver, so this can\'t jump straight to Out for Delivery.'}</p>
           <label>Notes (optional)<textarea id="adminStatusNotes" placeholder="Reason for resetting this order"></textarea></label>`;
       } else {
         wrap.innerHTML = '';
@@ -6863,69 +6853,6 @@
       } catch (error) {
         console.error('All-drivers cash summary error:', error);
         body.innerHTML = `<tr><td colspan="2">Could not load cash summary: ${escapeHtml(error.message || 'Unknown error')}</td></tr>`;
-      }
-    };
-
-    window.setDriverSummaryToday = function() {
-      const today = new Date().toISOString().slice(0, 10);
-      const start = document.getElementById('driverSummaryStart');
-      const end = document.getElementById('driverSummaryEnd');
-      if (start) start.value = today;
-      if (end) end.value = today;
-      loadDriverCashSummary();
-    };
-
-    window.clearDriverSummaryRange = function() {
-      const start = document.getElementById('driverSummaryStart');
-      const end = document.getElementById('driverSummaryEnd');
-      if (start) start.value = '';
-      if (end) end.value = '';
-      loadDriverCashSummary();
-    };
-
-    window.loadDriverCashSummary = async function() {
-      const card = document.getElementById('driverCashSummaryCard');
-      const body = document.getElementById('driverCashSummaryBody');
-      const driverId = document.getElementById('manifestDriverFilter')?.value || '';
-      if (!card || !body) return;
-      if (!driverId) {
-        card.style.display = 'none';
-        return;
-      }
-      card.style.display = '';
-      body.innerHTML = 'Loading...';
-      const startDate = document.getElementById('driverSummaryStart')?.value || null;
-      const endDate = document.getElementById('driverSummaryEnd')?.value || null;
-      try {
-        const { data, error } = await supabase.rpc('admin_driver_delivery_summary', {
-          p_driver_id: driverId,
-          p_start_date: startDate,
-          p_end_date: endDate
-        });
-        if (error) throw error;
-        const summary = data || {};
-        const rangeLabel = startDate || endDate
-          ? `${startDate || 'the beginning'} to ${endDate || 'now'}`
-          : 'all time';
-        body.innerHTML = `
-          <div class="td-sub" style="margin-bottom:0.75rem;">Showing ${escapeHtml(rangeLabel)} for ${escapeHtml(driverName(driverId))}.</div>
-          <div class="table-wrap"><table>
-            <thead><tr><th>Cash Currently Held</th><th>Delivered</th><th>Rescheduled</th><th>Failed</th><th>No Response</th><th>Refused</th></tr></thead>
-            <tbody>
-              <tr>
-                <td>${moneyFull(summary.cash_on_hand)}</td>
-                <td>${Number(summary.delivered_count || 0)} (${moneyFull(summary.delivered_cash_collected)} cash)</td>
-                <td>${Number(summary.rescheduled_count || 0)}</td>
-                <td>${Number(summary.failed_count || 0)}</td>
-                <td>${Number(summary.no_response_count || 0)}</td>
-                <td>${Number(summary.refused_count || 0)}</td>
-              </tr>
-            </tbody>
-          </table></div>
-        `;
-      } catch (error) {
-        console.error('Driver cash summary error:', error);
-        body.innerHTML = `Could not load this driver's summary: ${escapeHtml(error.message || 'Unknown error')}`;
       }
     };
 
@@ -8097,7 +8024,6 @@
       renderSortingQueue();
       renderManifests();
       loadAllDriversCashSummary();
-      loadDriverCashSummary();
       renderReturnManagement();
       loadReturnBatches();
       renderZoneConfirm();
