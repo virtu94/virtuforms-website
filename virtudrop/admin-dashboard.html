@@ -189,7 +189,17 @@
     }
 
     /* ── Tables ── */
-    .table-wrap { overflow-x: auto; }
+    /* Always-visible horizontal scrollbar so a wide table never reads as
+       "cut off" with no way to reach the rest of it. */
+    .table-wrap {
+      overflow-x: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--teal-mid) var(--grey-light);
+    }
+    .table-wrap::-webkit-scrollbar { height: 10px; }
+    .table-wrap::-webkit-scrollbar-track { background: var(--grey-light); border-radius: 6px; }
+    .table-wrap::-webkit-scrollbar-thumb { background: var(--teal-mid); border-radius: 6px; }
+    .table-wrap::-webkit-scrollbar-thumb:hover { background: var(--teal-dark); }
     table { width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 600px; }
     thead th {
       text-align: left; padding: 0.7rem 1rem;
@@ -619,7 +629,7 @@
       overflow-wrap: anywhere;
     }
 
-    @media (max-width: 968px) {
+    @media (max-width: 1180px) {
       .sidebar { transform: translateX(-100%); }
       .sidebar.open { transform: translateX(0); }
       .sidebar-overlay.show { display: block; }
@@ -651,7 +661,7 @@
     .page-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .modal { max-width: min(420px, calc(100vw - 2rem)); }
 
-    @media (max-width: 968px) {
+    @media (max-width: 1180px) {
       .sidebar { width: min(84vw, 300px); min-width: 0; }
       .topbar { padding: 0 1rem; gap: 0.8rem; }
       .topbar-right { gap: 0.5rem; flex-shrink: 0; }
@@ -862,16 +872,19 @@
         <span class="nav-badge alert">5</span>
       </button>
       <button class="nav-item" data-panel="sorting-manifests">
-        <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h7l2 2h9v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><path d="M3 7V5h7l2 2"></path></svg></span> Sorting &amp; Manifests
+        <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h7l2 2h9v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><path d="M3 7V5h7l2 2"></path></svg></span> Driver Collections / COD
         <span class="nav-badge alert">0</span>
       </button>
       <button class="nav-item" data-panel="returns-redelivery">
-        <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10a6 6 0 1 1 0 12h-3"></path></svg></span> Returns &amp; Redelivery
+        <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10a6 6 0 1 1 0 12h-3"></path></svg></span> Delivery Exceptions
         <span class="nav-badge alert">0</span>
       </button>
       <button class="nav-item" data-panel="driver-assign">
         <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11v9H3z"></path><path d="M14 10h4l3 3v3h-7z"></path><circle cx="7" cy="18" r="2"></circle><circle cx="18" cy="18" r="2"></circle></svg></span> Driver Assignment
         <span class="nav-badge alert">8</span>
+      </button>
+      <button class="nav-item" data-panel="drivers-mgmt">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg></span> Drivers
       </button>
       <button class="nav-item" data-panel="driver-tab" id="driverTabNavItem" style="display:none;">
         <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 17h1a3 3 0 0 0 6 0h4a3 3 0 0 0 6 0h1v-6l-3-5H8L5 11z"></path><circle cx="7.5" cy="17" r="1.8"></circle><circle cx="17.5" cy="17" r="1.8"></circle></svg></span> Driver Tab
@@ -938,7 +951,7 @@
 
         <div style="display:flex; justify-content:flex-end; gap:0.65rem; flex-wrap:wrap; margin-bottom:1rem;">
           <button class="btn btn-primary" type="button" onclick="showPanel('driver-import')">Open Active Delivery Import</button>
-          <button class="btn btn-primary" type="button" onclick="showPanel('sorting-manifests')">Open Sorting &amp; Manifests</button>
+          <button class="btn btn-primary" type="button" onclick="showPanel('sorting-manifests')">Open Driver Collections / COD</button>
         </div>
 
         <div class="pending-strip">
@@ -1010,6 +1023,14 @@
           <select class="filter-select" id="orderClientFilter" onchange="renderAllOrders()">
             <option value="">All Clients</option>
           </select>
+          <select class="filter-select" id="orderZoneFilter" onchange="renderAllOrders()">
+            <option value="">All Zones</option>
+          </select>
+          <select class="filter-select" id="orderDriverFilter" onchange="renderAllOrders()">
+            <option value="">All Drivers</option>
+            <option value="__unassigned">Unassigned</option>
+          </select>
+          <input class="filter-input" id="orderDateFilter" type="date" onchange="renderAllOrders()" title="Filter by order date" />
           <input class="filter-input" id="orderSearchInput" type="search" placeholder="Search order, customer, phone, item" oninput="renderAllOrders()" />
         </div>
 
@@ -1129,7 +1150,7 @@
 
       <div class="panel" id="panel-sorting-manifests">
         <div class="section-heading">
-          <h2>Driver Manifests</h2>
+          <h2>Driver Collections / COD</h2>
           <p>Select a driver to review their assigned orders, mark the manifest ready, confirm driver collection, or close the manifest.</p>
         </div>
 
@@ -1196,8 +1217,14 @@
 
       <div class="panel" id="panel-returns-redelivery">
         <div class="section-heading">
-          <h2>Returns &amp; Redelivery</h2>
-          <p>Resolve undelivered parcels after the driver returns them to the hub.</p>
+          <h2>Delivery Exceptions</h2>
+          <p id="returnExceptionsSubtitle">Resolve undelivered parcels after the driver returns them to the hub.</p>
+        </div>
+        <div class="driver-zone-filter" id="returnExceptionsTabs" aria-label="Delivery exceptions view">
+          <button class="btn btn-ghost btn-sm" type="button" data-return-tab="needs_review" aria-pressed="true" onclick="setReturnExceptionsTab('needs_review')">Needs Review</button>
+          <button class="btn btn-ghost btn-sm" type="button" data-return-tab="redeliveries" onclick="setReturnExceptionsTab('redeliveries')">Redeliveries</button>
+          <button class="btn btn-ghost btn-sm" type="button" data-return-tab="returns_to_client" onclick="setReturnExceptionsTab('returns_to_client')">Returns to Client</button>
+          <button class="btn btn-ghost btn-sm" type="button" data-return-tab="cancelled_closed" onclick="setReturnExceptionsTab('cancelled_closed')">Cancelled / Closed</button>
         </div>
         <div class="filter-bar">
           <select class="filter-select" id="returnManagementDriverFilter" onchange="renderReturnManagement()"><option value="">All drivers</option></select>
@@ -1206,9 +1233,7 @@
             <option value="awaiting_return">Awaiting Driver Return</option>
             <option value="returned">Returned to Hub</option>
             <option value="held">Held Parcels</option>
-            <option value="scheduled">Redelivery Scheduled</option>
-            <option value="client_return">Return to Client</option>
-            <option value="all">All Return Records</option>
+            <option value="all">All Needs-Review Records</option>
           </select>
           <input class="filter-input" id="returnManagementSearch" type="search" placeholder="Search order, client or customer" oninput="renderReturnManagement()" />
           <span class="td-sub" id="returnAwaitingCount" style="align-self:center;"></span>
@@ -1302,6 +1327,36 @@
               </thead>
               <tbody>
                 <tr><td colspan="11">Loading driver assignments...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" id="panel-drivers-mgmt">
+        <div class="section-heading">
+          <h2>Drivers</h2>
+          <p>Driver profiles: vehicle, insurance, unique driver code, and a reassignable route/role label. Repointing a route label to a different driver takes effect immediately &mdash; no code changes needed.</p>
+        </div>
+
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Driver Code</th>
+                  <th>Name</th>
+                  <th>Phone</th>
+                  <th>Vehicle #</th>
+                  <th>Insurance #</th>
+                  <th>Route Label</th>
+                  <th>Assigned Zones</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="driversMgmtTbody">
+                <tr><td colspan="9">Loading drivers...</td></tr>
               </tbody>
             </table>
           </div>
@@ -2141,9 +2196,10 @@
       'parcel-checkin': 'Parcel Check-In',
       'pickup-management': 'Pickup Management',
       'zone-confirm': 'Zone Confirmation',
-      'sorting-manifests': 'Sorting & Manifests',
-      'returns-redelivery': 'Returns & Redelivery',
+      'sorting-manifests': 'Driver Collections / COD',
+      'returns-redelivery': 'Delivery Exceptions',
       'driver-assign': 'Driver Assignment',
+      'drivers-mgmt': 'Drivers',
       'driver-tab': 'Driver Tab',
       'driver-import': 'Active Delivery Import',
       'managed-accounts': 'Managed Accounts',
@@ -2185,6 +2241,7 @@
     let sortingVisibleIds = [];
     let manifestSelection = new Set();
     let manifestVisibleIds = [];
+    let returnMgmtTab = 'needs_review';
     let returnSelection = new Set();
     let returnVisibleIds = [];
     let returnDecisionSelection = new Set();
@@ -3075,15 +3132,37 @@
     }
 
     function zoneLabel(order) {
-      if (order.zone_status === 'pending' || order.order_status === 'zone_pending') {
-        return '<span class="badge badge-pending">Pending</span>';
-      }
-      return '<span class="badge badge-confirmed">Confirmed</span>';
+      const code = orderDeliveryZoneCode(order);
+      const zoneText = code ? `Zone ${escapeHtml(code)}` : 'Not set';
+      const statusBadge = (order.zone_status === 'pending' || order.order_status === 'zone_pending')
+        ? '<span class="badge badge-pending">Pending</span>'
+        : '<span class="badge badge-confirmed">Confirmed</span>';
+      return `<div class="td-name">${zoneText}</div>${statusBadge}`;
     }
 
     function clientName(order) {
       return clientsById.get(order.business_client_id)?.business_name || 'Not listed';
     }
+
+    // Display formatting only -- always renders a Trinidad & Tobago number as
+    // 868-XXX-XXXX (never touches what's actually stored). Falls back to the
+    // original text for anything that isn't a recognizable local number, so
+    // an odd/foreign entry still shows instead of disappearing.
+    function formatPhoneDisplay(phone) {
+      const raw = String(phone || '').trim();
+      if (!raw) return '';
+      const digits = raw.replace(/\D/g, '');
+      let local = digits;
+      if (digits.length === 11 && digits.startsWith('1')) local = digits.slice(1);
+      if (local.length === 10 && local.startsWith('868')) {
+        return `${local.slice(0, 3)}-${local.slice(3, 6)}-${local.slice(6)}`;
+      }
+      if (local.length === 7) {
+        return `868-${local.slice(0, 3)}-${local.slice(3)}`;
+      }
+      return raw;
+    }
+    window.formatPhoneDisplay = formatPhoneDisplay;
 
     // wa.me requires the FULL international number (country code included,
     // no "+"). Trinidad & Tobago's country calling code is 1, so a working
@@ -3316,6 +3395,71 @@
         return `<option value="${driver.id}">${escapeHtml(driverLabel(driver))}</option>`;
       }).join('');
     }
+
+    function driverAssignedZonesLabel(driver) {
+      const ids = Array.isArray(driver.assigned_zone_ids) ? driver.assigned_zone_ids : [];
+      if (!ids.length) return 'All zones';
+      return ids
+        .map(zoneId => zones.find(z => z.id === zoneId))
+        .filter(Boolean)
+        .map(z => 'Zone ' + z.code)
+        .join(', ') || 'All zones';
+    }
+
+    function renderDriversMgmt() {
+      const tbody = document.getElementById('driversMgmtTbody');
+      if (!tbody) return;
+      if (!drivers.length) {
+        tbody.innerHTML = '<tr><td colspan="9">No active drivers.</td></tr>';
+        return;
+      }
+      const sorted = [...drivers].sort((a, b) => (a.driver_code || '').localeCompare(b.driver_code || ''));
+      tbody.innerHTML = sorted.map(driver => `
+        <tr>
+          <td><div class="td-name">${escapeHtml(driver.driver_code || '—')}</div></td>
+          <td><div class="td-name">${escapeHtml(driverLabel(driver))}</div></td>
+          <td>${escapeHtml(formatPhoneDisplay(driver.phone))}</td>
+          <td>${escapeHtml(driver.vehicle_number || '—')}</td>
+          <td>${escapeHtml(driver.insurance_number || '—')}</td>
+          <td>${escapeHtml(driver.route_label || '—')}</td>
+          <td><div class="td-sub">${escapeHtml(driverAssignedZonesLabel(driver))}</div></td>
+          <td>${driver.status === 'active' ? '<span class="badge badge-confirmed">Active</span>' : '<span class="badge badge-pending">Inactive</span>'}</td>
+          <td><button class="btn btn-ghost btn-sm" type="button" onclick="openDriverEdit('${driver.id}')">Edit</button></td>
+        </tr>
+      `).join('');
+    }
+
+    window.openDriverEdit = function(driverId) {
+      const driver = drivers.find(d => d.id === driverId);
+      if (!driver) return showToast('Driver not found.');
+      document.getElementById('modalTitle').textContent = `Edit Driver - ${driverLabel(driver)}`;
+      document.getElementById('modalBody').innerHTML = `
+        <div class="payment-modal-form" style="text-align:left;">
+          <div class="td-sub">Driver Code: ${escapeHtml(driver.driver_code || '—')} (assigned automatically, not editable)</div>
+          <label>Vehicle #<input id="driverEditVehicleNumber" value="${escapeHtml(driver.vehicle_number || '')}" placeholder="e.g. PBM 1234"></label>
+          <label>Insurance #<input id="driverEditInsuranceNumber" value="${escapeHtml(driver.insurance_number || '')}" placeholder="Policy / certificate number"></label>
+          <label>Route Label<input id="driverEditRouteLabel" value="${escapeHtml(driver.route_label || '')}" placeholder="e.g. North-West Route"></label>
+          <div class="td-sub">The route label is just a display tag &mdash; reassign it to a different driver any time by editing that driver's profile. It does not change zone or order routing on its own.</div>
+        </div>
+      `;
+      document.getElementById('modalConfirm').textContent = 'Save';
+      document.getElementById('modalCancel').style.display = '';
+      document.getElementById('modal').classList.add('show');
+      modalCb = async () => {
+        const updates = {
+          vehicle_number: document.getElementById('driverEditVehicleNumber')?.value.trim() || null,
+          insurance_number: document.getElementById('driverEditInsuranceNumber')?.value.trim() || null,
+          route_label: document.getElementById('driverEditRouteLabel')?.value.trim() || null,
+        };
+        const { error } = await supabase.from('drivers').update(updates).eq('id', driverId);
+        if (error) {
+          window.vdNotify('Driver Not Updated', error.message || 'Could not save this driver profile.', 'error');
+          return false;
+        }
+        showToast('Driver profile updated.');
+        await loadData();
+      };
+    };
 
     function updateBadgesAndStats() {
       const pendingZone = orders.filter(o =>
@@ -3956,7 +4100,7 @@
           <tr>
             <td class="td-id">${orderCell}</td>
             <td><div class="td-name">${escapeHtml(clientName(order))}</div></td>
-            <td><div class="td-name">${escapeHtml(order.customer_name || '—')}</div><div class="td-sub">${escapeHtml(order.customer_phone || '')}</div></td>
+            <td><div class="td-name">${escapeHtml(order.customer_name || '—')}</div><div class="td-sub">${escapeHtml(formatPhoneDisplay(order.customer_phone))}</div></td>
             <td class="accounting-total">${moneyFull(expected)}</td>
             <td>${received === null ? '—' : moneyFull(received)}</td>
             <td class="accounting-total" style="color:${variance === null || Math.abs(variance) < 0.009 ? 'var(--green)' : 'var(--red)'};">${variance === null ? '—' : moneyFull(variance)}</td>
@@ -5460,7 +5604,7 @@
       body.innerHTML = rows.map(order => `
         <tr>
           <td class="td-id"><label class="bulk-order-check"><input class="parcel-checkin-bulk-check" type="checkbox" value="${order.id}" ${parcelCheckinSelection.has(order.id) ? 'checked' : ''} onchange="toggleParcelCheckinBulk('${order.id}', this.checked)"><span>${escapeHtml(order.order_number)}</span></label></td>
-          <td><div class="td-name">${escapeHtml(clientName(order))}</div><div class="td-sub">${escapeHtml(order.customer_name || '')} · ${escapeHtml(order.customer_phone || '')}</div></td>
+          <td><div class="td-name">${escapeHtml(clientName(order))}</div><div class="td-sub">${escapeHtml(order.customer_name || '')} · ${escapeHtml(formatPhoneDisplay(order.customer_phone))}</div></td>
           <td><div class="td-name">${escapeHtml(String(order.checked_in_parcel_count || order.pickup_parcel_count || 1))} parcel(s)</div><div class="td-sub">${order.parcel_weight_lbs ? `${escapeHtml(String(order.parcel_weight_lbs))} lbs · ` : ''}${escapeHtml(order.parcel_condition || 'Not checked')}</div></td>
           <td>${order.pickup_required ? `<div class="td-name">Required · ${moneyFull(order.pickup_fee)}</div><div class="td-sub">${escapeHtml(order.pickup_address || [order.pickup_business_name, order.pickup_street_name, order.pickup_area_name].filter(Boolean).join(', '))}</div>` : 'Client drop-off'}</td>
           <td>${new Date(order.created_at).toLocaleDateString('en-TT')}</td>
@@ -5685,14 +5829,63 @@
         && ['sorted', 'redelivery_scheduled'].includes(order.parcel_status);
     }
 
+    function populateAllOrdersFilterOptions() {
+      const clientSelect = document.getElementById('orderClientFilter');
+      if (clientSelect) {
+        const current = clientSelect.value;
+        const clientRows = Array.from(clientsById.values()).sort((a, b) => String(a.business_name || '').localeCompare(String(b.business_name || '')));
+        clientSelect.innerHTML = '<option value="">All Clients</option>' + clientRows.map(client =>
+          `<option value="${client.id}">${escapeHtml(client.business_name || 'Unnamed client')}</option>`
+        ).join('');
+        if (current && clientRows.some(c => c.id === current)) clientSelect.value = current;
+      }
+
+      const zoneSelect = document.getElementById('orderZoneFilter');
+      if (zoneSelect) {
+        const current = zoneSelect.value;
+        const seenCodes = new Set();
+        const sortedZones = [...zones]
+          .filter(zone => {
+            const code = String(zone.code || '').toUpperCase();
+            if (!code || seenCodes.has(code)) return false;
+            seenCodes.add(code);
+            return true;
+          })
+          .sort((a, b) => String(a.code || '').localeCompare(String(b.code || '')));
+        zoneSelect.innerHTML = '<option value="">All Zones</option>' + sortedZones.map(zone => {
+          const code = String(zone.code || '').toUpperCase();
+          return `<option value="${escapeHtml(code)}">${escapeHtml(zone.name ? `${zone.name} (${code})` : `Zone ${code}`)}</option>`;
+        }).join('');
+        if (current) zoneSelect.value = current;
+      }
+
+      const driverSelect = document.getElementById('orderDriverFilter');
+      if (driverSelect) {
+        const current = driverSelect.value;
+        const sortedDrivers = [...drivers].sort((a, b) => driverLabel(a).localeCompare(driverLabel(b)));
+        driverSelect.innerHTML = '<option value="">All Drivers</option><option value="__unassigned">Unassigned</option>' + sortedDrivers.map(driver =>
+          `<option value="${driver.id}">${escapeHtml(driverLabel(driver))}</option>`
+        ).join('');
+        if (current) driverSelect.value = current;
+      }
+    }
+    window.populateAllOrdersFilterOptions = populateAllOrdersFilterOptions;
+
     function renderAllOrders() {
       const tbody = document.querySelector('#panel-all-orders tbody');
       const statusFilter = document.getElementById('orderStatusFilter')?.value || '';
       const clientFilter = document.getElementById('orderClientFilter')?.value || '';
+      const zoneFilter = document.getElementById('orderZoneFilter')?.value || '';
+      const driverFilter = document.getElementById('orderDriverFilter')?.value || '';
+      const dateFilter = document.getElementById('orderDateFilter')?.value || '';
       const search = String(document.getElementById('orderSearchInput')?.value || '').trim().toLowerCase();
       const visibleOrders = orders.filter(order => {
         if (statusFilter && order.order_status !== statusFilter && order.zone_status !== statusFilter && order.parcel_status !== statusFilter) return false;
         if (clientFilter && order.business_client_id !== clientFilter) return false;
+        if (zoneFilter && orderDeliveryZoneCode(order) !== zoneFilter) return false;
+        if (driverFilter === '__unassigned' && order.assigned_driver_id) return false;
+        if (driverFilter && driverFilter !== '__unassigned' && order.assigned_driver_id !== driverFilter) return false;
+        if (dateFilter && String(order.created_at || '').slice(0, 10) !== dateFilter) return false;
         if (!search) return true;
         return [
           order.order_number,
@@ -5730,7 +5923,7 @@
             </div>
           </td>
           <td class="client-cell"><div class="td-name">${escapeHtml(clientName(order))}</div></td>
-          <td class="customer-cell"><div class="customer-name">${escapeHtml(order.customer_name || '—')}</div><div class="td-sub">${escapeHtml(order.customer_phone || '')}</div>${order.external_item_number ? `<div class="td-sub">Item: ${escapeHtml(order.external_item_number)}</div>` : ''}${order.delivery_outcome_notes ? `<div class="td-sub" style="color:var(--teal-dark); font-weight:700;">Outcome: ${escapeHtml(order.delivery_outcome_notes)}</div>` : order.driver_notes ? `<div class="td-sub" style="color:var(--teal-dark); font-weight:700;">Driver: ${escapeHtml(order.driver_notes)}</div>` : ''}${order.redelivery_requested_date ? `<div class="td-sub">Preferred redelivery: ${new Date(order.redelivery_requested_date + 'T12:00:00').toLocaleDateString('en-TT')}</div>` : ''}${order.rejection_reason ? `<div class="td-sub" style="color:var(--red); font-weight:700;">${order.order_status === 'cancelled' ? 'Cancelled' : 'Rejected'}: ${escapeHtml(order.rejection_reason)}</div>` : ''}</td>
+          <td class="customer-cell"><div class="customer-name">${escapeHtml(order.customer_name || '—')}</div><div class="td-sub">${escapeHtml(formatPhoneDisplay(order.customer_phone))}</div>${order.external_item_number ? `<div class="td-sub">Item: ${escapeHtml(order.external_item_number)}</div>` : ''}${order.delivery_outcome_notes ? `<div class="td-sub" style="color:var(--teal-dark); font-weight:700;">Outcome: ${escapeHtml(order.delivery_outcome_notes)}</div>` : order.driver_notes ? `<div class="td-sub" style="color:var(--teal-dark); font-weight:700;">Driver: ${escapeHtml(order.driver_notes)}</div>` : ''}${order.redelivery_requested_date ? `<div class="td-sub">Preferred redelivery: ${new Date(order.redelivery_requested_date + 'T12:00:00').toLocaleDateString('en-TT')}</div>` : ''}${order.rejection_reason ? `<div class="td-sub" style="color:var(--red); font-weight:700;">${order.order_status === 'cancelled' ? 'Cancelled' : 'Rejected'}: ${escapeHtml(order.rejection_reason)}</div>` : ''}</td>
           <td>${zoneLabel(order)}</td>
           <td>
             <div class="td-name">Package: ${moneyFull(order.package_value || order.cod_amount)}</div>
@@ -5753,6 +5946,9 @@
       [
         ['orderStatusFilter', 'change'],
         ['orderClientFilter', 'change'],
+        ['orderZoneFilter', 'change'],
+        ['orderDriverFilter', 'change'],
+        ['orderDateFilter', 'change'],
         ['orderSearchInput', 'input']
       ].forEach(([id, eventName]) => {
         const field = document.getElementById(id);
@@ -6490,7 +6686,7 @@
                 <span class="badge badge-confirmed">${rateLabel}</span>
                 ${locationStatusBadge(order)}
               </div>
-              <div class="zone-card-client">${clientName(order)} &middot; Customer: ${order.customer_name || '—'} &middot; ${order.customer_phone || ''}</div>
+              <div class="zone-card-client">${clientName(order)} &middot; Customer: ${order.customer_name || '—'} &middot; ${formatPhoneDisplay(order.customer_phone)}</div>
               <div class="zone-card-address">${escapeHtml(address)}</div>
               <div class="zone-card-coords">${coords}${canVerifyOrderLocation(order) ? ` <button type="button" style="background:none; border:none; color:var(--teal-mid); text-decoration:underline; cursor:pointer; font-size:0.78rem; padding:0;" onclick="verifyOrderLocation('${order.id}')">Verify Location</button>` : ''}${needsLocationRequest(order) ? ` <button type="button" style="background:none; border:none; color:var(--teal-mid); text-decoration:underline; cursor:pointer; font-size:0.78rem; padding:0;" onclick="requestOrderLocation('${order.id}')">Request Location</button>` : ''} <button type="button" style="background:none; border:none; color:var(--teal-mid); text-decoration:underline; cursor:pointer; font-size:0.78rem; padding:0;" onclick="openLocationRetryModal('${order.id}')">Retry Location</button></div>
               ${locationRequestNote(order)}
@@ -6822,7 +7018,7 @@
           ${manifest.status === 'ready' ? `<div class="td-sub" style="margin-bottom:0.75rem;">${manifestCollectedCount(manifest)} of ${(manifest.orders || []).length} parcel(s) checked off as handed over${manifestUncollectedCount(manifest) > 0 ? ' — finish checking off every parcel before confirming driver collection.' : ' — all parcels handed over, ready to confirm.'}</div>` : ''}
           ${manifestCloseSummaryHtml(manifest)}
           <div class="table-wrap"><table><thead><tr><th>Sequence</th><th>Zone</th><th>Order</th><th>Customer</th><th>Address</th><th>Parcels</th><th>Collect</th><th>Delivery</th><th>Cash</th><th>Handed Over</th>${manifest.status === 'draft' ? '<th>Action</th>' : ''}</tr></thead><tbody>
-            ${(manifest.orders || []).map(order => `<tr><td>${order.route_sequence}</td><td>${escapeHtml(order.zone_code ? `Zone ${order.zone_code}` : '—')}</td><td class="td-id">${escapeHtml(order.order_number)}</td><td><div class="td-name">${escapeHtml(order.customer_name || '')}</div><div class="td-sub">${escapeHtml(order.customer_phone || '')}</div>${orderItemPackageHtml(order)}</td><td>${escapeHtml(orderLabelAddress(order))}</td><td>${escapeHtml(String(order.parcel_count || 1))}</td><td>${moneyFull(order.amount_to_collect)}</td><td><div class="td-sub">${escapeHtml(String(order.order_status || '').replaceAll('_', ' '))}</div><div class="td-sub">${escapeHtml(String(order.parcel_status || '').replaceAll('_', ' '))}</div>${order.delivery_return_required ? '<div class="td-sub" style="color:#b42318;">Return required</div>' : ''}</td><td>${Number(order.amount_to_collect || 0) > 0 && order.order_status === 'delivered' ? escapeHtml(order.reconciliation_status || 'unreconciled') : '—'}</td><td>${manifestOrderCollectedCellHtml(manifest, order)}</td>${manifest.status === 'draft' ? `<td><button class="btn btn-ghost btn-sm" onclick="removeManifestOrder('${manifest.id}', '${order.id}')">Remove</button></td>` : ''}</tr>`).join('') || `<tr><td colspan="${manifest.status === 'draft' ? 11 : 10}">No parcels on this manifest.</td></tr>`}
+            ${(manifest.orders || []).map(order => `<tr><td>${order.route_sequence}</td><td>${escapeHtml(order.zone_code ? `Zone ${order.zone_code}` : '—')}</td><td class="td-id">${escapeHtml(order.order_number)}</td><td><div class="td-name">${escapeHtml(order.customer_name || '')}</div><div class="td-sub">${escapeHtml(formatPhoneDisplay(order.customer_phone))}</div>${orderItemPackageHtml(order)}</td><td>${escapeHtml(orderLabelAddress(order))}</td><td>${escapeHtml(String(order.parcel_count || 1))}</td><td>${moneyFull(order.amount_to_collect)}</td><td><div class="td-sub">${escapeHtml(String(order.order_status || '').replaceAll('_', ' '))}</div><div class="td-sub">${escapeHtml(String(order.parcel_status || '').replaceAll('_', ' '))}</div>${order.delivery_return_required ? '<div class="td-sub" style="color:#b42318;">Return required</div>' : ''}</td><td>${Number(order.amount_to_collect || 0) > 0 && order.order_status === 'delivered' ? escapeHtml(order.reconciliation_status || 'unreconciled') : '—'}</td><td>${manifestOrderCollectedCellHtml(manifest, order)}</td>${manifest.status === 'draft' ? `<td><button class="btn btn-ghost btn-sm" onclick="removeManifestOrder('${manifest.id}', '${order.id}')">Remove</button></td>` : ''}</tr>`).join('') || `<tr><td colspan="${manifest.status === 'draft' ? 11 : 10}">No parcels on this manifest.</td></tr>`}
           </tbody></table></div>
           ${manifest.handed_to_driver_at ? `<div class="td-sub" style="margin-top:0.75rem;">Handover confirmed ${new Date(manifest.handed_to_driver_at).toLocaleString('en-TT')}</div>` : ''}
         </div>`).join('') || (deliveryManifests.length
@@ -7009,6 +7205,45 @@
       modalCb = null;
     };
 
+    // Phase 1 item 3: Delivery Exceptions as four tabs (Needs Review /
+    // Redeliveries / Returns to Client / Cancelled-Closed) layered on top of
+    // the existing return-management data model, so no field or RPC changes
+    // were needed -- only how the same records get grouped and displayed.
+    const returnExceptionsTabLabels = {
+      needs_review: { title: 'Needs Review', subtitle: 'Undelivered parcels awaiting an admin decision or driver return.' },
+      redeliveries: { title: 'Redeliveries', subtitle: 'Parcels scheduled to go back out for another delivery attempt.' },
+      returns_to_client: { title: 'Returns to Client', subtitle: 'Parcels being sent back to the business client rather than redelivered.' },
+      cancelled_closed: { title: 'Cancelled / Closed', subtitle: 'Cancelled or rejected orders, including any that still owe a parcel back to the hub.' },
+    };
+
+    window.setReturnExceptionsTab = function(tab) {
+      returnMgmtTab = tab;
+      document.querySelectorAll('#returnExceptionsTabs [data-return-tab]').forEach(btn => {
+        const active = btn.dataset.returnTab === tab;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+      const subFilterWrap = document.getElementById('returnManagementFilter');
+      if (subFilterWrap) subFilterWrap.style.display = tab === 'needs_review' ? '' : 'none';
+      const subtitle = document.getElementById('returnExceptionsSubtitle');
+      if (subtitle) subtitle.textContent = returnExceptionsTabLabels[tab]?.subtitle || '';
+      renderReturnManagement();
+    };
+
+    function orderMatchesReturnTab(order, tab, subFilter) {
+      if (tab === 'cancelled_closed') return isCancelledOrder(order);
+      if (isCancelledOrder(order)) return false; // cancelled/rejected orders live only in their own tab
+      if (tab === 'redeliveries') return returnRecordMatches(order, 'scheduled');
+      if (tab === 'returns_to_client') return returnRecordMatches(order, 'client_return');
+      // needs_review: anything still pending a decision or driver return,
+      // excluding records already scheduled for redelivery or return-to-client
+      // (those surface on their own tabs instead, so nothing is double-listed).
+      const effective = ['awaiting_return', 'returned', 'held', 'all'].includes(subFilter) ? subFilter : 'active';
+      return returnRecordMatches(order, effective)
+        && order.redelivery_status !== 'scheduled'
+        && !order.return_to_client_status;
+    }
+
     function returnRecordMatches(order, filter) {
       // A cancelled/rejected order still belongs here if a driver already
       // has the physical parcel -- only drop it once nothing is still owed
@@ -7040,6 +7275,7 @@
     }
     function returnActionButtons(order) {
       if (orderNeedsHubReturn(order)) return `<div class="finance-actions"><span class="badge badge-unpaid">Driver must return parcel</span><button class="btn btn-primary btn-sm" onclick="confirmHubReturn('${order.id}')">Confirm Hub Receipt</button></div>`;
+      if (isCancelledOrder(order)) return '<span class="badge badge-confirmed">Closed</span>';
       if (order.return_to_client_status === 'ready') {
         return `<button class="btn btn-primary btn-sm" onclick="completeClientReturn('${order.id}')">Confirm Returned to Client</button>`;
       }
@@ -7118,11 +7354,11 @@
       const body = document.getElementById('returnManagementBody');
       if (!body) return;
       const driverId = document.getElementById('returnManagementDriverFilter')?.value || '';
-      const filter = document.getElementById('returnManagementFilter')?.value || 'active';
+      const subFilter = document.getElementById('returnManagementFilter')?.value || 'active';
       const search = String(document.getElementById('returnManagementSearch')?.value || '').trim().toLowerCase();
       const rows = orders.filter(order => {
         if (driverId && order.assigned_driver_id !== driverId) return false;
-        if (!returnRecordMatches(order, filter)) return false;
+        if (!orderMatchesReturnTab(order, returnMgmtTab, subFilter)) return false;
         if (!search) return true;
         return [order.order_number, clientName(order), order.customer_name, order.customer_phone, order.external_item_number, order.customer_notes, order.delivery_outcome_notes]
           .some(value => String(value || '').toLowerCase().includes(search));
@@ -7160,8 +7396,10 @@
               ? `<input class="return-decision-check" type="checkbox" value="${order.id}" ${returnDecisionSelection.has(order.id) ? 'checked' : ''} onchange="toggleReturnDecisionBulk('${order.id}', this.checked)">`
               : ''}</td>
           <td><div class="td-id">${escapeHtml(order.order_number)}</div><div class="td-sub">Attempt ${escapeHtml(String(order.delivery_attempt_count || 1))}</div></td>
-          <td><div class="td-name">${escapeHtml(clientName(order))}</div><div class="td-sub">${escapeHtml(order.customer_name || '')} · ${escapeHtml(order.customer_phone || '')}</div></td>
-          <td><span class="badge badge-pending">${escapeHtml(outcomeLabels[order.delivery_outcome] || order.delivery_outcome || 'Undelivered')}</span>${order.delivery_outcome_notes ? `<div class="td-sub">${escapeHtml(order.delivery_outcome_notes)}</div>` : ''}</td>
+          <td><div class="td-name">${escapeHtml(clientName(order))}</div><div class="td-sub">${escapeHtml(order.customer_name || '')} · ${escapeHtml(formatPhoneDisplay(order.customer_phone))}</div></td>
+          <td>${isCancelledOrder(order)
+            ? `<span class="badge badge-unpaid">${escapeHtml(order.order_status === 'cancelled' ? 'Cancelled' : 'Rejected')}</span>${order.rejection_reason ? `<div class="td-sub">${escapeHtml(order.rejection_reason)}</div>` : ''}`
+            : `<span class="badge badge-pending">${escapeHtml(outcomeLabels[order.delivery_outcome] || order.delivery_outcome || 'Undelivered')}</span>${order.delivery_outcome_notes ? `<div class="td-sub">${escapeHtml(order.delivery_outcome_notes)}</div>` : ''}`}</td>
           <td><div class="td-name">${escapeHtml(String(order.parcel_status || '').replaceAll('_', ' '))}</div><div class="td-sub">${order.delivery_returned_hub_at ? `Hub return ${new Date(order.delivery_returned_hub_at).toLocaleString('en-TT')}` : 'Not returned yet'}</div></td>
           <td><div class="td-name">Redelivery: ${moneyFull(order.redelivery_fee)}</div><div class="td-sub">Payer: ${escapeHtml(payer)}</div>${order.return_to_client_status ? `<div class="td-sub">Return method: ${escapeHtml(clientReturnMethodLabel(order))}</div>` : ''}${order.return_to_client_fee > 0 ? `<div class="td-sub">Client return: ${moneyFull(order.return_to_client_fee)}</div>` : ''}</td>
           <td><div class="td-name">${escapeHtml(schedule)}</div>${order.return_management_notes ? `<div class="td-sub">${escapeHtml(order.return_management_notes)}</div>` : ''}</td>
@@ -7765,7 +8003,7 @@
               </label>
             </td>
             <td>${escapeHtml(clientName(order))}</td>
-            <td class="driver-customer-cell"><div class="td-name">${escapeHtml(order.customer_name || '—')}</div><div class="td-sub">${escapeHtml(order.customer_phone || '')}</div></td>
+            <td class="driver-customer-cell"><div class="td-name">${escapeHtml(order.customer_name || '—')}</div><div class="td-sub">${escapeHtml(formatPhoneDisplay(order.customer_phone))}</div></td>
             <td class="driver-package-cell"><div class="td-name">${escapeHtml(orderPackageAssignmentText(order))}</div></td>
             <td class="driver-zone-cell"><div class="td-name">${escapeHtml(orderDeliveryZoneText(order))}</div><div class="td-sub">${escapeHtml(orderLabelAddress(order))}</div><div style="margin-top:0.25rem;">${locationStatusBadge(order)} <button type="button" style="background:none; border:none; color:var(--teal-mid); text-decoration:underline; cursor:pointer; font-size:0.76rem; padding:0;" onclick="openLocationRetryModal('${order.id}')">Retry Location</button></div></td>
             <td><span class="badge ${collected ? 'badge-active' : isAssigned ? 'badge-confirmed' : 'badge-pending'}">${escapeHtml(status)}</span></td>
@@ -8018,7 +8256,9 @@
       if (driverTabNav) driverTabNav.style.display = ownDriverRow ? '' : 'none';
 
       syncAccountingControls();
+      populateAllOrdersFilterOptions();
       renderAllOrders();
+      renderDriversMgmt();
       renderParcelCheckin();
       renderPickupManagement();
       renderSortingQueue();
@@ -9190,7 +9430,7 @@
             <td>${escapeHtml(clientName(item.order))}</td>
             <td>${escapeHtml(item.order.historical_delivery_date)}</td>
             <td>${escapeHtml(item.order.customer_name)}</td>
-            <td>${escapeHtml(item.order.customer_phone)}</td>
+            <td>${escapeHtml(formatPhoneDisplay(item.order.customer_phone))}</td>
             <td>${escapeHtml(paymentLabel(item.order.payment_type))}</td>
             <td>${moneyFull(item.order.cod_amount)}</td>
             <td>${moneyFull(item.order.delivery_fee)}</td>
