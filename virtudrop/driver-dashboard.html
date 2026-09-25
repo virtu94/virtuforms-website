@@ -308,14 +308,15 @@
     .dcard-name { font-size: 0.86rem; font-weight: 800; color: var(--black); overflow-wrap: anywhere; min-width: 0; }
     .dcard-client { font-size: 0.66rem; font-weight: 700; color: var(--grey); text-transform: uppercase; letter-spacing: 0.3px; overflow-wrap: anywhere; }
     .dcard-addr { font-size: 0.72rem; color: var(--grey); line-height: 1.3; overflow-wrap: anywhere; }
-    .dcard-item { font-size: 0.7rem; color: var(--grey); line-height: 1.3; overflow-wrap: anywhere; }
-    .dcard-line2 { display: flex; align-items: center; justify-content: flex-end; gap: 0.4rem; min-width: 0; margin-top: 0.05rem; }
+    .dcard-item { font-size: 0.7rem; color: var(--grey); line-height: 1.3; overflow-wrap: anywhere; flex: 1; min-width: 0; }
+    .dcard-line2 { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; min-width: 0; margin-top: 0.05rem; }
     .dcard-badge { flex-shrink: 0; padding: 0.12rem 0.42rem; border-radius: 20px; font-size: 0.62rem; font-weight: 800; white-space: nowrap; }
     .dcard-badge.cod { background: var(--red-pale); color: #b33a3a; }
     .dcard-badge.prepaid { background: var(--blue-pale); color: #004085; }
     .dcard-dist { flex-shrink: 0; font-size: 0.66rem; color: var(--grey); font-weight: 600; white-space: nowrap; }
-    .dcard-right { display: flex; align-items: center; gap: 0.15rem; flex-shrink: 0; padding-top: 0.05rem; }
+    .dcard-right { display: flex; align-items: center; gap: 0.1rem; flex-shrink: 0; padding-top: 0.05rem; }
     .dcard-right .nav-icon-btn { width: 25px; height: 25px; font-size: 0.76rem; }
+    .dcard-right .quick-move-btn { padding: 0.15rem 0.2rem; margin-right: -0.15rem; }
     .dcard-right .card-collapse-toggle { padding: 0.15rem 0.1rem; font-size: 1.1rem; }
     .dcard-next-actions { display: flex; gap: 0.4rem; padding: 0 0.7rem 0.55rem; margin-top: -0.05rem; }
     .dcard-next-actions .action-btn { flex: 1; min-width: 0; margin: 0; padding: 0.42rem 0.5rem !important; font-size: 0.72rem !important; }
@@ -649,6 +650,14 @@
     .detail-tile-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--grey); }
     .detail-tile-value { font-size: 1.02rem; font-weight: 800; color: var(--black); margin-top: 0.2rem; }
     .detail-actions { padding: 0 0 0.9rem; }
+    /* Delivered/Failed must stay side by side even on narrow phones —
+       overrides the generic ".action-btn { flex: 1 1 100% }" mobile rule
+       below (higher specificity wins regardless of source order). */
+    .detail-actions .btn-delivered,
+    .detail-actions .btn-failed {
+      flex: 1 1 calc(50% - 0.3rem);
+      min-width: 0;
+    }
 
     /* ── Toast ── */
     .toast {
@@ -1259,6 +1268,10 @@
     // the Delivery Detail screen offers to message the customer).
     const WA_ICON = '<svg width="14" height="14" viewBox="0 0 32 32" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><path d="M16.001 2.667c-7.363 0-13.334 5.971-13.334 13.334 0 2.354.617 4.65 1.789 6.671L2.667 29.333l6.826-1.789a13.27 13.27 0 0 0 6.508 1.657h.006c7.363 0 13.334-5.97 13.334-13.333S23.364 2.667 16.001 2.667zm0 24.29a11.02 11.02 0 0 1-5.615-1.537l-.403-.24-4.05 1.062 1.081-3.948-.263-.406a11.03 11.03 0 0 1-1.687-5.887c0-6.096 4.958-11.054 11.056-11.054 6.097 0 11.055 4.958 11.055 11.054 0 6.097-4.959 11.056-11.174 11.056v-.1zm6.06-8.278c-.331-.166-1.96-.968-2.263-1.078-.303-.111-.524-.166-.744.166-.221.331-.856 1.078-1.05 1.3-.193.221-.386.249-.717.083-.331-.166-1.398-.516-2.663-1.643-.984-.878-1.649-1.963-1.842-2.294-.193-.331-.021-.51.146-.675.15-.15.331-.386.497-.579.166-.193.221-.331.331-.552.111-.221.055-.414-.028-.579-.083-.166-.744-1.793-1.02-2.457-.269-.646-.542-.559-.744-.569l-.634-.011c-.221 0-.579.083-.882.414-.303.331-1.156 1.13-1.156 2.756s1.184 3.196 1.35 3.417c.166.221 2.331 3.559 5.647 4.99.789.34 1.404.543 1.885.696.792.252 1.514.216 2.084.131.636-.095 1.96-.801 2.236-1.575.276-.774.276-1.437.193-1.575-.083-.138-.303-.221-.634-.386z"/></svg>';
 
+    // A navigation-arrow glyph (replaces the 🧭 compass emoji on Navigate
+    // buttons, both the icon-only one and the full-width "Navigate" button).
+    const NAV_ICON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><path d="M12 2 4 22l8-4.5L20 22 12 2z"/></svg>';
+
     // stripped first, the "868" below gets stacked on top of an
     // already-complete number (e.g. "868" + "18683681278"), which is why
     // WhatsApp/call links could end up showing "868" twice.
@@ -1452,24 +1465,23 @@
 
       // Maps now has exactly one entry point on this screen — the "Open in
       // Maps" button that sits under the Location Status card — so it's
-      // deliberately left out of this row.
-      const common = `
-        <button class="action-btn btn-call" onclick="callCustomer('${phone}')">Call Customer</button>
-        <button class="action-btn btn-whatsapp" onclick="whatsappCustomer('${phone}')">${WA_ICON} WhatsApp Customer</button>
-      `;
-
+      // deliberately left out of these rows.
       if (status === 'queued') {
         const manifest = manifestForOrder(order.id);
         if (manifest && manifest.status !== 'collected' && order.parcel_status !== 'handed_to_driver') {
           return `<span class="status-badge ${manifest.status === 'ready' ? 'badge-out' : 'badge-queued'}">Manifest ${manifest.status === 'ready' ? 'ready - awaiting handover' : 'being prepared'}</span>`;
         }
-        return common + `<button class="action-btn btn-collected" onclick="markCollected('${order.id}')">Mark Collected</button>`;
+        return `
+          <button class="action-btn btn-call" onclick="callCustomer('${phone}')">Call Customer</button>
+          <button class="action-btn btn-whatsapp" onclick="whatsappCustomer('${phone}')">${WA_ICON} WhatsApp Customer</button>
+          <button class="action-btn btn-collected" onclick="markCollected('${order.id}')">Mark Collected</button>
+        `;
       }
 
-      // Just two buttons now: Delivered, and Failed (which opens the
-      // existing "what happened?" menu with No Response / Refused /
-      // Reschedule Requested — the only outcomes the backend supports).
-      return common + `
+      // Out for delivery: just Delivered and Failed side by side. Call and
+      // WhatsApp already live as icon buttons in the contact row above, so
+      // they're deliberately left out of this row too.
+      return `
         <button class="action-btn btn-delivered" type="button" data-driver-action="delivered" data-order-id="${order.id}" data-collect="${collect}">Delivered</button>
         <button class="action-btn btn-failed" type="button" onclick="showOutcomeOptionsModal('${order.id}')">Failed</button>
       `;
@@ -1515,24 +1527,29 @@
               <div class="dcard-main">
                 <div class="dcard-line1">
                   <div class="dcard-name">${escapeHtml(order.customer_name || '—')}</div>
-                  ${collect > 0 ? `<span class="dcard-badge cod">COD ${collect.toFixed(2)}</span>` : `<span class="dcard-badge prepaid">${escapeHtml(paymentLabel(order.payment_type))}</span>`}
+                  ${collect > 0 ? `<span class="dcard-badge cod">${collect.toFixed(2)}</span>` : `<span class="dcard-badge prepaid">${escapeHtml(paymentLabel(order.payment_type))}</span>`}
                 </div>
                 ${clientName(order) ? `<div class="dcard-client">${escapeHtml(clientName(order))}</div>` : ''}
                 <div class="dcard-addr">📍 ${escapeHtml(addressLabel(order))}</div>
-                ${order.external_item_number ? `<div class="dcard-item">📦 ${escapeHtml(order.external_item_number)}</div>` : ''}
-                ${distanceLabel ? `<div class="dcard-line2"><span class="dcard-dist">${distanceLabel}</span></div>` : ''}
+                ${(order.external_item_number || distanceLabel) ? `
+                  <div class="dcard-line2">
+                    <span class="dcard-item">${order.external_item_number ? `📦 ${escapeHtml(order.external_item_number)}` : ''}</span>
+                    ${distanceLabel ? `<span class="dcard-dist">${distanceLabel}</span>` : ''}
+                  </div>
+                ` : ''}
               </div>
               <div class="dcard-right" onclick="event.stopPropagation()">
                 ${reorderable && !isNextStop ? `
-                  ${canNavigate ? `<button class="nav-icon-btn" type="button" title="Navigate" onclick="event.stopPropagation(); openMaps('${maps.replaceAll("'", "\\'")}')">🧭</button>` : ''}
+                  ${canNavigate ? `<button class="nav-icon-btn" type="button" title="Navigate" onclick="event.stopPropagation(); openMaps('${maps.replaceAll("'", "\\'")}')">${NAV_ICON}</button>` : ''}
                   <button class="nav-icon-btn" type="button" title="Call" onclick="event.stopPropagation(); callCustomer('${phone}')">📞</button>
                 ` : ''}
+                ${reorderable ? `<button class="quick-move-btn" type="button" onclick="openQuickMoveMenu(event, '${order.id}')" title="Move this stop">⋮</button>` : ''}
                 <button class="card-collapse-toggle" type="button" onclick="openDeliveryDetail('${order.id}')" title="View delivery details">›</button>
               </div>
             </div>
             ${isNextStop ? `
               <div class="dcard-next-actions">
-                <button class="action-btn btn-maps" type="button" onclick="event.stopPropagation(); ${canNavigate ? `openMaps('${maps.replaceAll("'", "\\'")}')` : `callCustomer('${phone}')`}">${canNavigate ? '🧭 Navigate' : '📞 Call Customer'}</button>
+                <button class="action-btn btn-maps" type="button" onclick="event.stopPropagation(); ${canNavigate ? `openMaps('${maps.replaceAll("'", "\\'")}')` : `callCustomer('${phone}')`}">${canNavigate ? `${NAV_ICON} Navigate` : '📞 Call Customer'}</button>
                 <button class="action-btn btn-unavailable" type="button" onclick="event.stopPropagation(); showArrivalPrompt('${order.id}', {manual:true})">✅ Arrived</button>
               </div>
             ` : ''}
@@ -1572,8 +1589,15 @@
       currentDetailOrderId = null;
     };
 
+    // "Stop X of Y" and the prev/next arrows only ever step through the
+    // active route (queued + out for delivery) — not delivered/failed
+    // history — so the count matches what the driver still has to do.
+    function activeStopList() {
+      return computeDeliveryDisplayOrder(orders).filter(o => ['queued', 'out'].includes(normalizeStatus(o)));
+    }
+
     window.detailStepStop = function(direction) {
-      const list = computeDeliveryDisplayOrder(orders);
+      const list = activeStopList();
       const idx = list.findIndex(o => o.id === currentDetailOrderId);
       if (idx === -1) return;
       const nextIdx = idx + direction;
@@ -1586,7 +1610,7 @@
       const order = findOrder(currentDetailOrderId);
       if (!order) { closeDeliveryDetail(); return; }
       const status = normalizeStatus(order);
-      const list = computeDeliveryDisplayOrder(orders);
+      const list = activeStopList();
       const idx = list.findIndex(o => o.id === order.id);
       const reorderable = ['queued', 'out'].includes(status);
       const collect = amountToCollect(order);
@@ -1609,8 +1633,11 @@
         ? `<div class="detail-location-ok">
              <div class="detail-location-head"><span>Location Status</span></div>
              <div class="detail-location-value ok">Mapped · Accuracy: ${order.location_confidence === 'high' ? 'High' : 'Standard'}</div>
-           </div>
-           <div class="card-actions" style="padding:0 0 0.9rem;"><button class="action-btn btn-maps" type="button" onclick="openMaps('${maps.replaceAll("'", "\\'")}')">Open in Maps</button></div>`
+             <div class="detail-location-actions">
+               <button class="action-btn btn-maps" type="button" onclick="openMaps('${maps.replaceAll("'", "\\'")}')">Open in Maps</button>
+               ${reorderable ? `<button class="action-btn btn-unavailable" type="button" onclick="promptLocationLink('${order.id}')">Update Location Link</button>` : ''}
+             </div>
+           </div>`
         : `<div class="detail-location-warn">
              <div class="detail-location-head"><span>Location Status</span></div>
              <div class="detail-location-value warn">Location Required</div>
@@ -1658,7 +1685,6 @@
 
         <div class="card-actions detail-actions">
           ${renderActions(order, status)}
-          ${reorderable && canNavigate ? `<button class="action-btn btn-unavailable" onclick="promptLocationLink('${order.id}')">Update Location Link</button>` : ''}
         </div>
 
         <div class="driver-update-box">
@@ -2596,6 +2622,15 @@
     };
 
     window.saveDeliveryOutcome = async function(orderId, outcome, note, requestedDate, collectionMethod, amountCollected, proofConfirmed, recipientName = null, signatureDataUrl = null) {
+      // Give the driver instant feedback the moment they tap Delivered/
+      // Failed/Confirm — the RPC plus the full data reload below can take
+      // a couple of seconds on a slow connection, and with nothing on
+      // screen changing in the meantime the tap can feel like it did
+      // nothing at all. Disable the buttons right away and say what's
+      // happening, before waiting on the network at all.
+      showToast(outcome === 'delivered' ? 'Saving delivery…' : 'Saving outcome…');
+      document.querySelectorAll('#detailBody .btn-delivered, #detailBody .btn-failed, #modalContent .modal-btn.confirm, #modalContent #confirmDeliveryButton')
+        .forEach(btn => { btn.disabled = true; });
       try {
         const { error } = await supabase.rpc('driver_record_delivery_outcome', {
           p_order_id: orderId,
@@ -2628,6 +2663,8 @@
       } catch (error) {
         console.error('Delivery outcome error:', error);
         window.vdNotify('Outcome Not Saved', error.message || 'Could not record this delivery outcome.', 'error');
+        document.querySelectorAll('#detailBody .btn-delivered, #detailBody .btn-failed, #modalContent .modal-btn.confirm, #modalContent #confirmDeliveryButton')
+          .forEach(btn => { btn.disabled = false; });
       }
     };
 
