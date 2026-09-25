@@ -591,6 +591,13 @@
     .collection-method-options input {
       accent-color: var(--teal-mid);
     }
+    .delivery-confirm-check {
+      display: flex; align-items: center; gap: 0.55rem;
+      background: var(--grey-light); border: 2px solid var(--grey-mid); border-radius: 10px;
+      padding: 0.75rem 0.9rem; margin-bottom: 1rem; font-weight: 700; color: var(--black);
+      font-size: 0.86rem; cursor: pointer;
+    }
+    .delivery-confirm-check input { width: 19px; height: 19px; accent-color: var(--teal-mid); flex-shrink: 0; }
 
     /* ── Delivery Detail full-screen overlay (Phase 3) ── */
     body.detail-open { overflow: hidden; }
@@ -2539,26 +2546,30 @@
         return;
       }
       const collectAmount = typeof maybeOrderNumberOrCollect === 'number' ? maybeOrderNumberOrCollect : maybeCollectAmount;
+      const hasCollection = Number(collectAmount) > 0;
 
-      // Nothing to collect on this delivery - no recipient name, signature, or
-      // confirmation step needed. Mark it delivered immediately.
-      if (!(Number(collectAmount) > 0)) {
-        window.confirmDeliveredWithCollection(order.id, 0);
-        return;
-      }
-
-      // Money to collect still needs the driver to record how it was paid.
-      const methodBox = `<div class="collection-method-box">
+      // Tapping "Delivered" always opens a confirmation step now -- Cash/LINX
+      // when there's money to collect, plus a tick box confirming the
+      // delivery actually happened, before the "Delivered" button submits.
+      const methodBox = hasCollection
+        ? `<div class="collection-method-box">
              <div class="collection-method-title">Collection Method Required</div>
              <div class="collection-method-options">
-               <label><input type="radio" name="collectionMethod" value="Cash" /> 💵 Cash</label>
-               <label><input type="radio" name="collectionMethod" value="LINX" />LINX</label>
+               <label><input type="radio" name="collectionMethod" value="Cash" /> Cash</label>
+               <label><input type="radio" name="collectionMethod" value="LINX" /> LINX</label>
              </div>
-           </div>`;
+           </div>`
+        : '';
+      const confirmBox = `<label class="delivery-confirm-check">
+             <input type="checkbox" id="confirmDeliveredCheck" />
+             Confirm this delivery was completed
+           </label>`;
       openModal(
-        '✅ Mark as Delivered',
-        `Confirm delivery of ${order.order_number} is complete. Confirm how ${money(collectAmount)} was collected before completing this delivery.`,
-        `${methodBox}<button class="modal-btn confirm" id="confirmDeliveryButton" type="button">Confirm Delivery</button>
+        'Mark as Delivered',
+        hasCollection
+          ? `Confirm delivery of ${order.order_number} is complete. Confirm how ${money(collectAmount)} was collected before completing this delivery.`
+          : `Confirm delivery of ${order.order_number} is complete.`,
+        `${methodBox}${confirmBox}<button class="modal-btn confirm" id="confirmDeliveryButton" type="button">Delivered</button>
          <button class="modal-btn cancel" type="button" onclick="closeModal()">Cancel</button>`
       );
       setTimeout(() => {
@@ -2576,6 +2587,11 @@
     });
 
     window.confirmDeliveredWithCollection = function(orderId, collectAmount = 0) {
+      const confirmed = document.getElementById('confirmDeliveredCheck')?.checked;
+      if (!confirmed) {
+        showToast('Please confirm the delivery was completed.');
+        return;
+      }
       let note = 'Driver confirmed parcel handover to customer or authorized recipient.';
       let method = 'none';
       if (Number(collectAmount) > 0) {
@@ -2644,19 +2660,32 @@
           p_signature_data_url: signatureDataUrl || null
         });
         if (error) throw error;
+        // The real "long delay, as if it doesn't work" turned out to be
+        // here: loadDriverData() redoes session + profile + driver lookups
+        // (several sequential round trips) before even re-fetching orders,
+        // so awaiting it before the screen changed at all could take
+        // several seconds on a slow connection. Patch this order locally
+        // and re-render immediately instead -- instant feedback -- then
+        // reconcile with the server in the background without blocking on it.
+        const savedOrder = findOrder(orderId);
+        if (savedOrder) {
+          savedOrder.delivery_outcome = outcome;
+          savedOrder.order_status = outcome === 'delivered' ? 'delivered'
+            : outcome === 'reschedule_requested' ? 'rescheduled'
+            : 'failed';
+        }
         closeModal();
         // This stop is done -- if the arrival watcher had already prompted
-        // for it, let a future stop trigger fresh; and close the detail
-        // screen if it's the one that was just actioned, so the driver
-        // lands back on the list with the new next stop highlighted.
+        // for it, let a future stop trigger fresh. The detail screen stays
+        // open on this same card (not the list, not the next stop) --
+        // renderOrders() re-renders it in place via its own
+        // currentDetailOrderId check, so the driver just sees the status
+        // on screen flip to Delivered/Failed.
         if (arrivalPromptShownForId === orderId) arrivalPromptShownForId = null;
-        if (currentDetailOrderId === orderId) closeDeliveryDetail();
-        await loadDriverData();
+        renderOrders();
+        loadDriverData().catch(err => console.error('Background reload after outcome save failed:', err));
         if (outcome === 'delivered') {
-          const upcoming = currentNextStop();
-          showToast(upcoming
-            ? `Delivery completed. Next stop: ${upcoming.customer_name || upcoming.order_number}${orderDistanceInfo(upcoming).km < 900 ? ` — ${orderDistanceInfo(upcoming).km.toFixed(1)} km` : ''}.`
-            : 'Delivery completed. No more stops on your route.');
+          showToast('Delivery marked as delivered.');
         } else {
           showToast('Delivery outcome recorded. Return the parcel to the hub.');
         }
