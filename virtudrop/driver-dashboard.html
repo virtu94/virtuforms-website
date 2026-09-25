@@ -1713,7 +1713,13 @@
       if (!order) return showToast('Order not found. Refresh and try again.');
       if (!order.tracking_token) return showToast('This order has no tracking link yet — refresh and try again.');
       const shareUrl = `${window.location.origin}${window.location.pathname.replace(/driver-dashboard\.html$/, 'share-location.html')}?order=${encodeURIComponent(order.order_number)}&token=${encodeURIComponent(order.tracking_token)}`;
-      const message = `Hi! To help our VirtuDrop driver find you quickly, please share your location using this link: ${shareUrl}`;
+      // external_item_number holds the item's actual name/description as
+      // imported (e.g. "18\" Rechargable Solar Fan"), not a numeric code --
+      // despite the column name, it's what should show here.
+      const itemName = order.external_item_number || 'your item';
+      const price = money(amountToCollect(order));
+      const business = clientName(order);
+      const message = `Good day,\n\nReaching out from VirtuDrop, a courier service, regarding delivery of ${itemName} (${price}) from ${business}.\n\nCan you send me your location 📍using the WhatsApp feature so we can confirm delivery please ?\n\nIf you'd rather not send it that way, you can share it here instead: ${shareUrl}`;
       const url = `https://wa.me/${phoneForWhatsApp(order.customer_phone)}?text=${encodeURIComponent(message)}`;
       window.open(url, '_blank');
     };
