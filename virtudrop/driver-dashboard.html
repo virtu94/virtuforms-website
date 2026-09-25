@@ -2307,7 +2307,21 @@
     }
 
     async function loadDriverData() {
-      document.getElementById('deliveryList').innerHTML = '<div class="delivery-card"><div class="card-header"><div>Loading assigned orders...</div></div></div>';
+      // This runs on the very first page load AND silently again in the
+      // background after every delivery outcome save (see saveDeliveryOutcome)
+      // -- and it does several sequential auth/profile round trips before it
+      // even re-fetches orders, which can take a long time on a slow mobile
+      // connection. Wiping the whole delivery list to a "Loading..." placeholder
+      // here used to happen on EVERY call, so after a driver tapped Delivered
+      // or Failed the entire card list (and every button on it) would vanish
+      // for that whole stretch, making the app look frozen / buttons "not
+      // enabled" until it finally finished and popped back. Only show the
+      // placeholder on the true first load, when there's nothing on screen
+      // yet -- a background reload instead leaves the existing cards in place
+      // (and tappable) until renderOrders() swaps in the fresh data.
+      if (!orders.length) {
+        document.getElementById('deliveryList').innerHTML = '<div class="delivery-card"><div class="card-header"><div>Loading assigned orders...</div></div></div>';
+      }
 
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) {
@@ -2647,6 +2661,16 @@
       showToast(outcome === 'delivered' ? 'Saving delivery…' : 'Saving outcome…');
       document.querySelectorAll('#detailBody .btn-delivered, #detailBody .btn-failed, #modalContent .modal-btn.confirm, #modalContent #confirmDeliveryButton')
         .forEach(btn => { btn.disabled = true; });
+      // Belt-and-suspenders: if the request genuinely stalls (a bad cell
+      // connection, a dropped response) the buttons above would otherwise
+      // stay disabled forever with nothing on screen to tell the driver why.
+      // Re-enable them and say so after 15s if the save still hasn't
+      // resolved either way by then -- the driver can then retry the tap.
+      const stallTimer = setTimeout(() => {
+        document.querySelectorAll('#detailBody .btn-delivered, #detailBody .btn-failed, #modalContent .modal-btn.confirm, #modalContent #confirmDeliveryButton')
+          .forEach(btn => { btn.disabled = false; });
+        showToast('Still trying to save -- check your connection and try again if this keeps happening.');
+      }, 15000);
       try {
         const { error } = await supabase.rpc('driver_record_delivery_outcome', {
           p_order_id: orderId,
@@ -2682,6 +2706,7 @@
         // currentDetailOrderId check, so the driver just sees the status
         // on screen flip to Delivered/Failed.
         if (arrivalPromptShownForId === orderId) arrivalPromptShownForId = null;
+        clearTimeout(stallTimer);
         renderOrders();
         loadDriverData().catch(err => console.error('Background reload after outcome save failed:', err));
         if (outcome === 'delivered') {
@@ -2691,6 +2716,7 @@
         }
       } catch (error) {
         console.error('Delivery outcome error:', error);
+        clearTimeout(stallTimer);
         window.vdNotify('Outcome Not Saved', error.message || 'Could not record this delivery outcome.', 'error');
         document.querySelectorAll('#detailBody .btn-delivered, #detailBody .btn-failed, #modalContent .modal-btn.confirm, #modalContent #confirmDeliveryButton')
           .forEach(btn => { btn.disabled = false; });
