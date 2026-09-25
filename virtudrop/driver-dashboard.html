@@ -207,7 +207,7 @@
     }
 
     /* ── Delivery list ── */
-    .delivery-list { padding: 0.75rem 1.5rem 6rem; display: flex; flex-direction: column; gap: 0.5rem; }
+    .delivery-list { padding: 0.6rem 1rem 6rem; display: flex; flex-direction: column; gap: 0.4rem; }
 
     /* ── Delivery card ── */
     .delivery-card {
@@ -293,6 +293,32 @@
     .select-checkbox-wrap { display: flex; align-items: center; margin-right: 0.2rem; flex-shrink: 0; }
     .select-checkbox { width: 20px; height: 20px; cursor: pointer; accent-color: var(--teal-dark); }
     .delivery-card.selected { outline: 2px solid var(--teal-dark); outline-offset: -2px; }
+
+    /* ── Ultra-compact single-row card — everything that used to be split
+       across .card-header + .collapsed-summary lives in one row now, so
+       at least 6 delivery cards are visible at once on a phone screen.
+       Tapping the row (outside the icon buttons) opens Delivery Detail. ── */
+    .dcard-row { display: flex; align-items: center; gap: 0.4rem; padding: 0.48rem 0.7rem; cursor: pointer; }
+    .dcard-left { display: flex; align-items: center; gap: 0.2rem; flex-shrink: 0; }
+    .dcard-row .drag-handle { font-size: 1.05rem; padding: 0.1rem 0.15rem; margin-right: -0.1rem; }
+    .dcard-row .select-checkbox-wrap { margin-right: 0.1rem; }
+    .dcard-row .stop-badge { width: 20px; height: 20px; font-size: 0.64rem; margin-top: 0; }
+    .dcard-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.06rem; }
+    .dcard-line1 { display: flex; align-items: baseline; justify-content: space-between; gap: 0.4rem; min-width: 0; }
+    .dcard-name { font-size: 0.82rem; font-weight: 800; color: var(--black); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    .dcard-name .dcard-client { font-size: 0.66rem; font-weight: 700; color: var(--grey); text-transform: uppercase; margin-right: 0.3rem; }
+    .dcard-line2 { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; min-width: 0; }
+    .dcard-addr { font-size: 0.7rem; color: var(--grey); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    .dcard-badge { flex-shrink: 0; padding: 0.12rem 0.42rem; border-radius: 20px; font-size: 0.6rem; font-weight: 800; white-space: nowrap; }
+    .dcard-badge.cod { background: var(--red-pale); color: #b33a3a; }
+    .dcard-badge.prepaid { background: var(--blue-pale); color: #004085; }
+    .dcard-dist { flex-shrink: 0; font-size: 0.64rem; color: var(--grey); font-weight: 600; white-space: nowrap; }
+    .dcard-right { display: flex; align-items: center; gap: 0.1rem; flex-shrink: 0; }
+    .dcard-right .nav-icon-btn { width: 24px; height: 24px; font-size: 0.74rem; }
+    .dcard-right .quick-move-btn { padding: 0.15rem 0.2rem; margin-right: -0.15rem; }
+    .dcard-right .card-collapse-toggle { padding: 0.15rem 0.1rem; font-size: 1.1rem; }
+    .dcard-next-actions { display: flex; gap: 0.4rem; padding: 0 0.7rem 0.55rem; margin-top: -0.05rem; }
+    .dcard-next-actions .action-btn { flex: 1; min-width: 0; margin: 0; padding: 0.42rem 0.5rem !important; font-size: 0.72rem !important; }
 
     /* ── "No reliable location" state for Open in Maps ── */
     .btn-maps-disabled {
@@ -668,7 +694,7 @@
       .day-strip { padding: 0.75rem 1rem; gap: 0.8rem; flex-wrap: nowrap; }
       .day-strip-date { display: none; }
       .filter-tabs { padding: 0.85rem 1rem 0; }
-      .delivery-list { padding: 1rem; }
+      .delivery-list { padding: 0.6rem 0.75rem 6rem; gap: 0.4rem; }
       .card-header { padding: 1rem; gap: 0.8rem; }
       .order-id { font-size: 0.9rem; }
       .customer-info { grid-template-columns: 1fr; padding: 0 1rem 1rem; }
@@ -683,7 +709,7 @@
       .day-stat-val { font-size: 1.15rem; }
       .day-stat-label { font-size: 0.6rem; }
       .day-divider { display: none; }
-      .delivery-list { padding: 0.75rem; }
+      .delivery-list { padding: 0.5rem 0.6rem 6rem; }
       .filter-tab { padding: 0.45rem 0.85rem; }
     }
 
@@ -868,7 +894,11 @@
         <span class="search-icon">🔍</span>
         <input class="search-input" id="deliverySearchInput" type="text" placeholder="Search name, address, order ID..." oninput="handleSearchInput(this.value)">
       </div>
-      <button class="search-filter-btn" id="searchFilterToggleBtn" type="button" onclick="toggleFiltersVisible()" title="Show filters">⚙</button>
+      <button class="search-filter-btn" id="searchFilterToggleBtn" type="button" onclick="toggleFiltersVisible()" title="Show filters">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3 5h18l-7 8.5V19l-4 2v-7.5L3 5z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+        </svg>
+      </button>
     </div>
 
     <!-- ── Select-mode action bar ── -->
@@ -1488,52 +1518,41 @@
         const canNavigate = hasReliableLocation(order);
         const doneIcon = status === 'delivered' ? '✓' : (status === 'rescheduled' ? '↻' : '✕');
 
-        const compactBottomActions = !reorderable ? '' : (isNextStop
-          ? `<span class="next-stop-actions">
-               <button class="action-btn btn-maps compact-navigate-full" type="button" onclick="event.stopPropagation(); ${canNavigate ? `openMaps('${maps.replaceAll("'", "\\'")}')` : `callCustomer('${phone}')`}">${canNavigate ? '🧭 Navigate' : '📞 Call Customer'}</button>
-               <button class="action-btn btn-unavailable compact-arrived-full" type="button" onclick="event.stopPropagation(); showArrivalPrompt('${order.id}', {manual:true})">✅ Arrived</button>
-             </span>`
-          : `<span class="compact-nav-icons">
-               ${canNavigate ? `<button class="nav-icon-btn" type="button" title="Navigate" onclick="event.stopPropagation(); openMaps('${maps.replaceAll("'", "\\'")}')">🧭</button>` : ''}
-               <button class="nav-icon-btn" type="button" title="Call" onclick="event.stopPropagation(); callCustomer('${phone}')">📞</button>
-             </span>`);
-
         return `
           <div class="delivery-card${cardClass(status)}${isSelected ? ' selected' : ''}${isNextStop ? ' is-next' : ''}" data-status="${status}" data-order-id="${order.id}">
-            <div class="card-header">
-              <div style="display:flex; align-items:flex-start; gap:0.3rem; min-width:0;">
+            <div class="dcard-row" onclick="openDeliveryDetail('${order.id}')">
+              <div class="dcard-left" onclick="event.stopPropagation()">
                 ${reorderable && selectModeActive ? `<span class="select-checkbox-wrap"><input type="checkbox" class="select-checkbox" ${isSelected ? 'checked' : ''} onchange="toggleOrderSelected(event, '${order.id}')" onclick="event.stopPropagation()"></span>` : ''}
                 ${reorderable ? '<span class="drag-handle" title="Drag to reorder">⠿</span>' : ''}
-                <div class="card-order">
-                  <div class="order-num">${order.order_number}</div>
+                ${reorderable
+                  ? `<div class="stop-badge${isNextStop ? ' next' : ''}">${stopCounter}</div>`
+                  : `<div class="stop-badge stop-badge-done ${status}">${doneIcon}</div>`}
+              </div>
+              <div class="dcard-main">
+                <div class="dcard-line1">
+                  <div class="dcard-name">${clientName(order) ? `<span class="dcard-client">${escapeHtml(clientName(order))}</span>` : ''}${escapeHtml(order.customer_name || '—')}</div>
+                  ${collect > 0 ? `<span class="dcard-badge cod">COD ${money(collect)}</span>` : `<span class="dcard-badge prepaid">${escapeHtml(paymentLabel(order.payment_type))}</span>`}
+                </div>
+                <div class="dcard-line2">
+                  <div class="dcard-addr">📍 ${escapeHtml(addressLabel(order))}</div>
+                  ${distanceLabel ? `<span class="dcard-dist">${distanceLabel}</span>` : ''}
                 </div>
               </div>
-              <div style="display:flex; align-items:flex-start; gap:0.3rem; flex-shrink:0;">
-                ${statusBadge(status)}
+              <div class="dcard-right" onclick="event.stopPropagation()">
+                ${reorderable && !isNextStop ? `
+                  ${canNavigate ? `<button class="nav-icon-btn" type="button" title="Navigate" onclick="event.stopPropagation(); openMaps('${maps.replaceAll("'", "\\'")}')">🧭</button>` : ''}
+                  <button class="nav-icon-btn" type="button" title="Call" onclick="event.stopPropagation(); callCustomer('${phone}')">📞</button>
+                ` : ''}
                 ${reorderable ? `<button class="quick-move-btn" type="button" onclick="openQuickMoveMenu(event, '${order.id}')" title="Move this stop">⋮</button>` : ''}
                 <button class="card-collapse-toggle" type="button" onclick="openDeliveryDetail('${order.id}')" title="View delivery details">›</button>
               </div>
             </div>
-            <div class="collapsed-summary" onclick="openDeliveryDetail('${order.id}')">
-              ${reorderable
-                ? `<div class="stop-badge${isNextStop ? ' next' : ''}">${stopCounter}</div>`
-                : `<div class="stop-badge stop-badge-done ${status}">${doneIcon}</div>`}
-              <div class="compact-main">
-                <div class="compact-top">
-                  <div class="compact-names">
-                    ${clientName(order) ? `<div class="compact-client">${escapeHtml(clientName(order))}</div>` : ''}
-                    <div class="compact-customer">${escapeHtml(order.customer_name || '—')}</div>
-                  </div>
-                  ${collect > 0 ? `<span class="compact-cod-badge">COD ${money(collect)}</span>` : `<span class="compact-prepaid-badge">${escapeHtml(paymentLabel(order.payment_type))}</span>`}
-                </div>
-                <div class="compact-address">📍 ${escapeHtml(addressLabel(order))}</div>
-                ${order.external_item_number ? `<div class="compact-item">📦 ${escapeHtml(order.external_item_number)}</div>` : ''}
-                <div class="compact-bottom${isNextStop ? ' stacked' : ''}">
-                  ${distanceLabel ? `<span class="compact-distance">${distanceLabel}</span>` : '<span></span>'}
-                  ${compactBottomActions}
-                </div>
+            ${isNextStop ? `
+              <div class="dcard-next-actions">
+                <button class="action-btn btn-maps" type="button" onclick="event.stopPropagation(); ${canNavigate ? `openMaps('${maps.replaceAll("'", "\\'")}')` : `callCustomer('${phone}')`}">${canNavigate ? '🧭 Navigate' : '📞 Call Customer'}</button>
+                <button class="action-btn btn-unavailable" type="button" onclick="event.stopPropagation(); showArrivalPrompt('${order.id}', {manual:true})">✅ Arrived</button>
               </div>
-            </div>
+            ` : ''}
           </div>
         `;
       }).join('');
