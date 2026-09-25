@@ -147,8 +147,64 @@
     .filter-tab.active { background: var(--teal-dark); border-color: var(--teal-dark); color: var(--white); }
     .filter-tab:not(.active):hover { border-color: var(--teal-mid); color: var(--teal-mid); }
     .work-tabs { display:flex; gap:0.6rem; padding:1rem 1.5rem 0; }
-    .work-tab { border:1px solid var(--grey-mid); background:var(--white); color:var(--grey); border-radius:6px; padding:0.6rem 1rem; font-weight:700; cursor:pointer; }
-    .work-tab.active { background:var(--teal-mid); border-color:var(--teal-mid); color:var(--white); }
+    .work-tab {
+      flex: 1; border: 0; background: var(--grey-light); color: var(--grey); border-radius: 10px;
+      padding: 0.75rem 1rem; font-weight: 700; font-size: 0.9rem; cursor: pointer; font-family: 'Inter', sans-serif;
+    }
+    .work-tab.active { background: var(--teal-mid); color: var(--white); }
+
+    /* ── Search + filter row ── */
+    .search-row { display:flex; gap:0.6rem; padding:0.85rem 1.5rem 0; align-items:center; }
+    .search-input-wrap { flex:1; position:relative; display:flex; align-items:center; min-width:0; }
+    .search-input-wrap .search-icon { position:absolute; left:0.85rem; color:var(--grey); font-size:0.95rem; pointer-events:none; }
+    .search-input {
+      width:100%; padding:0.7rem 0.9rem 0.7rem 2.3rem; border:2px solid var(--grey-mid); border-radius:10px;
+      font-family:'Inter', sans-serif; font-size:0.88rem; color:var(--black); background:var(--white);
+    }
+    .search-input:focus { outline:none; border-color:var(--teal-mid); }
+    .search-filter-btn {
+      flex-shrink:0; width:42px; height:42px; border-radius:10px; border:2px solid var(--grey-mid);
+      background:var(--white); color:var(--teal-dark); font-size:1rem; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .search-filter-btn.active,
+    .search-filter-btn:hover { border-color:var(--teal-mid); color:var(--teal-mid); }
+    .filter-tabs.filters-hidden { display:none; }
+
+    /* ── Select-mode action bar ── */
+    .select-bar {
+      display:none; align-items:center; justify-content:space-between; gap:0.8rem;
+      margin:0.85rem 1.5rem 0; padding:0.7rem 1rem; background:var(--teal-dark); border-radius:10px;
+      color:var(--white);
+    }
+    .select-bar.show { display:flex; }
+    .select-bar-count { font-weight:700; font-size:0.88rem; }
+    .select-bar-actions { display:flex; gap:0.6rem; }
+    .select-bar-btn {
+      border:2px solid transparent; border-radius:8px; padding:0.5rem 0.9rem; font-weight:700;
+      font-size:0.82rem; cursor:pointer; font-family:'Inter', sans-serif;
+    }
+    .select-bar-btn.move { background:var(--teal-bright); color:var(--teal-dark); }
+    .select-bar-btn.cancel { background:transparent; color:var(--white); border-color:rgba(255,255,255,0.4); }
+    @media (max-width: 520px) {
+      .search-row { padding:0.75rem 1rem 0; }
+      .select-bar { margin:0.75rem 1rem 0; flex-wrap:wrap; }
+    }
+
+    /* ── Quick-move-style modal menu (bottom-sheet list) ── */
+    .modal-menu-btn {
+      display:flex; align-items:center; gap:0.7rem; width:100%; padding:0.9rem 0.2rem;
+      background:none; border:0; border-bottom:1px solid var(--grey-mid);
+      font-family:'Inter', sans-serif; font-size:0.95rem; font-weight:700; color:var(--black);
+      cursor:pointer; text-align:left;
+    }
+    .modal-menu-btn:hover { color:var(--teal-mid); }
+    .modal-menu-btn .mm-icon { width:22px; text-align:center; flex-shrink:0; }
+    .modal-menu-cancel {
+      display:block; width:100%; margin-top:0.9rem; padding:0.9rem 0.2rem 0; border:0; background:none;
+      color:#c0392b; font-weight:700; font-size:0.95rem; text-align:center; cursor:pointer;
+      font-family:'Inter', sans-serif;
+    }
 
     /* ── Delivery list ── */
     .delivery-list { padding: 1rem 1.5rem 6rem; display: flex; flex-direction: column; gap: 1rem; }
@@ -188,19 +244,57 @@
     }
     .card-collapse-toggle:hover { color: var(--teal-mid); }
     .delivery-card.collapsed .card-collapse-toggle { transform: rotate(-90deg); }
-    .collapsed-summary {
-      display: none; padding: 0 1.4rem 1rem; gap: 0.4rem 0.7rem; flex-wrap: wrap;
-      align-items: baseline; font-size: 0.85rem;
+    .quick-move-btn {
+      border: 0; background: transparent; color: var(--grey); font-size: 1.2rem; line-height: 1;
+      padding: 0.2rem 0.35rem; margin-right: -0.2rem; cursor: pointer; flex-shrink: 0;
     }
-    .collapsed-summary .collapsed-customer { font-weight: 700; color: var(--black); }
-    .collapsed-summary .collapsed-area { color: var(--grey); }
-    .delivery-card.collapsed .collapsed-summary { display: flex; }
+    .quick-move-btn:hover { color: var(--teal-mid); }
+
+    /* ── Compact card row (shown while collapsed — the default state) ── */
+    .collapsed-summary {
+      display: none; padding: 0 1.4rem 1.1rem; gap: 0.7rem; cursor: pointer;
+    }
+    .delivery-card.collapsed .collapsed-summary { display: flex; align-items: flex-start; }
     .delivery-card.collapsed .customer-info,
     .delivery-card.collapsed .delivery-notes,
     .delivery-card.collapsed .driver-update-box,
     .delivery-card.collapsed .card-actions {
       display: none;
     }
+    .delivery-card.is-next { background: var(--teal-light); border-left-color: var(--teal-mid); }
+    .stop-badge {
+      width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 0.85rem; color: var(--white); background: var(--grey);
+      margin-top: 0.1rem;
+    }
+    .stop-badge.next { background: var(--teal-mid); }
+    .stop-badge.stop-badge-done.delivered { background: var(--green); }
+    .stop-badge.stop-badge-done.failed { background: var(--red); }
+    .stop-badge.stop-badge-done.rescheduled { background: var(--yellow); color: #7a5a00; }
+    .compact-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.25rem; }
+    .compact-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.6rem; }
+    .compact-names { min-width: 0; }
+    .compact-client { font-size: 0.72rem; font-weight: 700; color: var(--grey); text-transform: uppercase; letter-spacing: 0.3px; }
+    .compact-customer { font-size: 0.98rem; font-weight: 800; color: var(--black); line-height: 1.25; overflow-wrap: anywhere; }
+    .compact-cod-badge, .compact-prepaid-badge {
+      flex-shrink: 0; padding: 0.28rem 0.65rem; border-radius: 20px; font-size: 0.72rem; font-weight: 800; white-space: nowrap;
+    }
+    .compact-cod-badge { background: var(--red-pale); color: #b33a3a; }
+    .compact-prepaid-badge { background: var(--blue-pale); color: #004085; }
+    .compact-address, .compact-item {
+      font-size: 0.82rem; color: var(--grey); line-height: 1.4; overflow-wrap: anywhere;
+    }
+    .compact-bottom { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; margin-top: 0.15rem; }
+    .compact-distance { font-size: 0.78rem; color: var(--grey); font-weight: 600; white-space: nowrap; }
+    .compact-nav-icons { display: flex; gap: 0.5rem; flex-shrink: 0; }
+    .nav-icon-btn {
+      width: 36px; height: 36px; border-radius: 8px; border: 2px solid var(--grey-mid); background: var(--white);
+      color: var(--teal-dark); font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    .nav-icon-btn:hover { border-color: var(--teal-mid); color: var(--teal-mid); }
+    .compact-navigate-full { flex: 1; min-width: 0; margin-top: 0.4rem; }
+    .compact-bottom.stacked { flex-direction: column; align-items: stretch; }
     #collapseAllBtn { margin-left: auto; }
     #selectModeBtn.active { background: var(--teal-dark); border-color: var(--teal-dark); color: var(--white); }
     .select-checkbox-wrap { display: flex; align-items: center; margin-right: 0.2rem; flex-shrink: 0; }
@@ -706,15 +800,33 @@
   </div>
 
   <div id="deliveryWorkView">
+    <!-- ── Search + filter toggle ── -->
+    <div class="search-row">
+      <div class="search-input-wrap">
+        <span class="search-icon">🔍</span>
+        <input class="search-input" id="deliverySearchInput" type="text" placeholder="Search name, address, order ID..." oninput="handleSearchInput(this.value)">
+      </div>
+      <button class="search-filter-btn" id="searchFilterToggleBtn" type="button" onclick="toggleFiltersVisible()" title="Show filters">⚙</button>
+    </div>
+
+    <!-- ── Select-mode action bar ── -->
+    <div class="select-bar" id="selectBar">
+      <span class="select-bar-count" id="selectBarCount">0 selected</span>
+      <div class="select-bar-actions">
+        <button class="select-bar-btn move" type="button" onclick="openGroupMoveMenu()">Move ▾</button>
+        <button class="select-bar-btn cancel" type="button" onclick="toggleSelectMode()">Cancel</button>
+      </div>
+    </div>
+
     <!-- ── Filter tabs ── -->
-    <div class="filter-tabs">
+    <div class="filter-tabs filters-hidden">
       <button class="filter-tab active" onclick="filterCards('all', this)">All (0)</button>
       <button class="filter-tab" onclick="filterCards('queued', this)">Queued (0)</button>
       <button class="filter-tab" onclick="filterCards('out', this)">Out for Delivery (0)</button>
       <button class="filter-tab" onclick="filterCards('delivered', this)">Delivered (0)</button>
       <button class="filter-tab" onclick="filterCards('failed', this)">Failed (0)</button>
       <button class="filter-tab" id="collapseAllBtn" type="button" onclick="toggleCollapseAll()" title="Minimize all cards to make dragging easier">Minimize All</button>
-      <button class="filter-tab" id="selectModeBtn" type="button" onclick="toggleSelectMode()" title="Select multiple deliveries to drag as a group">Select</button>
+      <button class="filter-tab" id="selectModeBtn" type="button" onclick="toggleSelectMode()" title="Select multiple deliveries to move as a group">Select</button>
       <button class="filter-tab" id="optimizeRouteBtn" type="button" onclick="optimizeRoute()" title="Recalculate the best order for your remaining deliveries, starting from where you are right now">📍 Optimize Route</button>
       <button class="filter-tab" id="resetRouteOrderBtn" type="button" onclick="resetRouteOrder()" title="Undo your manual drag order and go back to VirtuDrop's recommended route">↺ Reset Order</button>
     </div>
@@ -839,9 +951,11 @@
     let activeWorkView = 'deliveries';
     let routeSortable = null;
     let savingRouteOrder = false;
-    let collapsedOrderIds = new Set();
+    let expandedOrderIds = new Set(); // cards the driver has explicitly tapped open — everything else renders compact by default
     let selectModeActive = false;
     let selectedOrderIds = new Set();
+    let searchQuery = '';
+    let filtersVisible = false;
 
     // ── Distance-from-store default sort ──────────────────────────────
     // Fixed pickup point (YD Harvest). Update here if the pickup location
@@ -1270,6 +1384,12 @@
     function renderOrders() {
       const list = document.getElementById('deliveryList');
       const displayOrder = computeDeliveryDisplayOrder(orders);
+      // The first reorderable (queued/out) stop in route order is the
+      // driver's actual "next stop" — highlighted with a full-width
+      // Navigate button, same as every other reorderable card otherwise.
+      const nextStopOrder = displayOrder.find(o => ['queued', 'out'].includes(normalizeStatus(o)));
+      const nextStopId = nextStopOrder ? nextStopOrder.id : null;
+      let stopCounter = 0;
       list.innerHTML = displayOrder.map(order => {
         const status = normalizeStatus(order);
         const manifest = manifestForOrder(order.id);
@@ -1283,32 +1403,62 @@
         const reorderable = ['queued', 'out'].includes(status);
         const distanceInfo = orderDistanceInfo(order);
         const distanceLabel = distanceInfo.km < 900
-          ? `${distanceInfo.estimated ? '~' : ''}${distanceInfo.km.toFixed(1)} km from store`
+          ? `${distanceInfo.estimated ? '~' : ''}${distanceInfo.km.toFixed(1)} km`
           : '';
+        if (reorderable) stopCounter++;
+        const isNextStop = reorderable && order.id === nextStopId;
 
-        const isCollapsed = collapsedOrderIds.has(order.id);
+        const isCollapsed = !expandedOrderIds.has(order.id);
 
         const isSelected = selectedOrderIds.has(order.id);
 
+        const phone = phoneForLink(order.customer_phone);
+        const maps = mapsTarget(order);
+        const canNavigate = hasReliableLocation(order);
+        const doneIcon = status === 'delivered' ? '✓' : (status === 'rescheduled' ? '↻' : '✕');
+
+        const compactBottomActions = !reorderable ? '' : (isNextStop
+          ? `<button class="action-btn btn-maps compact-navigate-full" type="button" onclick="event.stopPropagation(); ${canNavigate ? `openMaps('${maps.replaceAll("'", "\\'")}')` : `callCustomer('${phone}')`}">${canNavigate ? '🧭 Navigate' : '📞 Call Customer'}</button>`
+          : `<span class="compact-nav-icons">
+               ${canNavigate ? `<button class="nav-icon-btn" type="button" title="Navigate" onclick="event.stopPropagation(); openMaps('${maps.replaceAll("'", "\\'")}')">🧭</button>` : ''}
+               <button class="nav-icon-btn" type="button" title="Call" onclick="event.stopPropagation(); callCustomer('${phone}')">📞</button>
+             </span>`);
+
         return `
-          <div class="delivery-card${cardClass(status)}${isCollapsed ? ' collapsed' : ''}${isSelected ? ' selected' : ''}" data-status="${status}" data-order-id="${order.id}">
+          <div class="delivery-card${cardClass(status)}${isCollapsed ? ' collapsed' : ''}${isSelected ? ' selected' : ''}${isNextStop ? ' is-next' : ''}" data-status="${status}" data-order-id="${order.id}">
             <div class="card-header">
               <div style="display:flex; align-items:flex-start; gap:0.3rem; min-width:0;">
                 ${reorderable && selectModeActive ? `<span class="select-checkbox-wrap"><input type="checkbox" class="select-checkbox" ${isSelected ? 'checked' : ''} onchange="toggleOrderSelected(event, '${order.id}')" onclick="event.stopPropagation()"></span>` : ''}
                 ${reorderable ? '<span class="drag-handle" title="Drag to reorder">⠿</span>' : ''}
                 <div class="card-order">
                   <div class="order-num">${order.order_number}</div>
-                  <div class="client-tag">${clientName(order)}${distanceLabel ? ` · ${distanceLabel}` : ''}</div>
                 </div>
               </div>
               <div style="display:flex; align-items:flex-start; gap:0.3rem; flex-shrink:0;">
                 ${statusBadge(status)}
+                ${reorderable ? `<button class="quick-move-btn" type="button" onclick="openQuickMoveMenu(event, '${order.id}')" title="Move this stop">⋮</button>` : ''}
                 <button class="card-collapse-toggle" type="button" onclick="toggleCardCollapsed(event, '${order.id}')" title="Expand/minimize this card">▾</button>
               </div>
             </div>
-            <div class="collapsed-summary">
-              <span class="collapsed-customer">${escapeHtml(order.customer_name || '—')}</span>
-              <span class="collapsed-area">${escapeHtml(addressLabel(order))}</span>
+            <div class="collapsed-summary" onclick="toggleCardCollapsed(event, '${order.id}')">
+              ${reorderable
+                ? `<div class="stop-badge${isNextStop ? ' next' : ''}">${stopCounter}</div>`
+                : `<div class="stop-badge stop-badge-done ${status}">${doneIcon}</div>`}
+              <div class="compact-main">
+                <div class="compact-top">
+                  <div class="compact-names">
+                    ${clientName(order) ? `<div class="compact-client">${escapeHtml(clientName(order))}</div>` : ''}
+                    <div class="compact-customer">${escapeHtml(order.customer_name || '—')}</div>
+                  </div>
+                  ${collect > 0 ? `<span class="compact-cod-badge">COD ${money(collect)}</span>` : `<span class="compact-prepaid-badge">${escapeHtml(paymentLabel(order.payment_type))}</span>`}
+                </div>
+                <div class="compact-address">📍 ${escapeHtml(addressLabel(order))}</div>
+                ${order.external_item_number ? `<div class="compact-item">📦 ${escapeHtml(order.external_item_number)}</div>` : ''}
+                <div class="compact-bottom${isNextStop ? ' stacked' : ''}">
+                  ${distanceLabel ? `<span class="compact-distance">${distanceLabel}</span>` : '<span></span>'}
+                  ${compactBottomActions}
+                </div>
+              </div>
             </div>
             <div class="customer-info">
               ${manifest ? `<div class="info-row" style="grid-column:1/-1;"><div class="info-label">Manifest</div><div class="info-value">${escapeHtml(manifest.manifest_number)} · ${escapeHtml(String(manifest.status).replaceAll('_', ' '))}</div></div>` : ''}
@@ -1368,13 +1518,13 @@
       if (typeof updateScrollJumpVisibility === 'function') updateScrollJumpVisibility();
     }
 
-    // ── Collapse/expand cards (mainly to make dragging on a phone easier) ──
+    // ── Compact by default; tap a card to expand its full details/actions ──
     window.toggleCardCollapsed = function(event, orderId) {
       event.stopPropagation();
       const card = document.querySelector(`.delivery-card[data-order-id="${orderId}"]`);
       if (!card) return;
       const isCollapsed = card.classList.toggle('collapsed');
-      if (isCollapsed) collapsedOrderIds.add(orderId); else collapsedOrderIds.delete(orderId);
+      if (isCollapsed) expandedOrderIds.delete(orderId); else expandedOrderIds.add(orderId);
       syncCollapseAllLabel();
     };
 
@@ -1391,11 +1541,35 @@
       const anyExpanded = Array.from(cards).some(c => !c.classList.contains('collapsed'));
       cards.forEach(card => {
         const id = card.dataset.orderId;
-        if (anyExpanded) { card.classList.add('collapsed'); collapsedOrderIds.add(id); }
-        else { card.classList.remove('collapsed'); collapsedOrderIds.delete(id); }
+        if (anyExpanded) { card.classList.add('collapsed'); expandedOrderIds.delete(id); }
+        else { card.classList.remove('collapsed'); expandedOrderIds.add(id); }
       });
       syncCollapseAllLabel();
     };
+
+    // ── Search ──
+    window.handleSearchInput = function(value) {
+      searchQuery = String(value || '').trim().toLowerCase();
+      applyFilter();
+    };
+
+    window.toggleFiltersVisible = function() {
+      filtersVisible = !filtersVisible;
+      const tabs = document.querySelector('.filter-tabs');
+      const btn = document.getElementById('searchFilterToggleBtn');
+      if (tabs) tabs.classList.toggle('filters-hidden', !filtersVisible);
+      if (btn) btn.classList.toggle('active', filtersVisible);
+    };
+
+    function orderMatchesSearch(order) {
+      if (!searchQuery) return true;
+      const haystack = [
+        order.customer_name, order.customer_phone, order.order_number,
+        order.house_number, order.street_name, order.area_name, order.delivery_address,
+        order.external_item_number, clientName(order)
+      ].filter(Boolean).join(' ').toLowerCase();
+      return haystack.includes(searchQuery);
+    }
 
     // ── Select multiple cards, then drag any one to move the whole group ──
     window.toggleSelectMode = function() {
@@ -1465,6 +1639,160 @@
         savingRouteOrder = false;
       }
     }
+
+    // ── Quick Move menu / Move to Position (single stop + multi-select) ──
+    // These all work the same way: recompute the active queue's id order,
+    // splice the affected id(s) to their new spot, write the new
+    // driver_route_position values locally so the UI updates instantly, then
+    // persist with the same driver_set_route_order RPC the drag-and-drop
+    // reordering already uses.
+    function getActiveQueueIds() {
+      return computeDeliveryDisplayOrder(orders)
+        .filter(o => ['queued', 'out'].includes(normalizeStatus(o)))
+        .map(o => o.id);
+    }
+
+    function reorderActiveQueueLocally(newIds) {
+      newIds.forEach((id, index) => {
+        const order = orders.find(o => o.id === id);
+        if (order) order.driver_route_position = (index + 1) * 1000;
+      });
+    }
+
+    async function persistActiveQueueOrder(ids) {
+      if (savingRouteOrder) return;
+      savingRouteOrder = true;
+      try {
+        const { error } = await supabase.rpc('driver_set_route_order', { p_order_ids: ids });
+        if (error) throw error;
+      } catch (error) {
+        console.error('Route order save failed:', error);
+        showToast('Could not save the new order — it may reset on next refresh.');
+      } finally {
+        savingRouteOrder = false;
+      }
+    }
+
+    window.openQuickMoveMenu = function(event, orderId) {
+      if (event) event.stopPropagation();
+      const order = findOrder(orderId);
+      const label = order ? (order.customer_name || order.order_number) : 'this stop';
+      openModal(
+        `Move Stop`,
+        `${label}`,
+        `<button class="modal-menu-btn" onclick="moveStop('${orderId}','up')"><span class="mm-icon">⬆</span> Move Up</button>
+         <button class="modal-menu-btn" onclick="moveStop('${orderId}','down')"><span class="mm-icon">⬇</span> Move Down</button>
+         <button class="modal-menu-btn" onclick="moveStop('${orderId}','top')"><span class="mm-icon">⤒</span> Move to Top</button>
+         <button class="modal-menu-btn" onclick="moveStop('${orderId}','bottom')"><span class="mm-icon">⤓</span> Move to Bottom</button>
+         <button class="modal-menu-btn" onclick="openMoveToPositionModal('${orderId}')"><span class="mm-icon">#</span> Move to Position…</button>
+         <button class="modal-menu-cancel" onclick="closeModal()">Cancel</button>`
+      );
+    };
+
+    window.moveStop = async function(orderId, action) {
+      const ids = getActiveQueueIds();
+      const idx = ids.indexOf(orderId);
+      if (idx === -1) return closeModal();
+      const rest = ids.slice();
+      rest.splice(idx, 1);
+      let target;
+      if (action === 'up') target = Math.max(0, idx - 1);
+      else if (action === 'down') target = Math.min(rest.length, idx + 1);
+      else if (action === 'top') target = 0;
+      else target = rest.length; // bottom
+      rest.splice(target, 0, orderId);
+      reorderActiveQueueLocally(rest);
+      closeModal();
+      renderOrders();
+      await persistActiveQueueOrder(rest);
+      showToast('Stop order updated.');
+    };
+
+    window.openMoveToPositionModal = function(orderId) {
+      const ids = getActiveQueueIds();
+      const idx = ids.indexOf(orderId);
+      if (idx === -1) return closeModal();
+      openModal(
+        'Move to Position',
+        `Enter the new position for this stop (within remaining deliveries). Current position: ${idx + 1}. Total remaining deliveries: ${ids.length}.`,
+        `<input id="movePositionInput" type="number" min="1" max="${ids.length}" value="${idx + 1}" style="width:100%; padding:0.75rem; border:2px solid #e0e0e0; border-radius:8px; box-sizing:border-box; margin-bottom:0.9rem;">
+         <button class="modal-btn confirm" onclick="submitMoveToPosition('${orderId}')">Move to Position</button>
+         <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>`
+      );
+    };
+
+    window.submitMoveToPosition = async function(orderId) {
+      const ids = getActiveQueueIds();
+      const idx = ids.indexOf(orderId);
+      if (idx === -1) return closeModal();
+      const raw = parseInt(document.getElementById('movePositionInput')?.value, 10);
+      if (!Number.isFinite(raw) || raw < 1) return showToast('Enter a valid position.');
+      const clamped = Math.min(Math.max(raw, 1), ids.length);
+      const rest = ids.slice();
+      rest.splice(idx, 1);
+      rest.splice(clamped - 1, 0, orderId);
+      reorderActiveQueueLocally(rest);
+      closeModal();
+      renderOrders();
+      await persistActiveQueueOrder(rest);
+      showToast(`Moved to position ${clamped}.`);
+    };
+
+    // ── Multi-select "Move" bar ──
+    window.openGroupMoveMenu = function() {
+      if (!selectedOrderIds.size) { showToast('Select at least one stop first.'); return; }
+      openModal(
+        `Move ${selectedOrderIds.size} Stops`,
+        '',
+        `<button class="modal-menu-btn" onclick="moveGroup('top')"><span class="mm-icon">⤒</span> Move to Top</button>
+         <button class="modal-menu-btn" onclick="moveGroup('bottom')"><span class="mm-icon">⤓</span> Move to Bottom</button>
+         <button class="modal-menu-btn" onclick="openGroupMoveToPositionModal()"><span class="mm-icon">#</span> Move to Position…</button>
+         <button class="modal-menu-cancel" onclick="closeModal()">Cancel</button>`
+      );
+    };
+
+    window.moveGroup = async function(action) {
+      const ids = getActiveQueueIds();
+      const selected = ids.filter(id => selectedOrderIds.has(id));
+      if (!selected.length) return closeModal();
+      const rest = ids.filter(id => !selectedOrderIds.has(id));
+      const newIds = action === 'top' ? selected.concat(rest) : rest.concat(selected);
+      reorderActiveQueueLocally(newIds);
+      closeModal();
+      renderOrders();
+      await persistActiveQueueOrder(newIds);
+      showToast(`${selected.length} stop${selected.length === 1 ? '' : 's'} moved to the ${action === 'top' ? 'top' : 'bottom'}.`);
+    };
+
+    window.openGroupMoveToPositionModal = function() {
+      const ids = getActiveQueueIds();
+      const selectedCount = ids.filter(id => selectedOrderIds.has(id)).length;
+      if (!selectedCount) { closeModal(); return; }
+      openModal(
+        `Move ${selectedCount} Stops to Position`,
+        `Enter the new position for the selected stops (they will keep their current order). Total remaining deliveries: ${ids.length}.`,
+        `<input id="groupMovePositionInput" type="number" min="1" max="${ids.length}" value="1" style="width:100%; padding:0.75rem; border:2px solid #e0e0e0; border-radius:8px; box-sizing:border-box; margin-bottom:0.9rem;">
+         <button class="modal-btn confirm" onclick="submitGroupMoveToPosition()">Move to Position</button>
+         <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>`
+      );
+    };
+
+    window.submitGroupMoveToPosition = async function() {
+      const ids = getActiveQueueIds();
+      const selected = ids.filter(id => selectedOrderIds.has(id));
+      if (!selected.length) return closeModal();
+      const raw = parseInt(document.getElementById('groupMovePositionInput')?.value, 10);
+      if (!Number.isFinite(raw) || raw < 1) return showToast('Enter a valid position.');
+      const rest = ids.filter(id => !selectedOrderIds.has(id));
+      const clamped = Math.min(Math.max(raw, 1), ids.length);
+      const insertAt = Math.min(clamped - 1, rest.length);
+      const newIds = rest.slice(0, insertAt).concat(selected, rest.slice(insertAt));
+      reorderActiveQueueLocally(newIds);
+      closeModal();
+      renderOrders();
+      await persistActiveQueueOrder(newIds);
+      showToast(`${selected.length} stop${selected.length === 1 ? '' : 's'} moved to position ${clamped}.`);
+    };
 
     // Undoes any manual drag order for this driver's active deliveries,
     // putting each stop back at VirtuDrop's last computed recommendation
@@ -1654,18 +1982,31 @@
         <button class="filter-tab ${activeFilter === 'delivered' ? 'active' : ''}" onclick="filterCards('delivered', this)">Delivered (${counts.delivered})</button>
         <button class="filter-tab ${activeFilter === 'failed' ? 'active' : ''}" onclick="filterCards('failed', this)">Failed (${counts.failed})</button>
         <button class="filter-tab" id="collapseAllBtn" type="button" onclick="toggleCollapseAll()" title="Minimize all cards to make dragging easier">Minimize All</button>
-        <button class="filter-tab${selectModeActive ? ' active' : ''}" id="selectModeBtn" type="button" onclick="toggleSelectMode()" title="Select multiple deliveries to drag as a group">${selectModeActive ? `Done${selectedOrderIds.size ? ` (${selectedOrderIds.size})` : ''}` : 'Select'}</button>
+        <button class="filter-tab${selectModeActive ? ' active' : ''}" id="selectModeBtn" type="button" onclick="toggleSelectMode()" title="Select multiple deliveries to move as a group">${selectModeActive ? 'Done' : 'Select'}</button>
         <button class="filter-tab" id="optimizeRouteBtn" type="button" onclick="optimizeRoute()" title="Recalculate the best order for your remaining deliveries, starting from where you are right now">📍 Optimize Route</button>
         <button class="filter-tab" id="resetRouteOrderBtn" type="button" onclick="resetRouteOrder()" title="Undo your manual drag order and go back to VirtuDrop's recommended route">↺ Reset Order</button>
       `;
       syncCollapseAllLabel();
+      syncSelectBar();
+    }
+
+    function syncSelectBar() {
+      const bar = document.getElementById('selectBar');
+      if (!bar) return;
+      bar.classList.toggle('show', selectModeActive);
+      const count = selectedOrderIds.size;
+      const countEl = document.getElementById('selectBarCount');
+      if (countEl) countEl.textContent = `${count} selected`;
     }
 
     function applyFilter() {
       const cards = document.querySelectorAll('#deliveryList .delivery-card');
       let visible = 0;
       cards.forEach(card => {
-        const show = activeFilter === 'all' || card.dataset.status === activeFilter || (activeFilter === 'failed' && card.dataset.status === 'rescheduled');
+        const order = findOrder(card.dataset.orderId);
+        const statusMatch = activeFilter === 'all' || card.dataset.status === activeFilter || (activeFilter === 'failed' && card.dataset.status === 'rescheduled');
+        const searchMatch = order ? orderMatchesSearch(order) : true;
+        const show = statusMatch && searchMatch;
         card.style.display = show ? 'block' : 'none';
         if (show) visible++;
       });
