@@ -294,28 +294,28 @@
     .select-checkbox { width: 20px; height: 20px; cursor: pointer; accent-color: var(--teal-dark); }
     .delivery-card.selected { outline: 2px solid var(--teal-dark); outline-offset: -2px; }
 
-    /* ── Ultra-compact single-row card — everything that used to be split
-       across .card-header + .collapsed-summary lives in one row now, so
-       at least 6 delivery cards are visible at once on a phone screen.
-       Tapping the row (outside the icon buttons) opens Delivery Detail. ── */
-    .dcard-row { display: flex; align-items: center; gap: 0.4rem; padding: 0.48rem 0.7rem; cursor: pointer; }
-    .dcard-left { display: flex; align-items: center; gap: 0.2rem; flex-shrink: 0; }
+    /* ── Compact card — one row, no separate header block. Customer name
+       leads, business name sits underneath it, and the full address and
+       item number are shown (wrapped, never truncated). Tapping the row
+       (outside the icon buttons) opens Delivery Detail. ── */
+    .dcard-row { display: flex; align-items: flex-start; gap: 0.45rem; padding: 0.55rem 0.7rem; cursor: pointer; }
+    .dcard-left { display: flex; align-items: center; gap: 0.2rem; flex-shrink: 0; padding-top: 0.05rem; }
     .dcard-row .drag-handle { font-size: 1.05rem; padding: 0.1rem 0.15rem; margin-right: -0.1rem; }
     .dcard-row .select-checkbox-wrap { margin-right: 0.1rem; }
     .dcard-row .stop-badge { width: 20px; height: 20px; font-size: 0.64rem; margin-top: 0; }
-    .dcard-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.06rem; }
+    .dcard-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
     .dcard-line1 { display: flex; align-items: baseline; justify-content: space-between; gap: 0.4rem; min-width: 0; }
-    .dcard-name { font-size: 0.82rem; font-weight: 800; color: var(--black); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-    .dcard-name .dcard-client { font-size: 0.66rem; font-weight: 700; color: var(--grey); text-transform: uppercase; margin-right: 0.3rem; }
-    .dcard-line2 { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; min-width: 0; }
-    .dcard-addr { font-size: 0.7rem; color: var(--grey); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-    .dcard-badge { flex-shrink: 0; padding: 0.12rem 0.42rem; border-radius: 20px; font-size: 0.6rem; font-weight: 800; white-space: nowrap; }
+    .dcard-name { font-size: 0.86rem; font-weight: 800; color: var(--black); overflow-wrap: anywhere; min-width: 0; }
+    .dcard-client { font-size: 0.66rem; font-weight: 700; color: var(--grey); text-transform: uppercase; letter-spacing: 0.3px; overflow-wrap: anywhere; }
+    .dcard-addr { font-size: 0.72rem; color: var(--grey); line-height: 1.3; overflow-wrap: anywhere; }
+    .dcard-item { font-size: 0.7rem; color: var(--grey); line-height: 1.3; overflow-wrap: anywhere; }
+    .dcard-line2 { display: flex; align-items: center; justify-content: flex-end; gap: 0.4rem; min-width: 0; margin-top: 0.05rem; }
+    .dcard-badge { flex-shrink: 0; padding: 0.12rem 0.42rem; border-radius: 20px; font-size: 0.62rem; font-weight: 800; white-space: nowrap; }
     .dcard-badge.cod { background: var(--red-pale); color: #b33a3a; }
     .dcard-badge.prepaid { background: var(--blue-pale); color: #004085; }
-    .dcard-dist { flex-shrink: 0; font-size: 0.64rem; color: var(--grey); font-weight: 600; white-space: nowrap; }
-    .dcard-right { display: flex; align-items: center; gap: 0.1rem; flex-shrink: 0; }
-    .dcard-right .nav-icon-btn { width: 24px; height: 24px; font-size: 0.74rem; }
-    .dcard-right .quick-move-btn { padding: 0.15rem 0.2rem; margin-right: -0.15rem; }
+    .dcard-dist { flex-shrink: 0; font-size: 0.66rem; color: var(--grey); font-weight: 600; white-space: nowrap; }
+    .dcard-right { display: flex; align-items: center; gap: 0.15rem; flex-shrink: 0; padding-top: 0.05rem; }
+    .dcard-right .nav-icon-btn { width: 25px; height: 25px; font-size: 0.76rem; }
     .dcard-right .card-collapse-toggle { padding: 0.15rem 0.1rem; font-size: 1.1rem; }
     .dcard-next-actions { display: flex; gap: 0.4rem; padding: 0 0.7rem 0.55rem; margin-top: -0.05rem; }
     .dcard-next-actions .action-btn { flex: 1; min-width: 0; margin: 0; padding: 0.42rem 0.5rem !important; font-size: 0.72rem !important; }
@@ -618,17 +618,14 @@
     .detail-step-btn:disabled { opacity: 0.35; cursor: default; }
     .detail-status-row { padding: 0.75rem 1rem 0; flex-shrink: 0; }
     .detail-body { flex: 1; overflow-y: auto; padding: 0.9rem 1rem calc(2rem + env(safe-area-inset-bottom)); }
-    .detail-client-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.9rem; }
-    .detail-client-icon {
-      width: 34px; height: 34px; border-radius: 8px; background: var(--teal-dark); color: var(--white);
-      display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0;
-    }
-    .detail-client-name { flex: 1; min-width: 0; font-weight: 800; font-size: 1.05rem; color: var(--black); overflow-wrap: anywhere; }
+    .detail-client-row { display: flex; align-items: flex-start; gap: 0.6rem; margin-bottom: 0.9rem; }
+    .detail-client-main { flex: 1; min-width: 0; }
+    .detail-client-customer { font-weight: 800; font-size: 1rem; color: var(--black); overflow-wrap: anywhere; line-height: 1.25; }
+    .detail-client-business { font-weight: 700; font-size: 0.7rem; color: var(--grey); text-transform: uppercase; letter-spacing: 0.3px; margin-top: 0.15rem; overflow-wrap: anywhere; }
     .detail-row {
       display: flex; align-items: center; gap: 0.55rem; padding: 0.55rem 0; font-size: 0.92rem; color: var(--black);
       border-bottom: 1px solid #edf1f0;
     }
-    .detail-row-icon { flex-shrink: 0; }
     .detail-row-phone { justify-content: space-between; }
     .detail-contact-icons { display: flex; gap: 0.5rem; margin-left: auto; }
     .detail-instructions {
@@ -641,19 +638,12 @@
     .detail-location-ok { background: var(--green-pale); }
     .detail-location-warn { background: var(--red-pale); }
     .detail-location-head { display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 0.82rem; }
-    .detail-location-accuracy { font-weight: 600; color: var(--grey); font-size: 0.76rem; }
-    .detail-location-value { font-weight: 800; font-size: 1rem; margin-top: 0.2rem; }
+    .detail-location-value { font-weight: 700; font-size: 0.82rem; margin-top: 0.2rem; }
     .detail-location-value.ok { color: #155724; }
     .detail-location-value.warn { color: #8b2020; }
     .detail-location-sub { font-size: 0.8rem; color: #8b2020; margin-top: 0.2rem; }
-    .detail-map { margin-bottom: 0.7rem; border-radius: 10px; overflow: hidden; border: 1px solid var(--grey-mid); }
-    .detail-map iframe { width: 100%; height: 160px; border: 0; display: block; }
-    .detail-request-location {
-      display: flex; align-items: center; gap: 0.75rem; margin: 0 0 0.9rem; padding: 0.8rem 0.9rem;
-      background: var(--blue-pale); border-radius: 10px;
-    }
-    .detail-request-title { font-weight: 700; font-size: 0.85rem; color: #004085; }
-    .detail-request-sub { font-size: 0.76rem; color: #245a86; margin-top: 0.15rem; }
+    .detail-location-actions { display: flex; gap: 0.5rem; margin-top: 0.65rem; }
+    .detail-location-actions .action-btn { flex: 1; min-width: 0; }
     .detail-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; margin: 0.4rem 0 0.9rem; }
     .detail-tile { background: var(--white); border: 1px solid var(--grey-mid); border-radius: 10px; padding: 0.7rem; }
     .detail-tile-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--grey); }
@@ -757,23 +747,17 @@
       }
     }
 
-    /* Keep driver cards clear of fixed bottom bar - Codex */
+    /* Bottom bar was removed — keep just enough clearance for the
+       scroll-jump buttons and the safe area, not a whole CTA bar's worth. */
     :root {
-      --driver-bottom-bar-space: 7.5rem;
+      --driver-bottom-bar-space: 1.5rem;
     }
     .delivery-list {
       padding-bottom: calc(var(--driver-bottom-bar-space) + env(safe-area-inset-bottom));
     }
-    .bottom-bar {
-      padding-bottom: calc(0.8rem + env(safe-area-inset-bottom));
-    }
     @media (max-width: 640px) {
       :root {
-        --driver-bottom-bar-space: 6.2rem;
-      }
-      .bottom-btn {
-        flex: 1 1 auto;
-        width: 100%;
+        --driver-bottom-bar-space: 1.25rem;
       }
       .delivery-list {
         padding-bottom: calc(var(--driver-bottom-bar-space) + env(safe-area-inset-bottom));
@@ -912,9 +896,9 @@
 
     <!-- ── Filter tabs ── -->
     <div class="filter-tabs filters-hidden">
-      <button class="filter-tab active" onclick="filterCards('all', this)">All (0)</button>
+      <button class="filter-tab" onclick="filterCards('all', this)">All (0)</button>
       <button class="filter-tab" onclick="filterCards('queued', this)">Queued (0)</button>
-      <button class="filter-tab" onclick="filterCards('out', this)">Out for Delivery (0)</button>
+      <button class="filter-tab active" onclick="filterCards('out', this)">Out for Delivery (0)</button>
       <button class="filter-tab" onclick="filterCards('delivered', this)">Delivered (0)</button>
       <button class="filter-tab" onclick="filterCards('failed', this)">Failed (0)</button>
       <button class="filter-tab" id="selectModeBtn" type="button" onclick="toggleSelectMode()" title="Select multiple deliveries to move as a group">Select</button>
@@ -953,10 +937,7 @@
     <button class="scroll-jump-btn" type="button" title="Jump to bottom" onclick="window.scrollTo({top:document.body.scrollHeight, behavior:'smooth'})">↓</button>
   </div>
 
-  <!-- ── Bottom bar ── -->
-  <div class="bottom-bar">
-    <button class="bottom-btn primary" id="driverUpdateAdminBtn" type="button">📡 Update Admin</button>
-  </div>
+  <!-- ── Bottom bar removed (Update Admin no longer needed) ── -->
 
   <!-- ── Action modal (bottom sheet) ── -->
   <div class="modal-overlay" id="modal" onclick="closeModalIfBg(event)">
@@ -1055,7 +1036,7 @@
     let driverManifests = [];
     let driverFinance = null;
     let clientsById = new Map();
-    let activeFilter = 'all';
+    let activeFilter = 'out';
     let activeWorkView = 'deliveries';
     let routeSortable = null;
     let savingRouteOrder = false;
@@ -1274,6 +1255,10 @@
     // Always returns the plain 10-digit "868XXXXXXX" local number, with no
     // country code. Some order records already have the phone saved with
     // the "1" country-code digit in front ("18683681278") -- if that isn't
+    // A proper WhatsApp glyph (replaces the 💬 chat-bubble emoji anywhere
+    // the Delivery Detail screen offers to message the customer).
+    const WA_ICON = '<svg width="14" height="14" viewBox="0 0 32 32" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><path d="M16.001 2.667c-7.363 0-13.334 5.971-13.334 13.334 0 2.354.617 4.65 1.789 6.671L2.667 29.333l6.826-1.789a13.27 13.27 0 0 0 6.508 1.657h.006c7.363 0 13.334-5.97 13.334-13.333S23.364 2.667 16.001 2.667zm0 24.29a11.02 11.02 0 0 1-5.615-1.537l-.403-.24-4.05 1.062 1.081-3.948-.263-.406a11.03 11.03 0 0 1-1.687-5.887c0-6.096 4.958-11.054 11.056-11.054 6.097 0 11.055 4.958 11.055 11.054 0 6.097-4.959 11.056-11.174 11.056v-.1zm6.06-8.278c-.331-.166-1.96-.968-2.263-1.078-.303-.111-.524-.166-.744.166-.221.331-.856 1.078-1.05 1.3-.193.221-.386.249-.717.083-.331-.166-1.398-.516-2.663-1.643-.984-.878-1.649-1.963-1.842-2.294-.193-.331-.021-.51.146-.675.15-.15.331-.386.497-.579.166-.193.221-.331.331-.552.111-.221.055-.414-.028-.579-.083-.166-.744-1.793-1.02-2.457-.269-.646-.542-.559-.744-.569l-.634-.011c-.221 0-.579.083-.882.414-.303.331-1.156 1.13-1.156 2.756s1.184 3.196 1.35 3.417c.166.221 2.331 3.559 5.647 4.99.789.34 1.404.543 1.885.696.792.252 1.514.216 2.084.131.636-.095 1.96-.801 2.236-1.575.276-.774.276-1.437.193-1.575-.083-.138-.303-.221-.634-.386z"/></svg>';
+
     // stripped first, the "868" below gets stacked on top of an
     // already-complete number (e.g. "868" + "18683681278"), which is why
     // WhatsApp/call links could end up showing "868" twice.
@@ -1359,7 +1344,8 @@
       document.getElementById('pickupWorkView').style.display = activeWorkView === 'pickups' ? '' : 'none';
       document.getElementById('deliveryWorkTab').classList.toggle('active', activeWorkView === 'deliveries');
       document.getElementById('pickupWorkTab').classList.toggle('active', activeWorkView === 'pickups');
-      document.getElementById('driverUpdateAdminBtn').style.display = activeWorkView === 'deliveries' ? '' : 'none';
+      const updateAdminBtn = document.getElementById('driverUpdateAdminBtn');
+      if (updateAdminBtn) updateAdminBtn.style.display = activeWorkView === 'deliveries' ? '' : 'none';
     };
 
     function pickupStatusBadge(status) {
@@ -1452,10 +1438,9 @@
     function renderActions(order, status) {
       const collect = amountToCollect(order);
       const phone = phoneForLink(order.customer_phone);
-      const maps = mapsTarget(order);
 
       if (status === 'delivered') {
-        return `<button class="action-btn btn-whatsapp" onclick="whatsappCustomer('${phone}')" style="opacity:0.8;">💬 WhatsApp Customer</button>`;
+        return `<button class="action-btn btn-whatsapp" onclick="whatsappCustomer('${phone}')" style="opacity:0.8;">${WA_ICON} WhatsApp Customer</button>`;
       }
 
       if (status === 'failed' || status === 'rescheduled') {
@@ -1465,14 +1450,12 @@
         return '<span class="status-badge badge-queued">Parcel returned to hub</span>';
       }
 
-      const mapsButton = hasReliableLocation(order)
-        ? `<button class="action-btn btn-maps" onclick="openMaps('${maps.replaceAll("'", "\\'")}')">Open in Maps</button>`
-        : `<span class="action-btn btn-maps btn-maps-disabled" tabindex="0">Open in Maps<span class="no-location-tip">No location available — call customer for pin</span></span>`;
-
+      // Maps now has exactly one entry point on this screen — the "Open in
+      // Maps" button that sits under the Location Status card — so it's
+      // deliberately left out of this row.
       const common = `
-        ${mapsButton}
         <button class="action-btn btn-call" onclick="callCustomer('${phone}')">Call Customer</button>
-        <button class="action-btn btn-whatsapp" onclick="whatsappCustomer('${phone}')">💬 WhatsApp Customer</button>
+        <button class="action-btn btn-whatsapp" onclick="whatsappCustomer('${phone}')">${WA_ICON} WhatsApp Customer</button>
       `;
 
       if (status === 'queued') {
@@ -1483,11 +1466,12 @@
         return common + `<button class="action-btn btn-collected" onclick="markCollected('${order.id}')">Mark Collected</button>`;
       }
 
+      // Just two buttons now: Delivered, and Failed (which opens the
+      // existing "what happened?" menu with No Response / Refused /
+      // Reschedule Requested — the only outcomes the backend supports).
       return common + `
-        <button class="action-btn btn-delivered" type="button" data-driver-action="delivered" data-order-id="${order.id}" data-collect="${collect}">Mark Delivered</button>
-        <button class="action-btn btn-unavailable" onclick="markNoResponse('${order.id}')">No Response</button>
-        <button class="action-btn btn-failed" onclick="markRefused('${order.id}')">Refused</button>
-        <button class="action-btn btn-reschedule" onclick="markRescheduleRequested('${order.id}')">Reschedule Requested</button>
+        <button class="action-btn btn-delivered" type="button" data-driver-action="delivered" data-order-id="${order.id}" data-collect="${collect}">Delivered</button>
+        <button class="action-btn btn-failed" type="button" onclick="showOutcomeOptionsModal('${order.id}')">Failed</button>
       `;
     }
 
@@ -1530,20 +1514,19 @@
               </div>
               <div class="dcard-main">
                 <div class="dcard-line1">
-                  <div class="dcard-name">${clientName(order) ? `<span class="dcard-client">${escapeHtml(clientName(order))}</span>` : ''}${escapeHtml(order.customer_name || '—')}</div>
-                  ${collect > 0 ? `<span class="dcard-badge cod">COD ${money(collect)}</span>` : `<span class="dcard-badge prepaid">${escapeHtml(paymentLabel(order.payment_type))}</span>`}
+                  <div class="dcard-name">${escapeHtml(order.customer_name || '—')}</div>
+                  ${collect > 0 ? `<span class="dcard-badge cod">COD ${collect.toFixed(2)}</span>` : `<span class="dcard-badge prepaid">${escapeHtml(paymentLabel(order.payment_type))}</span>`}
                 </div>
-                <div class="dcard-line2">
-                  <div class="dcard-addr">📍 ${escapeHtml(addressLabel(order))}</div>
-                  ${distanceLabel ? `<span class="dcard-dist">${distanceLabel}</span>` : ''}
-                </div>
+                ${clientName(order) ? `<div class="dcard-client">${escapeHtml(clientName(order))}</div>` : ''}
+                <div class="dcard-addr">📍 ${escapeHtml(addressLabel(order))}</div>
+                ${order.external_item_number ? `<div class="dcard-item">📦 ${escapeHtml(order.external_item_number)}</div>` : ''}
+                ${distanceLabel ? `<div class="dcard-line2"><span class="dcard-dist">${distanceLabel}</span></div>` : ''}
               </div>
               <div class="dcard-right" onclick="event.stopPropagation()">
                 ${reorderable && !isNextStop ? `
                   ${canNavigate ? `<button class="nav-icon-btn" type="button" title="Navigate" onclick="event.stopPropagation(); openMaps('${maps.replaceAll("'", "\\'")}')">🧭</button>` : ''}
                   <button class="nav-icon-btn" type="button" title="Call" onclick="event.stopPropagation(); callCustomer('${phone}')">📞</button>
                 ` : ''}
-                ${reorderable ? `<button class="quick-move-btn" type="button" onclick="openQuickMoveMenu(event, '${order.id}')" title="Move this stop">⋮</button>` : ''}
                 <button class="card-collapse-toggle" type="button" onclick="openDeliveryDetail('${order.id}')" title="View delivery details">›</button>
               </div>
             </div>
@@ -1610,7 +1593,6 @@
       const phone = phoneForLink(order.customer_phone);
       const maps = mapsTarget(order);
       const canNavigate = hasReliableLocation(order);
-      const manifest = manifestForOrder(order.id);
 
       document.getElementById('detailStopLabel').textContent = idx === -1 ? order.order_number : `Stop ${idx + 1} of ${list.length}`;
       document.getElementById('detailOrderId').textContent = `Delivery ID: ${order.order_number}`;
@@ -1618,43 +1600,44 @@
       document.getElementById('detailPrevBtn').disabled = idx <= 0;
       document.getElementById('detailNextBtn').disabled = idx === -1 || idx >= list.length - 1;
 
+      // Exactly one "Open in Maps" entry point on this whole screen: it
+      // lives here, right under the Location Status card. There's no
+      // clickable embedded map anymore (that was a second, redundant way
+      // to open Google Maps), and renderActions() no longer has its own
+      // Open in Maps button either.
       const locationBlock = canNavigate
         ? `<div class="detail-location-ok">
-             <div class="detail-location-head"><span>📍 Location Status</span><span class="detail-location-accuracy">Accuracy: ${order.location_confidence === 'high' ? 'High' : 'Standard'}</span></div>
-             <div class="detail-location-value ok">Mapped ✓</div>
+             <div class="detail-location-head"><span>Location Status</span></div>
+             <div class="detail-location-value ok">Mapped · Accuracy: ${order.location_confidence === 'high' ? 'High' : 'Standard'}</div>
            </div>
-           ${order.latitude && order.longitude ? `<div class="detail-map"><iframe loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=${order.latitude},${order.longitude}&z=16&output=embed"></iframe></div>` : ''}
-           <div class="card-actions" style="padding:0 0 0.9rem;"><button class="action-btn btn-maps" type="button" onclick="openMaps('${maps.replaceAll("'", "\\'")}')">🗺️ Open in Maps</button></div>`
+           <div class="card-actions" style="padding:0 0 0.9rem;"><button class="action-btn btn-maps" type="button" onclick="openMaps('${maps.replaceAll("'", "\\'")}')">Open in Maps</button></div>`
         : `<div class="detail-location-warn">
-             <div class="detail-location-head"><span>⚠ Location Status</span></div>
+             <div class="detail-location-head"><span>Location Status</span></div>
              <div class="detail-location-value warn">Location Required</div>
              <div class="detail-location-sub">No reliable map location could be detected for this address.</div>
-           </div>
-           <div class="detail-request-location">
-             <div>
-               <div class="detail-request-title">📍 Request Location (Optional)</div>
-               <div class="detail-request-sub">Send the customer a link to share their location via WhatsApp.</div>
+             <div class="detail-location-actions">
+               <button class="action-btn btn-unavailable" type="button" onclick="promptLocationLink('${order.id}')">${order.maps_link ? 'Update' : 'Add'} Location Link</button>
+               <button class="action-btn btn-unavailable" type="button" onclick="requestCustomerLocation('${order.id}')">Request Location</button>
              </div>
-             <button class="action-btn btn-unavailable" type="button" style="flex:0 0 auto;" onclick="requestCustomerLocation('${order.id}')">Request</button>
            </div>`;
 
       document.getElementById('detailBody').innerHTML = `
         <div class="detail-client-row">
-          <div class="detail-client-icon">🏢</div>
-          <div class="detail-client-name">${escapeHtml(clientName(order) || 'VirtuDrop')}</div>
+          <div class="detail-client-main">
+            <div class="detail-client-customer">${escapeHtml(order.customer_name || '—')}</div>
+            ${clientName(order) ? `<div class="detail-client-business">${escapeHtml(clientName(order))}</div>` : ''}
+          </div>
           ${collect > 0 ? `<span class="compact-cod-badge">COD</span>` : `<span class="compact-prepaid-badge">${escapeHtml(paymentLabel(order.payment_type))}</span>`}
         </div>
-        ${manifest ? `<div class="detail-row"><span class="detail-row-icon">📦</span> Manifest ${escapeHtml(manifest.manifest_number)} · ${escapeHtml(String(manifest.status).replaceAll('_', ' '))}</div>` : ''}
-        ${order.external_item_number ? `<div class="detail-row"><span class="detail-row-icon">📦</span> Item ${escapeHtml(order.external_item_number)}</div>` : ''}
-        <div class="detail-row"><span class="detail-row-icon">👤</span> Customer: <strong>${escapeHtml(order.customer_name || '—')}</strong></div>
+        ${order.external_item_number ? `<div class="detail-row">Item ${escapeHtml(order.external_item_number)}</div>` : ''}
         <div class="detail-row detail-row-phone">
-          <span><span class="detail-row-icon">📞</span> ${escapeHtml(order.customer_phone || '—')}</span>
+          <span>${escapeHtml(order.customer_phone || '—')}</span>
           <span class="detail-contact-icons">
             <button class="nav-icon-btn" type="button" title="Call" onclick="callCustomer('${phone}')">📞</button>
-            <button class="nav-icon-btn" type="button" title="WhatsApp" onclick="whatsappCustomer('${phone}')">💬</button>
+            <button class="nav-icon-btn" type="button" title="WhatsApp" onclick="whatsappCustomer('${phone}')">${WA_ICON}</button>
           </span>
         </div>
-        <div class="detail-row"><span class="detail-row-icon">📍</span> ${escapeHtml(addressLabel(order))}</div>
+        <div class="detail-row">${escapeHtml(addressLabel(order))}</div>
         ${order.customer_notes ? `<div class="detail-instructions">${escapeHtml(order.customer_notes)}</div>` : ''}
 
         ${locationBlock}
@@ -1670,20 +1653,20 @@
           </div>
         </div>
 
-        ${order.delivery_outcome ? `<div class="detail-row"><span class="detail-row-icon">ℹ️</span> Latest Outcome: <strong>${escapeHtml(String(order.delivery_outcome).replaceAll('_', ' '))}</strong></div>` : ''}
+        ${order.delivery_outcome ? `<div class="detail-row">Latest Outcome: <strong>${escapeHtml(String(order.delivery_outcome).replaceAll('_', ' '))}</strong></div>` : ''}
         ${order.redelivery_status === 'scheduled' ? `<div class="delivery-notes">Redelivery attempt${order.redelivery_notes ? `: ${escapeHtml(order.redelivery_notes)}` : ''}</div>` : ''}
 
         <div class="card-actions detail-actions">
           ${renderActions(order, status)}
-          ${reorderable ? `<button class="action-btn btn-unavailable" onclick="promptLocationLink('${order.id}')">📍 ${order.maps_link ? 'Update' : 'Add'} Location Link</button>` : ''}
+          ${reorderable && canNavigate ? `<button class="action-btn btn-unavailable" onclick="promptLocationLink('${order.id}')">Update Location Link</button>` : ''}
         </div>
 
         <div class="driver-update-box">
           <label>Driver Update / Customer Conversation Notes</label>
           <textarea id="detailNoteInput" placeholder="Example: Customer asked to deliver after 3 PM, customer requested updated address, customer said to leave package with security...">${escapeHtml(order.driver_notes || '')}</textarea>
           <div class="driver-update-actions">
-            <button class="action-btn btn-note-save" type="button" onclick="saveDriverNote('${order.id}', this)">📝 Save Note</button>
-            <button class="action-btn btn-note-client" type="button" onclick="sendClientUpdate('${order.id}', this)">💬 Send Update to Client</button>
+            <button class="action-btn btn-note-save" type="button" onclick="saveDriverNote('${order.id}', this)">Save Note</button>
+            <button class="action-btn btn-note-client" type="button" onclick="sendClientUpdate('${order.id}', this)">${WA_ICON} Send Update to Client</button>
           </div>
         </div>
       `;
@@ -1786,9 +1769,9 @@
       openModal(
         'What happened?',
         '',
-        `<button class="modal-menu-btn" onclick="closeModal(); markNoResponse('${orderId}')"><span class="mm-icon">🔕</span> No Response</button>
-         <button class="modal-menu-btn" onclick="closeModal(); markRefused('${orderId}')"><span class="mm-icon">🚫</span> Refused</button>
-         <button class="modal-menu-btn" onclick="closeModal(); markRescheduleRequested('${orderId}')"><span class="mm-icon">📅</span> Reschedule Requested</button>
+        `<button class="modal-menu-btn" onclick="closeModal(); markNoResponse('${orderId}')">No Answer</button>
+         <button class="modal-menu-btn" onclick="closeModal(); markRefused('${orderId}')">Refused</button>
+         <button class="modal-menu-btn" onclick="closeModal(); markRescheduleRequested('${orderId}')">Reschedule Requested</button>
          <button class="modal-menu-cancel" onclick="closeModal()">Cancel</button>`
       );
     };
