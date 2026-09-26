@@ -318,8 +318,19 @@
     .dcard-right .nav-icon-btn { width: 25px; height: 25px; font-size: 0.76rem; }
     .dcard-right .quick-move-btn { padding: 0.15rem 0.2rem; margin-right: -0.15rem; }
     .dcard-right .card-collapse-toggle { padding: 0.15rem 0.1rem; font-size: 1.1rem; }
-    .dcard-next-actions { display: flex; gap: 0.4rem; padding: 0 0.7rem 0.55rem; margin-top: -0.05rem; }
-    .dcard-next-actions .action-btn { flex: 1; min-width: 0; margin: 0; padding: 0.42rem 0.5rem !important; font-size: 0.72rem !important; }
+    /* Business name / address / item sit in their own full-width row right
+       under the drag-handle column (same left inset as .dcard-row), with a
+       small notes preview filling the space to the right of them -- instead
+       of being squeezed under the customer name with empty space beside them. */
+    .dcard-body-row { display: flex; align-items: flex-start; gap: 0.5rem; padding: 0 0.7rem 0.55rem; cursor: pointer; }
+    .dcard-info-left { flex: 1 1 55%; min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+    .dcard-notes-box {
+      flex: 1 1 45%; min-width: 0; background: var(--grey-light); border: 1px solid var(--grey-mid);
+      border-radius: 8px; padding: 0.35rem 0.55rem; font-size: 0.72rem; color: var(--grey); line-height: 1.3;
+      overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .dcard-next-actions { display: flex; gap: 0.35rem; padding: 0 0.7rem 0.55rem; margin-top: -0.05rem; }
+    .dcard-next-actions .action-btn { flex: 1; min-width: 0; margin: 0; padding: 0.3rem 0.4rem !important; font-size: 0.66rem !important; }
 
     /* ── "No reliable location" state for Open in Maps ── */
     .btn-maps-disabled {
@@ -1549,14 +1560,6 @@
                   <div class="dcard-name">${escapeHtml(order.customer_name || '—')}</div>
                   ${collect > 0 ? `<span class="dcard-badge cod">${collect.toFixed(2)}</span>` : `<span class="dcard-badge prepaid">${escapeHtml(paymentLabel(order.payment_type))}</span>`}
                 </div>
-                ${clientName(order) ? `<div class="dcard-client">${escapeHtml(clientName(order))}</div>` : ''}
-                <div class="dcard-addr">📍 ${escapeHtml(addressLabel(order))}</div>
-                ${(order.external_item_number || distanceLabel) ? `
-                  <div class="dcard-line2">
-                    <span class="dcard-item">${order.external_item_number ? `📦 ${escapeHtml(order.external_item_number)}` : ''}</span>
-                    ${distanceLabel ? `<span class="dcard-dist">${distanceLabel}</span>` : ''}
-                  </div>
-                ` : ''}
               </div>
               <div class="dcard-right" onclick="event.stopPropagation()">
                 ${reorderable && !isNextStop ? `
@@ -1566,6 +1569,19 @@
                 ${reorderable ? `<button class="quick-move-btn" type="button" onclick="openQuickMoveMenu(event, '${order.id}')" title="Move this stop">⋮</button>` : ''}
                 <button class="card-collapse-toggle" type="button" onclick="openDeliveryDetail('${order.id}')" title="View delivery details">›</button>
               </div>
+            </div>
+            <div class="dcard-body-row" onclick="openDeliveryDetail('${order.id}')">
+              <div class="dcard-info-left">
+                ${clientName(order) ? `<div class="dcard-client">${escapeHtml(clientName(order))}</div>` : ''}
+                <div class="dcard-addr">${escapeHtml(addressLabel(order))}</div>
+                ${(order.external_item_number || distanceLabel) ? `
+                  <div class="dcard-line2">
+                    <span class="dcard-item">${order.external_item_number ? escapeHtml(order.external_item_number) : ''}</span>
+                    ${distanceLabel ? `<span class="dcard-dist">${distanceLabel}</span>` : ''}
+                  </div>
+                ` : ''}
+              </div>
+              ${order.driver_notes ? `<div class="dcard-notes-box">${escapeHtml(order.driver_notes)}</div>` : ''}
             </div>
             ${isNextStop ? `
               <div class="dcard-next-actions">
