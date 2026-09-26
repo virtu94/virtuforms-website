@@ -523,7 +523,7 @@
     body.modal-open { overflow: hidden; }
     .modal-overlay {
       display: none; position: fixed; inset: 0;
-      background: rgba(0,0,0,0.5); z-index: 500;
+      background: rgba(0,0,0,0.5); z-index: 6000; /* must sit above .detail-overlay (4000) and .topbar (5000) -- it can open while either is on screen */
       align-items: flex-end; justify-content: center; padding: 0;
       overflow-y: auto; overscroll-behavior: contain;
     }
@@ -1171,6 +1171,19 @@
     }
 
     function openModal(title, body, actions) {
+      // Drivers reported: tapping Delivered/Failed sometimes shows nothing
+      // -- until they press the phone's back button, at which point the
+      // menu "pops up" on its own. Back's only real effect there is
+      // dismissing a lingering on-screen keyboard left open from a
+      // previous text field (a delivery-exception note, etc). This modal
+      // is a bottom-sheet fixed overlay; with the keyboard still up, some
+      // mobile browsers keep it anchored to the full page height rather
+      // than the keyboard-shrunk visible area, so it opens off-screen
+      // below the keyboard -- technically shown, just not visible -- until
+      // the keyboard closes and the viewport resizes back to full height.
+      // Blurring any focused field first means no keyboard is ever open
+      // when a modal appears, so this can't happen.
+      document.activeElement?.blur();
       document.getElementById('modalTitle').textContent = title;
       document.getElementById('modalBody').textContent = body;
       document.getElementById('modalActions').innerHTML = actions;
@@ -1584,6 +1597,10 @@
     window.openDeliveryDetail = function(orderId) {
       const order = findOrder(orderId);
       if (!order) return showToast('Order not found. Refresh and try again.');
+      // Same keyboard-vs-fixed-overlay issue as openModal() above -- make
+      // sure nothing is still focused (and the keyboard still up) before
+      // this full-screen overlay opens.
+      document.activeElement?.blur();
       currentDetailOrderId = orderId;
       renderDeliveryDetail();
       document.body.classList.add('detail-open');
