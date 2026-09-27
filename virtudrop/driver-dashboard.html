@@ -663,6 +663,13 @@
     .detail-location-sub { font-size: 0.8rem; color: #8b2020; margin-top: 0.2rem; }
     .detail-location-actions { display: flex; gap: 0.5rem; margin-top: 0.65rem; }
     .detail-location-actions .action-btn { flex: 1; min-width: 0; }
+    .detail-manual-address-row { display: flex; align-items: stretch; gap: 0.5rem; margin-top: 0.5rem; }
+    .detail-manual-address-row .action-btn { flex: 0 0 auto; }
+    .detail-manual-address-preview {
+      flex: 1; min-width: 0; background: var(--white); border: 1px solid var(--grey-mid); border-radius: 8px;
+      padding: 0.5rem 0.65rem; font-size: 0.78rem; color: var(--black); line-height: 1.35;
+      display: flex; align-items: center; overflow-wrap: anywhere;
+    }
     .detail-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; margin: 0.4rem 0 0.9rem; }
     .detail-tile { background: var(--white); border: 1px solid var(--grey-mid); border-radius: 10px; padding: 0.7rem; }
     .detail-tile-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--grey); }
@@ -1669,6 +1676,8 @@
       // clickable embedded map anymore (that was a second, redundant way
       // to open Google Maps), and renderActions() no longer has its own
       // Open in Maps button either.
+      const manualAddressRow = reorderable ? manualAddressRowHtml(order) : '';
+
       const locationBlock = canNavigate
         ? `<div class="detail-location-ok">
              <div class="detail-location-head"><span>Location Status</span></div>
@@ -1677,6 +1686,7 @@
                <button class="action-btn btn-maps" type="button" onclick="openMaps('${maps.replaceAll("'", "\\'")}')">Open in Maps</button>
                ${reorderable ? `<button class="action-btn btn-unavailable" type="button" onclick="promptLocationLink('${order.id}')">Update Location Link</button>` : ''}
              </div>
+             ${manualAddressRow}
            </div>`
         : `<div class="detail-location-warn">
              <div class="detail-location-head"><span>Location Status</span></div>
@@ -1686,6 +1696,7 @@
                <button class="action-btn btn-unavailable" type="button" onclick="promptLocationLink('${order.id}')">${order.maps_link ? 'Update' : 'Add'} Location Link</button>
                <button class="action-btn btn-unavailable" type="button" onclick="requestCustomerLocation('${order.id}')">Request Location</button>
              </div>
+             ${manualAddressRow}
            </div>`;
 
       document.getElementById('detailBody').innerHTML = `
@@ -2258,6 +2269,80 @@
       } catch (error) {
         console.error('Location link save error:', error);
         window.vdNotify('Link Not Saved', error.message || 'Could not save this location link.', 'error');
+      }
+    };
+
+    // ── Driver-entered manual street address (house/street/area) ──────
+    function hasManualAddress(order) {
+      return !!(order && order.street_name && order.street_name.trim());
+    }
+
+    function formatManualAddress(order) {
+      return [order.house_number, order.street_name, order.area_name]
+        .map(v => (v || '').trim())
+        .filter(Boolean)
+        .join(', ');
+    }
+
+    function manualAddressRowHtml(order) {
+      const editing = hasManualAddress(order);
+      const preview = editing
+        ? `<div class="detail-manual-address-preview">${escapeHtml(formatManualAddress(order))}</div>`
+        : '';
+      return `<div class="detail-manual-address-row">
+                <button class="action-btn btn-unavailable" type="button" onclick="openManualAddressModal('${order.id}')">${editing ? 'Edit' : 'Manual'}</button>
+                ${preview}
+              </div>`;
+    }
+
+    window.openManualAddressModal = function(orderId) {
+      const order = findOrder(orderId);
+      if (!order) return showToast('Order not found. Refresh and try again.');
+      const houseId = `manual-house-${orderId}`;
+      const streetId = `manual-street-${orderId}`;
+      const areaId = `manual-area-${orderId}`;
+      openModal(
+        hasManualAddress(order) ? '✏️ Edit Address' : '📍 Enter Address',
+        `Type the delivery address for ${escapeHtml(order.customer_name || 'this customer')} — house/lot number, street, and area.`,
+        `<input id="${houseId}" type="text" value="${escapeHtml(order.house_number || '')}" placeholder="House / Lot Number" style="width:100%; padding:0.75rem; border:2px solid #e0e0e0; border-radius:8px; box-sizing:border-box; margin-bottom:0.6rem;">
+         <input id="${streetId}" type="text" value="${escapeHtml(order.street_name || '')}" placeholder="Street Name" style="width:100%; padding:0.75rem; border:2px solid #e0e0e0; border-radius:8px; box-sizing:border-box; margin-bottom:0.6rem;">
+         <input id="${areaId}" type="text" value="${escapeHtml(order.area_name || '')}" placeholder="Area" style="width:100%; padding:0.75rem; border:2px solid #e0e0e0; border-radius:8px; box-sizing:border-box; margin-bottom:0.9rem;">
+         <button class="modal-btn confirm" onclick="saveManualAddress('${orderId}', '${houseId}', '${streetId}', '${areaId}')">Save Address</button>
+         <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>`
+      );
+    };
+
+    window.saveManualAddress = async function(orderId, houseId, streetId, areaId) {
+      const houseNumber = document.getElementById(houseId)?.value.trim() || null;
+      const streetName = document.getElementById(streetId)?.value.trim();
+      const areaName = document.getElementById(areaId)?.value.trim();
+      if (!streetName) return showToast('Enter a street name.');
+      if (!areaName) return showToast('Enter an area.');
+      try {
+        const { data, error } = await supabase.rpc('driver_update_order_manual_address', {
+          p_order_id: orderId,
+          p_house_number: houseNumber,
+          p_street_name: streetName,
+          p_area_name: areaName
+        });
+        if (error) throw error;
+        const order = findOrder(orderId);
+        if (order && data) {
+          order.house_number = data.house_number;
+          order.street_name = data.street_name;
+          order.area_name = data.area_name;
+          order.latitude = data.latitude;
+          order.longitude = data.longitude;
+          order.location_status = data.location_status;
+          order.location_confidence = data.location_confidence;
+        }
+        closeModal();
+        showToast(data?.resolved ? 'Address saved and mapped.' : 'Address saved.');
+        renderOrders();
+        if (currentDetailOrderId === orderId) renderDeliveryDetail();
+      } catch (error) {
+        console.error('Manual address save error:', error);
+        window.vdNotify('Address Not Saved', error.message || 'Could not save this address.', 'error');
       }
     };
 
