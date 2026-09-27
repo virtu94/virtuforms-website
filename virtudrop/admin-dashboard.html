@@ -1259,8 +1259,8 @@
         </div>
         <div class="card">
           <div class="table-wrap"><table>
-            <thead><tr><th></th><th>Order</th><th>Client / Customer</th><th>Outcome</th><th>Parcel</th><th>Fees / Payer</th><th>Schedule / Hold</th><th>Actions</th></tr></thead>
-            <tbody id="returnManagementBody"><tr><td colspan="8">Loading returned parcels...</td></tr></tbody>
+            <thead><tr><th></th><th>Order</th><th>Client / Customer</th><th>Area</th><th>Outcome</th><th>Parcel</th><th>Fees / Payer</th><th>Schedule / Hold</th><th>Actions</th></tr></thead>
+            <tbody id="returnManagementBody"><tr><td colspan="9">Loading returned parcels...</td></tr></tbody>
           </table></div>
         </div>
 
@@ -7397,6 +7397,7 @@
               : ''}</td>
           <td><div class="td-id">${escapeHtml(order.order_number)}</div><div class="td-sub">Attempt ${escapeHtml(String(order.delivery_attempt_count || 1))}</div></td>
           <td><div class="td-name">${escapeHtml(clientName(order))}</div><div class="td-sub">${escapeHtml(order.customer_name || '')} · ${escapeHtml(formatPhoneDisplay(order.customer_phone))}</div></td>
+          <td>${escapeHtml(order.area_name || '—')}</td>
           <td>${isCancelledOrder(order)
             ? `<span class="badge badge-unpaid">${escapeHtml(order.order_status === 'cancelled' ? 'Cancelled' : 'Rejected')}</span>${order.rejection_reason ? `<div class="td-sub">${escapeHtml(order.rejection_reason)}</div>` : ''}`
             : `<span class="badge badge-pending">${escapeHtml(outcomeLabels[order.delivery_outcome] || order.delivery_outcome || 'Undelivered')}</span>${order.delivery_outcome_notes ? `<div class="td-sub">${escapeHtml(order.delivery_outcome_notes)}</div>` : ''}`}</td>
@@ -7405,7 +7406,7 @@
           <td><div class="td-name">${escapeHtml(schedule)}</div>${order.return_management_notes ? `<div class="td-sub">${escapeHtml(order.return_management_notes)}</div>` : ''}</td>
           <td>${returnActionButtons(order)}</td>
         </tr>`;
-      }).join('') || '<tr><td colspan="8">No returned parcels match this view.</td></tr>';
+      }).join('') || '<tr><td colspan="9">No returned parcels match this view.</td></tr>';
       syncReturnBulkControls();
       syncReturnDecisionBulkControls();
     };
