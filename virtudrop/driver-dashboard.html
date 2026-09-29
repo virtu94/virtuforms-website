@@ -1715,6 +1715,13 @@
             <button class="nav-icon-btn" type="button" title="WhatsApp" onclick="whatsappCustomer('${phone}')">${WA_ICON}</button>
           </span>
         </div>
+        ${order.backup_phone ? `<div class="detail-row detail-row-phone">
+          <span>${escapeHtml(order.backup_phone)} <span style="opacity:0.65; font-size:0.85em;">(backup — try if primary doesn't answer)</span></span>
+          <span class="detail-contact-icons">
+            <button class="nav-icon-btn" type="button" title="Call Backup" onclick="callCustomer('${phoneForLink(order.backup_phone)}')">📞</button>
+            <button class="nav-icon-btn" type="button" title="WhatsApp Backup" onclick="whatsappCustomer('${phoneForLink(order.backup_phone)}')">${WA_ICON}</button>
+          </span>
+        </div>` : ''}
         <div class="detail-row">${escapeHtml(addressLabel(order))}</div>
         ${order.customer_notes ? `<div class="detail-instructions">${escapeHtml(order.customer_notes)}</div>` : ''}
 

@@ -1484,6 +1484,22 @@
           </table></div>
         </div>
 
+        <div class="card" id="managedVendorImportCard" style="display:none; margin-top:1rem;">
+          <div class="card-title">Vendor Spreadsheet Import (.xlsx)</div>
+          <div class="csv-drop">
+            <input class="filter-input" type="file" id="managedVendorImportFile" accept=".xlsx">
+            <div class="csv-help">Upload Middleman's own order sheet exactly as they send it — no reformatting needed. We read Order #, Name, Contact, Item, Area, Location, Total and Comment straight from their header row wherever it is in the sheet; Delivery Date is ignored. Total's "$" and commas are stripped automatically. If Comment contains a phone number (a backup number for when the primary doesn't answer), it's pulled out and stored separately — the rest of the comment is not kept. Business is guessed per row from the item (fragrance/cologne/perfume items → Scents, everything else → C&amp;H Electronics) — check the Business column below and change any row that guessed wrong before importing.</div>
+            <div class="finance-actions">
+              <button class="btn btn-primary" type="button" onclick="previewManagedVendorImport()">Preview Spreadsheet</button>
+              <button class="btn btn-primary" type="button" id="confirmManagedVendorImportBtn" onclick="confirmManagedVendorImport()" disabled>Import Orders</button>
+            </div>
+          </div>
+          <div class="table-wrap" style="margin-top:1rem;"><table>
+            <thead><tr><th>Status</th><th>Name</th><th>Contact</th><th>Backup #</th><th>Item</th><th>Area</th><th>Business</th><th>Order #</th><th>Total</th><th>Issue</th></tr></thead>
+            <tbody id="managedVendorImportPreviewBody"><tr><td colspan="10">Upload the vendor's .xlsx file to preview orders.</td></tr></tbody>
+          </table></div>
+        </div>
+
         <div class="card" id="managedBatchFilterCard" style="display:none; margin-top:1rem;">
           <div class="card-title">Batches</div>
           <div class="accounting-note">Every batch you've imported (one row per CSV upload or manual add), including ones still working their way through delivery. Pick a batch below to preview and export its Invoice or Return sheet, or hit Invoice / Return right here on a row for a quick one-off reprint of that batch's current state. Click the count next to a batch to expand it and see how many orders are pending, delivered, cancelled, etc.</div>
@@ -5985,6 +6001,7 @@
         business_client_id: order.business_client_id || null,
         customer_name: document.getElementById('adminEditCustomerName')?.value.trim() || '',
         customer_phone: document.getElementById('adminEditCustomerPhone')?.value.trim() || '',
+        backup_phone: document.getElementById('adminEditBackupPhone')?.value.trim() || null,
         external_item_number: document.getElementById('adminEditItemNumber')?.value.trim()
           || packageDetailsFromNotes(document.getElementById('adminEditCustomerNotes')?.value)
           || null,
@@ -6227,6 +6244,7 @@
         <div class="payment-modal-form" style="text-align:left;">
           <label>Customer Name<input id="adminEditCustomerName" value="${escapeHtml(order.customer_name || '')}"></label>
           <label>Customer Phone<input id="adminEditCustomerPhone" value="${escapeHtml(order.customer_phone || '')}"></label>
+          <label>Backup Phone (optional, in case the primary number doesn't work)<input id="adminEditBackupPhone" value="${escapeHtml(order.backup_phone || '')}"></label>
           <label>Item / Reference<input id="adminEditItemNumber" value="${escapeHtml(order.external_item_number || orderPackageDetails(order) || '')}"></label>
           <label>Payment Arrangement<select id="adminEditPaymentArrangement" onchange="syncAdminOrderEditForm()">
             ${adminEditSelect([
@@ -6686,7 +6704,7 @@
                 <span class="badge badge-confirmed">${rateLabel}</span>
                 ${locationStatusBadge(order)}
               </div>
-              <div class="zone-card-client">${clientName(order)} &middot; Customer: ${order.customer_name || '—'} &middot; ${formatPhoneDisplay(order.customer_phone)}</div>
+              <div class="zone-card-client">${clientName(order)} &middot; Customer: ${order.customer_name || '—'} &middot; ${formatPhoneDisplay(order.customer_phone)}${order.backup_phone ? ` &middot; Backup: ${formatPhoneDisplay(order.backup_phone)}` : ''}</div>
               <div class="zone-card-address">${escapeHtml(address)}</div>
               <div class="zone-card-coords">${coords}${canVerifyOrderLocation(order) ? ` <button type="button" style="background:none; border:none; color:var(--teal-mid); text-decoration:underline; cursor:pointer; font-size:0.78rem; padding:0;" onclick="verifyOrderLocation('${order.id}')">Verify Location</button>` : ''}${needsLocationRequest(order) ? ` <button type="button" style="background:none; border:none; color:var(--teal-mid); text-decoration:underline; cursor:pointer; font-size:0.78rem; padding:0;" onclick="requestOrderLocation('${order.id}')">Request Location</button>` : ''} <button type="button" style="background:none; border:none; color:var(--teal-mid); text-decoration:underline; cursor:pointer; font-size:0.78rem; padding:0;" onclick="openLocationRetryModal('${order.id}')">Retry Location</button></div>
               ${locationRequestNote(order)}
@@ -8004,7 +8022,7 @@
               </label>
             </td>
             <td>${escapeHtml(clientName(order))}</td>
-            <td class="driver-customer-cell"><div class="td-name">${escapeHtml(order.customer_name || '—')}</div><div class="td-sub">${escapeHtml(formatPhoneDisplay(order.customer_phone))}</div></td>
+            <td class="driver-customer-cell"><div class="td-name">${escapeHtml(order.customer_name || '—')}</div><div class="td-sub">${escapeHtml(formatPhoneDisplay(order.customer_phone))}${order.backup_phone ? ` / ${escapeHtml(formatPhoneDisplay(order.backup_phone))} (backup)` : ''}</div></td>
             <td class="driver-package-cell"><div class="td-name">${escapeHtml(orderPackageAssignmentText(order))}</div></td>
             <td class="driver-zone-cell"><div class="td-name">${escapeHtml(orderDeliveryZoneText(order))}</div><div class="td-sub">${escapeHtml(orderLabelAddress(order))}</div><div style="margin-top:0.25rem;">${locationStatusBadge(order)} <button type="button" style="background:none; border:none; color:var(--teal-mid); text-decoration:underline; cursor:pointer; font-size:0.76rem; padding:0;" onclick="openLocationRetryModal('${order.id}')">Retry Location</button></div></td>
             <td><span class="badge ${collected ? 'badge-active' : isAssigned ? 'badge-confirmed' : 'badge-pending'}">${escapeHtml(status)}</span></td>
@@ -8673,7 +8691,7 @@
       if (newAccountId !== selectedManagedAccountId) selectedManagedExportBatchKey = '';
       selectedManagedAccountId = newAccountId;
       const hasSelection = !!selectedManagedAccountId;
-      ['managedAddOrderCard', 'managedBulkImportCard', 'managedBatchFilterCard', 'managedExportBatchCard', 'managedExportsCard', 'managedReturnExportCard'].forEach(id => {
+      ['managedAddOrderCard', 'managedBulkImportCard', 'managedVendorImportCard', 'managedBatchFilterCard', 'managedExportBatchCard', 'managedExportsCard', 'managedReturnExportCard'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = hasSelection ? '' : 'none';
       });
@@ -8715,6 +8733,10 @@
         isExchange,
         isRefund,
         total,
+        // Secondary/backup contact number, stored separately from the
+        // primary contact -- e.g. pulled out of a vendor sheet's free-text
+        // Comment column when the customer's main number might be dead.
+        backupPhone: String(row.backup_phone || '').replace(/\D/g, '') || null,
         // What the driver actually sees on their delivery (customer_notes)
         // -- a real instruction from Middleman/the business, e.g. "call
         // before arriving" or "leave with security". Optional.
@@ -8753,7 +8775,8 @@
           name: row.name, contact: row.contact, item: row.item, area: row.area, address: row.address,
           business: row.business, external_order_number: row.externalOrderNumber,
           total: row.isExchange ? 'exchange' : row.isRefund ? 'refund' : row.total,
-          notes: row.deliveryNotes
+          notes: row.deliveryNotes,
+          backup_phone: row.backupPhone || null
         }))
       });
       if (error) throw error;
@@ -8837,8 +8860,8 @@
     // timer. Runs in small chunks so the preview area can show live progress
     // instead of looking frozen on a large import, and a chunk that errors
     // out just counts as unresolved rather than failing the whole pass.
-    async function resolveImportedOrderLocations(importedOrders) {
-      const previewBody = document.getElementById('managedImportPreviewBody');
+    async function resolveImportedOrderLocations(importedOrders, previewBodyId = 'managedImportPreviewBody', colspan = 11) {
+      const previewBody = document.getElementById(previewBodyId);
       const total = importedOrders.length;
       const CHUNK_SIZE = 20;
       let done = 0, high = 0, medium = 0, unresolved = 0;
@@ -8846,7 +8869,7 @@
       for (let i = 0; i < importedOrders.length; i += CHUNK_SIZE) {
         const chunk = importedOrders.slice(i, i + CHUNK_SIZE);
         if (previewBody) {
-          previewBody.innerHTML = `<tr><td colspan="11">Resolving delivery locations… ${done} of ${total} checked.</td></tr>`;
+          previewBody.innerHTML = `<tr><td colspan="${colspan}">Resolving delivery locations… ${done} of ${total} checked.</td></tr>`;
         }
         try {
           const { data, error } = await supabase.rpc('admin_geocode_orders', {
@@ -8886,6 +8909,214 @@
           previewBody.innerHTML = summary.total
             ? `<tr><td colspan="11">${result.imported_count} orders imported. Locations: ${summary.high} high-confidence, ${summary.medium} need review, ${summary.unresolved} location required. Unresolved and "needs review" orders can still be pinned manually from All Orders before zone confirmation.</td></tr>`
             : `<tr><td colspan="11">${result.imported_count} orders imported.</td></tr>`;
+        }
+        if (summary.total) {
+          showToast(`Locations resolved: ${summary.high} high-confidence, ${summary.medium} need review, ${summary.unresolved} location required.`);
+        }
+        await loadData();
+        showPanel('zone-confirm');
+      } catch (error) {
+        window.vdNotify('Orders Not Imported', error.message || 'Could not import these orders.', 'error');
+      }
+    };
+
+    // ── Vendor Spreadsheet Import: Middleman's own raw .xlsx sheet, not our
+    // CSV template. Header row isn't always row 1, so it's located by
+    // content; Delivery Date is intentionally ignored; business is guessed
+    // per row from the item text but stays editable before import; a backup
+    // phone number is pulled out of the free-text Comment column (the rest
+    // of that text is discarded, never stored).
+    let managedVendorImportRows = [];
+
+    function normalizeVendorHeaderCell(v) {
+      return String(v || '').trim().toUpperCase().replace(/\s+/g, ' ');
+    }
+
+    function findVendorHeaderRowIndex(rows2d) {
+      for (let i = 0; i < rows2d.length; i++) {
+        const cells = (rows2d[i] || []).map(normalizeVendorHeaderCell);
+        const hasOrder = cells.some(c => c.startsWith('ORDER'));
+        const hasName = cells.some(c => c === 'NAME');
+        const hasContact = cells.some(c => c === 'CONTACT');
+        if (hasOrder && hasName && hasContact) return i;
+      }
+      return -1;
+    }
+
+    function buildVendorHeaderMap(headerRow) {
+      const map = {};
+      (headerRow || []).forEach((cell, idx) => {
+        const key = normalizeVendorHeaderCell(cell);
+        if (key && map[key] === undefined) map[key] = idx;
+      });
+      return map;
+    }
+
+    function vendorCell(headerMap, rowArray, ...candidates) {
+      for (const candidate of candidates) {
+        const key = normalizeVendorHeaderCell(candidate);
+        if (headerMap[key] !== undefined) {
+          const v = rowArray[headerMap[key]];
+          return v === undefined || v === null ? '' : v;
+        }
+      }
+      // Fallback: any header that starts with the first candidate's first word
+      const prefix = normalizeVendorHeaderCell(candidates[0]).split(' ')[0];
+      const fallbackKey = Object.keys(headerMap).find(k => k.startsWith(prefix));
+      if (fallbackKey) {
+        const v = rowArray[headerMap[fallbackKey]];
+        return v === undefined || v === null ? '' : v;
+      }
+      return '';
+    }
+
+    // Fragrance/cologne items go to "Scents"; everything else goes to the
+    // account's other (e.g. "C&H Electronics") business. This is a starting
+    // guess only -- the admin can override it per row in the preview.
+    function classifyVendorBusiness(itemText) {
+      const t = String(itemText || '').toLowerCase();
+      const scentKeywords = ['cologne', 'perfume', 'fragrance', 'parfum', 'eau de', ' edt', ' edp', 'oud', 'decant',
+        'lattafa', 'afnan', 'armaf', 'haramain', 'bharara', 'rasasi', 'khalis', 'ajmal', 'ml spray', 'ml bottle',
+        'khadlaj', 'xerjoff', 'french avenue', 'jo paris', 'ard al zaafaran', 'nabeel', 'swiss arabian',
+        'al rehab', 'fragrance world', 'maison alhambra', 'lomani', 'jacques bogart', 'nasomatto', 'montale',
+        'initio', 'amouage', 'roja', 'creed', 'versace', 'chanel', 'dior', 'gucci', 'ysl', 'tom ford', 'giorgio'];
+      const isScent = scentKeywords.some(k => t.includes(k));
+      const businesses = managedAccountBusinessClients(selectedManagedAccountId);
+      const scentBiz = businesses.find(b => /scent/i.test(b.business_name));
+      const chBiz = businesses.find(b => /c\s*&?\s*h|electronics/i.test(b.business_name));
+      if (isScent) return scentBiz?.business_name || businesses[0]?.business_name || '';
+      return chBiz?.business_name || businesses[0]?.business_name || '';
+    }
+
+    // Pulls the first phone-looking digit run out of a free-text comment,
+    // e.g. "call 868-123-4567 if no answer" -> "8681234567". Everything else
+    // in the comment is discarded.
+    function extractBackupPhoneFromComment(commentText) {
+      const text = String(commentText || '');
+      function scanForPhone(str) {
+        const digits = (str.match(/\d/g) || []).join('');
+        if (!digits) return null;
+        const capped = digits.length > 11 ? digits.slice(0, 11) : digits;
+        return capped.length >= 7 ? capped : null;
+      }
+      // Middleman's Comment column tends to follow a
+      // "reply:phone:channel:note" shape (colon-separated) -- check the
+      // phone-shaped 2nd field first, e.g. "yes I'm ready:868-372-6759:
+      // whatsapp:no" -> the phone is between the first and second colon.
+      // Otherwise fall back to scanning the whole comment for any digits.
+      const parts = text.split(':');
+      if (parts.length >= 2) {
+        const found = scanForPhone(parts[1]);
+        if (found) return found;
+      }
+      return scanForPhone(text);
+    }
+
+    function buildVendorRow(headerMap, rowArray) {
+      const item = String(vendorCell(headerMap, rowArray, 'ITEM')).trim();
+      const rawTotal = String(vendorCell(headerMap, rowArray, 'TOTAL')).replace(/[^0-9.]/g, '').trim();
+      return buildManagedRow({
+        name: vendorCell(headerMap, rowArray, 'NAME'),
+        contact: vendorCell(headerMap, rowArray, 'CONTACT'),
+        item,
+        area: vendorCell(headerMap, rowArray, 'AREA'),
+        address: vendorCell(headerMap, rowArray, 'LOCATION'),
+        business: classifyVendorBusiness(item),
+        external_order_number: vendorCell(headerMap, rowArray, 'ORDER #', 'ORDER NUMBER', 'ORDER'),
+        total: rawTotal,
+        notes: '',
+        backup_phone: extractBackupPhoneFromComment(vendorCell(headerMap, rowArray, 'COMMENT', 'COMMENTS', 'NOTES'))
+      });
+    }
+
+    function renderManagedVendorImportPreview() {
+      const body = document.getElementById('managedVendorImportPreviewBody');
+      if (!body) return;
+      const businesses = managedAccountBusinessClients(selectedManagedAccountId);
+      body.innerHTML = managedVendorImportRows.map((item, idx) => `<tr>
+        <td>${item.issues.length ? '<span class="badge badge-failed">Invalid</span>' : '<span class="badge badge-confirmed">Ready</span>'}</td>
+        <td>${escapeHtml(item.row.name)}</td><td>${escapeHtml(item.row.contact)}</td>
+        <td>${escapeHtml(item.row.backupPhone || '—')}</td>
+        <td>${escapeHtml(item.row.item)}</td><td>${escapeHtml(item.row.area)}</td>
+        <td><select class="filter-select" onchange="updateVendorImportBusiness(${idx}, this.value)">${
+          businesses.map(b => `<option value="${escapeHtml(b.business_name)}" ${b.business_name === item.row.business ? 'selected' : ''}>${escapeHtml(b.business_name)}</option>`).join('')
+        }</select></td>
+        <td>${escapeHtml(item.row.externalOrderNumber)}</td>
+        <td>${item.row.isExchange ? 'Exchange' : item.row.isRefund ? 'Refund' : moneyFull(item.row.total)}</td>
+        <td>${escapeHtml(item.issues.join(', ') || '—')}</td></tr>`).join('');
+    }
+
+    window.updateVendorImportBusiness = function(idx, value) {
+      const item = managedVendorImportRows[idx];
+      if (!item) return;
+      item.row.business = value;
+      item.issues = validateManagedRow(item.row);
+      renderManagedVendorImportPreview();
+      const confirmBtn = document.getElementById('confirmManagedVendorImportBtn');
+      if (confirmBtn) confirmBtn.disabled = !managedVendorImportRows.some(i => !i.issues.length);
+    };
+
+    window.previewManagedVendorImport = async function() {
+      const body = document.getElementById('managedVendorImportPreviewBody');
+      const confirmBtn = document.getElementById('confirmManagedVendorImportBtn');
+      if (!selectedManagedAccountId) return showToast('Select a managed account first.');
+      try {
+        const file = document.getElementById('managedVendorImportFile')?.files[0];
+        if (!file) throw new Error('Select the vendor .xlsx file first.');
+        if (!window.XLSX) throw new Error('Spreadsheet reader is still loading. Try again in a few seconds.');
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows2d = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', blankrows: false });
+        const headerIdx = findVendorHeaderRowIndex(rows2d);
+        if (headerIdx === -1) throw new Error('Could not find the header row (expected columns like Order #, Name, Contact) in this file.');
+        const headerMap = buildVendorHeaderMap(rows2d[headerIdx]);
+        // A row only counts as a real order if it has a name, contact, or
+        // order number -- some vendor sheets keep a running row-number
+        // column (e.g. "TOTAL #") filled in for hundreds of otherwise-blank
+        // template rows below the real data, which a plain "any cell is
+        // non-empty" check would wrongly treat as orders.
+        const dataRows = rows2d.slice(headerIdx + 1).filter(rowArray => {
+          const name = String(vendorCell(headerMap, rowArray, 'NAME')).trim();
+          const contact = String(vendorCell(headerMap, rowArray, 'CONTACT')).trim();
+          const orderNum = String(vendorCell(headerMap, rowArray, 'ORDER #', 'ORDER NUMBER', 'ORDER')).trim();
+          return name !== '' || contact !== '' || orderNum !== '';
+        });
+        if (!dataRows.length) throw new Error('No order rows found under the header.');
+        managedVendorImportRows = dataRows.map(rowArray => {
+          const row = buildVendorRow(headerMap, rowArray);
+          const issues = validateManagedRow(row);
+          return { row, issues };
+        });
+        renderManagedVendorImportPreview();
+        confirmBtn.disabled = !managedVendorImportRows.some(item => !item.issues.length);
+      } catch (error) {
+        managedVendorImportRows = [];
+        confirmBtn.disabled = true;
+        body.innerHTML = `<tr><td colspan="10">${escapeHtml(error.message || 'Could not read this spreadsheet.')}</td></tr>`;
+      }
+    };
+
+    window.confirmManagedVendorImport = async function() {
+      const validRows = managedVendorImportRows.filter(item => !item.issues.length).map(item => item.row);
+      if (!validRows.length) return showToast('No valid order rows are ready to import.');
+      try {
+        const result = await importManagedRows(validRows);
+        showToast(`${result.imported_count} orders imported. Resolving delivery locations…`);
+        managedVendorImportRows = [];
+        document.getElementById('confirmManagedVendorImportBtn').disabled = true;
+        document.getElementById('managedVendorImportFile').value = '';
+
+        const importedOrders = Array.isArray(result.orders) ? result.orders : [];
+        const summary = importedOrders.length
+          ? await resolveImportedOrderLocations(importedOrders, 'managedVendorImportPreviewBody', 10)
+          : { total: 0, high: 0, medium: 0, unresolved: 0 };
+
+        const previewBody = document.getElementById('managedVendorImportPreviewBody');
+        if (previewBody) {
+          previewBody.innerHTML = summary.total
+            ? `<tr><td colspan="10">${result.imported_count} orders imported. Locations: ${summary.high} high-confidence, ${summary.medium} need review, ${summary.unresolved} location required. Unresolved and "needs review" orders can still be pinned manually from All Orders before zone confirmation.</td></tr>`
+            : `<tr><td colspan="10">${result.imported_count} orders imported.</td></tr>`;
         }
         if (summary.total) {
           showToast(`Locations resolved: ${summary.high} high-confidence, ${summary.medium} need review, ${summary.unresolved} location required.`);
