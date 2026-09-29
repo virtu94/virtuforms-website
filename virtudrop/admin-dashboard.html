@@ -1487,7 +1487,7 @@
         <div class="card" id="managedVendorImportCard" style="display:none; margin-top:1rem;">
           <div class="card-title">Vendor Spreadsheet Import (.xlsx)</div>
           <div class="csv-drop">
-            <input class="filter-input" type="file" id="managedVendorImportFile" accept=".xlsx">
+            <input class="filter-input" type="file" id="managedVendorImportFile" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/octet-stream">
             <div class="csv-help">Upload Middleman's own order sheet exactly as they send it — no reformatting needed. We read Order #, Name, Contact, Item, Area, Location, Total and Comment straight from their header row wherever it is in the sheet; Delivery Date is ignored. Total's "$" and commas are stripped automatically. If Comment contains a phone number (a backup number for when the primary doesn't answer), it's pulled out and stored separately — the rest of the comment is not kept. Business is guessed per row from the item (fragrance/cologne/perfume items → Scents, everything else → C&amp;H Electronics) — check the Business column below and change any row that guessed wrong before importing.</div>
             <div class="finance-actions">
               <button class="btn btn-primary" type="button" onclick="previewManagedVendorImport()">Preview Spreadsheet</button>
@@ -8753,7 +8753,7 @@
 
     function validateManagedRow(row) {
       const issues = [];
-      if (row.name.length < 2) issues.push('missing name');
+      // Name is accepted as-is -- any characters, or left blank entirely.
       if (String(row.contact).replace(/\D/g, '').length < 7) issues.push('invalid contact');
       if (row.item.length < 1) issues.push('missing item');
       if (row.area.length < 2) issues.push('missing area');
