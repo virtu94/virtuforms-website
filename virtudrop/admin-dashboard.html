@@ -2150,6 +2150,7 @@
 
   <script src="vd-modal.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -3470,19 +3471,29 @@
       renderDriversMgmt();
     };
 
-    function setSheetCell(ws, addr, value) {
-      if (typeof value === 'number' && Number.isFinite(value)) {
-        ws[addr] = { t: 'n', v: value };
-      } else {
-        ws[addr] = { t: 's', v: String(value == null ? '' : value) };
-      }
+    function downloadBlob(blob, fileName) {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
     }
 
+    // Uses ExcelJS (not the SheetJS/XLSX library used elsewhere in this file) for the
+    // Live Delivery Sheet export specifically, because SheetJS's free build drops the
+    // template's fonts, fills, column widths, and the Status dropdown validation on a
+    // read-modify-write round trip -- it only reliably preserves plain cell values.
+    // ExcelJS preserves all of that, so the exported file still looks/behaves like
+    // the template with only the data cells filled in.
     window.exportDriverLiveSheet = async function(driverId) {
       const driver = drivers.find(d => d.id === driverId);
       if (!driver) return showToast('Driver not found.');
       const activeOrders = driverActiveSheetOrders(driverId);
       if (!activeOrders.length) return showToast('No active deliveries assigned to this driver.');
+      if (typeof ExcelJS === 'undefined') return showToast('Export library failed to load. Refresh the page and try again.');
 
       const btn = document.getElementById(`driverSheetExportBtn_${driverId}`);
       if (btn) { btn.disabled = true; btn.textContent = 'Exporting…'; }
@@ -3490,37 +3501,33 @@
         const resp = await fetch('assets/virtudrop-master-driver-template.xlsx');
         if (!resp.ok) throw new Error('Could not load the sheet template.');
         const buf = await resp.arrayBuffer();
-        const wb = XLSX.read(buf, { type: 'array' });
-        const ws = wb.Sheets['Current Deliveries'];
+
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(buf);
+        const ws = workbook.getWorksheet('Current Deliveries');
         if (!ws) throw new Error('Template is missing the "Current Deliveries" sheet.');
 
         const batchLabel = `${driver.driver_code || driverLabel(driver)} - ${new Date().toISOString().slice(0, 10)}`;
         const nowStr = new Date().toLocaleString('en-US', { timeZone: 'America/Port_of_Spain' });
 
         activeOrders.forEach((order, idx) => {
-          const row = 4 + idx;
-          setSheetCell(ws, `A${row}`, idx + 1);
-          setSheetCell(ws, `B${row}`, order.customer_name || '');
-          setSheetCell(ws, `C${row}`, order.area_name || '');
-          setSheetCell(ws, `D${row}`, orderLabelAddress(order));
-          setSheetCell(ws, `E${row}`, formatPhoneDisplay(order.customer_phone) || order.customer_phone || '');
-          setSheetCell(ws, `F${row}`, 'Out for Delivery');
-          setSheetCell(ws, `G${row}`, '');
-          setSheetCell(ws, `H${row}`, orderPackageAssignmentText(order));
-          setSheetCell(ws, `I${row}`, amount(order.cod_amount));
-          setSheetCell(ws, `J${row}`, clientName(order));
-          setSheetCell(ws, `K${row}`, order.order_number || '');
-          setSheetCell(ws, `L${row}`, batchLabel);
-          setSheetCell(ws, `M${row}`, nowStr);
-          setSheetCell(ws, `N${row}`, '');
+          const row = ws.getRow(4 + idx);
+          row.getCell(1).value = idx + 1;
+          row.getCell(2).value = order.customer_name || '';
+          row.getCell(3).value = order.area_name || '';
+          row.getCell(4).value = orderLabelAddress(order);
+          row.getCell(5).value = formatPhoneDisplay(order.customer_phone) || order.customer_phone || '';
+          row.getCell(6).value = 'Out for Delivery';
+          row.getCell(7).value = '';
+          row.getCell(8).value = orderPackageAssignmentText(order);
+          row.getCell(9).value = amount(order.cod_amount);
+          row.getCell(10).value = clientName(order);
+          row.getCell(11).value = order.order_number || '';
+          row.getCell(12).value = batchLabel;
+          row.getCell(13).value = nowStr;
+          row.getCell(14).value = '';
+          row.commit();
         });
-
-        const lastRow = 3 + activeOrders.length;
-        const currentRange = XLSX.utils.decode_range(ws['!ref']);
-        if (currentRange.e.r < lastRow - 1) {
-          currentRange.e.r = lastRow - 1;
-          ws['!ref'] = XLSX.utils.encode_range(currentRange);
-        }
 
         const orderIds = activeOrders.map(o => o.id);
         const { error: rpcError } = await supabase.rpc('admin_mark_orders_out_for_delivery', { p_order_ids: orderIds });
@@ -3528,7 +3535,8 @@
 
         const safeCode = String(driver.driver_code || driverLabel(driver)).replace(/[^a-z0-9]+/gi, '-');
         const fileName = `VirtuDrop-${safeCode}-${new Date().toISOString().slice(0, 10)}.xlsx`;
-        XLSX.writeFile(wb, fileName);
+        const outBuffer = await workbook.xlsx.writeBuffer();
+        downloadBlob(new Blob([outBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), fileName);
 
         showToast(`Exported ${activeOrders.length} ${activeOrders.length === 1 ? 'delivery' : 'deliveries'} and marked Out for Delivery.`);
         await loadData();
