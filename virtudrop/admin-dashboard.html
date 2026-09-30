@@ -3520,7 +3520,7 @@
           row.getCell(6).value = 'Out for Delivery';
           row.getCell(7).value = '';
           row.getCell(8).value = orderPackageAssignmentText(order);
-          row.getCell(9).value = amount(order.cod_amount);
+          row.getCell(9).value = driverCollects(order);
           row.getCell(10).value = clientName(order);
           row.getCell(11).value = order.order_number || '';
           row.getCell(12).value = batchLabel;
