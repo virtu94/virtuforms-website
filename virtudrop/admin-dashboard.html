@@ -3563,7 +3563,9 @@
         ? `<div class="td-sub">Not found in system: ${escapeHtml(summary.not_found.join(', '))}</div>` : '';
       const mismatch = Array.isArray(summary.driver_mismatch) && summary.driver_mismatch.length
         ? `<div class="td-sub">Assigned to a different driver: ${escapeHtml(summary.driver_mismatch.join(', '))}</div>` : '';
-      el.innerHTML = `<div class="td-name">Updated ${totalUpdated} order${totalUpdated === 1 ? '' : 's'}</div><div class="td-sub">${countsHtml}</div>${notFound}${mismatch}`;
+      const cashHtml = Number(summary.delivered) > 0
+        ? `<div class="td-name" style="margin-top:0.4rem;">Total cash collected: ${moneyFull(summary.cash_collected || 0)}</div>` : '';
+      el.innerHTML = `<div class="td-name">Updated ${totalUpdated} order${totalUpdated === 1 ? '' : 's'}</div><div class="td-sub">${countsHtml}</div>${notFound}${mismatch}${cashHtml}`;
     }
 
     window.importDriverLiveSheet = async function(driverId) {
@@ -3583,6 +3585,7 @@
         const rows2d = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
         const payloadRows = [];
+        let cashCollected = 0;
         for (let i = 3; i < rows2d.length; i++) {
           const r = rows2d[i] || [];
           const orderNumber = String(r[10] || '').trim(); // column K = Delivery ID
@@ -3590,6 +3593,10 @@
           const notes = String(r[6] || '').trim();         // column G = Notes
           if (!orderNumber) continue;
           payloadRows.push({ order_number: orderNumber, status, notes });
+          if (status.trim().toLowerCase() === 'delivered') {
+            const codValue = Number(String(r[8] || '').replace(/[^0-9.-]/g, '')); // column I = COD
+            if (Number.isFinite(codValue)) cashCollected += codValue;
+          }
         }
         if (!payloadRows.length) throw new Error('No rows with a Delivery ID were found in the sheet.');
 
@@ -3603,7 +3610,7 @@
         await loadData();
         expandedDriverSheetId = driverId;
         renderDriversMgmt();
-        renderDriverSheetImportResults(document.getElementById(`driverSheetResults_${driverId}`), data);
+        renderDriverSheetImportResults(document.getElementById(`driverSheetResults_${driverId}`), { ...data, cash_collected: cashCollected });
       } catch (err) {
         showToast('Import failed: ' + (err?.message || err));
       } finally {
