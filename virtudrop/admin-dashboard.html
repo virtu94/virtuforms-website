@@ -3568,7 +3568,12 @@
       const payEl = document.getElementById(`driverPayEarned_${driverId}`);
       if (payEl) payEl.textContent = moneyFull(financeRecord?.earned_cycle || 0);
       const paySub = document.getElementById(`driverPayEarnedSub_${driverId}`);
-      if (paySub) paySub.textContent = financeRecord ? `Current cycle &middot; ${financeRecord.completed_deliveries_cycle || 0} deliveries completed` : 'Current cycle';
+      // "deliveries completed" here is this driver's currently-assigned
+      // delivered orders (same count as the Delivered stat tile above), not
+      // the finance RPC's cycle/all-time completed-deliveries figure -- those
+      // can include orders that moved to another driver since, which isn't
+      // what "assigned to them currently" means.
+      if (paySub) paySub.textContent = `Current cycle &middot; ${counts.delivered || 0} deliveries completed`;
 
       renderDriverStatsChart(driverId, counts);
     }
