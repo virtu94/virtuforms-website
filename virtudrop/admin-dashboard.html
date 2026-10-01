@@ -1756,36 +1756,10 @@
         </div>
 
         <div class="accounting-note">
-          Only balanced, reconciled COD orders are available for remittance. Client-paid fees marked for deduction are subtracted from gross COD before the batch is paid.
+          Only balanced, reconciled COD orders are available for remittance. Client-paid fees marked for deduction are subtracted from gross COD before the batch is paid. Driver cash reconciliation has moved to the Drivers tab &mdash; open a driver's row to see and reconcile what they're holding.
         </div>
 
         <div class="card">
-          <div class="card-title">Driver Cash Remittance</div>
-          <div class="accounting-note">Select a driver to see the cash they're still holding from delivered COD / delivery-fee collections, then confirm what VirtuDrop actually received from them (one at a time, or several together).</div>
-          <div class="finance-filter-grid">
-            <div class="finance-field">
-              <label for="remitDriverFilter">Driver</label>
-              <select class="filter-select" id="remitDriverFilter" onchange="renderDriverCashRemittance()">
-                <option value="">Select a driver...</option>
-              </select>
-            </div>
-            <button class="btn btn-ghost" type="button" onclick="toggleAllRemitDriverCashRows()">Select All / None</button>
-            <button class="btn btn-primary" type="button" onclick="openBulkRemitDriverCashReceived()">Confirm Cash Received</button>
-            <span id="remitDriverCashBulkCount" style="align-self:center; color:var(--grey);">0 selected</span>
-          </div>
-          <div id="remitDriverCashSummaryWrap" style="display:none; margin:0.25rem 0 0.75rem;">
-            <strong id="remitDriverCashSummary"></strong>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr><th style="width:2rem;"></th><th>Order #</th><th>Customer</th><th>Expected</th><th>Collected Via</th><th>Delivered</th><th>Action</th></tr>
-              </thead>
-              <tbody id="remitDriverCashBody"><tr><td colspan="7">Select a driver to see cash they are holding.</td></tr></tbody>
-            </table>
-          </div>
-        </div>
-        <div class="card" style="margin-top:1rem;">
           <div class="card-title">Client Payout Summary</div>
           <div class="finance-filter-grid">
             <div class="finance-field">
@@ -2151,6 +2125,8 @@
   <script src="vd-modal.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -2958,14 +2934,6 @@
           .map(driver => `<option value="${escapeHtml(driver.id)}">${escapeHtml(driverName(driver.id))}</option>`)
           .join('');
       }
-      const remitDriverFilter = document.getElementById('remitDriverFilter');
-      if (remitDriverFilter) {
-        const currentRemitDriver = remitDriverFilter.value;
-        remitDriverFilter.innerHTML = '<option value="">Select a driver...</option>' + drivers
-          .map(driver => `<option value="${escapeHtml(driver.id)}">${escapeHtml(driverName(driver.id))}</option>`)
-          .join('');
-        remitDriverFilter.value = currentRemitDriver;
-      }
       ['returnManagementDriverFilter', 'returnHistoryDriverFilter'].forEach(id => {
         const select = document.getElementById(id);
         if (!select) return;
@@ -3454,17 +3422,186 @@
               <div class="td-sub" style="margin-bottom:0.75rem;">${activeCount} active ${activeCount === 1 ? 'delivery' : 'deliveries'} currently assigned to this driver.</div>
               <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center; margin-bottom:0.75rem;">
                 <button id="driverSheetExportBtn_${driver.id}" class="btn btn-primary btn-sm" type="button" onclick="exportDriverLiveSheet('${driver.id}')" ${activeCount ? '' : 'disabled'}>Export Live Delivery Sheet (.xlsx)</button>
+                ${driver.google_sheet_id
+                  ? `<button id="driverSheetPushBtn_${driver.id}" class="btn btn-primary btn-sm" type="button" onclick="pushDriverLiveSheet('${driver.id}')" ${activeCount ? '' : 'disabled'}>Push to Google Sheet</button>`
+                  : `<span class="td-sub">No Google Sheet linked &mdash; add one via Edit.</span>`}
               </div>
               <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center; margin-bottom:0.5rem;">
                 <input id="driverSheetImportFile_${driver.id}" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/octet-stream">
                 <button id="driverSheetImportBtn_${driver.id}" class="btn btn-ghost btn-sm" type="button" onclick="importDriverLiveSheet('${driver.id}')">Import Completed Sheet</button>
               </div>
               <div id="driverSheetResults_${driver.id}"></div>
+              <div id="driverSheetPushResult_${driver.id}"></div>
+            </div>
+            <div class="card" style="margin:0.75rem 0 0; box-shadow:none; border:1px solid #dfe8e6;">
+              <div class="td-name" style="margin-bottom:0.6rem;">Delivery Stats &mdash; ${escapeHtml(driverLabel(driver))}</div>
+              <div style="display:flex; gap:1.5rem; flex-wrap:wrap; align-items:flex-start;">
+                <div id="driverStatsGrid_${driver.id}" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:0.6rem; flex:1 1 320px; min-width:280px;"></div>
+                <div style="width:180px; flex:0 0 180px;"><canvas id="driverStatsChart_${driver.id}" width="180" height="180"></canvas></div>
+              </div>
+              <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-top:0.75rem;">
+                <div class="stat-card ok" style="margin:0;">
+                  <div class="stat-label">Cash Collected</div>
+                  <div class="stat-val" id="driverCashCollected_${driver.id}" style="font-size:1.4rem;">TTD 0</div>
+                  <div class="stat-sub" id="driverCashCollectedSub_${driver.id}">Current cycle</div>
+                </div>
+                <div class="stat-card blue" style="margin:0;">
+                  <div class="stat-label">Pay Earned So Far</div>
+                  <div class="stat-val" id="driverPayEarned_${driver.id}" style="font-size:1.4rem;">TTD 0</div>
+                  <div class="stat-sub" id="driverPayEarnedSub_${driver.id}">Current cycle</div>
+                </div>
+              </div>
+            </div>
+            <div class="card" style="margin:0.75rem 0 0; box-shadow:none; border:1px solid #dfe8e6;">
+              <div class="td-name" style="margin-bottom:0.4rem;">Cash Reconciliation</div>
+              <div class="accounting-note">Cash this driver is still holding from delivered COD / delivery-fee collections. Confirm what VirtuDrop actually received (one at a time, or several together).</div>
+              <div class="finance-filter-grid">
+                <button class="btn btn-ghost" type="button" onclick="toggleAllRemitDriverCashRows()">Select All / None</button>
+                <button class="btn btn-primary" type="button" onclick="openBulkRemitDriverCashReceived()">Confirm Cash Received</button>
+                <span id="remitDriverCashBulkCount" style="align-self:center; color:var(--grey);">0 selected</span>
+              </div>
+              <div id="remitDriverCashSummaryWrap" style="display:none; margin:0.25rem 0 0.75rem;">
+                <strong id="remitDriverCashSummary"></strong>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr><th style="width:2rem;"></th><th>Order #</th><th>Customer</th><th>Expected</th><th>Collected Via</th><th>Delivered</th><th>Action</th></tr>
+                  </thead>
+                  <tbody id="remitDriverCashBody"><tr><td colspan="7">Loading&hellip;</td></tr></tbody>
+                </table>
+              </div>
             </div>
           </td>
         </tr>`;
       }).join('');
+      if (expandedDriverSheetId) {
+        renderDriverStatsSection(expandedDriverSheetId);
+        renderDriverCashRemittance();
+      }
     }
+
+    // --- Per-driver delivery stats (counts + pie chart) ---------------------
+    // Computed client-side from the already-loaded `orders` array so the
+    // numbers/chart refresh automatically every time loadData() re-renders
+    // this tab -- no extra round trip needed.
+    const DRIVER_STAT_CATEGORIES = [
+      { key: 'out_for_delivery', label: 'Out for Delivery', color: '#2f80ed', match: o => o.order_status === 'out_for_delivery' },
+      { key: 'delivered', label: 'Delivered', color: '#27ae60', match: o => o.order_status === 'delivered' },
+      { key: 'refused', label: 'Refused', color: '#eb5757', match: o => o.delivery_outcome === 'refused' },
+      { key: 'cancelled', label: 'Cancelled', color: '#828282', match: o => isCancelledOrder(o) },
+      { key: 'rescheduled', label: 'Rescheduled', color: '#f2994a', match: o => o.order_status === 'rescheduled' }
+    ];
+
+    function driverOrdersForCategory(driverId, categoryKey) {
+      const category = DRIVER_STAT_CATEGORIES.find(c => c.key === categoryKey);
+      if (!category) return [];
+      return orders.filter(order => order.assigned_driver_id === driverId && category.match(order));
+    }
+
+    // Cash collected by this driver from delivered COD / delivery-fee orders --
+    // regardless of whether it's been reconciled yet, unlike
+    // driverUnreconciledCollections() which only shows what's still outstanding.
+    // When cycleStart/cycleEnd (YYYY-MM-DD) are given, only counts deliveries
+    // attempted within the current pay cycle; omit them for an all-time total.
+    function driverCashCollectedTotal(driverId, cycleStart, cycleEnd) {
+      return orders
+        .filter(order => order.assigned_driver_id === driverId
+          && order.delivery_outcome === 'delivered'
+          && String(order.delivery_collection_method || '').toLowerCase() === 'cash'
+          && (!cycleStart || !cycleEnd || (() => {
+            const attemptDate = String(order.last_delivery_attempt_at || '').slice(0, 10);
+            return attemptDate && attemptDate >= cycleStart && attemptDate <= cycleEnd;
+          })()))
+        .reduce((sum, order) => sum + driverCollects(order), 0);
+    }
+
+    let driverStatsCharts = {};
+
+    function renderDriverStatsChart(driverId, counts) {
+      const canvas = document.getElementById(`driverStatsChart_${driverId}`);
+      if (!canvas || typeof Chart === 'undefined') return;
+      if (driverStatsCharts[driverId]) {
+        driverStatsCharts[driverId].destroy();
+        delete driverStatsCharts[driverId];
+      }
+      const data = DRIVER_STAT_CATEGORIES.map(c => counts[c.key] || 0);
+      if (!data.some(v => v > 0)) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        return;
+      }
+      driverStatsCharts[driverId] = new Chart(canvas.getContext('2d'), {
+        type: 'pie',
+        data: {
+          labels: DRIVER_STAT_CATEGORIES.map(c => c.label),
+          datasets: [{ data, backgroundColor: DRIVER_STAT_CATEGORIES.map(c => c.color) }]
+        },
+        options: {
+          responsive: false,
+          plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } }
+        }
+      });
+    }
+
+    function renderDriverStatsSection(driverId) {
+      const grid = document.getElementById(`driverStatsGrid_${driverId}`);
+      if (!grid) return;
+      const counts = {};
+      DRIVER_STAT_CATEGORIES.forEach(category => { counts[category.key] = driverOrdersForCategory(driverId, category.key).length; });
+      grid.innerHTML = DRIVER_STAT_CATEGORIES.map(category => `
+        <div class="stat-card" style="margin:0; cursor:pointer; border-left-color:${category.color};" onclick="showDriverStatCategoryModal('${driverId}','${category.key}')">
+          <div class="stat-label">${escapeHtml(category.label)}</div>
+          <div class="stat-val" style="font-size:1.5rem;">${counts[category.key]}</div>
+          <div class="stat-sub">Click to view</div>
+        </div>
+      `).join('');
+
+      const financeRecord = driverFinanceRecords.find(record => record.driver_id === driverId);
+      const cycle = financeRecord?.cycle || {};
+
+      const cashEl = document.getElementById(`driverCashCollected_${driverId}`);
+      if (cashEl) cashEl.textContent = moneyFull(driverCashCollectedTotal(driverId, cycle.cycle_start, cycle.cycle_end));
+      const cashSub = document.getElementById(`driverCashCollectedSub_${driverId}`);
+      if (cashSub) cashSub.textContent = cycle.cycle_start ? `Current cycle &middot; ${cycle.cycle_start} to ${cycle.cycle_end}` : 'Current cycle';
+
+      const payEl = document.getElementById(`driverPayEarned_${driverId}`);
+      if (payEl) payEl.textContent = moneyFull(financeRecord?.earned_cycle || 0);
+      const paySub = document.getElementById(`driverPayEarnedSub_${driverId}`);
+      if (paySub) paySub.textContent = financeRecord ? `Current cycle &middot; ${financeRecord.completed_deliveries_cycle || 0} deliveries completed` : 'Current cycle';
+
+      renderDriverStatsChart(driverId, counts);
+    }
+
+    window.showDriverStatCategoryModal = function(driverId, categoryKey) {
+      const category = DRIVER_STAT_CATEGORIES.find(c => c.key === categoryKey);
+      const driver = drivers.find(d => d.id === driverId);
+      const rows = driverOrdersForCategory(driverId, categoryKey);
+      document.getElementById('modalTitle').textContent = `${category ? category.label : 'Orders'} — ${driver ? driverLabel(driver) : ''}`;
+      document.getElementById('modalBody').innerHTML = rows.length ? `
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Order #</th><th>Customer</th><th>Address</th><th>Area</th><th>Item</th><th>Cost</th></tr></thead>
+            <tbody>
+              ${rows.map(order => `
+                <tr>
+                  <td>${escapeHtml(order.order_number || '—')}</td>
+                  <td>${escapeHtml(order.customer_name || '—')}</td>
+                  <td>${escapeHtml(orderLabelAddress(order))}</td>
+                  <td>${escapeHtml(order.area_name || '—')}</td>
+                  <td>${escapeHtml(orderPackageAssignmentText(order))}</td>
+                  <td>${moneyFull(driverCollects(order))}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      ` : '<p>No orders in this category right now.</p>';
+      document.getElementById('modalConfirm').textContent = 'Close';
+      document.getElementById('modalCancel').style.display = 'none';
+      document.getElementById('modal').classList.add('show');
+      modalCb = null;
+    };
 
     window.toggleDriverSheetPanel = function(driverId) {
       expandedDriverSheetId = expandedDriverSheetId === driverId ? null : driverId;
@@ -3546,6 +3683,135 @@
       } finally {
         const stillThere = document.getElementById(`driverSheetExportBtn_${driverId}`);
         if (stillThere) { stillThere.disabled = false; stillThere.textContent = 'Export Live Delivery Sheet (.xlsx)'; }
+      }
+    };
+
+    // --- Push to Google Sheet (live sync, no download/upload round trip) ---
+    //
+    // Setup required once, outside this file:
+    //   1. In Google Cloud Console: create an OAuth 2.0 Client ID (type "Web
+    //      application"), with this dashboard's URL added under "Authorized
+    //      JavaScript origins", and the Google Sheets API enabled for that project.
+    //   2. Paste that Client ID below in place of the placeholder.
+    //   3. On each driver's profile (Edit button), paste that driver's Google
+    //      Sheet ID (from its URL) into the "Google Sheet ID" field.
+    //
+    // Whoever clicks "Push to Google Sheet" authorizes with their OWN Google
+    // account (a one-time-per-session consent popup) -- this is separate from
+    // the VirtuDrop admin login and unrelated to it. That Google account needs
+    // edit access to the driver's sheet.
+    const GOOGLE_OAUTH_CLIENT_ID = 'PASTE-YOUR-GOOGLE-OAUTH-CLIENT-ID-HERE.apps.googleusercontent.com';
+    let googleSheetsTokenClient = null;
+    let googleSheetsAccessToken = null;
+
+    function getGoogleSheetsAccessToken() {
+      return new Promise((resolve, reject) => {
+        if (typeof google === 'undefined' || !google.accounts?.oauth2) {
+          reject(new Error('Google sign-in library failed to load. Refresh the page and try again.'));
+          return;
+        }
+        if (!googleSheetsTokenClient) {
+          googleSheetsTokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: GOOGLE_OAUTH_CLIENT_ID,
+            scope: 'https://www.googleapis.com/auth/spreadsheets',
+            callback: () => {} // overridden per-request below
+          });
+        }
+        googleSheetsTokenClient.callback = (resp) => {
+          if (resp.error) { reject(new Error(resp.error)); return; }
+          googleSheetsAccessToken = resp.access_token;
+          resolve(resp.access_token);
+        };
+        // Reuse a still-valid token silently; otherwise this triggers the
+        // Google consent popup (or a quick "allow" if already signed in).
+        googleSheetsTokenClient.requestAccessToken({ prompt: googleSheetsAccessToken ? '' : 'consent' });
+      });
+    }
+
+    async function sheetsApiFetch(url, accessToken, options = {}) {
+      const resp = await fetch(url, {
+        ...options,
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          ...(options.headers || {})
+        }
+      });
+      if (!resp.ok) {
+        const body = await resp.json().catch(() => ({}));
+        throw new Error(body?.error?.message || `Google Sheets API error (${resp.status})`);
+      }
+      return resp.json();
+    }
+
+    window.pushDriverLiveSheet = async function(driverId) {
+      const driver = drivers.find(d => d.id === driverId);
+      if (!driver) return showToast('Driver not found.');
+      if (!driver.google_sheet_id) return showToast('No Google Sheet linked to this driver yet -- add one via Edit.');
+      const activeOrders = driverActiveSheetOrders(driverId);
+      if (!activeOrders.length) return showToast('No active deliveries assigned to this driver.');
+      if (GOOGLE_OAUTH_CLIENT_ID.startsWith('PASTE-YOUR-')) {
+        return showToast('Google Sheets push is not configured yet (missing OAuth Client ID).');
+      }
+
+      const btn = document.getElementById(`driverSheetPushBtn_${driverId}`);
+      if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
+      try {
+        const accessToken = await getGoogleSheetsAccessToken();
+        if (btn) btn.textContent = 'Pushing…';
+
+        const sheetId = driver.google_sheet_id;
+        const range = "'Current Deliveries'!A4:N";
+        const CLEAR_ROWS = 600; // matches the Status dropdown's validated range
+
+        // Clear old rows first so a shorter new batch doesn't leave stale
+        // deliveries behind from a previous push.
+        await sheetsApiFetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}${CLEAR_ROWS}:clear`,
+          accessToken,
+          { method: 'POST', body: JSON.stringify({}) }
+        );
+
+        const batchLabel = `${driver.driver_code || driverLabel(driver)} - ${new Date().toISOString().slice(0, 10)}`;
+        const nowStr = new Date().toLocaleString('en-US', { timeZone: 'America/Port_of_Spain' });
+        const values = activeOrders.map((order, idx) => ([
+          idx + 1,
+          order.customer_name || '',
+          order.area_name || '',
+          orderLabelAddress(order),
+          formatPhoneDisplay(order.customer_phone) || order.customer_phone || '',
+          'Out for Delivery',
+          '',
+          orderPackageAssignmentText(order),
+          driverCollects(order),
+          clientName(order),
+          order.order_number || '',
+          batchLabel,
+          nowStr,
+          ''
+        ]));
+
+        const endRow = 3 + values.length;
+        await sheetsApiFetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/'Current Deliveries'!A4:N${endRow}?valueInputOption=USER_ENTERED`,
+          accessToken,
+          { method: 'PUT', body: JSON.stringify({ range: `'Current Deliveries'!A4:N${endRow}`, values }) }
+        );
+
+        const orderIds = activeOrders.map(o => o.id);
+        const { error: rpcError } = await supabase.rpc('admin_mark_orders_out_for_delivery', { p_order_ids: orderIds });
+        if (rpcError) throw rpcError;
+
+        const resultEl = document.getElementById(`driverSheetPushResult_${driverId}`);
+        if (resultEl) resultEl.innerHTML = `<div class="td-sub">Pushed ${activeOrders.length} ${activeOrders.length === 1 ? 'delivery' : 'deliveries'} to the Google Sheet just now.</div>`;
+        showToast(`Pushed ${activeOrders.length} ${activeOrders.length === 1 ? 'delivery' : 'deliveries'} to the driver's Google Sheet.`);
+        await loadData();
+        renderDriversMgmt();
+      } catch (err) {
+        showToast('Push failed: ' + (err?.message || err));
+      } finally {
+        const stillThere = document.getElementById(`driverSheetPushBtn_${driverId}`);
+        if (stillThere) { stillThere.disabled = false; stillThere.textContent = 'Push to Google Sheet'; }
       }
     };
 
@@ -3638,16 +3904,22 @@
           <label>Insurance #<input id="driverEditInsuranceNumber" value="${escapeHtml(driver.insurance_number || '')}" placeholder="Policy / certificate number"></label>
           <label>Route Label<input id="driverEditRouteLabel" value="${escapeHtml(driver.route_label || '')}" placeholder="e.g. North-West Route"></label>
           <div class="td-sub">The route label is just a display tag &mdash; reassign it to a different driver any time by editing that driver's profile. It does not change zone or order routing on its own.</div>
+          <label>Google Sheet ID (Live Sheet)<input id="driverEditGoogleSheetId" value="${escapeHtml(driver.google_sheet_id || '')}" placeholder="Paste the ID from the sheet's URL"></label>
+          <div class="td-sub">From the sheet's URL: docs.google.com/spreadsheets/d/<strong>THIS-PART</strong>/edit. Needed for the "Push to Google Sheet" button under Live Sheet.</div>
         </div>
       `;
       document.getElementById('modalConfirm').textContent = 'Save';
       document.getElementById('modalCancel').style.display = '';
       document.getElementById('modal').classList.add('show');
       modalCb = async () => {
+        const sheetIdRaw = document.getElementById('driverEditGoogleSheetId')?.value.trim() || '';
+        // Accept a pasted full URL too, not just the bare ID.
+        const sheetIdMatch = sheetIdRaw.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
         const updates = {
           vehicle_number: document.getElementById('driverEditVehicleNumber')?.value.trim() || null,
           insurance_number: document.getElementById('driverEditInsuranceNumber')?.value.trim() || null,
           route_label: document.getElementById('driverEditRouteLabel')?.value.trim() || null,
+          google_sheet_id: (sheetIdMatch ? sheetIdMatch[1] : sheetIdRaw) || null,
         };
         const { error } = await supabase.from('drivers').update(updates).eq('id', driverId);
         if (error) {
@@ -4905,7 +5177,7 @@
     };
 
     window.renderDriverCashRemittance = function() {
-      const driverId = document.getElementById('remitDriverFilter')?.value || '';
+      const driverId = expandedDriverSheetId || '';
       const body = document.getElementById('remitDriverCashBody');
       const summaryWrap = document.getElementById('remitDriverCashSummaryWrap');
       const summaryEl = document.getElementById('remitDriverCashSummary');
