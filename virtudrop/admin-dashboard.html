@@ -1176,6 +1176,18 @@
           <div id="driverBatchStatsBody">Loading...</div>
         </div>
 
+        <div class="card" id="driverFlatDeliveriesCard" style="margin-bottom:1rem; display:none;">
+          <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+            <span>Deliveries Assigned to This Driver</span>
+            <label style="font-size:0.78rem; font-weight:500; color:var(--grey); display:flex; align-items:center; gap:0.35rem;"><input type="checkbox" id="driverFlatDeliveriesShowClosed" onchange="renderDriverFlatDeliveries(document.getElementById('manifestDriverFilter')?.value)"> Show closed deliveries</label>
+          </div>
+          <div class="td-sub" style="margin-bottom:0.75rem;">A simple list of this driver's assigned deliveries with when each was assigned. Close a delivery once it's been delivered and (if it had cash to collect) reconciled as balanced.</div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Order</th><th>Customer</th><th>Address</th><th>Assigned</th><th>Status</th><th>Collect</th><th>Reconciliation</th><th>Action</th></tr></thead>
+            <tbody id="driverFlatDeliveriesBody"><tr><td colspan="8">Loading...</td></tr></tbody>
+          </table></div>
+        </div>
+
         <div class="bulk-toolbar" id="manifestBulkToolbar">
           <label><input id="manifestSelectAll" type="checkbox" onchange="toggleManifestVisibleBulk(this.checked)"> Select all visible</label>
           <select class="filter-select" id="manifestBulkAction">
@@ -1225,6 +1237,8 @@
           <button class="btn btn-ghost btn-sm" type="button" data-return-tab="redeliveries" onclick="setReturnExceptionsTab('redeliveries')">Redeliveries</button>
           <button class="btn btn-ghost btn-sm" type="button" data-return-tab="returns_to_client" onclick="setReturnExceptionsTab('returns_to_client')">Returns to Client</button>
           <button class="btn btn-ghost btn-sm" type="button" data-return-tab="cancelled_closed" onclick="setReturnExceptionsTab('cancelled_closed')">Cancelled / Closed</button>
+          <button class="btn btn-ghost btn-sm" type="button" data-return-tab="assigned" onclick="setReturnExceptionsTab('assigned')">Assigned</button>
+          <button class="btn btn-ghost btn-sm" type="button" data-return-tab="out_for_delivery" onclick="setReturnExceptionsTab('out_for_delivery')">Out for Delivery</button>
         </div>
         <div class="filter-bar">
           <select class="filter-select" id="returnManagementDriverFilter" onchange="renderReturnManagement()"><option value="">All drivers</option></select>
@@ -3440,6 +3454,17 @@
                 <div style="width:180px; flex:0 0 180px;"><canvas id="driverStatsChart_${driver.id}" width="180" height="180"></canvas></div>
               </div>
               <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-top:0.75rem;">
+                <div class="stat-card" style="margin:0;">
+                  <div class="stat-label" style="display:flex; justify-content:space-between; align-items:center; gap:0.4rem;">
+                    <span>Total Deliveries Completed</span>
+                    <span style="display:flex; border:1px solid #dfe8e6; border-radius:6px; overflow:hidden;">
+                      <button type="button" id="driverDeliveriesToggleCurrent_${driver.id}" class="btn btn-sm" style="padding:0.1rem 0.45rem; border:none; border-radius:0; font-size:0.65rem;" onclick="setDriverDeliveriesView('${driver.id}','current')">Current</button>
+                      <button type="button" id="driverDeliveriesToggleOverall_${driver.id}" class="btn btn-sm" style="padding:0.1rem 0.45rem; border:none; border-radius:0; font-size:0.65rem;" onclick="setDriverDeliveriesView('${driver.id}','overall')">Overall</button>
+                    </span>
+                  </div>
+                  <div class="stat-val" id="driverTotalDeliveries_${driver.id}" style="font-size:1.4rem;">0</div>
+                  <div class="stat-sub" id="driverTotalDeliveriesSub_${driver.id}">Current assigned batch</div>
+                </div>
                 <div class="stat-card ok" style="margin:0;">
                   <div class="stat-label">Cash Collected</div>
                   <div class="stat-val" id="driverCashCollected_${driver.id}" style="font-size:1.4rem;">TTD 0</div>
@@ -3517,6 +3542,12 @@
     }
 
     let driverStatsCharts = {};
+    let driverDeliveriesViewMode = {}; // driverId -> 'current' | 'overall', default 'current'
+
+    window.setDriverDeliveriesView = function(driverId, mode) {
+      driverDeliveriesViewMode[driverId] = mode;
+      renderDriverStatsSection(driverId);
+    };
 
     function renderDriverStatsChart(driverId, counts) {
       const canvas = document.getElementById(`driverStatsChart_${driverId}`);
@@ -3560,6 +3591,27 @@
       const financeRecord = driverFinanceRecords.find(record => record.driver_id === driverId);
       const cycle = financeRecord?.cycle || {};
 
+      // Total Deliveries Completed: toggles between "Current" (this driver's
+      // currently-assigned delivered orders -- same definition as the
+      // Delivered tile above) and "Overall" (every delivery the finance RPC
+      // has ever attributed to them, lifetime, including orders since
+      // reassigned elsewhere). Defaults to Current.
+      const deliveriesMode = driverDeliveriesViewMode[driverId] || 'current';
+      const currentDeliveries = counts.delivered || 0;
+      const overallDeliveries = financeRecord?.completed_deliveries_all_time || 0;
+      const totalEl = document.getElementById(`driverTotalDeliveries_${driverId}`);
+      if (totalEl) totalEl.textContent = deliveriesMode === 'overall' ? overallDeliveries : currentDeliveries;
+      const totalSub = document.getElementById(`driverTotalDeliveriesSub_${driverId}`);
+      if (totalSub) totalSub.textContent = deliveriesMode === 'overall' ? 'Overall (all time)' : 'Current assigned batch';
+      const toggleCurrentBtn = document.getElementById(`driverDeliveriesToggleCurrent_${driverId}`);
+      const toggleOverallBtn = document.getElementById(`driverDeliveriesToggleOverall_${driverId}`);
+      if (toggleCurrentBtn && toggleOverallBtn) {
+        const activeStyle = 'background:var(--teal-dark); color:#fff;';
+        const inactiveStyle = 'background:#fff; color:var(--grey);';
+        toggleCurrentBtn.style.cssText += deliveriesMode === 'current' ? activeStyle : inactiveStyle;
+        toggleOverallBtn.style.cssText += deliveriesMode === 'overall' ? activeStyle : inactiveStyle;
+      }
+
       const cashEl = document.getElementById(`driverCashCollected_${driverId}`);
       if (cashEl) cashEl.textContent = moneyFull(driverCashCollectedTotal(driverId, cycle.cycle_start, cycle.cycle_end));
       const cashSub = document.getElementById(`driverCashCollectedSub_${driverId}`);
@@ -3573,7 +3625,7 @@
       // the finance RPC's cycle/all-time completed-deliveries figure -- those
       // can include orders that moved to another driver since, which isn't
       // what "assigned to them currently" means.
-      if (paySub) paySub.textContent = `Current cycle &middot; ${counts.delivered || 0} deliveries completed`;
+      if (paySub) paySub.textContent = `Pay is current-cycle &middot; ${counts.delivered || 0} delivered of their current assignments`;
 
       renderDriverStatsChart(driverId, counts);
     }
@@ -7457,6 +7509,74 @@
       `;
     }
 
+    // Flat, per-order view of everything assigned to a driver, independent of
+    // which manifest an order sits on — shows when each was assigned and lets
+    // a single delivery be closed once it's delivered & reconciled, without
+    // needing the whole manifest closed.
+    window.renderDriverFlatDeliveries = function(driverId) {
+      const card = document.getElementById('driverFlatDeliveriesCard');
+      const body = document.getElementById('driverFlatDeliveriesBody');
+      if (!card || !body) return;
+      if (!driverId) {
+        card.style.display = 'none';
+        return;
+      }
+      card.style.display = '';
+      const showClosed = !!document.getElementById('driverFlatDeliveriesShowClosed')?.checked;
+
+      let flatOrders = deliveryManifests
+        .filter(manifest => manifest.driver_id === driverId && manifest.status !== 'cancelled')
+        .flatMap(manifest => (manifest.orders || []).map(order => ({ ...order, _manifest: manifest })))
+        .filter(order => !isCancelledOrder(order));
+
+      if (!showClosed) flatOrders = flatOrders.filter(order => !order.order_closed_at);
+
+      flatOrders.sort((a, b) => new Date(b.assigned_at || 0) - new Date(a.assigned_at || 0));
+
+      if (!flatOrders.length) {
+        body.innerHTML = `<tr><td colspan="8">${showClosed ? 'No deliveries assigned to this driver.' : 'No open deliveries assigned to this driver right now.'}</td></tr>`;
+        return;
+      }
+
+      body.innerHTML = flatOrders.map(order => {
+        const canClose = !order.order_closed_at
+          && order.order_status === 'delivered'
+          && (Number(order.amount_to_collect || 0) <= 0 || order.reconciliation_status === 'balanced');
+        let actionHtml;
+        if (order.order_closed_at) {
+          actionHtml = `<div class="td-sub">Closed ${new Date(order.order_closed_at).toLocaleString('en-TT')}</div>`;
+        } else if (canClose) {
+          actionHtml = `<button class="btn btn-primary btn-sm" onclick="closeManifestOrder('${order.id}')">Close Delivery</button>`;
+        } else {
+          const why = order.order_status !== 'delivered'
+            ? 'Not yet delivered'
+            : 'Awaiting reconciliation';
+          actionHtml = `<span class="td-sub" title="${escapeHtml(why)}">${escapeHtml(why)}</span>`;
+        }
+        return `<tr>
+          <td class="td-id">${escapeHtml(order.order_number)}</td>
+          <td><div class="td-name">${escapeHtml(order.customer_name || '')}</div><div class="td-sub">${escapeHtml(formatPhoneDisplay(order.customer_phone))}</div></td>
+          <td>${escapeHtml(orderLabelAddress(order))}</td>
+          <td><div class="td-sub">${order.assigned_at ? new Date(order.assigned_at).toLocaleString('en-TT') : '—'}</div></td>
+          <td><div class="td-sub">${escapeHtml(String(order.order_status || '').replaceAll('_', ' '))}</div></td>
+          <td>${moneyFull(order.amount_to_collect)}</td>
+          <td>${Number(order.amount_to_collect || 0) > 0 ? escapeHtml(order.reconciliation_status || 'unreconciled') : '—'}</td>
+          <td>${actionHtml}</td>
+        </tr>`;
+      }).join('');
+    };
+
+    window.closeManifestOrder = async function(orderId) {
+      try {
+        const { error } = await supabase.rpc('admin_close_manifest_order', { p_order_id: orderId });
+        if (error) throw error;
+        showToast('Delivery closed.');
+        await loadData();
+      } catch (error) {
+        window.vdNotify('Could Not Close Delivery', error.message || 'Could not close this delivery.', 'error');
+      }
+    };
+
     window.renderManifests = function() {
       const list = document.getElementById('manifestList');
       if (!list) return;
@@ -7464,6 +7584,7 @@
       const filter = document.getElementById('manifestStatusFilter')?.value || 'active';
       const search = String(document.getElementById('manifestSearch')?.value || '').trim().toLowerCase();
       renderDriverBatchStats(selectedDriverId);
+      renderDriverFlatDeliveries(selectedDriverId);
       if (!selectedDriverId) {
         manifestVisibleIds = [];
         manifestSelection.clear();
@@ -7691,6 +7812,13 @@
       redeliveries: { title: 'Redeliveries', subtitle: 'Parcels scheduled to go back out for another delivery attempt.' },
       returns_to_client: { title: 'Returns to Client', subtitle: 'Parcels being sent back to the business client rather than redelivered.' },
       cancelled_closed: { title: 'Cancelled / Closed', subtitle: 'Cancelled or rejected orders, including any that still owe a parcel back to the hub.' },
+      // These two catch a specific gap: a driver returns a parcel to the hub
+      // but never updates its status in the field, so it never surfaces in
+      // Needs Review (which only looks at parcel/return fields, not plain
+      // order_status). Checking here lets admin manually correct the status
+      // once the parcel is physically back, instead of it sitting invisible.
+      assigned: { title: 'Assigned', subtitle: "Orders still sitting at \"Assigned\" — check these against what's actually back at the hub and correct the status if a driver forgot to update it." },
+      out_for_delivery: { title: 'Out for Delivery', subtitle: "Orders still marked \"Out for Delivery\" — check these against what's actually back at the hub and correct the status if a driver forgot to update it." },
     };
 
     window.setReturnExceptionsTab = function(tab) {
@@ -7710,6 +7838,12 @@
     function orderMatchesReturnTab(order, tab, subFilter) {
       if (tab === 'cancelled_closed') return isCancelledOrder(order);
       if (isCancelledOrder(order)) return false; // cancelled/rejected orders live only in their own tab
+      // Assigned / Out for Delivery: plain order_status check, independent of
+      // the return/parcel fields the other tabs key off -- this is exactly
+      // for catching orders a driver never updated after handing the parcel
+      // back, so they wouldn't show up any other way.
+      if (tab === 'assigned') return order.order_status === 'assigned';
+      if (tab === 'out_for_delivery') return order.order_status === 'out_for_delivery';
       if (tab === 'redeliveries') return returnRecordMatches(order, 'scheduled');
       if (tab === 'returns_to_client') return returnRecordMatches(order, 'client_return');
       // needs_review: anything still pending a decision or driver return,
@@ -7860,6 +7994,25 @@
       if (awaitingLabel) awaitingLabel.textContent = driverId ? `Awaiting return from ${driverName(driverId)}: ${awaitingCount}` : `Awaiting return (all drivers): ${awaitingCount}`;
 
       body.innerHTML = rows.map(order => {
+        // Assigned / Out for Delivery: a plain status check, not a return
+        // record, so none of the return-specific columns below apply --
+        // show driver + how long it's been sitting there, with a direct way
+        // to correct the status if the parcel actually came back already.
+        if (returnMgmtTab === 'assigned' || returnMgmtTab === 'out_for_delivery') {
+          const sinceLabel = returnMgmtTab === 'assigned' ? 'Assigned' : 'Out for delivery';
+          const sinceAt = order.last_delivery_attempt_at || order.updated_at;
+          return `<tr>
+            <td></td>
+            <td><div class="td-id">${escapeHtml(order.order_number)}</div><div class="td-sub">Attempt ${escapeHtml(String(order.delivery_attempt_count || 1))}</div></td>
+            <td><div class="td-name">${escapeHtml(clientName(order))}</div><div class="td-sub">${escapeHtml(order.customer_name || '')} · ${escapeHtml(formatPhoneDisplay(order.customer_phone))}</div></td>
+            <td>${escapeHtml(order.area_name || '—')}</td>
+            <td><span class="badge badge-active">${escapeHtml(sinceLabel)}</span><div class="td-sub">Driver: ${escapeHtml(order.assigned_driver_id ? driverName(order.assigned_driver_id) : 'Unassigned')}</div></td>
+            <td><div class="td-name">${escapeHtml(String(order.parcel_status || '').replaceAll('_', ' '))}</div><div class="td-sub">Expected from driver: ${moneyFull(driverCollects(order))}</div></td>
+            <td><div class="td-sub">—</div></td>
+            <td><div class="td-sub">${sinceLabel} since: ${sinceAt ? new Date(sinceAt).toLocaleString('en-TT') : '—'}</div></td>
+            <td><button class="btn btn-primary btn-sm" onclick="openAdminOrderStatusChange('${order.id}')">Correct Status</button></td>
+          </tr>`;
+        }
         const payer = order.redelivery_fee_payer === 'client' ? 'Business client' : order.redelivery_fee_payer === 'customer' ? 'Customer' : 'Not selected';
         const schedule = order.redelivery_status === 'scheduled' && order.scheduled_delivery_date
           ? `Redelivery: ${new Date(order.scheduled_delivery_date + 'T12:00:00').toLocaleDateString('en-TT')}`
