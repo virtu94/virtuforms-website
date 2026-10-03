@@ -1182,9 +1182,15 @@
             <label style="font-size:0.78rem; font-weight:500; color:var(--grey); display:flex; align-items:center; gap:0.35rem;"><input type="checkbox" id="driverFlatDeliveriesShowClosed" onchange="renderDriverFlatDeliveries(document.getElementById('manifestDriverFilter')?.value)"> Show closed deliveries</label>
           </div>
           <div class="td-sub" style="margin-bottom:0.75rem;">A simple list of this driver's assigned deliveries with when each was assigned. Close a delivery once it's been delivered and (if it had cash to collect) reconciled as balanced.</div>
+          <div class="bulk-toolbar" id="driverFlatDeliveriesBulkToolbar">
+            <label><input id="driverFlatDeliveriesSelectAll" type="checkbox" onchange="toggleDriverFlatDeliveriesVisibleBulk(this.checked)"> Select all</label>
+            <button class="btn btn-primary btn-sm" type="button" id="closeSelectedDriverFlatDeliveriesBtn" onclick="closeSelectedManifestOrders()" disabled>Close Selected</button>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="clearDriverFlatDeliveriesSelection()">Clear</button>
+            <span class="bulk-count" id="driverFlatDeliveriesBulkCount">0 selected</span>
+          </div>
           <div class="table-wrap"><table>
-            <thead><tr><th>Order</th><th>Customer</th><th>Address</th><th>Assigned</th><th>Status</th><th>Collect</th><th>Reconciliation</th><th>Action</th></tr></thead>
-            <tbody id="driverFlatDeliveriesBody"><tr><td colspan="8">Loading...</td></tr></tbody>
+            <thead><tr><th></th><th>Order</th><th>Customer</th><th>Address</th><th>Assigned</th><th>Status</th><th>Collect</th><th>Reconciliation</th><th>Action</th></tr></thead>
+            <tbody id="driverFlatDeliveriesBody"><tr><td colspan="9">Loading...</td></tr></tbody>
           </table></div>
         </div>
 
@@ -7513,10 +7519,18 @@
     // which manifest an order sits on — shows when each was assigned and lets
     // a single delivery be closed once it's delivered & reconciled, without
     // needing the whole manifest closed.
+    let driverFlatDeliveriesSelection = new Set();
+    let driverFlatDeliveriesDriverId = null;
+    let driverFlatDeliveriesCloseableIds = [];
+
     window.renderDriverFlatDeliveries = function(driverId) {
       const card = document.getElementById('driverFlatDeliveriesCard');
       const body = document.getElementById('driverFlatDeliveriesBody');
       if (!card || !body) return;
+      if (driverId !== driverFlatDeliveriesDriverId) {
+        driverFlatDeliveriesSelection.clear();
+        driverFlatDeliveriesDriverId = driverId;
+      }
       if (!driverId) {
         card.style.display = 'none';
         return;
@@ -7534,10 +7548,13 @@
       flatOrders.sort((a, b) => new Date(b.assigned_at || 0) - new Date(a.assigned_at || 0));
 
       if (!flatOrders.length) {
-        body.innerHTML = `<tr><td colspan="8">${showClosed ? 'No deliveries assigned to this driver.' : 'No open deliveries assigned to this driver right now.'}</td></tr>`;
+        body.innerHTML = `<tr><td colspan="9">${showClosed ? 'No deliveries assigned to this driver.' : 'No open deliveries assigned to this driver right now.'}</td></tr>`;
+        driverFlatDeliveriesCloseableIds = [];
+        syncDriverFlatDeliveriesBulkControls();
         return;
       }
 
+      driverFlatDeliveriesCloseableIds = [];
       body.innerHTML = flatOrders.map(order => {
         const canClose = !order.order_closed_at
           && order.order_status === 'delivered'
@@ -7553,7 +7570,18 @@
             : 'Awaiting reconciliation';
           actionHtml = `<span class="td-sub" title="${escapeHtml(why)}">${escapeHtml(why)}</span>`;
         }
+        // Selectable for bulk-close whenever it's still open -- not only the
+        // ones already eligible to close right now. "Close Selected" tries
+        // each one and reports back on any that aren't actually ready
+        // (not delivered yet, or still unreconciled), rather than hiding the
+        // checkbox and leaving admins wondering where it went.
+        const isSelectable = !order.order_closed_at;
+        if (isSelectable) driverFlatDeliveriesCloseableIds.push(order.id);
+        const checkboxHtml = isSelectable
+          ? `<label class="bulk-order-check"><input class="driver-flat-delivery-bulk-check" type="checkbox" value="${order.id}" ${driverFlatDeliveriesSelection.has(order.id) ? 'checked' : ''} onchange="toggleDriverFlatDeliveryBulk('${order.id}', this.checked)"></label>`
+          : '';
         return `<tr>
+          <td>${checkboxHtml}</td>
           <td class="td-id">${escapeHtml(order.order_number)}</td>
           <td><div class="td-name">${escapeHtml(order.customer_name || '')}</div><div class="td-sub">${escapeHtml(formatPhoneDisplay(order.customer_phone))}</div></td>
           <td>${escapeHtml(orderLabelAddress(order))}</td>
@@ -7564,6 +7592,48 @@
           <td>${actionHtml}</td>
         </tr>`;
       }).join('');
+
+      // Drop any selected id that's no longer visible/closeable (e.g. it got
+      // closed from elsewhere, or "show closed" was toggled off).
+      const closeableSet = new Set(driverFlatDeliveriesCloseableIds);
+      Array.from(driverFlatDeliveriesSelection).forEach(id => {
+        if (!closeableSet.has(id)) driverFlatDeliveriesSelection.delete(id);
+      });
+      syncDriverFlatDeliveriesBulkControls();
+    };
+
+    function syncDriverFlatDeliveriesBulkControls() {
+      const selectAll = document.getElementById('driverFlatDeliveriesSelectAll');
+      const closeBtn = document.getElementById('closeSelectedDriverFlatDeliveriesBtn');
+      const count = document.getElementById('driverFlatDeliveriesBulkCount');
+      if (count) count.textContent = `${driverFlatDeliveriesSelection.size} selected`;
+      if (closeBtn) closeBtn.disabled = driverFlatDeliveriesSelection.size === 0;
+      if (selectAll) {
+        selectAll.checked = driverFlatDeliveriesCloseableIds.length > 0
+          && driverFlatDeliveriesCloseableIds.every(id => driverFlatDeliveriesSelection.has(id));
+        selectAll.disabled = driverFlatDeliveriesCloseableIds.length === 0;
+      }
+    }
+
+    window.toggleDriverFlatDeliveryBulk = function(orderId, checked) {
+      if (checked) driverFlatDeliveriesSelection.add(orderId);
+      else driverFlatDeliveriesSelection.delete(orderId);
+      syncDriverFlatDeliveriesBulkControls();
+    };
+
+    window.toggleDriverFlatDeliveriesVisibleBulk = function(checked) {
+      if (checked) driverFlatDeliveriesCloseableIds.forEach(id => driverFlatDeliveriesSelection.add(id));
+      else driverFlatDeliveriesCloseableIds.forEach(id => driverFlatDeliveriesSelection.delete(id));
+      document.querySelectorAll('.driver-flat-delivery-bulk-check').forEach(input => {
+        input.checked = driverFlatDeliveriesSelection.has(input.value);
+      });
+      syncDriverFlatDeliveriesBulkControls();
+    };
+
+    window.clearDriverFlatDeliveriesSelection = function() {
+      driverFlatDeliveriesSelection.clear();
+      document.querySelectorAll('.driver-flat-delivery-bulk-check').forEach(input => { input.checked = false; });
+      syncDriverFlatDeliveriesBulkControls();
     };
 
     window.closeManifestOrder = async function(orderId) {
@@ -7575,6 +7645,36 @@
       } catch (error) {
         window.vdNotify('Could Not Close Delivery', error.message || 'Could not close this delivery.', 'error');
       }
+    };
+
+    window.closeSelectedManifestOrders = async function() {
+      const ids = Array.from(driverFlatDeliveriesSelection);
+      if (!ids.length) return showToast('No deliveries selected.');
+      const closeBtn = document.getElementById('closeSelectedDriverFlatDeliveriesBtn');
+      if (closeBtn) closeBtn.disabled = true;
+      let closedCount = 0;
+      const failures = [];
+      for (const orderId of ids) {
+        try {
+          const { error } = await supabase.rpc('admin_close_manifest_order', { p_order_id: orderId });
+          if (error) throw error;
+          closedCount += 1;
+        } catch (error) {
+          failures.push({ orderId, message: error.message || 'Could not close this delivery.' });
+        }
+      }
+      driverFlatDeliveriesSelection.clear();
+      if (failures.length) {
+        const order = orders.find(o => o.id === failures[0].orderId);
+        window.vdNotify(
+          'Some Deliveries Not Closed',
+          `${closedCount} closed. ${failures.length} could not be closed${order ? ` (e.g. ${order.order_number}: ${failures[0].message})` : ''}.`,
+          'error'
+        );
+      } else {
+        showToast(`${closedCount} delivery(ies) closed.`);
+      }
+      await loadData();
     };
 
     window.renderManifests = function() {
