@@ -2254,6 +2254,12 @@
     let driverFinanceRecords = [];
     let editingAccountingTransactionId = null;
     let deliveryManifests = [];
+    // Light-refresh bookkeeping (see softRefresh)
+    let ordersSyncAt = null;
+    let lastFullLoadAt = 0;
+    let softRefreshBusy = null;
+    let softRefreshQueued = false;
+    const sideListsDirty = new Set();
     let allOrdersBulkSelection = new Set();
     let allOrdersVisibleIds = [];
     let parcelCheckinSelection = new Set();
@@ -2331,6 +2337,7 @@
       document.querySelector(`[data-panel="${id}"]`)?.classList.add('active');
       document.getElementById('pageTitle').textContent = pageTitles[id] || id;
       closeSidebar();
+      if (typeof refreshDirtyForPanel === 'function') refreshDirtyForPanel(id);
 
       // The driver tab's iframe loads its own full battery of database calls
       // (deliveries, pickups, manifests, finance...). Loading it eagerly on
@@ -3764,7 +3771,7 @@
         downloadBlob(new Blob([outBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), fileName);
 
         showToast(`Exported ${activeOrders.length} ${activeOrders.length === 1 ? 'delivery' : 'deliveries'} and marked Out for Delivery.`);
-        await loadData();
+        await softRefresh();
         renderDriversMgmt();
       } catch (err) {
         showToast('Export failed: ' + (err?.message || err));
@@ -3893,7 +3900,7 @@
         const resultEl = document.getElementById(`driverSheetPushResult_${driverId}`);
         if (resultEl) resultEl.innerHTML = `<div class="td-sub">Pushed ${activeOrders.length} ${activeOrders.length === 1 ? 'delivery' : 'deliveries'} to the Google Sheet just now.</div>`;
         showToast(`Pushed ${activeOrders.length} ${activeOrders.length === 1 ? 'delivery' : 'deliveries'} to the driver's Google Sheet.`);
-        await loadData();
+        await softRefresh();
         renderDriversMgmt();
       } catch (err) {
         showToast('Push failed: ' + (err?.message || err));
@@ -3969,7 +3976,7 @@
         if (error) throw error;
 
         showToast('Sheet imported.');
-        await loadData();
+        await softRefresh();
         expandedDriverSheetId = driverId;
         renderDriversMgmt();
         renderDriverSheetImportResults(document.getElementById(`driverSheetResults_${driverId}`), { ...data, cash_collected: cashCollected });
@@ -4148,7 +4155,7 @@
         const { error } = await supabase.rpc('admin_verify_order_location', { p_order_id: orderId });
         if (error) throw error;
         showToast('Location marked as verified.');
-        await loadData();
+        await softRefresh();
       } catch (error) {
         window.vdNotify('Could Not Verify Location', error.message || 'This order has no mapped location to verify.', 'error');
       }
@@ -4200,7 +4207,7 @@
           return false;
         }
         showToast(`Location resolved (${data.confidence === 'high' ? 'high confidence' : 'needs review'}).`);
-        await loadData();
+        await softRefresh();
         return true;
       } catch (error) {
         if (resultEl) {
@@ -4240,7 +4247,7 @@
         }
       }
       showToast(`Locations resolved: ${high} high-confidence, ${medium} need review, ${unresolved} still unresolved.`);
-      await loadData();
+      await softRefresh();
     }
 
     window.retrySelectedZoneLocations = function() {
@@ -5953,7 +5960,7 @@
         if (failed.length) window.vdNotify('Some Parcels Not Received', `${updated} updated. ${failed.slice(0, 3).join(' | ')}${failed.length > 3 ? ' ...' : ''}`, 'warning');
         else showToast(`${updated} parcel(s) marked received.`);
         clearParcelCheckinSelection();
-        await loadData();
+        await softRefresh();
       });
     };
 
@@ -6022,7 +6029,7 @@
         if (failed.length) window.vdNotify('Some Zones Not Confirmed', `${updated} confirmed. ${failed.slice(0, 3).join(' | ')}${failed.length > 3 ? ' ...' : ''}`, 'warning');
         else showToast(`${updated} zone(s) confirmed.`);
         clearZoneConfirmSelection();
-        await loadData();
+        await softRefresh();
       });
     };
 
@@ -6066,7 +6073,7 @@
         if (failed.length) window.vdNotify('Some Parcels Not Sorted', `${updated} sorted. ${failed.slice(0, 3).join(' | ')}${failed.length > 3 ? ' ...' : ''}`, 'warning');
         else showToast(`${updated} parcel(s) marked sorted.`);
         clearSortingSelection();
-        await loadData();
+        await softRefresh();
       });
     };
 
@@ -6132,7 +6139,7 @@
         if (failed.length) window.vdNotify('Some Manifests Not Updated', `${updated} updated. ${failed.slice(0, 3).join(' | ')}${failed.length > 3 ? ' ...' : ''}`, 'warning');
         else showToast(`${updated} manifest(s) updated.`);
         clearManifestSelection();
-        await loadData();
+        await softRefresh();
       });
     };
 
@@ -6207,7 +6214,7 @@
         return;
       }
       showToast('Parcel marked as received.');
-      await loadData();
+      await softRefresh();
     }
 
     window.openParcelReceivedWhatsApp = async function(orderId) {
@@ -6372,7 +6379,7 @@
         const skipped = data?.skipped_count ?? 0;
         showToast(`Bulk action complete. Updated ${updated}${skipped ? `, skipped ${skipped}` : ''}.`);
         clearAllOrdersBulkSelection();
-        await loadData();
+        await softRefresh();
       } catch (error) {
         window.vdNotify('Bulk Action Failed', error.message || 'Could not complete this bulk action.', 'error');
       }
@@ -6777,7 +6784,7 @@
         });
         if (error) throw error;
         showToast(`Order ${data?.order_number || ''} created.`);
-        await loadData();
+        await softRefresh();
       } catch (error) {
         window.vdNotify('Order Not Created', error.message || 'Could not create this order.', 'error');
       }
@@ -6978,7 +6985,7 @@
           if (zoneError) throw zoneError;
         }
         showToast('Order updated.');
-        await loadData();
+        await softRefresh();
       } catch (error) {
         window.vdNotify('Order Not Updated', error.message || 'Could not update this order.', 'error');
       }
@@ -7088,7 +7095,7 @@
         });
         if (error) throw error;
         showToast('Order status updated.');
-        await loadData();
+        await softRefresh();
       } catch (error) {
         window.vdNotify('Status Not Changed', error.message || 'Could not update this order status.', 'error');
       }
@@ -7209,7 +7216,7 @@
       }
       if (typeof bulkStatusAfter === 'function') bulkStatusAfter();
       bulkStatusIds = [];
-      await loadData();
+      await softRefresh();
       return true;
     }
 
@@ -7462,10 +7469,10 @@
           const { error } = await supabase.rpc('admin_mark_all_manifest_orders_collected', { p_manifest_id: manifestId });
           if (error) throw error;
           showToast('All parcels checked off as handed over.');
-          await loadData();
+          await softRefresh();
         } catch (error) {
           window.vdNotify('Not Updated', error.message || 'Could not check off these parcels.', 'error');
-          await loadData();
+          await softRefresh();
         }
       });
     };
@@ -7494,7 +7501,7 @@
         } else {
           showToast(`${changed.length} parcel(s) saved.`);
         }
-        await loadData();
+        await softRefresh();
       });
     };
 
@@ -7567,7 +7574,7 @@
         const { error } = await supabase.rpc('admin_mark_order_sorted', { p_order_id: orderId });
         if (error) throw error;
         showToast(`${order.order_number} marked sorted.`);
-        await loadData();
+        await softRefresh();
       } catch (error) {
         window.vdNotify('Parcel Not Sorted', error.message || 'Could not update this parcel.', 'error');
       }
@@ -7790,7 +7797,7 @@
         const { error } = await supabase.rpc('admin_close_manifest_order', { p_order_id: orderId });
         if (error) throw error;
         showToast('Delivery closed.');
-        await loadData();
+        await softRefresh();
       } catch (error) {
         window.vdNotify('Could Not Close Delivery', error.message || 'Could not close this delivery.', 'error');
       }
@@ -7823,7 +7830,7 @@
       } else {
         showToast(`${closedCount} delivery(ies) closed.`);
       }
-      await loadData();
+      await softRefresh();
     };
 
     window.renderManifests = function() {
@@ -7908,7 +7915,7 @@
           const { error } = await supabase.rpc('admin_set_manifest_status', { p_manifest_id: manifestId, p_status: status });
           if (error) throw error;
           showToast(`${manifest.manifest_number} updated.`);
-          await loadData();
+          await softRefresh();
         } catch (error) {
           window.vdNotify('Manifest Not Updated', error.message || 'Could not update this manifest.', 'error');
         }
@@ -7935,7 +7942,7 @@
             });
             if (error) throw error;
             showToast(`${manifest.manifest_number} closed.`);
-            await loadData();
+            await softRefresh();
           } catch (error) {
             window.vdNotify('Manifest Not Closed', error.message || 'Could not close this manifest.', 'error');
           }
@@ -7948,7 +7955,7 @@
         const { error } = await supabase.rpc('admin_remove_order_from_manifest', { p_manifest_id: manifestId, p_order_id: orderId });
         if (error) throw error;
         showToast('Parcel removed from the draft manifest.');
-        await loadData();
+        await softRefresh();
       } catch (error) {
         window.vdNotify('Parcel Not Removed', error.message || 'Could not remove this parcel.', 'error');
       }
@@ -8314,7 +8321,7 @@
           }
           showToast(`${data.order_count} parcel(s) confirmed as batch ${data.batch_number || ''}.`);
           clearReturnSelection();
-          await loadData();
+          await softRefresh();
           await loadReturnBatches();
         } catch (error) {
           const detail = [error.message, error.details, error.hint].filter(Boolean).join(' | ');
@@ -8405,7 +8412,7 @@
             throw new Error('The server did not confirm this update. Nothing was changed -- please try again or check the console.');
           }
           showToast(`${order.order_number} received back at the hub.`);
-          await loadData();
+          await softRefresh();
         } catch (error) {
           const detail = [error.message, error.details, error.hint].filter(Boolean).join(' | ');
           window.vdNotify('Hub Return Not Confirmed', detail || 'Could not confirm this parcel return.', 'error');
@@ -8429,7 +8436,7 @@
           });
           if (error) throw error;
           showToast(`${order.order_number} scheduled for redelivery.`);
-          await loadData();
+          await softRefresh();
         } catch (error) {
           window.vdNotify('Redelivery Not Scheduled', error.message || 'Could not schedule redelivery.', 'error');
         }
@@ -8454,7 +8461,7 @@
           const { error } = await supabase.rpc('admin_hold_returned_order', { p_order_id: orderId, p_extra_stock: extraStock, p_notes: null });
           if (error) throw error;
           showToast(`${order.order_number} placed on hold.`);
-          await loadData();
+          await softRefresh();
         } catch (error) {
           window.vdNotify('Parcel Not Held', error.message || 'Could not update this parcel.', 'error');
         }
@@ -8490,7 +8497,7 @@
           });
           if (error) throw error;
           showToast(order.order_number + ' prepared for return to the client.');
-          await loadData();
+          await softRefresh();
         } catch (error) {
           window.vdNotify('Client Return Not Prepared', error.message || 'Could not prepare this return.', 'error');
         }
@@ -8511,7 +8518,7 @@
           const { error } = await supabase.rpc('admin_complete_order_return_to_client', { p_order_id: orderId });
           if (error) throw error;
           showToast(`${order.order_number} returned to the client.`);
-          await loadData();
+          await softRefresh();
         } catch (error) {
           window.vdNotify('Client Return Not Completed', error.message || 'Could not complete this return.', 'error');
         }
@@ -8548,7 +8555,7 @@
             if (succeeded) showToast(`${succeeded} parcel(s) placed on hold.`);
             if (failed.length) window.vdNotify('Some Parcels Not Held', failed.slice(0, 5).join(' | ') + (failed.length > 5 ? ' | More errors omitted.' : ''), 'error');
             returnDecisionSelection.clear();
-            await loadData();
+            await softRefresh();
           }
         );
         return;
@@ -8580,7 +8587,7 @@
         if (succeeded) showToast(`${succeeded} parcel(s) scheduled for redelivery.`);
         if (failed.length) window.vdNotify('Some Parcels Not Scheduled', failed.slice(0, 5).join(' | ') + (failed.length > 5 ? ' | More errors omitted.' : ''), 'error');
         returnDecisionSelection.clear();
-        await loadData();
+        await softRefresh();
       });
       document.getElementById('modalBody').innerHTML = `<div class="payment-modal-form" style="text-align:left;">
         <p style="margin:0 0 0.5rem; color:var(--grey);">Applies the same date, fee, payer and notes to all ${selectedOrders.length} selected parcels.</p>
@@ -8613,7 +8620,7 @@
         if (succeeded) showToast(`${succeeded} parcel(s) prepared for return to the client.`);
         if (failed.length) window.vdNotify('Some Parcels Not Prepared', failed.slice(0, 5).join(' | ') + (failed.length > 5 ? ' | More errors omitted.' : ''), 'error');
         returnDecisionSelection.clear();
-        await loadData();
+        await softRefresh();
       });
       document.getElementById('modalBody').innerHTML = `<div class="payment-modal-form" style="text-align:left;">
         <p style="margin:0 0 0.5rem; color:var(--grey);">Applies the same return method and notes to all ${selectedOrders.length} selected parcels.</p>
@@ -8641,7 +8648,7 @@
         if (succeeded) showToast(`${succeeded} parcel(s) confirmed returned to client.`);
         if (failed.length) window.vdNotify('Some Parcels Not Confirmed', failed.slice(0, 5).join(' | ') + (failed.length > 5 ? ' | More errors omitted.' : ''), 'error');
         returnDecisionSelection.clear();
-        await loadData();
+        await softRefresh();
       });
     }
 
@@ -8783,7 +8790,7 @@
           showToast(`${assigned} selected item(s) updated.`);
         }
         clearDriverAssignSelection();
-        await loadData();
+        await softRefresh();
         showPanel('driver-assign');
     }
 
@@ -8804,7 +8811,7 @@
             await clearDriverAssignment(selectedOrders.map(order => order.id));
             showToast(`${selectedOrders.length} selected order(s) are now unassigned.`);
             clearDriverAssignSelection();
-            await loadData();
+            await softRefresh();
             showPanel('driver-assign');
           } catch (error) {
             window.vdNotify('Drivers Not Removed', error.message || 'Could not remove the selected driver assignments.', 'error');
@@ -8998,7 +9005,7 @@
           });
           if (error) throw error;
           showToast(`${order.order_number} pickup assigned to ${driverLabel}.`);
-          await loadData();
+          await softRefresh();
         } catch (error) {
           console.error('Pickup assignment error:', error);
           window.vdNotify('Pickup Assignment Failed', error.message || 'Could not assign this pickup.', 'error');
@@ -9018,7 +9025,7 @@
           const { error } = await supabase.rpc('admin_cancel_order_pickup', { p_order_id: orderId, p_reason: reason });
           if (error) throw error;
           showToast(`${order.order_number} pickup cancelled.`);
-          await loadData();
+          await softRefresh();
         } catch (error) {
           console.error('Pickup cancellation error:', error);
           window.vdNotify('Pickup Cancellation Failed', error.message || 'Could not cancel this pickup.', 'error');
@@ -9132,6 +9139,9 @@
       syncManagedAccountControls();
       zones = zoneRows;
       orders = orderRows;
+      ordersSyncAt = snapshot.server_time || null;
+      lastFullLoadAt = Date.now();
+      sideListsDirty.clear();
       allProfiles = profileRows;
       // Note: this intentionally is NOT filtered to role === 'driver'. A profile whose
       // primary role is admin or business can also hold an active drivers row (used for
@@ -9166,6 +9176,138 @@
       updateBadgesAndStats();
       loadAdminNotificationBadge();
     }
+
+    // ── Light refresh ─────────────────────────────────────────────────
+    // loadData() re-downloads every order plus six large lists. After an
+    // action, softRefresh() only fetches the orders that changed since the
+    // last sync (plus the small manifests list) and redraws from memory. The
+    // finance lists are marked "dirty" and reloaded when their tab is opened.
+    // A full loadData() still runs on page load and every 15 minutes, and any
+    // error here falls back to it.
+    const FULL_RELOAD_AFTER_MS = 15 * 60 * 1000;
+    const FINANCE_PANELS = new Set(['accounts', 'cod-mgmt', 'remittance', 'drivers-mgmt', 'managed-accounts']);
+
+    function activePanelId() {
+      const el = document.querySelector('.panel.active');
+      return el && el.id ? el.id.replace(/^panel-/, '') : '';
+    }
+
+    async function refreshSideLists(names) {
+      const calls = {
+        remittance: () => supabase.rpc('admin_list_remittance_batches'),
+        cod: () => supabase.rpc('admin_list_cod_reconciliations'),
+        accounting: () => supabase.rpc('admin_list_accounting_transactions'),
+        driverFinance: () => supabase.rpc('admin_list_driver_finance')
+      };
+      const list = [...names].filter(name => calls[name]);
+      const results = await Promise.all(list.map(name => calls[name]()));
+      list.forEach((name, index) => {
+        const res = results[index];
+        if (res.error) {
+          console.warn(`${name} list could not refresh:`, res.error);
+          return;
+        }
+        if (name === 'remittance') remittanceRecords = res.data || [];
+        if (name === 'cod') driverCashRecords = res.data || [];
+        if (name === 'accounting') accountingTransactions = Array.isArray(res.data) ? res.data : [];
+        if (name === 'driverFinance') driverFinanceRecords = Array.isArray(res.data) ? res.data : [];
+        sideListsDirty.delete(name);
+      });
+    }
+
+    function renderFinanceViews() {
+      renderAccounting();
+      renderDriverCashRemittance();
+      renderAccounts();
+      renderDriversMgmt();
+    }
+
+    async function refreshDirtyForPanel(id) {
+      try {
+        if (FINANCE_PANELS.has(id)) {
+          const names = ['remittance', 'cod', 'accounting', 'driverFinance'].filter(name => sideListsDirty.has(name));
+          if (names.length) {
+            await refreshSideLists(names);
+            renderFinanceViews();
+          }
+        }
+        if (id === 'sorting-manifests' && sideListsDirty.delete('cash')) loadAllDriversCashSummary();
+        if (id === 'returns-redelivery' && sideListsDirty.delete('returns')) loadReturnBatches();
+      } catch (error) {
+        console.warn('Panel refresh failed:', error);
+      }
+    }
+
+    async function softRefreshOnce() {
+      if (!ordersSyncAt || Date.now() - lastFullLoadAt > FULL_RELOAD_AFTER_MS) {
+        await loadData();
+        return;
+      }
+      try {
+        // 30s overlap so an order saved by a slow transaction is never missed
+        const since = new Date(new Date(ordersSyncAt).getTime() - 30000).toISOString();
+        const [changedRes, manifestsRes] = await Promise.all([
+          supabase.rpc('admin_orders_changed_since', { p_since: since }),
+          supabase.rpc('admin_list_delivery_manifests')
+        ]);
+        if (changedRes.error) throw changedRes.error;
+        const changed = Array.isArray(changedRes.data?.orders) ? changedRes.data.orders : [];
+        const indexById = new Map(orders.map((order, index) => [order.id, index]));
+        changed.forEach(row => {
+          const index = indexById.get(row.id);
+          if (index === undefined) orders.push(row);
+          else orders[index] = row;
+        });
+        if (changed.length) {
+          orders.sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+        }
+        ordersSyncAt = changedRes.data?.server_time || ordersSyncAt;
+
+        if (manifestsRes.error) console.warn('Delivery manifests could not refresh:', manifestsRes.error);
+        else deliveryManifests = Array.isArray(manifestsRes.data) ? manifestsRes.data : [];
+
+        ['remittance', 'cod', 'accounting', 'driverFinance', 'cash', 'returns'].forEach(name => sideListsDirty.add(name));
+
+        populateAllOrdersFilterOptions();
+        renderAllOrders();
+        renderDriversMgmt();
+        renderParcelCheckin();
+        renderPickupManagement();
+        renderSortingQueue();
+        renderManifests();
+        renderReturnManagement();
+        renderZoneConfirm();
+        renderDriverAssign();
+        renderAccounting();
+        renderDriverCashRemittance();
+        renderAccounts();
+        updateBadgesAndStats();
+
+        await refreshDirtyForPanel(activePanelId());
+      } catch (error) {
+        console.warn('Light refresh failed, doing a full reload:', error);
+        await loadData();
+      }
+    }
+
+    async function softRefresh() {
+      if (softRefreshBusy) {
+        softRefreshQueued = true;
+        return softRefreshBusy;
+      }
+      softRefreshBusy = (async () => {
+        try {
+          do {
+            softRefreshQueued = false;
+            await softRefreshOnce();
+          } while (softRefreshQueued);
+        } finally {
+          softRefreshBusy = null;
+        }
+      })();
+      return softRefreshBusy;
+    }
+    window.softRefresh = softRefresh;
 
     async function saveZoneConfirmation(orderId, zoneId, fee, driverPay, overrideReason, isOverride) {
       const rpcResult = await supabase.rpc('admin_confirm_order_zone', {
@@ -9260,7 +9402,7 @@
         try {
           await saveZoneConfirmation(orderId, zoneId, fee, driverPay, overrideReason, isOverride || isRemoteQuote);
           showToast(`✅ ${order.order_number} zone confirmed.`);
-          await loadData();
+          await softRefresh();
         } catch (error) {
           console.error('Zone confirmation error:', error);
           window.vdNotify('Zone Confirmation Failed', error.message || 'Zone confirmation failed. Check the console for details.', 'error');
@@ -9302,7 +9444,7 @@
           try {
             await clearDriverAssignment(orderId);
             showToast(`${order.order_number} is now unassigned.`);
-            await loadData();
+            await softRefresh();
             showPanel('driver-assign');
           } catch (error) {
             window.vdNotify('Driver Not Removed', error.message || 'Could not remove this driver assignment.', 'error');
@@ -9344,7 +9486,7 @@
             });
             if (error) throw error;
             showToast(`${order.order_number} changed to ${driverLabel} on ${data?.manifest_number || 'a delivery manifest'}.`);
-            await loadData();
+            await softRefresh();
             showPanel('driver-assign');
           } catch (error) {
             window.vdNotify('Driver Change Failed', error.message || 'Could not change the assigned driver.', 'error');
@@ -9359,7 +9501,7 @@
         try {
           const assignment = await saveDriverAssignment(orderId, driverId, routeDate);
           showToast(`${order.order_number} assigned to ${driverLabel} on ${assignment?.manifest_number || 'a delivery manifest'}.`);
-          await loadData();
+          await softRefresh();
           showPanel('driver-assign');
         } catch (error) {
           console.error('Driver assignment error:', error);
@@ -9691,7 +9833,7 @@
           const el = document.getElementById(id);
           if (el) el.value = '';
         });
-        await loadData();
+        await softRefresh();
       } catch (error) {
         window.vdNotify('Order Not Added', error.message || 'Could not add this order.', 'error');
       }
@@ -9850,7 +9992,7 @@
         if (summary.total) {
           showToast(`Locations resolved: ${summary.high} high-confidence, ${summary.medium} need review, ${summary.unresolved} location required.`);
         }
-        await loadData();
+        await softRefresh();
         if (result.imported_count > 0) showPanel('zone-confirm');
       } catch (error) {
         window.vdNotify('Orders Not Imported', error.message || 'Could not import these orders.', 'error');
