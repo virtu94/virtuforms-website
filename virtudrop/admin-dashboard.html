@@ -1039,6 +1039,7 @@
           <select class="filter-select" id="allOrdersBulkAction">
             <option value="">Choose bulk action</option>
             <option value="cancel">Cancel selected</option>
+            <option value="set_status">Set status (No Response, Refused, Rescheduled, Delivered, Cancelled...)</option>
             <option value="mark_delivered">Mark selected as delivered</option>
             <option value="reset_active">Reset selected to Active / In Progress</option>
             <option value="clear_driver">Remove selected from driver</option>
@@ -1276,6 +1277,21 @@
           <button class="btn btn-primary btn-sm" type="button" onclick="applyReturnDecisionBulkAction()">Apply to Selected</button>
           <button class="btn btn-ghost btn-sm" type="button" onclick="clearReturnDecisionSelection()">Clear</button>
           <span class="bulk-count" id="returnDecisionBulkCount">0 selected</span>
+        </div>
+        <div class="bulk-toolbar" id="exStatusBulkToolbar" style="display:none;">
+          <label><input id="exStatusSelectAll" type="checkbox" onchange="toggleExStatusVisibleBulk(this.checked)"> Select all visible</label>
+          <select class="filter-select" id="exStatusBulkAction">
+            <option value="">Change status to...</option>
+            <option value="delivered">Delivered</option>
+            <option value="no_response">Failed - No Response</option>
+            <option value="refused">Failed - Refused</option>
+            <option value="rescheduled">Rescheduled</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="active">Reset to Active</option>
+          </select>
+          <button class="btn btn-primary btn-sm" type="button" onclick="runExStatusBulk()">Apply to Selected</button>
+          <button class="btn btn-ghost btn-sm" type="button" onclick="clearExStatusSelection()">Clear</button>
+          <span class="bulk-count" id="exStatusBulkCount">0 selected</span>
         </div>
         <div class="card">
           <div class="table-wrap"><table>
@@ -6296,6 +6312,11 @@
         return;
       }
 
+      if (action === 'set_status') {
+        openBulkStatusModal(selectedIds, '', () => clearAllOrdersBulkSelection());
+        return;
+      }
+
       const payload = {};
       if (action === 'cancel') {
         const reason = window.prompt(`Reason for cancelling ${selectedIds.length} order(s)`);
@@ -7062,6 +7083,125 @@
       } catch (error) {
         window.vdNotify('Status Not Changed', error.message || 'Could not update this order status.', 'error');
       }
+    }
+
+    // ── Bulk status change (All Orders + Delivery Exceptions) ───────────
+    // Reuses admin_set_order_status one order at a time so every order gets
+    // exactly the same server-side handling as the single Change Status
+    // modal (attempt history, return flags, payment status, cancellation
+    // cleanup). Failures are collected and reported without stopping the rest.
+    let bulkStatusIds = [];
+    let bulkStatusAfter = null;
+    let exStatusSelection = new Set();
+    let exStatusVisibleIds = [];
+
+    function syncExStatusControls() {
+      updateBulkCount('exStatusBulkCount', 'exStatusSelectAll', exStatusSelection, exStatusVisibleIds);
+      syncBulkCheckboxes('.ex-status-check', exStatusSelection);
+    }
+    window.toggleExStatusBulk = function(orderId, checked) {
+      if (checked) exStatusSelection.add(orderId); else exStatusSelection.delete(orderId);
+      syncExStatusControls();
+    };
+    window.toggleExStatusVisibleBulk = function(checked) {
+      exStatusVisibleIds.forEach(id => checked ? exStatusSelection.add(id) : exStatusSelection.delete(id));
+      syncExStatusControls();
+    };
+    window.clearExStatusSelection = function() {
+      exStatusSelection.clear();
+      syncExStatusControls();
+    };
+    window.runExStatusBulk = function() {
+      const status = document.getElementById('exStatusBulkAction')?.value || '';
+      const ids = selectedVisibleIds(exStatusSelection, exStatusVisibleIds);
+      if (!status) return showToast('Choose the status to apply.');
+      if (!ids.length) return showToast('Select at least one order.');
+      openBulkStatusModal(ids, status, () => clearExStatusSelection());
+    };
+
+    window.openBulkStatusModal = function(orderIds, presetStatus, afterFn) {
+      bulkStatusIds = orderIds.slice();
+      bulkStatusAfter = afterFn || null;
+      document.getElementById('modalTitle').textContent = `Change Status - ${orderIds.length} order(s)`;
+      document.getElementById('modalBody').innerHTML = `
+        <div class="payment-modal-form" style="text-align:left;">
+          <p style="margin:0 0 0.7rem; color:var(--grey);">This applies to all <strong>${orderIds.length}</strong> selected order(s), one by one. Any that can't be changed are listed afterwards.</p>
+          <label>New Status<select id="bulkStatusNew" onchange="syncBulkStatusFields()">${ADMIN_STATUS_OPTIONS.map(([value, label]) => `<option value="${value}" ${value === presetStatus ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('')}</select></label>
+          <div id="bulkStatusFieldsWrap"></div>
+        </div>`;
+      document.getElementById('modalConfirm').textContent = 'Apply Status';
+      document.getElementById('modalCancel').style.display = '';
+      document.getElementById('modal').classList.add('show');
+      syncBulkStatusFields();
+      modalCb = async () => runBulkStatusChange();
+    };
+
+    window.syncBulkStatusFields = function() {
+      const status = document.getElementById('bulkStatusNew')?.value || '';
+      const wrap = document.getElementById('bulkStatusFieldsWrap');
+      if (!wrap) return;
+      if (status === 'delivered') {
+        wrap.innerHTML = `
+          <label>Collection Method (orders with cash to collect)<select id="bulkStatusMethod">
+            <option value="cash">Cash</option>
+            <option value="linx">LINX</option>
+            <option value="none">No Collection</option>
+          </select></label>
+          <p class="td-sub" style="margin:0.4rem 0;">Each order is recorded with its own expected amount. "No Collection" will be rejected for any order that has money to collect.</p>
+          <label>Notes (optional)<textarea id="bulkStatusNotes"></textarea></label>`;
+      } else if (status === 'rescheduled') {
+        wrap.innerHTML = `
+          <label>Redelivery Date<input id="bulkStatusDate" type="date" min="${new Date().toISOString().slice(0, 10)}"></label>
+          <label>Notes (optional)<textarea id="bulkStatusNotes"></textarea></label>`;
+      } else if (status === 'cancelled') {
+        wrap.innerHTML = `<label>Cancellation Reason<textarea id="bulkStatusNotes" placeholder="Why these orders are being cancelled"></textarea></label>`;
+      } else if (status) {
+        wrap.innerHTML = `<label>Notes (optional)<textarea id="bulkStatusNotes"></textarea></label>`;
+      } else {
+        wrap.innerHTML = '';
+      }
+    };
+
+    async function runBulkStatusChange() {
+      const status = document.getElementById('bulkStatusNew')?.value || '';
+      if (!status) { window.vdNotify('Status Not Changed', 'Select a new status.', 'warning'); return false; }
+      const notes = document.getElementById('bulkStatusNotes')?.value?.trim() || '';
+      const date = document.getElementById('bulkStatusDate')?.value || null;
+      const method = document.getElementById('bulkStatusMethod')?.value || null;
+      if (status === 'cancelled' && notes.length < 3) { window.vdNotify('Status Not Changed', 'Enter a cancellation reason.', 'warning'); return false; }
+      if (status === 'rescheduled' && !date) { window.vdNotify('Status Not Changed', 'Enter the redelivery date.', 'warning'); return false; }
+      const label = ADMIN_STATUS_OPTIONS.find(([v]) => v === status)?.[1] || status;
+      if (!window.confirm(`Set ${bulkStatusIds.length} order(s) to "${label}"?`)) return false;
+      const confirmBtn = document.getElementById('modalConfirm');
+      if (confirmBtn) confirmBtn.disabled = true;
+      let ok = 0;
+      const failures = [];
+      for (const orderId of bulkStatusIds) {
+        const order = orders.find(o => o.id === orderId);
+        try {
+          const { error } = await supabase.rpc('admin_set_order_status', {
+            p_order_id: orderId,
+            p_new_status: status,
+            p_notes: notes || null,
+            p_redelivery_date: status === 'rescheduled' ? date : null,
+            p_collection_method: status === 'delivered' ? method : null,
+            p_collected_amount: null
+          });
+          if (error) throw error;
+          ok += 1;
+        } catch (error) {
+          failures.push(`${order?.order_number || orderId}: ${error.message || 'failed'}`);
+        }
+      }
+      if (confirmBtn) confirmBtn.disabled = false;
+      showToast(`Status updated on ${ok} order(s)${failures.length ? `, ${failures.length} failed` : ''}.`);
+      if (failures.length) {
+        window.vdNotify('Some Orders Not Changed', failures.slice(0, 8).join(' | ') + (failures.length > 8 ? ` | +${failures.length - 8} more` : ''), 'warning');
+      }
+      if (typeof bulkStatusAfter === 'function') bulkStatusAfter();
+      bulkStatusIds = [];
+      await loadData();
+      return true;
     }
 
     function zoneOptions(selectedZoneId = '') {
@@ -8087,6 +8227,16 @@
       returnDecisionVisibleIds = rows.filter(order => orderAwaitingReturnDecision(order)).map(order => order.id);
       returnDecisionSelection = new Set([...returnDecisionSelection].filter(id => orders.some(o => o.id === id && orderAwaitingReturnDecision(o))));
 
+      const isStatusTab = returnMgmtTab === 'assigned' || returnMgmtTab === 'out_for_delivery';
+      exStatusVisibleIds = isStatusTab ? rows.map(order => order.id) : [];
+      exStatusSelection = new Set([...exStatusSelection].filter(id => exStatusVisibleIds.includes(id)));
+      const exToolbar = document.getElementById('exStatusBulkToolbar');
+      if (exToolbar) exToolbar.style.display = isStatusTab ? '' : 'none';
+      const returnToolbar = document.getElementById('returnBulkToolbar');
+      const decisionToolbar = document.getElementById('returnDecisionBulkToolbar');
+      if (returnToolbar) returnToolbar.style.display = isStatusTab ? 'none' : '';
+      if (decisionToolbar) decisionToolbar.style.display = isStatusTab ? 'none' : '';
+
       const awaitingCount = driverId
         ? orders.filter(order => order.assigned_driver_id === driverId && orderNeedsHubReturn(order)).length
         : orders.filter(order => orderNeedsHubReturn(order)).length;
@@ -8102,7 +8252,7 @@
           const sinceLabel = returnMgmtTab === 'assigned' ? 'Assigned' : 'Out for delivery';
           const sinceAt = order.last_delivery_attempt_at || order.updated_at;
           return `<tr>
-            <td></td>
+            <td><input class="ex-status-check" type="checkbox" value="${order.id}" ${exStatusSelection.has(order.id) ? 'checked' : ''} onchange="toggleExStatusBulk('${order.id}', this.checked)"></td>
             <td><div class="td-id">${escapeHtml(order.order_number)}</div><div class="td-sub">Attempt ${escapeHtml(String(order.delivery_attempt_count || 1))}</div></td>
             <td><div class="td-name">${escapeHtml(clientName(order))}</div><div class="td-sub">${escapeHtml(order.customer_name || '')} · ${escapeHtml(formatPhoneDisplay(order.customer_phone))}</div></td>
             <td>${escapeHtml(order.area_name || '—')}</td>
@@ -8139,6 +8289,7 @@
       }).join('') || '<tr><td colspan="9">No returned parcels match this view.</td></tr>';
       syncReturnBulkControls();
       syncReturnDecisionBulkControls();
+      syncExStatusControls();
     };
 
     window.runReturnBatchConfirm = function() {
