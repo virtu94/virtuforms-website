@@ -213,7 +213,8 @@
     .td-id { font-family: 'Courier New', monospace; font-size: 0.8rem; color: var(--teal-mid); font-weight: 700; white-space: nowrap; }
     .td-name { font-weight: 600; color: var(--black); }
     .td-sub  { font-size: 0.78rem; color: var(--grey); }
-    #panel-all-orders table { table-layout: fixed; min-width: 1120px; }
+    #panel-all-orders table { table-layout: fixed; min-width: 1250px; }
+    #panel-all-orders th:nth-child(8), #panel-all-orders td:nth-child(8) { width: 120px; }
     #panel-all-orders th:nth-child(1), #panel-all-orders td:nth-child(1) { width: 155px; }
     #panel-all-orders th:nth-child(2), #panel-all-orders td:nth-child(2) { width: 140px; }
     #panel-all-orders th:nth-child(3), #panel-all-orders td:nth-child(3) { width: 250px; }
@@ -1057,17 +1058,18 @@
             <table>
               <thead>
                 <tr>
-                  <th>Order ID</th>
-                  <th>Client</th>
-                  <th>Customer</th>
-                  <th>Zone</th>
-                  <th>COD</th>
-                  <th>Status</th>
-                  <th>Driver</th>
+                  <th class="sortable-th" onclick="setAllOrdersSort('order')">Order ID<span class="sort-arrow" data-sort-arrow="order"></span></th>
+                  <th class="sortable-th" onclick="setAllOrdersSort('client')">Client<span class="sort-arrow" data-sort-arrow="client"></span></th>
+                  <th class="sortable-th" onclick="setAllOrdersSort('customer')">Customer<span class="sort-arrow" data-sort-arrow="customer"></span></th>
+                  <th class="sortable-th" onclick="setAllOrdersSort('zone')">Zone<span class="sort-arrow" data-sort-arrow="zone"></span></th>
+                  <th class="sortable-th" onclick="setAllOrdersSort('cod')">COD<span class="sort-arrow" data-sort-arrow="cod"></span></th>
+                  <th class="sortable-th" onclick="setAllOrdersSort('status')">Status<span class="sort-arrow" data-sort-arrow="status"></span></th>
+                  <th class="sortable-th" onclick="setAllOrdersSort('driver')">Driver<span class="sort-arrow" data-sort-arrow="driver"></span></th>
+                  <th class="sortable-th" onclick="setAllOrdersSort('created')">Created<span class="sort-arrow" data-sort-arrow="created"></span></th>
                 </tr>
               </thead>
               <tbody>
-                <tr><td colspan="7">Loading orders...</td></tr>
+                <tr><td colspan="8">Loading orders...</td></tr>
               </tbody>
             </table>
           </div>
@@ -2284,6 +2286,7 @@
     let driverAssignVisibleIds = [];
     let driverAssignSort = { key: '', dir: 'asc' };
     let sortingQueueSort = { key: '', dir: 'asc' };
+    let allOrdersSort = { key: '', dir: 'asc' };
     let manifestOrderSort = { key: '', dir: 'asc' };
     let manifestColumnFilters = {};
     let manifestFilterFocusKey = null;
@@ -6474,8 +6477,9 @@
           order.rejection_reason
         ].some(value => String(value || '').toLowerCase().includes(search));
       });
-      allOrdersVisibleIds = visibleOrders.map(order => order.id);
-      tbody.innerHTML = visibleOrders.map(order => `
+      const sortedOrders = applyColumnSort(visibleOrders, allOrdersSort, allOrdersSortGetters());
+      allOrdersVisibleIds = sortedOrders.map(order => order.id);
+      tbody.innerHTML = sortedOrders.map(order => `
         <tr>
           <td class="td-id">
             <label class="bulk-order-check">
@@ -6506,11 +6510,42 @@
           </td>
           <td>${badgeForStatus(order)}<div class="td-sub" style="margin-top:0.3rem;">Parcel: ${escapeHtml(String(order.parcel_status || 'awaiting_parcel').replaceAll('_', ' '))}</div>${order.delivery_attempt_count ? `<div class="td-sub">Attempt ${order.delivery_attempt_count}${order.delivery_proof_confirmed_at ? ' · Handover confirmed' : ''}</div>` : ''}${order.delivery_recipient_name ? `<div class="td-sub">Recipient: ${escapeHtml(order.delivery_recipient_name)}</div>` : ''}${order.has_signature ? `<button class="btn btn-ghost btn-sm" type="button" onclick="viewDeliverySignature('${order.id}')">View Signature</button>` : ''}${orderNeedsHubReturn(order) ? '<div class="td-sub" style="color:var(--red); font-weight:700;">Awaiting hub return</div>' : order.delivery_returned_hub_at ? '<div class="td-sub" style="color:var(--green); font-weight:700;">Returned to hub</div>' : ''}</td>
           <td>${order.assigned_driver_id ? escapeHtml(driverName(order.assigned_driver_id)) : '—'}</td>
+          <td>${allOrdersCreatedHtml(order)}</td>
         </tr>
-      `).join('') || '<tr><td colspan="7">No orders found.</td></tr>';
+      `).join('') || '<tr><td colspan="8">No orders found.</td></tr>';
+      updateSortArrows('#panel-all-orders thead', allOrdersSort);
       updateAllOrdersBulkControls();
     }
     window.renderAllOrders = renderAllOrders;
+
+    function allOrdersSortGetters() { return {
+      order: order => String(order.order_number || ''),
+      client: order => String(clientName(order) || ''),
+      customer: order => String(order.customer_name || ''),
+      zone: order => String(orderDeliveryZoneCode(order) || ''),
+      cod: order => Number(order.package_value || order.cod_amount || 0),
+      status: order => String(order.order_status || ''),
+      driver: order => order.assigned_driver_id ? String(driverName(order.assigned_driver_id) || '') : 'Unassigned',
+      created: order => order.created_at ? new Date(order.created_at).getTime() : 0,
+    }; }
+
+    function allOrdersCreatedHtml(order) {
+      if (!order.created_at) return '—';
+      const d = new Date(order.created_at);
+      if (Number.isNaN(d.getTime())) return '—';
+      const opts = { timeZone: 'America/Port_of_Spain' };
+      const date = d.toLocaleDateString('en-TT', { ...opts, day: 'numeric', month: 'short', year: 'numeric' });
+      const time = d.toLocaleTimeString('en-TT', { ...opts, hour: 'numeric', minute: '2-digit' });
+      return `<div class="td-name">${escapeHtml(date)}</div><div class="td-sub">${escapeHtml(time)}</div>`;
+    }
+
+    // Click a column heading to sort; click again to reverse; a third click clears it.
+    window.setAllOrdersSort = function(key) {
+      if (allOrdersSort.key !== key) allOrdersSort = { key, dir: 'asc' };
+      else if (allOrdersSort.dir === 'asc') allOrdersSort = { key, dir: 'desc' };
+      else allOrdersSort = { key: '', dir: 'asc' };
+      renderAllOrders();
+    };
 
     function bindAllOrderFilters() {
       [
@@ -7981,7 +8016,13 @@
     // back in. This recomputes the same thing from the outcome/status
     // fields so a stale flag can't hide a parcel that's still out there.
     function orderNeedsHubReturn(order) {
-      if (['returned_to_hub', 'returned_to_client'].includes(order.parcel_status)) return false;
+      // 'held_for_client_instructions' and 'redelivery_scheduled' are only ever
+      // set AFTER the parcel was received at the hub (hold / return-to-client /
+      // schedule-redelivery all require it), so these parcels are never still
+      // with the driver -- even though their old failed/no-response status is
+      // still on the order. Without this, a parcel prepared for return to the
+      // client looked "out with the driver" again and looped back to hub receipt.
+      if (['returned_to_hub', 'returned_to_client', 'held_for_client_instructions', 'redelivery_scheduled'].includes(order.parcel_status)) return false;
       if (order.parcel_status === 'delivered' || order.order_status === 'delivered') return false;
       if (order.delivery_return_required) return true;
       if (['no_response', 'refused', 'reschedule_requested'].includes(order.delivery_outcome)) return true;
@@ -9048,7 +9089,7 @@
     };
 
     function clearStaticAdminData() {
-      document.querySelector('#panel-all-orders tbody').innerHTML = '<tr><td colspan="7">Loading orders...</td></tr>';
+      document.querySelector('#panel-all-orders tbody').innerHTML = '<tr><td colspan="8">Loading orders...</td></tr>';
       document.querySelector('#panel-driver-assign tbody').innerHTML = '<tr><td colspan="11">Loading driver assignments...</td></tr>';
       document.getElementById('parcelCheckinBody').innerHTML = '<tr><td colspan="7">Loading parcel records...</td></tr>';
       document.getElementById('pickupManagementBody').innerHTML = '<tr><td colspan="7">Loading pickup requests...</td></tr>';
