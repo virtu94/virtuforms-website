@@ -1499,6 +1499,10 @@
             <div class="finance-field"><label for="managedAddTotal">Total ($, or Exchange / Refund)</label><input class="filter-input" id="managedAddTotal" type="text"></div>
             <div class="finance-field"><label for="managedAddNotes">Notes for Driver (optional)</label><input class="filter-input" id="managedAddNotes" type="text" placeholder="e.g. call before arriving, leave with security"></div>
           </div>
+          <div class="finance-field" style="margin-top:0.75rem; max-width:28rem;">
+            <label for="managedAddTargetBatch">Add to</label>
+            <select class="filter-select" id="managedAddTargetBatch"><option value="">New batch</option></select>
+          </div>
           <div class="finance-actions" style="margin-top:0.75rem;">
             <button class="btn btn-primary" type="button" onclick="submitManagedManualOrder()">Add Order</button>
           </div>
@@ -1509,6 +1513,11 @@
           <div class="csv-drop">
             <input class="filter-input" type="file" id="managedImportFile" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/octet-stream">
             <div class="csv-help">Upload either format — which one is read is decided automatically from the file's extension. <strong>CSV (our own template):</strong> required columns name, contact, item, area, business, external_order_number, total; address and notes are optional. Address is combined with area for the delivery location. Notes goes straight onto the order as the driver's delivery note (e.g. "call before arriving", "leave with security", "fragile"). external_order_number is Middleman's own order number (not VirtuDrop's) and is required for remittance. Enter "Exchange" in the total column for a warranty/item exchange with no item price attached, or "Refund" when Middleman supplies cash for the driver to hand the customer while collecting the item back — either way VirtuDrop's flat fee is deducted from that business's remittance instead of being charged to the customer. <strong>Vendor spreadsheet (.xlsx, exactly as Middleman sends it):</strong> Order #, Name, Contact, Item, Area, Location, Total and Comment are read straight from their header row wherever it sits in the sheet; Delivery Date is ignored, and "$"/commas in Total are stripped automatically. A phone number found in Comment is pulled out as a separate backup number — the rest of that text is discarded. Business must match one of this managed account's businesses (e.g. "C&amp;H Electronics" or "Scents") — for a vendor spreadsheet it's guessed per row from the item (fragrance/cologne/perfume → Scents, else C&amp;H Electronics); either way, use the Business column below to fix any row before importing. Order number and price are filled in automatically.</div>
+            <div class="finance-field" style="margin:0.75rem 0; max-width:28rem;">
+              <label for="managedImportTargetBatch">Import into</label>
+              <select class="filter-select" id="managedImportTargetBatch"><option value="">New batch</option></select>
+              <div class="csv-help" style="margin-top:0.35rem;">Pick an existing batch to add missed orders to it. Orders whose Middleman order number is already in that batch are skipped automatically, so you can re-upload the full sheet safely.</div>
+            </div>
             <div class="finance-actions">
               <button class="btn btn-ghost" type="button" onclick="downloadManagedImportTemplate()">Download CSV Template</button>
               <button class="btn btn-primary" type="button" onclick="previewManagedImport()">Preview File</button>
@@ -9631,9 +9640,21 @@
       return issues;
     }
 
-    async function importManagedRows(rows) {
+    function managedImportSummaryText(result, noun) {
+      const added = Number(result?.imported_count || 0);
+      const skipped = Array.isArray(result?.skipped_duplicates) ? result.skipped_duplicates : [];
+      const base = result?.added_to_existing_batch
+        ? `${added} ${noun}${added === 1 ? '' : 's'} added to the existing batch`
+        : `${added} ${noun}${added === 1 ? '' : 's'} imported`;
+      return skipped.length
+        ? `${base}. ${skipped.length} already in the batch and skipped (${skipped.slice(0, 6).join(', ')}${skipped.length > 6 ? ', ...' : ''}).`
+        : `${base}.`;
+    }
+
+    async function importManagedRows(rows, targetBatchId) {
       const { data, error } = await supabase.rpc('admin_bulk_import_managed_orders', {
         p_managed_account_id: selectedManagedAccountId,
+        p_existing_batch_id: targetBatchId || null,
         p_rows: rows.map(row => ({
           name: row.name, contact: row.contact, item: row.item, area: row.area, address: row.address,
           business: row.business, external_order_number: row.externalOrderNumber,
@@ -9662,8 +9683,10 @@
       const issues = validateManagedRow(row);
       if (issues.length) return showToast(issues.join(', '));
       try {
-        const result = await importManagedRows([row]);
-        showToast(`${result.imported_count} order added.`);
+        const result = await importManagedRows([row], document.getElementById('managedAddTargetBatch')?.value || '');
+        showToast(managedImportSummaryText(result, 'order'));
+        const addTarget = document.getElementById('managedAddTargetBatch');
+        if (addTarget) addTarget.value = '';
         ['managedAddName', 'managedAddContact', 'managedAddItem', 'managedAddArea', 'managedAddAddress', 'managedAddExternalOrderNumber', 'managedAddTotal', 'managedAddNotes'].forEach(id => {
           const el = document.getElementById(id);
           if (el) el.value = '';
@@ -9805,8 +9828,10 @@
       const validRows = managedImportRows.filter(item => !item.issues.length).map(item => item.row);
       if (!validRows.length) return showToast('No valid order rows are ready to import.');
       try {
-        const result = await importManagedRows(validRows);
-        showToast(`${result.imported_count} orders imported. Resolving delivery locations…`);
+        const result = await importManagedRows(validRows, document.getElementById('managedImportTargetBatch')?.value || '');
+        showToast(managedImportSummaryText(result, 'order') + (result.imported_count ? ' Resolving delivery locations…' : ''));
+        const importTarget = document.getElementById('managedImportTargetBatch');
+        if (importTarget) importTarget.value = '';
         managedImportRows = [];
         document.getElementById('confirmManagedImportBtn').disabled = true;
         document.getElementById('managedImportFile').value = '';
@@ -9819,14 +9844,14 @@
         const previewBody = document.getElementById('managedImportPreviewBody');
         if (previewBody) {
           previewBody.innerHTML = summary.total
-            ? `<tr><td colspan="12">${result.imported_count} orders imported. Locations: ${summary.high} high-confidence, ${summary.medium} need review, ${summary.unresolved} location required. Unresolved and "needs review" orders can still be pinned manually from All Orders before zone confirmation.</td></tr>`
-            : `<tr><td colspan="12">${result.imported_count} orders imported.</td></tr>`;
+            ? `<tr><td colspan="12">${escapeHtml(managedImportSummaryText(result, 'order'))} Locations: ${summary.high} high-confidence, ${summary.medium} need review, ${summary.unresolved} location required. Unresolved and "needs review" orders can still be pinned manually from All Orders before zone confirmation.</td></tr>`
+            : `<tr><td colspan="12">${escapeHtml(managedImportSummaryText(result, 'order'))}</td></tr>`;
         }
         if (summary.total) {
           showToast(`Locations resolved: ${summary.high} high-confidence, ${summary.medium} need review, ${summary.unresolved} location required.`);
         }
         await loadData();
-        showPanel('zone-confirm');
+        if (result.imported_count > 0) showPanel('zone-confirm');
       } catch (error) {
         window.vdNotify('Orders Not Imported', error.message || 'Could not import these orders.', 'error');
       }
@@ -10108,9 +10133,22 @@
     // moving through parcel check-in / zone confirmation / driver
     // assignment) shows up right away, with a click-to-expand breakdown
     // of where its orders currently stand.
+    function renderManagedTargetBatchSelects() {
+      const batches = selectedManagedAccountId ? computeManagedBatches().filter(b => b.key !== 'unbatched') : [];
+      ['managedAddTargetBatch', 'managedImportTargetBatch'].forEach(id => {
+        const select = document.getElementById(id);
+        if (!select) return;
+        const current = select.value;
+        select.innerHTML = '<option value="">New batch</option>' +
+          batches.map(batch => `<option value="${escapeHtml(batch.key)}">Add to existing: ${escapeHtml(formatImportedAt(batch.importedAt))} — ${batch.orders.length} order${batch.orders.length === 1 ? '' : 's'}</option>`).join('');
+        if (current && batches.some(b => b.key === current)) select.value = current;
+      });
+    }
+
     function renderManagedBatchFilter() {
       const body = document.getElementById('managedBatchFilterBody');
       if (!body) return;
+      renderManagedTargetBatchSelects();
       if (!selectedManagedAccountId) {
         body.innerHTML = '<tr><td colspan="7">Select a managed account to see its import batches.</td></tr>';
         return;
