@@ -3859,7 +3859,7 @@
         if (btn) btn.textContent = 'Pushing…';
 
         const sheetId = driver.google_sheet_id;
-        const range = "'Current Deliveries'!A4:N";
+        const range = "'Current Deliveries'!A4:P";
         const CLEAR_ROWS = 600; // matches the Status dropdown's validated range
 
         // Clear old rows first so a shorter new batch doesn't leave stale
@@ -3886,14 +3886,16 @@
           order.order_number || '',
           batchLabel,
           nowStr,
-          ''
+          '',
+          '',
+          Number(order.driver_delivery_pay || 0)
         ]));
 
         const endRow = 3 + values.length;
         await sheetsApiFetch(
-          `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/'Current Deliveries'!A4:N${endRow}?valueInputOption=USER_ENTERED`,
+          `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/'Current Deliveries'!A4:P${endRow}?valueInputOption=USER_ENTERED`,
           accessToken,
-          { method: 'PUT', body: JSON.stringify({ range: `'Current Deliveries'!A4:N${endRow}`, values }) }
+          { method: 'PUT', body: JSON.stringify({ range: `'Current Deliveries'!A4:P${endRow}`, values }) }
         );
 
         const orderIds = activeOrders.map(o => o.id);
