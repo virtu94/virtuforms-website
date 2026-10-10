@@ -10136,7 +10136,14 @@
 
     function buildVendorRow(headerMap, rowArray) {
       const item = String(vendorCell(headerMap, rowArray, 'ITEM')).trim();
-      const rawTotal = String(vendorCell(headerMap, rowArray, 'TOTAL')).replace(/[^0-9.]/g, '').trim();
+      const rawTotalText = String(vendorCell(headerMap, rowArray, 'TOTAL'));
+      // Exchange / Refund rows carry words (sometimes in smart quotes, or with
+      // an amount like "Refund $499.00" / "DROP OFF/REFUND $171.00") -- detect
+      // the word BEFORE stripping to digits, otherwise they turn into "" or a
+      // bogus price.
+      const rawTotal = /refund/i.test(rawTotalText) ? 'Refund'
+        : /exchange/i.test(rawTotalText) ? 'Exchange'
+        : rawTotalText.replace(/[^0-9.]/g, '').trim();
       return buildManagedRow({
         name: vendorCell(headerMap, rowArray, 'NAME'),
         contact: vendorCell(headerMap, rowArray, 'CONTACT'),
