@@ -196,6 +196,22 @@
       scrollbar-width: thin;
       scrollbar-color: var(--teal-mid) var(--grey-light);
     }
+    /* A table's own sideways scrollbar sits under its last row, which on a
+       long list is far below the screen. While that is the case, a copy of the
+       bar floats at the bottom of the window (see initFloatingTableScroll) and
+       stays in sync with the table. */
+    #floatingHScroll {
+      display: none; position: fixed; bottom: 0; left: var(--sidebar-w); width: 0; height: 16px;
+      overflow-x: scroll; overflow-y: hidden; z-index: 90;
+      background: var(--white); border-top: 1px solid var(--grey-mid);
+      box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
+      scrollbar-width: thin; scrollbar-color: var(--teal-mid) var(--grey-light);
+    }
+    #floatingHScroll::-webkit-scrollbar { height: 12px; }
+    #floatingHScroll::-webkit-scrollbar-track { background: var(--grey-light); }
+    #floatingHScroll::-webkit-scrollbar-thumb { background: var(--teal-mid); border-radius: 6px; }
+    #floatingHScrollInner { height: 1px; }
+    .content { padding-bottom: 3rem; }
     .table-wrap::-webkit-scrollbar { height: 10px; }
     .table-wrap::-webkit-scrollbar-track { background: var(--grey-light); border-radius: 6px; }
     .table-wrap::-webkit-scrollbar-thumb { background: var(--teal-mid); border-radius: 6px; }
@@ -1032,7 +1048,7 @@
             <option value="__unassigned">Unassigned</option>
           </select>
           <input class="filter-input" id="orderDateFilter" type="date" onchange="renderAllOrders()" title="Filter by order date" />
-          <input class="filter-input" id="orderSearchInput" type="search" placeholder="Search order, customer, phone, item" oninput="renderAllOrders()" />
+          <input class="filter-input" id="orderSearchInput" type="search" placeholder="Search order, customer, phone, item" />
         </div>
 
         <div class="bulk-toolbar" id="allOrdersBulkToolbar">
@@ -1137,6 +1153,12 @@
         <div class="section-heading">
           <h2>Zone Confirmation</h2>
           <p>Review the customer location, choose the delivery zone, and set the delivery fee before assigning a driver.</p>
+        </div>
+
+        <div class="driver-zone-filter" id="zoneConfirmFilterTabs" aria-label="Filter zone confirmation by match result">
+          <button class="btn btn-ghost btn-sm" type="button" data-zone-filter="all" aria-pressed="true" onclick="setZoneConfirmFilter('all')">All <span data-zone-filter-count="all"></span></button>
+          <button class="btn btn-ghost btn-sm" type="button" data-zone-filter="matched" aria-pressed="false" onclick="setZoneConfirmFilter('matched')" title="One zone was found from the address. Still needs your confirmation.">Matched <span data-zone-filter-count="matched"></span></button>
+          <button class="btn btn-ghost btn-sm" type="button" data-zone-filter="review" aria-pressed="false" onclick="setZoneConfirmFilter('review')" title="No zone, or more than one zone, was found. Choose the zone yourself.">Needs Review <span data-zone-filter-count="review"></span></button>
         </div>
 
         <div class="bulk-toolbar" id="zoneConfirmBulkToolbar">
@@ -2264,6 +2286,9 @@
     const sideListsDirty = new Set();
     let allOrdersBulkSelection = new Set();
     let allOrdersVisibleIds = [];
+    const ALL_ORDERS_PAGE_SIZE = 100;
+    let allOrdersPageLimit = ALL_ORDERS_PAGE_SIZE;
+    let allOrdersFilterSignature = '';
     let parcelCheckinSelection = new Set();
     let parcelCheckinVisibleIds = [];
     let zoneConfirmSelection = new Set();
@@ -6480,8 +6505,17 @@
         ].some(value => String(value || '').toLowerCase().includes(search));
       });
       const sortedOrders = applyColumnSort(visibleOrders, allOrdersSort, allOrdersSortGetters());
-      allOrdersVisibleIds = sortedOrders.map(order => order.id);
-      tbody.innerHTML = sortedOrders.map(order => `
+      // Only draw one page of rows at a time (thousands of rows is what made
+      // searching slow). Changing any filter or the search text starts back at
+      // the first page; refreshes and re-sorts keep however many are showing.
+      const filterSignature = [statusFilter, clientFilter, zoneFilter, driverFilter, dateFilter, search].join('|');
+      if (filterSignature !== allOrdersFilterSignature) {
+        allOrdersFilterSignature = filterSignature;
+        allOrdersPageLimit = ALL_ORDERS_PAGE_SIZE;
+      }
+      const pageOrders = sortedOrders.slice(0, allOrdersPageLimit);
+      allOrdersVisibleIds = pageOrders.map(order => order.id);
+      tbody.innerHTML = pageOrders.map(order => `
         <tr>
           <td class="td-id">
             <label class="bulk-order-check">
@@ -6515,10 +6549,23 @@
           <td>${allOrdersCreatedHtml(order)}</td>
         </tr>
       `).join('') || '<tr><td colspan="8">No orders found.</td></tr>';
+      if (sortedOrders.length > pageOrders.length) {
+        tbody.insertAdjacentHTML('beforeend', `<tr><td colspan="8" style="text-align:center; white-space:normal;">Showing ${pageOrders.length} of ${sortedOrders.length} orders. <button class="btn btn-ghost btn-sm" type="button" onclick="showMoreAllOrders()">Show ${Math.min(ALL_ORDERS_PAGE_SIZE, sortedOrders.length - pageOrders.length)} more</button> <button class="btn btn-ghost btn-sm" type="button" onclick="showAllAllOrders()">Show all</button></td></tr>`);
+      }
       updateSortArrows('#panel-all-orders thead', allOrdersSort);
       updateAllOrdersBulkControls();
     }
     window.renderAllOrders = renderAllOrders;
+
+    window.showMoreAllOrders = function() {
+      allOrdersPageLimit += ALL_ORDERS_PAGE_SIZE;
+      renderAllOrders();
+    };
+
+    window.showAllAllOrders = function() {
+      allOrdersPageLimit = Number.MAX_SAFE_INTEGER;
+      renderAllOrders();
+    };
 
     function allOrdersSortGetters() { return {
       order: order => String(order.order_number || ''),
@@ -6549,19 +6596,17 @@
       renderAllOrders();
     };
 
+    // The dropdowns and date already re-render through their inline onchange
+    // handlers, so only the search box is wired here -- waiting a moment after
+    // the last keystroke so typing doesn't redraw the whole table every key.
     function bindAllOrderFilters() {
-      [
-        ['orderStatusFilter', 'change'],
-        ['orderClientFilter', 'change'],
-        ['orderZoneFilter', 'change'],
-        ['orderDriverFilter', 'change'],
-        ['orderDateFilter', 'change'],
-        ['orderSearchInput', 'input']
-      ].forEach(([id, eventName]) => {
-        const field = document.getElementById(id);
-        if (!field || field.dataset.filterBound === 'true') return;
-        field.dataset.filterBound = 'true';
-        field.addEventListener(eventName, renderAllOrders);
+      const field = document.getElementById('orderSearchInput');
+      if (!field || field.dataset.filterBound === 'true') return;
+      field.dataset.filterBound = 'true';
+      let searchTimer = null;
+      field.addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(renderAllOrders, 250);
       });
     }
 
@@ -7286,20 +7331,117 @@
         .find(entry => normalized.includes(entry.normalized) || entry.normalized.includes(normalized)) || null;
     }
 
-    function setSuggestedZone(card, suggestion, source = 'address text') {
+    // Zone suggestions never confirm anything. Each order lands in one of two
+    // groups: "matched" (the address points at exactly one zone -- the dropdown
+    // is pre-filled, but you still click Confirm) or "review" (no area found, or
+    // areas from more than one zone were found -- the dropdown stays blank so
+    // nothing can slip through as Central by accident).
+    let zoneConfirmFilter = 'all';
+    const zoneMatchCache = new Map();
+
+    // An area can be matched by its plain name or by a shorter form of its
+    // description ("Arima up to approximately Tumpuna Road" -> "Arima",
+    // "Palmiste (Chaguanas)" -> "Palmiste"), plus any saved aliases.
+    function zoneAreaNameVariants(areaName) {
+      const base = normalizeZoneText(areaName);
+      if (!base) return [];
+      if (/^(locations?|other|difficult|accessible)\b/.test(base)) return [base];
+      const variants = new Set([base]);
+      [' up to ', ' beyond '].forEach(marker => {
+        const index = base.indexOf(marker);
+        if (index > 3) variants.add(base.slice(0, index));
+      });
+      const withoutParens = normalizeZoneText(String(areaName || '').replace(/\([^)]*\)/g, ' '));
+      if (withoutParens.length >= 4) variants.add(withoutParens);
+      return [...variants];
+    }
+
+    // Every area named in the text (whole words only), not just the longest one.
+    function zoneCandidatesFromText(text) {
+      const normalized = normalizeZoneText(text);
+      if (!normalized) return [];
+      const padded = ` ${normalized} `;
+      const found = [];
+      zones.forEach(zone => (zone.zone_areas || []).forEach(area => {
+        if (zoneAreaNameVariants(area.area_name).some(variant => variant.length >= 3 && padded.includes(` ${variant} `))) {
+          found.push({ zone, area: area.area_name, street: '' });
+        }
+        // A saved alias that is a street ("Tumpuna Road" under Arima) is flagged
+        // so it can outrank a plain area name that also appears in the address.
+        (area.zone_area_aliases || []).forEach(alias => {
+          if (alias.active === false) return;
+          const aliasText = normalizeZoneText(alias.match_value || alias.alias_name);
+          if (aliasText.length < 3 || !padded.includes(` ${aliasText} `)) return;
+          found.push({ zone, area: area.area_name, street: ZONE_STREET_WORDS.test(aliasText) ? aliasText : '' });
+        });
+      }));
+      return found;
+    }
+
+    const ZONE_STREET_WORDS = /\b(road|street|avenue|ave|drive|trace|boulevard|highway|lane|junction)\b/;
+
+    function classifyZoneCandidates(candidates, source) {
+      // Street first: "Tumpuna Road, Arima, Port of Spain" is an Arima street
+      // even though Port of Spain is also named. Only when every street hit
+      // agrees on one zone; otherwise fall through to the general check.
+      const streetHits = candidates.filter(candidate => candidate.street);
+      const streetZoneIds = [...new Set(streetHits.map(candidate => candidate.zone.id))];
+      if (streetZoneIds.length === 1) {
+        const streets = [...new Set(streetHits.map(candidate => candidate.street))];
+        const others = [...new Set(candidates.filter(candidate => candidate.zone.id !== streetZoneIds[0]).map(candidate => candidate.area))];
+        return {
+          state: 'matched',
+          zoneId: streetZoneIds[0],
+          message: `Matched: ${streetHits[0].zone.name} from street "${streets.join(', ')}" (${source})${others.length ? ` - also mentions ${others.join(', ')}, ignored in favour of the street` : ''}`
+        };
+      }
+      const zoneIds = [...new Set(candidates.map(candidate => candidate.zone.id))];
+      if (zoneIds.length === 1) {
+        const areas = [...new Set(candidates.map(candidate => candidate.area))];
+        return { state: 'matched', zoneId: zoneIds[0], message: `Matched: ${candidates[0].zone.name} from ${areas.join(', ')} (${source})` };
+      }
+      if (zoneIds.length > 1) {
+        const list = [...new Set(candidates.map(candidate => `${candidate.area} (${candidate.zone.name})`))];
+        return { state: 'review', zoneId: '', message: `Needs review - more than one area found: ${list.join(' | ')}. Pick the right zone.` };
+      }
+      return { state: 'review', zoneId: '', message: 'Needs review - no area could be found in the address. Pick the zone yourself.' };
+    }
+
+    function applyZoneResultToCard(card, result) {
       const message = card.querySelector('.zone-suggestion');
       const select = card.querySelector('.zone-select');
       if (!message || !select) return;
+      card.dataset.matchState = result.state;
+      // Don't overwrite a zone the admin already picked by hand.
+      if (select.dataset.userSet !== '1') select.value = result.zoneId || '';
+      message.textContent = result.message;
+      message.style.color = result.state === 'matched' ? 'var(--teal-dark)' : '#b45309';
+    }
 
-      if (!suggestion) {
-        message.textContent = 'No automatic zone match found. Please review manually.';
-        message.style.color = 'var(--grey)';
-        return;
-      }
+    window.setZoneConfirmFilter = function(filter) {
+      zoneConfirmFilter = ['matched', 'review'].includes(filter) ? filter : 'all';
+      applyZoneConfirmFilter();
+    };
 
-      select.value = suggestion.zone.id;
-      message.textContent = `Suggested: ${suggestion.zone.name} from ${suggestion.area} (${source})`;
-      message.style.color = 'var(--teal-dark)';
+    function applyZoneConfirmFilter() {
+      const cards = [...document.querySelectorAll('#panel-zone-confirm .zone-card[data-order-id]')];
+      const counts = { all: cards.length, matched: 0, review: 0 };
+      cards.forEach(card => {
+        if (card.dataset.matchState === 'matched') counts.matched += 1;
+        else if (card.dataset.matchState === 'review') counts.review += 1;
+      });
+      cards.forEach(card => {
+        const state = card.dataset.matchState || 'pending';
+        card.style.display = zoneConfirmFilter === 'all' || state === zoneConfirmFilter ? '' : 'none';
+      });
+      zoneConfirmVisibleIds = cards.filter(card => card.style.display !== 'none').map(card => card.dataset.orderId);
+      document.querySelectorAll('#zoneConfirmFilterTabs [data-zone-filter]').forEach(button => {
+        button.setAttribute('aria-pressed', String(button.dataset.zoneFilter === zoneConfirmFilter));
+      });
+      document.querySelectorAll('#zoneConfirmFilterTabs [data-zone-filter-count]').forEach(span => {
+        span.textContent = `(${counts[span.dataset.zoneFilterCount]})`;
+      });
+      syncZoneConfirmBulkControls();
     }
 
     let googleMapsPromise = null;
@@ -7341,8 +7483,30 @@
             result.formatted_address,
             ...(result.address_components || []).flatMap(component => [component.long_name, component.short_name])
           ]);
-          resolve(matchZoneFromText(parts.join(' ')));
+          resolve(parts.join(' '));
         });
+      });
+    }
+
+    function zoneMatchSignature(order) {
+      return [order.area_name, order.delivery_address, order.street_name, order.latitude, order.longitude].join('|');
+    }
+
+    async function classifyZoneForOrder(order) {
+      const textCandidates = zoneCandidatesFromText([order.area_name, order.delivery_address, order.street_name].filter(Boolean).join(' '));
+      if (textCandidates.length) return classifyZoneCandidates(textCandidates, 'address text');
+      const geoText = await reverseGeocodeOrder(order);
+      if (geoText) return classifyZoneCandidates(zoneCandidatesFromText(geoText), 'Google Maps');
+      return classifyZoneCandidates([], '');
+    }
+
+    // Results are remembered per order (until its address/location changes) so
+    // a background refresh doesn't blank the dropdowns or re-ask Google.
+    function applyCachedZoneSuggestions() {
+      document.querySelectorAll('#panel-zone-confirm .zone-card[data-order-id]').forEach(card => {
+        const order = orders.find(item => item.id === card.dataset.orderId);
+        const cached = order && zoneMatchCache.get(order.id);
+        if (cached && cached.signature === zoneMatchSignature(order)) applyZoneResultToCard(card, cached);
       });
     }
 
@@ -7351,14 +7515,15 @@
       for (const card of cards) {
         const order = orders.find(item => item.id === card.dataset.orderId);
         if (!order) continue;
-        const textSuggestion = matchZoneFromText([order.area_name, order.delivery_address, order.street_name].filter(Boolean).join(' '));
-        if (textSuggestion) {
-          setSuggestedZone(card, textSuggestion, 'address text');
-          continue;
+        const signature = zoneMatchSignature(order);
+        let result = zoneMatchCache.get(order.id);
+        if (!result || result.signature !== signature) {
+          result = { ...(await classifyZoneForOrder(order)), signature };
+          zoneMatchCache.set(order.id, result);
         }
-        const geoSuggestion = await reverseGeocodeOrder(order);
-        setSuggestedZone(card, geoSuggestion, geoSuggestion ? 'Google Maps' : 'manual review');
+        if (card.isConnected) applyZoneResultToCard(card, result);
       }
+      applyZoneConfirmFilter();
     }
 
     function renderZoneConfirm() {
@@ -7379,7 +7544,7 @@
       zoneConfirmVisibleIds = pending.map(order => order.id);
       if (!pending.length) {
         panel.insertAdjacentHTML('beforeend', '<div class="card" data-live-empty="true"><p>No orders are waiting for zone confirmation.</p></div>');
-        syncZoneConfirmBulkControls();
+        applyZoneConfirmFilter();
         return;
       }
 
@@ -7440,7 +7605,7 @@
               </div>
             </div>
             <div class="zone-card-actions">
-              <select class="zone-select">${zoneOptions()}</select>
+              <select class="zone-select" onchange="this.dataset.userSet='1'"><option value="">— Select zone —</option>${zoneOptions()}</select>
               <input class="zone-select fee-input" type="number" min="0" step="0.01" value="${suggestedFee.toFixed(2)}" title="Final delivery fee" />
               <input class="zone-select driver-pay-input" type="number" min="0" step="0.01" value="${suggestedDriverPay.toFixed(2)}" placeholder="Driver pay" title="Amount the driver earns for this delivery" />
               <input class="zone-select override-reason-input" type="text" maxlength="180" placeholder="Override/quote reason" title="Required when changing the estimate or quoting a remote order" />
@@ -7452,8 +7617,9 @@
           </div>
         `);
       });
+      applyCachedZoneSuggestions();
+      applyZoneConfirmFilter();
       applyZoneSuggestions();
-      syncZoneConfirmBulkControls();
     }
 
     // Per-parcel handover checklist: lets the admin check off each item as
@@ -10770,6 +10936,80 @@
       document.getElementById('accountsGrid').innerHTML = `<div class="account-card"><div class="acc-info"><div class="acc-name">Dashboard data unavailable</div><div class="acc-meta">${message}</div></div></div>`;
       showToast(error.message || 'Could not load admin dashboard data.');
     });
+  </script>
+
+  <div id="floatingHScroll" aria-hidden="true"><div id="floatingHScrollInner"></div></div>
+  <script>
+    // Floating sideways scrollbar for wide tables. A table's own scrollbar sits
+    // under its last row, so on a long list it is off-screen. Whenever the
+    // table in view has sideways overflow and its bottom edge is below the
+    // window, this bar shows at the bottom of the window, lined up with the
+    // table and synced both ways. Plain script: it never touches the dashboard.
+    (function initFloatingTableScroll() {
+      const bar = document.getElementById('floatingHScroll');
+      const inner = document.getElementById('floatingHScrollInner');
+      if (!bar || !inner) return;
+      let target = null;
+      let syncing = false;
+      let queued = false;
+
+      function pickTarget() {
+        let best = null;
+        let bestVisible = 0;
+        document.querySelectorAll('.panel.active .table-wrap').forEach(wrap => {
+          if (wrap.scrollWidth <= wrap.clientWidth + 2) return;
+          const rect = wrap.getBoundingClientRect();
+          if (rect.width < 50 || rect.bottom <= innerHeight - 1) return; // its own bar is already on screen
+          const visible = Math.min(rect.bottom, innerHeight) - Math.max(rect.top, 60);
+          if (visible > 40 && visible > bestVisible) { best = wrap; bestVisible = visible; }
+        });
+        return best;
+      }
+
+      function update() {
+        queued = false;
+        target = pickTarget();
+        if (!target) { bar.style.display = 'none'; return; }
+        const rect = target.getBoundingClientRect();
+        bar.style.display = 'block';
+        bar.style.left = Math.max(rect.left, 0) + 'px';
+        bar.style.width = Math.min(rect.width, innerWidth - Math.max(rect.left, 0)) + 'px';
+        inner.style.width = target.scrollWidth + 'px';
+        if (Math.abs(bar.scrollLeft - target.scrollLeft) > 1) {
+          syncing = true;
+          bar.scrollLeft = target.scrollLeft;
+          syncing = false;
+        }
+      }
+
+      function schedule() {
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(update);
+      }
+
+      bar.addEventListener('scroll', () => {
+        if (syncing || !target) return;
+        syncing = true;
+        target.scrollLeft = bar.scrollLeft;
+        syncing = false;
+      });
+
+      // scroll events don't bubble, so listen in the capture phase to catch the
+      // table's own sideways scrolling as well as the page scrolling.
+      document.addEventListener('scroll', event => {
+        if (event.target === target && !syncing) {
+          syncing = true;
+          bar.scrollLeft = target.scrollLeft;
+          syncing = false;
+        }
+        schedule();
+      }, true);
+      window.addEventListener('resize', schedule);
+      document.addEventListener('click', () => setTimeout(schedule, 50));
+      setInterval(schedule, 500); // tables are redrawn as data loads and filters change
+      schedule();
+    })();
   </script>
 
 </body>
