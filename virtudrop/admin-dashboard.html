@@ -7398,13 +7398,217 @@
       const zoneIds = [...new Set(candidates.map(candidate => candidate.zone.id))];
       if (zoneIds.length === 1) {
         const areas = [...new Set(candidates.map(candidate => candidate.area))];
-        return { state: 'matched', zoneId: zoneIds[0], message: `Matched: ${candidates[0].zone.name} from ${areas.join(', ')} (${source})` };
+        return { state: 'matched', zoneId: zoneIds[0], zoneIds, message: `Matched: ${candidates[0].zone.name} from ${areas.join(', ')} (${source})` };
       }
       if (zoneIds.length > 1) {
         const list = [...new Set(candidates.map(candidate => `${candidate.area} (${candidate.zone.name})`))];
-        return { state: 'review', zoneId: '', message: `Needs review - more than one area found: ${list.join(' | ')}. Pick the right zone.` };
+        return { state: 'review', zoneId: '', zoneIds, message: `Needs review - more than one area found: ${list.join(' | ')}. Pick the right zone.` };
       }
-      return { state: 'review', zoneId: '', message: 'Needs review - no area could be found in the address. Pick the zone yourself.' };
+      return { state: 'review', zoneId: '', zoneIds: [], message: 'Needs review - no area could be found in the address. Pick the zone yourself.' };
+    }
+
+    // ── Map regions ──────────────────────────────────────────────────────
+    // The four regions drawn in the "Virtudrop" My Maps layer, as [lng, lat]
+    // rings, each tied to its delivery zone code. A pin inside one of them says
+    // which zone it is in, whatever the address text says. Regions are broad, so
+    // they decide the ZONE only -- never the area or the price band.
+    const ZONE_REGION_POLYGONS = [
+      { code: 'D', name: 'North/West', ring: [[-61.4365992, 10.6276939], [-61.3706913, 10.693992], [-61.3634781, 10.7163414], [-61.3555751, 10.7498203], [-61.3394389, 10.812214], [-61.4541141, 10.8203298], [-61.5777049, 10.7852345], [-61.6769251, 10.6847148], [-61.583198, 10.646927]] },
+      { code: 'C', name: 'East', ring: [[-61.3394389, 10.812214], [-61.3634781, 10.7163414], [-61.3706913, 10.693992], [-61.4365992, 10.6276939], [-61.4338526, 10.6057599], [-61.2355866, 10.5448961], [-61.0209422, 10.4781635], [-60.8925395, 10.7764548], [-60.9151988, 10.8749208]] },
+      { code: 'A', name: 'Central', ring: [[-61.4338526, 10.6057599], [-61.4892434, 10.5700249], [-61.5180825, 10.3796179], [-61.4830636, 10.365434], [-60.9564065, 10.358004], [-61.0209422, 10.4781635]] },
+      { code: 'B', name: 'South', ring: [[-61.5180825, 10.3796179], [-61.9562704, 10.0588145], [-61.9082052, 10.0290651], [-60.9153158, 10.0452924], [-60.9564065, 10.358004], [-61.4830636, 10.365434]] }
+    ];
+    // Closer than this to another region's edge, a map location alone is not
+    // trusted: the regions are hand-drawn and areas such as Claxton Bay straddle
+    // the line.
+    const ZONE_BORDER_WARN_METRES = 400;
+    // The point the geocoder returns for "Trinidad and Tobago" when a lookup
+    // fails. Orders saved with it have no real location.
+    const ZONE_JUNK_COORDINATES = ['10.6918,-61.2225'];
+
+    function pointInRing(lng, lat, ring) {
+      let inside = false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const [xi, yi] = ring[i];
+        const [xj, yj] = ring[j];
+        if ((yi > lat) !== (yj > lat) && lng < (xj - xi) * (lat - yi) / (yj - yi) + xi) inside = !inside;
+      }
+      return inside;
+    }
+
+    function metresToSegment(lng, lat, a, b) {
+      const kx = 111320 * Math.cos(lat * Math.PI / 180);
+      const ky = 110540;
+      const bx = (b[0] - a[0]) * kx;
+      const by = (b[1] - a[1]) * ky;
+      const px = (lng - a[0]) * kx;
+      const py = (lat - a[1]) * ky;
+      const len2 = bx * bx + by * by;
+      const t = len2 ? Math.max(0, Math.min(1, (px * bx + py * by) / len2)) : 0;
+      return Math.hypot(px - t * bx, py - t * by);
+    }
+
+    // Which region a point is in, and how far it is from the nearest OTHER
+    // region (so coast lines don't count as borders).
+    function zoneRegionForPoint(lat, lng) {
+      const region = ZONE_REGION_POLYGONS.find(item => pointInRing(lng, lat, item.ring));
+      if (!region) return null;
+      let borderMetres = Infinity;
+      ZONE_REGION_POLYGONS.forEach(other => {
+        if (other === region) return;
+        for (let i = 0; i < other.ring.length; i += 1) {
+          borderMetres = Math.min(borderMetres, metresToSegment(lng, lat, other.ring[i], other.ring[(i + 1) % other.ring.length]));
+        }
+      });
+      return { code: region.code, name: region.name, borderMetres };
+    }
+
+    function zoneCoordinateKey(order) {
+      const lat = Number(order.latitude);
+      const lng = Number(order.longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) return '';
+      return `${lat.toFixed(4)},${lng.toFixed(4)}`;
+    }
+
+    // A point shared by many orders with unrelated areas is a fallback value,
+    // not a real location. Recomputed only when the orders list changes.
+    let zoneJunkCache = { ref: null, keys: new Set() };
+    function zoneJunkCoordinateKeys() {
+      if (zoneJunkCache.ref === orders) return zoneJunkCache.keys;
+      const areasByKey = new Map();
+      orders.forEach(order => {
+        const key = zoneCoordinateKey(order);
+        if (!key) return;
+        if (!areasByKey.has(key)) areasByKey.set(key, { count: 0, areas: new Set() });
+        const entry = areasByKey.get(key);
+        entry.count += 1;
+        entry.areas.add(normalizeZoneText(order.area_name));
+      });
+      const keys = new Set(ZONE_JUNK_COORDINATES);
+      areasByKey.forEach((entry, key) => { if (entry.count >= 3 && entry.areas.size >= 3) keys.add(key); });
+      zoneJunkCache = { ref: orders, keys };
+      return keys;
+    }
+
+    function polygonZoneEvidence(order) {
+      const key = zoneCoordinateKey(order);
+      if (!key || zoneJunkCoordinateKeys().has(key)) return null;
+      const lat = Number(order.latitude);
+      const lng = Number(order.longitude);
+      const region = zoneRegionForPoint(lat, lng);
+      if (!region) return null;
+      const zone = zones.find(item => String(item.code || '').toUpperCase() === region.code);
+      if (!zone) return null;
+      return { zoneId: zone.id, zoneName: zone.name, regionName: region.name, borderMetres: region.borderMetres };
+    }
+
+    // ── Spelling tolerance ───────────────────────────────────────────────
+    function levenshteinWithin(a, b, max) {
+      if (Math.abs(a.length - b.length) > max) return max + 1;
+      let previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+      for (let i = 1; i <= a.length; i += 1) {
+        const current = [i];
+        let rowMin = i;
+        for (let j = 1; j <= b.length; j += 1) {
+          const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+          current[j] = Math.min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + cost);
+          rowMin = Math.min(rowMin, current[j]);
+        }
+        if (rowMin > max) return max + 1;
+        previous = current;
+      }
+      return previous[b.length];
+    }
+
+    // Misspelt area names ("Aruma" for "Arima", "Chaguaunas" for "Chaguanas").
+    // Only used when no area was found by exact name; compares every 1-3 word
+    // stretch of the address with each area name of the same length.
+    function zoneFuzzyCandidates(text) {
+      const tokens = normalizeZoneText(text).split(' ').filter(Boolean);
+      if (!tokens.length) return [];
+      const known = [];
+      zones.forEach(zone => (zone.zone_areas || []).forEach(area => {
+        const variants = zoneAreaNameVariants(area.area_name);
+        (area.zone_area_aliases || []).forEach(alias => {
+          if (alias.active === false) return;
+          const aliasText = normalizeZoneText(alias.match_value || alias.alias_name);
+          if (aliasText) variants.push(aliasText);
+        });
+        variants.forEach(variant => {
+          if (variant.length >= 5) known.push({ zone, area: area.area_name, variant, words: variant.split(' ').length });
+        });
+      }));
+      const found = [];
+      for (let size = 1; size <= 3; size += 1) {
+        for (let start = 0; start + size <= tokens.length; start += 1) {
+          const phrase = tokens.slice(start, start + size).join(' ');
+          if (phrase.length < 5) continue;
+          known.forEach(entry => {
+            if (entry.words !== size || entry.variant === phrase || entry.variant[0] !== phrase[0]) return;
+            const allowed = entry.variant.length <= 7 ? 1 : 2;
+            if (levenshteinWithin(phrase, entry.variant, allowed) <= allowed) {
+              found.push({ zone: entry.zone, area: entry.area, street: '', heard: phrase, read: entry.variant });
+            }
+          });
+        }
+      }
+      return found;
+    }
+
+    // ── Learning from your confirmations ─────────────────────────────────
+    // What you have confirmed before for the same area text. Only a last resort
+    // when the address and the map give nothing, and only when you were
+    // consistent (3+ confirmations, 80%+ the same zone).
+    let zoneHistoryCache = { ref: null, map: new Map() };
+    function zoneConfirmedHistory(areaText) {
+      if (zoneHistoryCache.ref !== orders) {
+        const map = new Map();
+        orders.forEach(order => {
+          if (order.zone_status !== 'confirmed') return;
+          const zoneId = order.confirmed_zone_id || order.zone_id;
+          const key = normalizeZoneText(order.area_name);
+          if (!zoneId || !key) return;
+          if (!map.has(key)) map.set(key, new Map());
+          map.get(key).set(zoneId, (map.get(key).get(zoneId) || 0) + 1);
+        });
+        zoneHistoryCache = { ref: orders, map };
+      }
+      const counts = zoneHistoryCache.map.get(normalizeZoneText(areaText));
+      if (!counts) return null;
+      const total = [...counts.values()].reduce((sum, value) => sum + value, 0);
+      const [zoneId, count] = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
+      if (total < 3 || count / total < 0.8) return null;
+      return { zoneId, count, total };
+    }
+
+    // ── Put the evidence together ────────────────────────────────────────
+    // Address text and map location each say a zone. When they agree, the order
+    // is "Matched"; when they disagree, or one is missing and the other is
+    // doubtful, it goes to "Needs review" with both reasons shown. Every order
+    // still needs your confirmation either way.
+    function combineZoneEvidence(text, polygon, history) {
+      const zoneName = id => zones.find(item => item.id === id)?.name || 'that zone';
+      const review = message => ({ state: 'review', zoneId: '', message });
+      const matched = (zoneId, message) => ({ state: 'matched', zoneId, message });
+
+      if (polygon) {
+        const mapNote = `map location is in ${polygon.regionName}`;
+        const nearBorder = polygon.borderMetres < ZONE_BORDER_WARN_METRES;
+        if (text.state === 'matched') {
+          if (text.zoneId === polygon.zoneId) return matched(text.zoneId, `${text.message} - the ${mapNote}, which agrees`);
+          return review(`Needs review - the address points to ${zoneName(text.zoneId)} but the ${mapNote} (${zoneName(polygon.zoneId)}). ${text.message.replace(/^Matched: /, 'Address: ')}`);
+        }
+        if (text.zoneIds && text.zoneIds.length > 1) {
+          if (text.zoneIds.includes(polygon.zoneId)) return matched(polygon.zoneId, `Matched: ${polygon.zoneName} - the ${mapNote}, which settles an address that names areas in more than one zone`);
+          return review(`Needs review - the address names areas in more than one zone and the ${mapNote} (${polygon.zoneName}), which is none of them. ${text.message}`);
+        }
+        if (nearBorder) return review(`Needs review - no area in the address, and the map location is only ${Math.round(polygon.borderMetres)} m from the line between zones (${polygon.zoneName} side). Check it.`);
+        return matched(polygon.zoneId, `Matched: ${polygon.zoneName} - from the map location (${polygon.regionName}); no area was found in the address`);
+      }
+
+      if (text.state === 'matched') return text;
+      if (history) return matched(history.zoneId, `Matched: ${zoneName(history.zoneId)} - you confirmed this area as ${zoneName(history.zoneId)} ${history.count} of ${history.total} times before`);
+      return text;
     }
 
     function applyZoneResultToCard(card, result) {
@@ -7489,15 +7693,37 @@
     }
 
     function zoneMatchSignature(order) {
-      return [order.area_name, order.delivery_address, order.street_name, order.latitude, order.longitude].join('|');
+      return ['v3-regions', order.area_name, order.delivery_address, order.street_name, order.latitude, order.longitude].join('|');
     }
 
     async function classifyZoneForOrder(order) {
-      const textCandidates = zoneCandidatesFromText([order.area_name, order.delivery_address, order.street_name].filter(Boolean).join(' '));
-      if (textCandidates.length) return classifyZoneCandidates(textCandidates, 'address text');
-      const geoText = await reverseGeocodeOrder(order);
-      if (geoText) return classifyZoneCandidates(zoneCandidatesFromText(geoText), 'Google Maps');
-      return classifyZoneCandidates([], '');
+      const addressText = [order.area_name, order.delivery_address, order.street_name].filter(Boolean).join(' ');
+      const polygon = polygonZoneEvidence(order);
+
+      // 1. What the address says: exact names first, then misspellings, then
+      //    (only if the order has a pin but no usable text) what Google says
+      //    about the pin.
+      let text;
+      const exact = zoneCandidatesFromText(addressText);
+      if (exact.length) {
+        text = classifyZoneCandidates(exact, 'address text');
+      } else {
+        const fuzzy = zoneFuzzyCandidates(addressText);
+        if (fuzzy.length) {
+          text = classifyZoneCandidates(fuzzy, 'address text');
+          const hints = [...new Set(fuzzy.map(item => `"${item.heard}" read as ${item.read.replace(/\b\w/g, letter => letter.toUpperCase())}`))];
+          text.message += ` - spelling corrected: ${hints.join(', ')}`;
+        } else {
+          const geoText = polygon ? '' : await reverseGeocodeOrder(order);
+          text = geoText
+            ? classifyZoneCandidates(zoneCandidatesFromText(geoText), 'Google Maps')
+            : classifyZoneCandidates([], '');
+        }
+      }
+
+      // 2. Put it together with the map location, and (as a last resort) your
+      //    own earlier confirmations of the same area.
+      return combineZoneEvidence(text, polygon, text.state === 'matched' || polygon ? null : zoneConfirmedHistory(order.area_name));
     }
 
     // Results are remembered per order (until its address/location changes) so
