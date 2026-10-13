@@ -1693,6 +1693,11 @@ function buildProductPage(data) {
       const isOut = (data.stockStatus || '').toLowerCase().includes('out of stock');
       orderButton.disabled = isOut;
       orderButton.textContent = isOut ? 'Out of Stock' : 'Order Now';
+      if (isOut) {
+        orderButton.style.cssText = 'background:#c0392b;border-color:#c0392b;color:#fff;opacity:.85;cursor:not-allowed;';
+      } else {
+        orderButton.style.cssText = '';
+      }
     }
   }
 
@@ -1748,11 +1753,11 @@ async function fetchVfProductData() {
     name: row.name,
     category: row.category || '',
     price: row.is_on_sale && row.sale_price ? `$${Number(row.sale_price).toFixed(2)}` : `$${Number(row.price).toFixed(2)}`,
-    badge: row.out_of_stock ? 'Out of Stock' : (row.is_on_sale ? 'Sale' : ''),
+    badge: (row.out_of_stock || (row.stock_qty !== null && Number(row.stock_qty) <= 0)) ? 'Out of Stock' : (row.is_on_sale ? 'Sale' : ''),
     rating: 0,
     ratingText: '',
     shortDescription: row.description || '',
-    stockStatus: row.out_of_stock ? 'Currently out of stock' : `In stock (${row.stock_qty} available)`,
+    stockStatus: (row.out_of_stock || (row.stock_qty !== null && Number(row.stock_qty) <= 0)) ? 'Currently out of stock' : `In stock (${row.stock_qty} available)`,
     images: (row.images || []).filter(m => m.type === 'image').map(m => ({ src: m.url, alt: row.name, label: row.name })),
     benefits: [],
     delivery: { rows: [], note: 'Delivery cost is calculated at checkout based on your VirtuDrop zone.' },
@@ -2108,6 +2113,16 @@ document.addEventListener('DOMContentLoaded', function () {
           quote_status: fee === null ? 'required' : 'not_required',
           customer_notes: ['Ordered: ' + itemName, notes].filter(Boolean).join('\n') || null
         }, mods.money.financialRequestFields(money));
+
+        // Check stock before creating the VirtuDrop order so a sold-out item never leaves an orphan delivery.
+        if (productId) {
+          var stockCheck = await sb.from('vf_products').select('name, stock_qty').eq('id', productId).maybeSingle();
+          if (stockCheck.error) throw stockCheck.error;
+          if (!stockCheck.data) throw new Error('This item is no longer available.');
+          if (stockCheck.data.stock_qty !== null && stockCheck.data.stock_qty < 1) {
+            throw new Error(stockCheck.data.name + ' is out of stock.');
+          }
+        }
 
         var vdResult = await sb.rpc('submit_delivery_request_v2', { request_data: requestData });
         if (vdResult.error) throw vdResult.error;

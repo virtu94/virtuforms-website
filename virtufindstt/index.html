@@ -1425,14 +1425,15 @@ function vfProductCardHTML(p) {
   const thumbInner = img
     ? `<img src="${img.url}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;">`
     : `<svg fill="none" height="54" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="54"><path d="M21 8 12 3 3 8l9 5 9-5Z"></path><path d="M3 8v8l9 5 9-5V8"></path><path d="M12 13v8"></path></svg>`;
-  const badge = p.out_of_stock
-    ? '<span class="product-badge" style="background:#8a8a8a;">Out of Stock</span>'
+  const soldOut = !!p.out_of_stock || (p.stock_qty !== null && p.stock_qty !== undefined && Number(p.stock_qty) <= 0);
+  const badge = soldOut
+    ? '<span class="product-badge" style="background:#c0392b;">Out of Stock</span>'
     : (onSale ? '<span class="product-badge badge--trend">Sale</span>' : '');
   const priceRow = onSale
     ? `<span class="product-price">$${displayPrice.toFixed(2)}</span> <span style="text-decoration:line-through;color:var(--grey-500);font-size:0.85rem;">$${price.toFixed(2)}</span>`
     : `<span class="product-price">$${price.toFixed(2)}</span>`;
-  const actionHTML = p.out_of_stock
-    ? `<button class="btn btn--primary btn--block" disabled style="opacity:.5;cursor:not-allowed;">Out of Stock</button>`
+  const actionHTML = soldOut
+    ? `<button class="btn btn--block" disabled style="background:#c0392b;border-color:#c0392b;color:#fff;opacity:.85;cursor:not-allowed;">Out of Stock</button>`
     : `<a class="btn btn--primary btn--block js-order-now" href="#" data-product="${p.name}" data-price="$${displayPrice.toFixed(2)}" data-product-id="${p.id}">Order Now</a>`;
   return `<article class="product-card" data-name="${p.name}" data-category="${p.category || ''}" data-price="${displayPrice}" data-rating="0">
 <a href="product-template.html?slug=${encodeURIComponent(p.slug)}" style="display:block;color:inherit;text-decoration:none;">
@@ -1838,6 +1839,16 @@ document.addEventListener('DOMContentLoaded', function () {
           quote_status: fee === null ? 'required' : 'not_required',
           customer_notes: ['Ordered: ' + itemName, notes].filter(Boolean).join('\n') || null
         }, mods.money.financialRequestFields(money));
+
+        // Check stock before creating the VirtuDrop order so a sold-out item never leaves an orphan delivery.
+        if (productId) {
+          var stockCheck = await sb.from('vf_products').select('name, stock_qty').eq('id', productId).maybeSingle();
+          if (stockCheck.error) throw stockCheck.error;
+          if (!stockCheck.data) throw new Error('This item is no longer available.');
+          if (stockCheck.data.stock_qty !== null && stockCheck.data.stock_qty < 1) {
+            throw new Error(stockCheck.data.name + ' is out of stock.');
+          }
+        }
 
         var vdResult = await sb.rpc('submit_delivery_request_v2', { request_data: requestData });
         if (vdResult.error) throw vdResult.error;
