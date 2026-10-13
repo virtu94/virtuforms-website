@@ -1427,7 +1427,7 @@ function vfProductCardHTML(p) {
     : `<svg fill="none" height="54" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="54"><path d="M21 8 12 3 3 8l9 5 9-5Z"></path><path d="M3 8v8l9 5 9-5V8"></path><path d="M12 13v8"></path></svg>`;
   const soldOut = !!p.out_of_stock || (p.stock_qty !== null && p.stock_qty !== undefined && Number(p.stock_qty) <= 0);
   const badge = soldOut
-    ? '<span class="product-badge" style="background:#c0392b;">Out of Stock</span>'
+    ? ''
     : (onSale ? '<span class="product-badge badge--trend">Sale</span>' : '');
   const priceRow = onSale
     ? `<span class="product-price">$${displayPrice.toFixed(2)}</span> <span style="text-decoration:line-through;color:var(--grey-500);font-size:0.85rem;">$${price.toFixed(2)}</span>`

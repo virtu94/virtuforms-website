@@ -1753,7 +1753,7 @@ async function fetchVfProductData() {
     name: row.name,
     category: row.category || '',
     price: row.is_on_sale && row.sale_price ? `$${Number(row.sale_price).toFixed(2)}` : `$${Number(row.price).toFixed(2)}`,
-    badge: (row.out_of_stock || (row.stock_qty !== null && Number(row.stock_qty) <= 0)) ? 'Out of Stock' : (row.is_on_sale ? 'Sale' : ''),
+    badge: (row.out_of_stock || (row.stock_qty !== null && Number(row.stock_qty) <= 0)) ? '' : (row.is_on_sale ? 'Sale' : ''),
     rating: 0,
     ratingText: '',
     shortDescription: row.description || '',
