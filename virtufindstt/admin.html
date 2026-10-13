@@ -467,6 +467,7 @@ tbody tr:last-child td{border-bottom:0}
       items: o.items || [],
       deliveryFee: o.delivery_fee,
       virtudropOrderNumber: o.virtudrop_order_number,
+      proofPath: o.payment_proof_path,
       date: new Date(o.created_at).toLocaleDateString('en-TT', { day:'numeric', month:'short', year:'numeric' })
     }));
     renderOrders();renderRecent();updateCounts();renderDelivery();
@@ -636,7 +637,7 @@ tbody tr:last-child td{border-bottom:0}
     const filtered = orders.filter(o => (status==='all'||o.status===status) && (payment==='all'||o.payment===payment) && [o.id,o.customer,o.phone,o.product,o.area].join(' ').toLowerCase().includes(q));
     const body = document.getElementById('ordersTableBody');
     if(body) {
-      body.innerHTML = filtered.length ? filtered.map((o,i)=>`<tr><td><span class="order-id">${o.id}</span><div style="font-size:.74rem;color:var(--grey-500);margin-top:3px">${o.date}</div></td><td><div class="customer-cell"><strong>${o.customer}</strong><span>${o.phone}</span></div></td><td><div class="product-cell"><strong>${o.product}</strong><span>${o.area}</span></div></td><td class="money">${money(o.total)}</td><td><span class="status ${o.payment==='Awaiting Payment'?'status-pending':'status-completed'}">${o.payment}</span></td><td><select class="filter-select order-status-select" data-index="${orders.indexOf(o)}" aria-label="Change ${o.id} status" style="height:36px;min-width:145px;padding-left:9px"><option ${o.status==='Pending'?'selected':''}>Pending</option><option ${o.status==='Processing'?'selected':''}>Processing</option><option ${o.status==='Ready'?'selected':''}>Ready</option><option ${o.status==='Out for delivery'?'selected':''}>Out for delivery</option><option ${o.status==='Completed'?'selected':''}>Completed</option><option ${o.status==='Cancelled'?'selected':''}>Cancelled</option></select></td><td><div class="row-actions">${o.paymentMethod!=='cod'&&o.paymentStatus!=='paid'?`<button class="row-btn" title="Confirm payment received" data-confirm-payment="${orders.indexOf(o)}">${iconCheck}</button>`:''}<button class="row-btn" title="View order" data-view-order="${orders.indexOf(o)}">${iconEye}</button><button class="row-btn" title="Edit order" data-edit-order="${orders.indexOf(o)}">${iconEdit}</button></div></td></tr>`).join('') : '<tr><td colspan="7"><div class="empty-state"><h3>No orders yet</h3><p>Orders will appear here after the VirtuFinds order flow is connected.</p></div></td></tr>';
+      body.innerHTML = filtered.length ? filtered.map((o,i)=>`<tr><td><span class="order-id">${o.id}</span><div style="font-size:.74rem;color:var(--grey-500);margin-top:3px">${o.date}</div></td><td><div class="customer-cell"><strong>${o.customer}</strong><span>${o.phone}</span></div></td><td><div class="product-cell"><strong>${o.product}</strong><span>${o.area}</span></div></td><td class="money">${money(o.total)}</td><td><span class="status ${o.payment==='Awaiting Payment'?'status-pending':'status-completed'}">${o.payment}</span>${o.proofPath&&o.paymentStatus!=='paid'?'<div style="font-size:.72rem;color:var(--grey-500);margin-top:3px">Proof uploaded</div>':''}</td><td><select class="filter-select order-status-select" data-index="${orders.indexOf(o)}" aria-label="Change ${o.id} status" style="height:36px;min-width:145px;padding-left:9px"><option ${o.status==='Pending'?'selected':''}>Pending</option><option ${o.status==='Processing'?'selected':''}>Processing</option><option ${o.status==='Ready'?'selected':''}>Ready</option><option ${o.status==='Out for delivery'?'selected':''}>Out for delivery</option><option ${o.status==='Completed'?'selected':''}>Completed</option><option ${o.status==='Cancelled'?'selected':''}>Cancelled</option></select></td><td><div class="row-actions">${o.paymentMethod!=='cod'&&o.paymentStatus!=='paid'?`<button class="row-btn" title="Confirm payment received" data-confirm-payment="${orders.indexOf(o)}">${iconCheck}</button>`:''}<button class="row-btn" title="View order" data-view-order="${orders.indexOf(o)}">${iconEye}</button><button class="row-btn" title="Edit order" data-edit-order="${orders.indexOf(o)}">${iconEdit}</button></div></td></tr>`).join('') : '<tr><td colspan="7"><div class="empty-state"><h3>No orders yet</h3><p>Orders will appear here after the VirtuFinds order flow is connected.</p></div></td></tr>';
     }
     document.getElementById('orderResultCount').textContent = `Showing ${filtered.length} of ${orders.length} orders`;
     body?.querySelectorAll('.order-status-select').forEach(select=>select.addEventListener('change', async e=>{
@@ -875,8 +876,17 @@ tbody tr:last-child td{border-bottom:0}
       <div class="field"><label>Delivery fee</label><p>${order.deliveryFee != null ? money(order.deliveryFee) : '—'}</p></div>
       <div class="field"><label>Payment</label><p>${escapeHtml(order.payment)}</p></div>
       <div class="field"><label>Status</label><p><span class="status ${statusClass(order.status)}">${escapeHtml(order.status)}</span></p></div>
+      ${order.paymentMethod === 'bank_transfer' ? `<div class="field full"><label>Proof of payment</label><p>${order.proofPath ? '<button type="button" class="row-btn" id="viewProofBtn" style="width:auto;padding:0 12px;">View uploaded proof</button>' : 'Not uploaded yet (customer may have sent it on WhatsApp)'}</p></div>` : ''}
       ${order.virtudropOrderNumber ? `<div class="field full"><label>VirtuDrop delivery</label><p><span class="status ${vdStatus.cls}">${escapeHtml(vdStatus.label)}</span> &middot; <a href="${trackUrl}" target="_blank" rel="noopener">Track this delivery</a></p></div>` : ''}
     `;
+    const proofBtn = document.getElementById('viewProofBtn');
+    if (proofBtn) proofBtn.addEventListener('click', async () => {
+      proofBtn.disabled = true;
+      const { data, error } = await sb.storage.from('vf-payment-proofs').createSignedUrl(order.proofPath, 120);
+      proofBtn.disabled = false;
+      if (error || !data) { showToast('Could not open proof: ' + (error ? error.message : 'unknown error')); return; }
+      window.open(data.signedUrl, '_blank', 'noopener');
+    });
     openModal('orderViewModal');
   }
 

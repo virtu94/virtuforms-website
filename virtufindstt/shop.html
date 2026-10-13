@@ -2112,6 +2112,20 @@ document.addEventListener('DOMContentLoaded', function () {
           trackDeliveryBtn.style.display = 'block';
         }
 
+        var bankMod = await import('./vf-bank-transfer.js?v=20260929-1');
+        if (paymentOption === 'cod') {
+          bankMod.removeBankTransferPanel(modalSuccess);
+        } else {
+          bankMod.showBankTransferPanel({
+            sb: sb,
+            root: modalSuccess,
+            orderNumber: orderNumber,
+            phone: requestData.customer_phone,
+            amountDue: paymentOption === 'pkg-online' ? subtotal : (fee === null ? null : subtotal + fee),
+            whatsappNumber: VF_WHATSAPP_NUMBER
+          });
+        }
+
         modalForm.classList.add('is-hidden');
         modalSuccess.classList.add('is-active');
         var successFirstField = modalSuccess.querySelector('.btn, button');
