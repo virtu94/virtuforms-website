@@ -2138,9 +2138,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (vfResult.error) throw vfResult.error;
 
-        if (productId) {
-          sb.rpc('vf_decrement_stock', { p_id: productId, qty: 1 });
-        }
+        // Stock is reserved by the vf_orders insert trigger.
 
         var orderNumEl = modalOverlay.querySelector('.modal-order-number');
         if (orderNumEl) {
