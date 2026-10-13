@@ -786,7 +786,7 @@
     }
     .driver-zone-filter { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.85rem; }
     .driver-zone-filter-label { color: var(--grey); font-size: 0.82rem; font-weight: 700; margin-right: 0.15rem; }
-    .driver-zone-filter .btn[aria-pressed="true"] { background: var(--teal); border-color: var(--teal); color: #fff; }
+    .driver-zone-filter .btn[aria-pressed="true"] { background: var(--teal-mid); border-color: var(--teal-mid); color: #fff; }
     .zone-card,
     .account-card,
     .pending-strip {
@@ -1280,6 +1280,13 @@
             <option value="held">Held Parcels</option>
             <option value="all">All Needs-Review Records</option>
           </select>
+          <select class="filter-select" id="returnOutcomeFilter" onchange="renderReturnManagement()" title="Filter by what happened to the delivery">
+            <option value="">All outcomes</option>
+            <option value="no_response">No response</option>
+            <option value="refused">Refused</option>
+            <option value="reschedule_requested">Reschedule requested</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
           <input class="filter-input" id="returnManagementSearch" type="search" placeholder="Search order, client or customer" oninput="renderReturnManagement()" />
           <span class="td-sub" id="returnAwaitingCount" style="align-self:center;"></span>
         </div>
@@ -1317,7 +1324,37 @@
           <button class="btn btn-ghost btn-sm" type="button" onclick="clearExStatusSelection()">Clear</button>
           <span class="bulk-count" id="exStatusBulkCount">0 selected</span>
         </div>
-        <div class="card">
+        <!-- Checklist view for Needs Review and Returns to Client. The older single
+             table below is still used by the other tabs. -->
+        <div id="returnChecklist" style="display:none;">
+          <style>
+            .rc-count { display:inline-block; min-width:1.6rem; padding:0.05rem 0.5rem; margin-left:0.4rem; border-radius:999px; background:var(--teal-light); color:var(--teal-dark); font-size:0.78rem; font-weight:700; text-align:center; }
+            .rc-help { margin:-0.6rem 0 0.9rem; }
+            .rc-staged { margin-top:1.1rem; padding:1rem; border:2px dashed var(--teal-mid); border-radius:12px; background:var(--teal-pale); }
+            .rc-staged-head { display:flex; flex-wrap:wrap; align-items:center; gap:0.7rem; margin-bottom:0.7rem; }
+            .rc-staged-head strong { margin-right:auto; color:var(--teal-dark); }
+            .rc-empty { padding:0.9rem 0.2rem; color:var(--grey); font-size:0.88rem; }
+            /* Let these tables fit the screen: wrap text and buttons instead of
+               running off to the right. */
+            #returnChecklist table { min-width:0; }
+            #returnChecklist th, #returnChecklist td { white-space:normal; }
+            #returnChecklist .td-id { white-space:nowrap; }
+            #returnChecklist .finance-actions { display:flex; flex-wrap:wrap; gap:0.35rem; }
+          </style>
+          <div class="card" id="rcStageHub"></div>
+          <div class="card" id="rcStageDecide">
+            <div class="card-title" id="rcDecideTitle">2. At the hub — decide what happens next</div>
+            <div class="td-sub rc-help">These parcels are back at the hub. Tick the ones you want, choose what happens next, and apply.</div>
+            <div id="rcDecisionHost"></div>
+            <div class="table-wrap"><table>
+              <thead><tr><th></th><th>Order</th><th>Customer / Client</th><th>Item</th><th>Why it came back</th><th>At the hub</th><th>Actions</th></tr></thead>
+              <tbody id="rcDecisionBody"><tr><td colspan="7">Loading...</td></tr></tbody>
+            </table></div>
+          </div>
+          <div class="card" id="rcStageClient"></div>
+        </div>
+
+        <div class="card" id="returnLegacyCard">
           <div class="table-wrap"><table>
             <thead><tr><th></th><th>Order</th><th>Client / Customer</th><th>Area</th><th>Outcome</th><th>Parcel</th><th>Fees / Payer</th><th>Schedule / Hold</th><th>Actions</th></tr></thead>
             <tbody id="returnManagementBody"><tr><td colspan="9">Loading returned parcels...</td></tr></tbody>
@@ -8521,6 +8558,8 @@
       });
       const subFilterWrap = document.getElementById('returnManagementFilter');
       if (subFilterWrap) subFilterWrap.style.display = tab === 'needs_review' ? '' : 'none';
+      const outcomeWrap = document.getElementById('returnOutcomeFilter');
+      if (outcomeWrap) outcomeWrap.style.display = ['needs_review', 'returns_to_client', 'redeliveries'].includes(tab) ? '' : 'none';
       const subtitle = document.getElementById('returnExceptionsSubtitle');
       if (subtitle) subtitle.textContent = returnExceptionsTabLabels[tab]?.subtitle || '';
       renderReturnManagement();
@@ -8652,15 +8691,254 @@
       syncReturnDecisionBulkControls();
     };
 
+    // ── Delivery Exceptions: tick-then-confirm checklist ──────────────────
+    // Needs Review is now two separate jobs, so they can no longer be mixed up:
+    //   1. parcels still WITH drivers -> tick each as it is physically back; ticked
+    //      parcels wait in a box underneath until you confirm them (all at once or
+    //      one by one);
+    //   2. parcels already AT the hub -> decide what happens next (redeliver, hold,
+    //      return to the client).
+    // Returns to Client uses the same tick-then-confirm box for "handed back to
+    // the client". Nothing is saved until you press Confirm. It uses the same
+    // database functions as before, so drivers and clients see no difference.
+    let returnStagedHub = new Set();
+    let returnStagedClient = new Set();
+    let rcWaitingHubIds = [];
+    let rcWaitingClientIds = [];
+
+    function rcOutcomeMatches(order, outcome) {
+      if (!outcome) return true;
+      if (outcome === 'cancelled') return isCancelledOrder(order);
+      return order.delivery_outcome === outcome;
+    }
+
+    function rcWhyHtml(order) {
+      const outcomeLabels = { no_response: 'No response', refused: 'Refused', reschedule_requested: 'Reschedule requested' };
+      if (isCancelledOrder(order)) {
+        return `<span class="badge badge-unpaid">${escapeHtml(order.order_status === 'cancelled' ? 'Cancelled' : 'Rejected')}</span>${order.rejection_reason ? `<div class="td-sub">${escapeHtml(order.rejection_reason)}</div>` : ''}`;
+      }
+      return `<span class="badge badge-pending">${escapeHtml(outcomeLabels[order.delivery_outcome] || order.delivery_outcome || 'Undelivered')}</span>${order.delivery_outcome_notes ? `<div class="td-sub">${escapeHtml(order.delivery_outcome_notes)}</div>` : ''}`;
+    }
+
+    function rcOrderCell(order) {
+      return `<td><div class="td-id">${escapeHtml(order.order_number)}</div><div class="td-sub">Attempt ${escapeHtml(String(order.delivery_attempt_count || 1))}</div></td>`;
+    }
+
+    function rcPeopleCell(order) {
+      return `<td><div class="td-name">${escapeHtml(order.customer_name || '—')}</div><div class="td-sub">${escapeHtml(formatPhoneDisplay(order.customer_phone))} · ${escapeHtml(clientName(order))}</div></td>`;
+    }
+
+    function rcItemCell(order) {
+      return `<td>${orderItemPackageHtml(order) || '<div class="td-sub">—</div>'}<div class="td-sub">${escapeHtml(order.area_name || '')}</div></td>`;
+    }
+
+    function rcDateText(value) {
+      return value ? new Date(value).toLocaleString('en-TT') : '—';
+    }
+
+    function rcStagedBox(staged, rowsHtml, label, confirmFn, untickFn, untickOneFn, singleFn) {
+      if (!staged.length) return '';
+      return `<div class="rc-staged">
+        <div class="rc-staged-head">
+          <strong>Ticked — waiting for your confirmation <span class="rc-count">${staged.length}</span></strong>
+          <button class="btn btn-primary btn-sm" type="button" onclick="${confirmFn}()">Confirm ${staged.length} ${label}</button>
+          <button class="btn btn-ghost btn-sm" type="button" onclick="${untickFn}()">Untick all</button>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th></th><th>Order</th><th>Customer / Client</th><th>Item</th><th></th></tr></thead>
+          <tbody>${staged.map(order => `<tr>
+            <td><input type="checkbox" checked onchange="${untickOneFn}('${order.id}', this.checked)" title="Untick to move it back"></td>
+            ${rcOrderCell(order)}${rcPeopleCell(order)}${rcItemCell(order)}
+            <td><button class="btn btn-ghost btn-sm" type="button" onclick="${singleFn}('${order.id}')">Confirm just this one</button></td>
+          </tr>`).join('')}</tbody>
+        </table></div>
+      </div>`;
+    }
+
+    // Stage 1: with drivers, expected back at the hub.
+    function renderReturnStageHub(rows) {
+      const host = document.getElementById('rcStageHub');
+      if (!host) return;
+      const all = rows.filter(order => orderNeedsHubReturn(order));
+      // Ticked parcels stay in the box whatever the filters say -- a filter must
+      // never hide something you have already ticked. Only parcels that no longer
+      // need hub receipt (confirmed elsewhere) drop out.
+      returnStagedHub = new Set([...returnStagedHub].filter(id => orders.some(order => order.id === id && orderNeedsHubReturn(order))));
+      const waiting = all.filter(order => !returnStagedHub.has(order.id));
+      const staged = orders.filter(order => returnStagedHub.has(order.id));
+      rcWaitingHubIds = waiting.map(order => order.id);
+      host.innerHTML = `
+        <div class="card-title">1. Waiting to come back from drivers <span class="rc-count">${waiting.length}</span></div>
+        <div class="td-sub rc-help">Tick each parcel as it is physically back at the hub. Ticked parcels move to the box underneath until you confirm them.</div>
+        ${waiting.length ? `<div class="table-wrap"><table>
+          <thead><tr><th><input type="checkbox" onchange="rcTickAllHub(this.checked)" title="Tick every parcel in this list"></th><th>Order</th><th>Customer / Client</th><th>Item</th><th>Why it is coming back</th><th>Driver</th><th>With driver since</th></tr></thead>
+          <tbody>${waiting.map(order => `<tr>
+            <td><input type="checkbox" onchange="rcTickHub('${order.id}', this.checked)"></td>
+            ${rcOrderCell(order)}${rcPeopleCell(order)}${rcItemCell(order)}
+            <td>${rcWhyHtml(order)}</td>
+            <td>${escapeHtml(order.assigned_driver_id ? driverName(order.assigned_driver_id) : 'Unassigned')}</td>
+            <td><div class="td-sub">${escapeHtml(rcDateText(order.last_delivery_attempt_at || order.updated_at))}</div></td>
+          </tr>`).join('')}</tbody>
+        </table></div>` : `<div class="rc-empty">${staged.length ? 'Everything has been ticked. Confirm the box below.' : 'Nothing is waiting to come back from a driver.'}</div>`}
+        ${rcStagedBox(staged, '', 'received at hub', 'rcConfirmHub', 'rcUntickAllHub', 'rcTickHub', 'rcConfirmHubOne')}`;
+    }
+
+    window.rcTickHub = function(orderId, on) {
+      if (on) returnStagedHub.add(orderId); else returnStagedHub.delete(orderId);
+      renderReturnManagement();
+    };
+    window.rcTickAllHub = function(on) {
+      rcWaitingHubIds.forEach(id => on ? returnStagedHub.add(id) : returnStagedHub.delete(id));
+      renderReturnManagement();
+    };
+    window.rcUntickAllHub = function() {
+      returnStagedHub.clear();
+      renderReturnManagement();
+    };
+    window.rcConfirmHubOne = function(orderId) { confirmHubReturn(orderId); };
+
+    window.rcConfirmHub = function() {
+      const ids = [...returnStagedHub].filter(id => orders.some(order => order.id === id && orderNeedsHubReturn(order)));
+      if (!ids.length) return showToast('Tick at least one parcel first.');
+      showModal('Confirm Received at Hub', `Confirm that ${ids.length} parcel(s) were physically returned to the VirtuDrop hub?`, async () => {
+        try {
+          const { data, error } = await supabase.rpc('admin_confirm_returned_batch', { p_order_ids: ids, p_notes: null });
+          console.log('admin_confirm_returned_batch response:', { data, error });
+          if (error) throw error;
+          if (!data || !data.batch_id || !(data.order_count > 0)) {
+            throw new Error('The server did not confirm any parcels in this batch. Nothing was changed -- please try again or check the console.');
+          }
+          showToast(`${data.order_count} parcel(s) received at the hub (batch ${data.batch_number || ''}). They now appear under "At the hub".`);
+          ids.forEach(id => returnStagedHub.delete(id));
+          await softRefresh();
+          await loadReturnBatches();
+        } catch (error) {
+          // The ticks stay in place so nothing has to be ticked again.
+          const detail = [error.message, error.details, error.hint].filter(Boolean).join(' | ');
+          window.vdNotify('Not Confirmed', detail || 'Could not confirm these returns. Your ticks are kept.', 'error');
+        }
+      });
+    };
+
+    // Stage 2: at the hub, waiting for a decision.
+    function renderReturnStageDecide(rows) {
+      const body = document.getElementById('rcDecisionBody');
+      if (!body) return;
+      const atHub = rows.filter(order => orderAwaitingReturnDecision(order) && !orderNeedsHubReturn(order));
+      const title = document.getElementById('rcDecideTitle');
+      if (title) title.innerHTML = `2. At the hub — decide what happens next <span class="rc-count">${atHub.length}</span>`;
+      body.innerHTML = atHub.map(order => {
+        const holdText = order.holding_type === 'extra_stock' ? 'Held as extra stock'
+          : order.hold_until ? `Hold until ${new Date(order.hold_until + 'T12:00:00').toLocaleDateString('en-TT')}`
+            : 'Awaiting your decision';
+        return `<tr>
+          <td><input class="return-decision-check" type="checkbox" value="${order.id}" ${returnDecisionSelection.has(order.id) ? 'checked' : ''} onchange="toggleReturnDecisionBulk('${order.id}', this.checked)"></td>
+          ${rcOrderCell(order)}${rcPeopleCell(order)}${rcItemCell(order)}
+          <td>${rcWhyHtml(order)}</td>
+          <td><div class="td-name">${escapeHtml(holdText)}</div><div class="td-sub">${order.delivery_returned_hub_at ? `Back at hub ${escapeHtml(rcDateText(order.delivery_returned_hub_at))}` : ''}</div></td>
+          <td>${returnActionButtons(order)}</td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="7"><div class="rc-empty">Nothing at the hub is waiting for a decision.</div></td></tr>';
+    }
+
+    // Returns to Client: prepared returns waiting to be handed back.
+    function renderReturnStageClient(rows) {
+      const host = document.getElementById('rcStageClient');
+      if (!host) return;
+      const all = rows.filter(order => order.return_to_client_status === 'ready');
+      returnStagedClient = new Set([...returnStagedClient].filter(id => orders.some(order => order.id === id && order.return_to_client_status === 'ready')));
+      const waiting = all.filter(order => !returnStagedClient.has(order.id));
+      const staged = orders.filter(order => returnStagedClient.has(order.id));
+      rcWaitingClientIds = waiting.map(order => order.id);
+      host.innerHTML = `
+        <div class="card-title">Ready to hand back to the business client <span class="rc-count">${waiting.length}</span></div>
+        <div class="td-sub rc-help">Tick each parcel once it has been handed back to its business. Ticked parcels move to the box underneath until you confirm them.</div>
+        ${waiting.length ? `<div class="table-wrap"><table>
+          <thead><tr><th><input type="checkbox" onchange="rcTickAllClient(this.checked)" title="Tick every parcel in this list"></th><th>Order</th><th>Customer / Client</th><th>Item</th><th>How it goes back</th><th>Fee</th><th>Notes</th></tr></thead>
+          <tbody>${waiting.map(order => `<tr>
+            <td><input type="checkbox" onchange="rcTickClient('${order.id}', this.checked)"></td>
+            ${rcOrderCell(order)}${rcPeopleCell(order)}${rcItemCell(order)}
+            <td><div class="td-name">${escapeHtml(clientReturnMethodLabel(order))}</div></td>
+            <td>${order.return_to_client_fee > 0 ? moneyFull(order.return_to_client_fee) : '—'}</td>
+            <td><div class="td-sub">${escapeHtml(order.return_management_notes || '')}</div></td>
+          </tr>`).join('')}</tbody>
+        </table></div>` : `<div class="rc-empty">${staged.length ? 'Everything has been ticked. Confirm the box below.' : 'No parcels are waiting to be handed back to a client.'}</div>`}
+        ${rcStagedBox(staged, '', 'returned to client', 'rcConfirmClient', 'rcUntickAllClient', 'rcTickClient', 'completeClientReturn')}`;
+    }
+
+    window.rcTickClient = function(orderId, on) {
+      if (on) returnStagedClient.add(orderId); else returnStagedClient.delete(orderId);
+      renderReturnManagement();
+    };
+    window.rcTickAllClient = function(on) {
+      rcWaitingClientIds.forEach(id => on ? returnStagedClient.add(id) : returnStagedClient.delete(id));
+      renderReturnManagement();
+    };
+    window.rcUntickAllClient = function() {
+      returnStagedClient.clear();
+      renderReturnManagement();
+    };
+
+    window.rcConfirmClient = function() {
+      const ids = [...returnStagedClient].filter(id => orders.some(order => order.id === id && order.return_to_client_status === 'ready'));
+      if (!ids.length) return showToast('Tick at least one parcel first.');
+      showModal('Confirm Client Returns', `Confirm that ${ids.length} parcel(s) were physically returned to their business clients?`, async () => {
+        let succeeded = 0;
+        const failed = [];
+        for (const id of ids) {
+          const order = orders.find(item => item.id === id);
+          const { error } = await supabase.rpc('admin_complete_order_return_to_client', { p_order_id: id });
+          if (error) failed.push((order?.order_number || id) + ': ' + (error.message || 'failed'));
+          else { succeeded += 1; returnStagedClient.delete(id); }
+        }
+        if (succeeded) showToast(`${succeeded} parcel(s) confirmed returned to the client.`);
+        if (failed.length) window.vdNotify('Some Returns Not Confirmed', failed.slice(0, 5).join(' | ') + (failed.length > 5 ? ' | More errors omitted.' : '') + ' Those stay ticked.', 'error');
+        await softRefresh();
+      });
+    };
+
+    // Show the checklist for the tabs that use it, the older single table for the rest.
+    function setReturnChecklistMode(on, tab) {
+      const checklist = document.getElementById('returnChecklist');
+      const legacy = document.getElementById('returnLegacyCard');
+      const bulk = document.getElementById('returnBulkToolbar');
+      const decision = document.getElementById('returnDecisionBulkToolbar');
+      const host = document.getElementById('rcDecisionHost');
+      const statusToolbar = document.getElementById('exStatusBulkToolbar');
+      if (checklist) checklist.style.display = on ? '' : 'none';
+      if (legacy) legacy.style.display = on ? 'none' : '';
+      const showHub = on && tab === 'needs_review';
+      const showClient = on && tab === 'returns_to_client';
+      const hubCard = document.getElementById('rcStageHub');
+      const decideCard = document.getElementById('rcStageDecide');
+      const clientCard = document.getElementById('rcStageClient');
+      if (hubCard) hubCard.style.display = showHub ? '' : 'none';
+      if (decideCard) decideCard.style.display = showHub ? '' : 'none';
+      if (clientCard) clientCard.style.display = showClient ? '' : 'none';
+      if (on) {
+        if (bulk) bulk.style.display = 'none';
+        if (decision && host) {
+          // The "what happens next" bar lives inside step 2 on this tab.
+          if (showHub) { host.appendChild(decision); decision.style.display = ''; }
+          else decision.style.display = 'none';
+        }
+      } else if (decision && host && decision.parentElement === host && statusToolbar) {
+        statusToolbar.before(decision);
+      }
+    }
+
     window.renderReturnManagement = function() {
       const body = document.getElementById('returnManagementBody');
       if (!body) return;
       const driverId = document.getElementById('returnManagementDriverFilter')?.value || '';
       const subFilter = document.getElementById('returnManagementFilter')?.value || 'active';
+      const outcomeFilter = document.getElementById('returnOutcomeFilter')?.value || '';
+      const outcomeApplies = ['needs_review', 'returns_to_client', 'redeliveries'].includes(returnMgmtTab);
       const search = String(document.getElementById('returnManagementSearch')?.value || '').trim().toLowerCase();
       const rows = orders.filter(order => {
         if (driverId && order.assigned_driver_id !== driverId) return false;
         if (!orderMatchesReturnTab(order, returnMgmtTab, subFilter)) return false;
+        if (outcomeApplies && !rcOutcomeMatches(order, outcomeFilter)) return false;
         if (!search) return true;
         return [order.order_number, clientName(order), order.customer_name, order.customer_phone, order.external_item_number, order.customer_notes, order.delivery_outcome_notes]
           .some(value => String(value || '').toLowerCase().includes(search));
@@ -8693,6 +8971,21 @@
         : orders.filter(order => orderNeedsHubReturn(order)).length;
       const awaitingLabel = document.getElementById('returnAwaitingCount');
       if (awaitingLabel) awaitingLabel.textContent = driverId ? `Awaiting return from ${driverName(driverId)}: ${awaitingCount}` : `Awaiting return (all drivers): ${awaitingCount}`;
+
+      // Needs Review and Returns to Client use the tick-then-confirm checklist.
+      const useChecklist = returnMgmtTab === 'needs_review' || returnMgmtTab === 'returns_to_client';
+      setReturnChecklistMode(useChecklist, returnMgmtTab);
+      if (useChecklist) {
+        if (returnMgmtTab === 'needs_review') {
+          renderReturnStageHub(rows);
+          renderReturnStageDecide(rows);
+        } else {
+          renderReturnStageClient(rows);
+        }
+        syncReturnDecisionBulkControls();
+        syncExStatusControls();
+        return;
+      }
 
       body.innerHTML = rows.map(order => {
         // Assigned / Out for Delivery: a plain status check, not a return
