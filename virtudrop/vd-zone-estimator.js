@@ -277,7 +277,16 @@ async function geocodeAddressWithOpenStreetMap(address) {
   }
 }
 
+// Remember answers for the same link / coordinates, so re-running the delivery
+// estimate does not ask Google again.
+const resolvedLocationCache = new Map();
+
 async function resolveGoogleLocation(supabase, payload) {
+  const cacheKey = JSON.stringify(payload);
+  if (resolvedLocationCache.has(cacheKey)) {
+    return { ...resolvedLocationCache.get(cacheKey) };
+  }
+
   const functionsUrl = supabase?.functionsUrl ||
     'https://vgmzzavxhuarlacnvnoz.supabase.co/functions/v1';
   const response = await fetch(
@@ -313,7 +322,8 @@ async function resolveGoogleLocation(supabase, payload) {
     return null;
   }
 
-  return data;
+  resolvedLocationCache.set(cacheKey, data);
+  return { ...data };
 }
 
 async function reverseGeocode(lat, lng) {
@@ -339,6 +349,25 @@ function matchZoneFromText(zones, text) {
     }
   }
   return bestMatch;
+}
+
+// The resolver names the zone and the service-area it matched. Turn that back
+// into the same match shape the text matcher returns, so fees still come from
+// the matched area's rate band. Returns null when the resolver found nothing on
+// the list (the text matcher then takes over).
+function matchFromResolvedAddress(zones, resolved) {
+  if (!resolved?.areaInServiceList || !resolved.zoneCode || !resolved.areaName) return null;
+
+  const zone = zones.find(item => String(item.code || '').toUpperCase() === String(resolved.zoneCode).toUpperCase());
+  if (!zone) return null;
+
+  let best = null;
+  for (const area of zone.zone_areas || []) {
+    const { score, matchedAlias } = scoreAreaMatch(resolved.areaName, area);
+    if (score > (best?.score || 0)) best = { zone, matchedArea: area, matchedAlias, score };
+  }
+
+  return best;
 }
 
 function classifyMatch(match) {
@@ -604,13 +633,17 @@ export async function estimateDeliveryZone({
   }
   debug.zonesLoaded = true;
 
-  const match = matchZoneFromText(zones, sourceText);
+  // The resolver already matched Google's place names against the service-area
+  // list and named the zone. Trust that over a free-text scan of everything
+  // Google returned, which can latch onto the wrong place name.
+  const match = matchFromResolvedAddress(zones, resolvedAddress) ||
+    matchZoneFromText(zones, sourceText);
 
-    if (resolvedAddress && match?.matchedArea?.area_name) {
+    // Only fill a missing area. Never replace Google's area with the zone-table
+    // entry (it can be a long description such as "Arima up to approximately
+    // Tumpuna Road"), and never invent a street from a saved alias.
+    if (resolvedAddress && !resolvedAddress.areaName && match?.matchedArea?.area_name) {
       resolvedAddress.areaName = match.matchedArea.area_name;
-      if (!resolvedAddress.streetName && match.matchedAlias) {
-        resolvedAddress.streetName = match.matchedAlias.street_hint || match.matchedAlias.alias_name || match.matchedAlias.match_value || '';
-      }
     }
 
     const estimate = {

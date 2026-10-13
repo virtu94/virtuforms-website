@@ -617,7 +617,9 @@
       const houseNumber = document.getElementById('houseNum').value.trim();
       const streetName = document.getElementById('streetName').value.trim();
       const areaName = document.getElementById('areaName').value.trim();
-      const useManualAddress = manualLocationMode || activeLocTab === 'manual' || Boolean(streetName || areaName);
+      // Street/area filled in from a map link are not "typed by the customer".
+      const typedAddress = Boolean(userEnteredValue(document.getElementById('streetName')) || userEnteredValue(document.getElementById('areaName')));
+      const useManualAddress = manualLocationMode || activeLocTab === 'manual' || typedAddress;
       return {
         supabase,
         businessClientId: businessClient?.id || null,
@@ -660,6 +662,29 @@
       `).join('');
     }
 
+    // Fill a field from a resolved map link without overwriting something that
+    // was typed. Auto-filled fields are flagged so they are not mistaken for
+    // typed input later; the flag clears as soon as the field is edited.
+    function setAutofilledValue(input, value) {
+      if (!input || !value) return;
+      if (input.value.trim() && input.dataset.autofilled !== '1') return;
+
+      input.value = value;
+      input.dataset.autofilled = '1';
+
+      if (!input.dataset.autofillWatch) {
+        input.dataset.autofillWatch = '1';
+        input.addEventListener('input', () => {
+          delete input.dataset.autofilled;
+        });
+      }
+    }
+
+    function userEnteredValue(input) {
+      if (!input || input.dataset.autofilled === '1') return '';
+      return input.value.trim();
+    }
+
     function applyResolvedAddress(estimate) {
       const resolved = estimate?.resolvedAddress;
 
@@ -670,24 +695,11 @@
       const areaInput = document.getElementById('areaName');
       const gpsResult = document.getElementById('gpsResult');
 
-      if (
-        houseInput &&
-        resolved.houseNumber &&
-        !houseInput.value.trim()
-      ) {
-        houseInput.value = resolved.houseNumber;
-      }
-
-      if (streetInput && resolved.streetName) {
-        streetInput.value = resolved.streetName;
-      }
-
-      if (areaInput) {
-        areaInput.value =
-          estimate.matchedArea ||
-          resolved.areaName ||
-          '';
-      }
+      // Never overwrite what was typed. Google's own area name comes first; the
+      // zone table's entry can be a long description, so it is only a fallback.
+      setAutofilledValue(houseInput, resolved.houseNumber);
+      setAutofilledValue(streetInput, resolved.streetName);
+      setAutofilledValue(areaInput, resolved.areaName || estimate.matchedArea || '');
 
       if (
         gpsResult &&

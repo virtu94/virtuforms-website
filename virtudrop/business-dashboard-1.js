@@ -7,7 +7,16 @@ const SUPABASE_ANON_KEY = 'sb_publishable_riDvZH96FeYGnF0bLYQErg_tlRv71CX';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 window.supabase = supabase;
 
+// Remember answers for the same link / coordinates, so re-running the delivery
+// estimate (payment type changed, form re-checked...) does not ask Google again.
+const resolvedLocationCache = new Map();
+
 async function resolveGoogleLocation(payload) {
+  const cacheKey = JSON.stringify(payload);
+  if (resolvedLocationCache.has(cacheKey)) {
+    return { ...resolvedLocationCache.get(cacheKey) };
+  }
+
   const response = await fetch(
     SUPABASE_URL + '/functions/v1/resolve-google-location',
     {
@@ -41,7 +50,8 @@ async function resolveGoogleLocation(payload) {
     return null;
   }
 
-  return data;
+  resolvedLocationCache.set(cacheKey, data);
+  return { ...data };
 }
 
 // ── Config ────────────────────────────────────────────────────────
@@ -368,6 +378,27 @@ function matchZoneFromText(zones, text) {
   return bestMatch;
 }
 
+/*
+ * The resolver names the zone and the service-area it matched. Turn that back
+ * into the same match shape the text matcher returns, so fees still come from
+ * the matched area's rate band. Null when the resolver found nothing on the
+ * list (the text matcher then takes over).
+ */
+function matchFromResolvedAddress(zones, resolved) {
+  if (!resolved?.areaInServiceList || !resolved.zoneCode || !resolved.areaName) return null;
+
+  const zone = zones.find(item => String(item.code || '').toUpperCase() === String(resolved.zoneCode).toUpperCase());
+  if (!zone) return null;
+
+  let best = null;
+  for (const area of zone.zone_areas || []) {
+    const { score, matchedAlias } = scoreAreaMatch(resolved.areaName, area);
+    if (score > (best?.score || 0)) best = { zone, matchedArea: area, matchedAlias, score };
+  }
+
+  return best;
+}
+
 function classifyZoneMatch(match) {
   if (!match?.zone) {
     return {
@@ -650,28 +681,30 @@ async function estimateDeliveryZone({
 
     debug.zonesLoaded = true;
 
-    const match = matchZoneFromText(
-      zones,
-      sourceText
-    );
+    /*
+     * The resolver already matched Google's place names against the
+     * service-area list and named the zone. Trust that over a free-text
+     * scan of everything Google returned, which can pick the wrong place.
+     */
+    const match =
+      matchFromResolvedAddress(zones, resolvedAddress) ||
+      matchZoneFromText(
+        zones,
+        sourceText
+      );
 
     /*
-     * When the matched database area is more specific than the
-     * Google area, use the exact VirtuDrop area name.
+     * Only fill a missing area. Never replace Google's area with the
+     * zone-table entry (it can be a long description such as "Arima up to
+     * approximately Tumpuna Road"), and never invent a street from an alias.
      */
     if (
       resolvedAddress &&
+      !resolvedAddress.areaName &&
       match?.matchedArea?.area_name
     ) {
       resolvedAddress.areaName =
         match.matchedArea.area_name;
-      if (!resolvedAddress.streetName && match.matchedAlias) {
-        resolvedAddress.streetName =
-          match.matchedAlias.street_hint ||
-          match.matchedAlias.alias_name ||
-          match.matchedAlias.match_value ||
-          '';
-      }
     }
 
     const estimate = {
@@ -767,7 +800,11 @@ function currentEstimateInput() {
   const houseNumber = el('#houseNum')?.value.trim() || '';
   const streetName = el('#streetName')?.value.trim() || '';
   const areaName = el('#areaName')?.value.trim() || '';
-  const useManualAddress = manualLocationMode || activeLocTab === 'manual' || Boolean(streetName || areaName);
+  // Street/area the form filled in from a map link are NOT "typed by the
+  // client". Counting them as typed made every later estimate ignore the link
+  // and re-use whatever (possibly wrong) text had been filled in.
+  const typedAddress = Boolean(userEnteredValue(el('#streetName')) || userEnteredValue(el('#areaName')));
+  const useManualAddress = manualLocationMode || activeLocTab === 'manual' || typedAddress;
   const useMapsLink = !useManualAddress && Boolean(mapsLink);
   return {
     supabase,
@@ -813,6 +850,33 @@ function renderEstimateBreakdown(target, rows) {
     </div>`).join('');
 }
 
+/*
+ * Fill a form field from a resolved map link without ever overwriting
+ * something the client typed. Fields filled this way are flagged so they are
+ * not mistaken for client input later; the flag clears as soon as the client
+ * edits the field.
+ */
+function setAutofilledValue(input, value) {
+  if (!input || !value) return;
+  if (input.value.trim() && input.dataset.autofilled !== '1') return;
+
+  input.value = value;
+  input.dataset.autofilled = '1';
+
+  if (!input.dataset.autofillWatch) {
+    input.dataset.autofillWatch = '1';
+    input.addEventListener('input', () => {
+      delete input.dataset.autofilled;
+    });
+  }
+}
+
+// What the client actually typed (nothing if the field was auto-filled).
+function userEnteredValue(input) {
+  if (!input || input.dataset.autofilled === '1') return '';
+  return input.value.trim();
+}
+
 function applyBusinessResolvedAddress(estimate) {
   const resolved = estimate?.resolvedAddress;
 
@@ -825,42 +889,23 @@ function applyBusinessResolvedAddress(estimate) {
   const areaInput = el('#areaName');
   const gpsResult = el('#gpsResult');
 
+  /*
+   * Google's own area name for the pin (already matched to VirtuDrop's
+   * service-area list by the resolver). The zone table's entry can be a long
+   * description, so it is only a fallback.
+   */
   const matchedArea =
-    estimate.matchedArea ||
     resolved.areaName ||
+    estimate.matchedArea ||
     '';
 
   /*
-   * Do not overwrite a house number that the client
-   * already entered manually.
+   * Never overwrite what the client typed. Values filled in from a previous
+   * link are replaced when a new link is resolved.
    */
-  if (
-    houseInput &&
-    resolved.houseNumber &&
-    !houseInput.value.trim()
-  ) {
-    houseInput.value = resolved.houseNumber;
-  }
-
-  /*
-   * Fill the street returned by Google.
-   */
-  if (
-    streetInput &&
-    resolved.streetName
-  ) {
-    streetInput.value = resolved.streetName;
-  }
-
-  /*
-   * Prefer the exact area name from VirtuDrop's zone database.
-   */
-  if (
-    areaInput &&
-    matchedArea
-  ) {
-    areaInput.value = matchedArea;
-  }
+  setAutofilledValue(houseInput, resolved.houseNumber);
+  setAutofilledValue(streetInput, resolved.streetName);
+  setAutofilledValue(areaInput, matchedArea);
 
   /*
    * Preserve the coordinates so they are saved with the order.
