@@ -1781,7 +1781,23 @@ document.addEventListener('DOMContentLoaded', function () {
     // VirtuDrop delivery-fee connector (step 7)
     // ---------------------------------------------------------
     var VF_BUSINESS_CLIENT_ID = '80ffcba8-d208-40bf-82c4-f2a8686d510e';
-    var VF_WHATSAPP_NUMBER = '18687973542';
+    var VF_WHATSAPP_NUMBER = '18687973543';
+    var vfStoreSettings = null;
+    function applyStoreSettings(s) {
+      vfStoreSettings = s;
+      var digits = String(s.store_whatsapp || '').replace(/\D/g, '');
+      if (digits) VF_WHATSAPP_NUMBER = digits;
+      var codRadio = modalForm.querySelector('input[name="paymentMethod"][value="cod"]');
+      if (codRadio) {
+        var codLabel = codRadio.closest('label');
+        if (codLabel) codLabel.style.display = s.cod_enabled === false ? 'none' : '';
+        if (s.cod_enabled === false && codRadio.checked) {
+          var first = modalForm.querySelector('input[name="paymentMethod"]:not([value="cod"])');
+          if (first) { first.checked = true; renderDeliveryFeeBox(); }
+        }
+      }
+    }
+    import('./vf-settings.js?v=20261013-1').then(function (m) { return m.loadVfSettings(sb); }).then(applyStoreSettings).catch(function () {});
     var vdModulesPromise = null;
     function loadVdModules() {
       if (!vdModulesPromise) {
@@ -1956,6 +1972,10 @@ document.addEventListener('DOMContentLoaded', function () {
       if (errStatus) errStatus.textContent = '';
 
       try {
+        var liveSettings = await (await import('./vf-settings.js?v=20261013-1')).loadVfSettings(sb, { fresh: true });
+        if (liveSettings.accept_orders === false) throw new Error('Sorry, we are not taking new orders right now. Please check back soon.');
+        if (liveSettings.cod_enabled === false && getSelectedPaymentOption() === 'cod') throw new Error('Cash on delivery is not available. Please choose bank transfer.');
+
         var mods = await loadVdModules();
 
         // Re-check the estimate right before submitting so we never send stale pricing.
@@ -2247,5 +2267,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
 </script>
 <script type="module" src="vf-admin-bar.js?v=20261013-1"></script>
+<script type="module" src="vf-settings.js?v=20261013-1"></script>
 </body>
 </html>

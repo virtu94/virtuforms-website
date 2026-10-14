@@ -1197,7 +1197,7 @@ textarea:focus-visible{
 <span class="section-eyebrow">VirtuFinds TT</span>
 <h1>Smart Finds. Delivered.</h1>
 <span class="tagline">Easy ordering • Fast delivery</span>
-<p class="lede">Shop useful finds without a complicated checkout. Pick your item, place your order through our VirtuDrop delivery form, and track your delivery easily.</p>
+<p class="lede">Shop useful finds without a complicated checkout. Pick your item, place your order in a few taps, and track your delivery easily.</p>
 <div class="hero-ctas">
 <a class="btn btn--primary btn--lg" href="shop.html">Shop Now <svg fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="18"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></a>
 <a class="btn btn--outline btn--lg" href="../virtudrop/track.html" target="_blank" rel="noopener">Track Order</a>
@@ -1218,7 +1218,7 @@ textarea:focus-visible{
 </article>
 <article class="trust-item">
 <div class="icon-badge"><svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24"><rect height="18" rx="3" width="11" x="6.5" y="3"></rect><path d="M10 18h4"></path></svg></div>
-<div><h3>Easy Ordering</h3><p>Order through the VirtuDrop delivery form with product details prefilled.</p></div>
+<div><h3>Easy Ordering</h3><p>Tap Order Now, enter your delivery details and see your delivery fee before you confirm.</p></div>
 </article>
 <article class="trust-item">
 <div class="icon-badge"><svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24"><path d="M3 7h11v10H3z"></path><path d="M14 10h4l3 3v4h-7z"></path><circle cx="7" cy="18" r="2"></circle><circle cx="17" cy="18" r="2"></circle></svg></div>
@@ -1270,7 +1270,7 @@ textarea:focus-visible{
 <article class="step-card">
 <div class="step-number">2</div>
 <h3>Place your order</h3>
-<p>The Order Now button opens the VirtuFinds customised VirtuDrop form with the product details prefilled.</p>
+<p>The Order Now button opens a quick order form with the product already filled in.</p>
 </article>
 <article class="step-card">
 <div class="step-number">3</div>
@@ -1288,7 +1288,7 @@ textarea:focus-visible{
 <div>
 <span class="section-eyebrow">Delivery</span>
 <h2>Islandwide delivery through VirtuDrop</h2>
-<p class="muted" style="margin-top:8px;">Customers can place orders using the VirtuDrop form and track deliveries with their VirtuDrop order number.</p>
+<p class="muted" style="margin-top:8px;">Place your order on VirtuFinds and track your delivery with the VirtuDrop tracking number you receive.</p>
 </div>
 </div>
 <div class="delivery-points">
@@ -1335,7 +1335,7 @@ textarea:focus-visible{
 </div>
 <div class="footer-col">
 <h4>Help</h4>
-<ul><li><a href="../virtudrop/track.html" target="_blank" rel="noopener">Track Order</a></li><li><a href="faq.html">FAQs</a></li><li><a href="shipping-and-returns.html">Shipping Info</a></li><li><a href="shipping-and-returns.html#returns">Returns</a></li></ul>
+<ul><li><a href="../virtudrop/track.html" target="_blank" rel="noopener">Track Order</a></li><li><a href="faq.html">FAQs</a></li><li><a href="faq.html">Shipping Info</a></li><li><a href="faq.html">Returns</a></li></ul>
 </div>
 <div class="footer-col">
 <h4>About</h4>
@@ -1572,7 +1572,23 @@ document.addEventListener('DOMContentLoaded', function () {
     // VirtuDrop delivery-fee connector (step 7)
     // ---------------------------------------------------------
     var VF_BUSINESS_CLIENT_ID = '80ffcba8-d208-40bf-82c4-f2a8686d510e';
-    var VF_WHATSAPP_NUMBER = '18687973542';
+    var VF_WHATSAPP_NUMBER = '18687973543';
+    var vfStoreSettings = null;
+    function applyStoreSettings(s) {
+      vfStoreSettings = s;
+      var digits = String(s.store_whatsapp || '').replace(/\D/g, '');
+      if (digits) VF_WHATSAPP_NUMBER = digits;
+      var codRadio = modalForm.querySelector('input[name="paymentMethod"][value="cod"]');
+      if (codRadio) {
+        var codLabel = codRadio.closest('label');
+        if (codLabel) codLabel.style.display = s.cod_enabled === false ? 'none' : '';
+        if (s.cod_enabled === false && codRadio.checked) {
+          var first = modalForm.querySelector('input[name="paymentMethod"]:not([value="cod"])');
+          if (first) { first.checked = true; renderDeliveryFeeBox(); }
+        }
+      }
+    }
+    import('./vf-settings.js?v=20261013-1').then(function (m) { return m.loadVfSettings(sb); }).then(applyStoreSettings).catch(function () {});
     var vdModulesPromise = null;
     function loadVdModules() {
       if (!vdModulesPromise) {
@@ -1747,6 +1763,10 @@ document.addEventListener('DOMContentLoaded', function () {
       if (errStatus) errStatus.textContent = '';
 
       try {
+        var liveSettings = await (await import('./vf-settings.js?v=20261013-1')).loadVfSettings(sb, { fresh: true });
+        if (liveSettings.accept_orders === false) throw new Error('Sorry, we are not taking new orders right now. Please check back soon.');
+        if (liveSettings.cod_enabled === false && getSelectedPaymentOption() === 'cod') throw new Error('Cash on delivery is not available. Please choose bank transfer.');
+
         var mods = await loadVdModules();
 
         // Re-check the estimate right before submitting so we never send stale pricing.
@@ -1910,4 +1930,5 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 });
 </script><script type="module" src="vf-admin-bar.js?v=20261013-1"></script>
+<script type="module" src="vf-settings.js?v=20261013-1"></script>
 </body></html>
