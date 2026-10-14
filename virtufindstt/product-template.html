@@ -1125,54 +1125,6 @@ textarea:focus-visible{
 </script>
 </head>
 <body>
-<div id="vfAdminAvatarWrap" style="display:none;position:fixed;top:14px;right:14px;z-index:9999;">
-<button id="vfAdminAvatarBtn" type="button" aria-haspopup="true" aria-expanded="false" style="width:40px;height:40px;border-radius:50%;border:0;cursor:pointer;background:#0C58E6;color:#fff;font:700 14px/1 system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.18);">VF</button>
-<div id="vfAdminAvatarMenu" style="display:none;position:absolute;right:0;top:calc(100% + 8px);background:#fff;border:1px solid #e4e4e4;border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.16);min-width:170px;padding:6px;">
-<a href="admin.html" style="display:block;padding:9px 10px;border-radius:8px;text-decoration:none;color:#1a1a1a;font-weight:600;font-size:13px;">Dashboard</a>
-<button id="vfAdminAvatarLogout" type="button" style="display:block;width:100%;text-align:left;padding:9px 10px;border:0;background:none;border-radius:8px;color:#c0392b;font-weight:600;font-size:13px;cursor:pointer;">Log out</button>
-</div>
-</div>
-<script>
-(async function(){
-  try {
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session) return;
-    const { data } = await sb.from('vf_admins').select('id, first_name, last_name').eq('id', session.user.id).single();
-    if (!data) return;
-    const first = (data.first_name || '').trim();
-    const last = (data.last_name || '').trim();
-    let initials = ((first[0]||'') + (last[0]||'')).toUpperCase();
-    if (!initials && session.user.email) initials = session.user.email[0].toUpperCase();
-    const wrap = document.getElementById('vfAdminAvatarWrap');
-    const btn = document.getElementById('vfAdminAvatarBtn');
-    const menu = document.getElementById('vfAdminAvatarMenu');
-    if (!wrap || !btn || !menu) return;
-    btn.textContent = initials || 'A';
-    if (session.user.email) btn.title = session.user.email;
-    wrap.style.display = 'block';
-    btn.addEventListener('click', function(e){
-      e.stopPropagation();
-      const isOpen = menu.style.display === 'block';
-      menu.style.display = isOpen ? 'none' : 'block';
-      btn.setAttribute('aria-expanded', String(!isOpen));
-    });
-    document.addEventListener('click', function(e){
-      if (menu.style.display === 'block' && !menu.contains(e.target) && e.target !== btn) {
-        menu.style.display = 'none';
-        btn.setAttribute('aria-expanded', 'false');
-      }
-    });
-    document.addEventListener('keydown', function(e){
-      if (e.key === 'Escape') { menu.style.display = 'none'; btn.setAttribute('aria-expanded', 'false'); }
-    });
-    const logoutBtn = document.getElementById('vfAdminAvatarLogout');
-    if (logoutBtn) logoutBtn.addEventListener('click', async function(){
-      await sb.auth.signOut();
-      window.location.reload();
-    });
-  } catch (e) {}
-})();
-</script>
 <!--
 PRODUCT PAGE TEMPLATE
 Duplicate this file for each product.
@@ -2207,5 +2159,6 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 </script>
+<script type="module" src="vf-admin-bar.js?v=20261013-1"></script>
 </body>
 </html>
