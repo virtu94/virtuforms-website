@@ -4379,7 +4379,8 @@
         actions.innerHTML = [
           ['Pickup requests', activePickups, 'active', '#e9f7f5'],
           ['Schedule review', scheduleReview, 'overdue', 'var(--orange-pale)'],
-          ['Sorting / manifests', sortingCount + draftManifestCount, 'pending', '#eef4fb'],
+          ['Parcels to sort', sortingCount, 'pending', '#eef4fb'],
+          ['Not yet handed to drivers', notHandedOver, 'pending', '#eef4fb'],
           ['Returns / redelivery', returnActionCount, 'pending', 'var(--orange-pale)'],
           ['Zone confirmation', pendingZone, 'pending', 'var(--yellow-pale)'],
           ['Driver assignment', unassigned, 'unassigned', '#f0f0f0'],
