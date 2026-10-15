@@ -196,6 +196,22 @@
       scrollbar-width: thin;
       scrollbar-color: var(--teal-mid) var(--grey-light);
     }
+    /* A table's own sideways scrollbar sits under its last row, which on a
+       long list is far below the screen. While that is the case, a copy of the
+       bar floats at the bottom of the window (see initFloatingTableScroll) and
+       stays in sync with the table. */
+    #floatingHScroll {
+      display: none; position: fixed; bottom: 0; left: var(--sidebar-w); width: 0; height: 16px;
+      overflow-x: scroll; overflow-y: hidden; z-index: 90;
+      background: var(--white); border-top: 1px solid var(--grey-mid);
+      box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
+      scrollbar-width: thin; scrollbar-color: var(--teal-mid) var(--grey-light);
+    }
+    #floatingHScroll::-webkit-scrollbar { height: 12px; }
+    #floatingHScroll::-webkit-scrollbar-track { background: var(--grey-light); }
+    #floatingHScroll::-webkit-scrollbar-thumb { background: var(--teal-mid); border-radius: 6px; }
+    #floatingHScrollInner { height: 1px; }
+    .content { padding-bottom: 3rem; }
     .table-wrap::-webkit-scrollbar { height: 10px; }
     .table-wrap::-webkit-scrollbar-track { background: var(--grey-light); border-radius: 6px; }
     .table-wrap::-webkit-scrollbar-thumb { background: var(--teal-mid); border-radius: 6px; }
@@ -770,7 +786,7 @@
     }
     .driver-zone-filter { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.85rem; }
     .driver-zone-filter-label { color: var(--grey); font-size: 0.82rem; font-weight: 700; margin-right: 0.15rem; }
-    .driver-zone-filter .btn[aria-pressed="true"] { background: var(--teal); border-color: var(--teal); color: #fff; }
+    .driver-zone-filter .btn[aria-pressed="true"] { background: var(--teal-mid); border-color: var(--teal-mid); color: #fff; }
     .zone-card,
     .account-card,
     .pending-strip {
@@ -873,7 +889,7 @@
         <span class="nav-badge alert">5</span>
       </button>
       <button class="nav-item" data-panel="sorting-manifests">
-        <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h7l2 2h9v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><path d="M3 7V5h7l2 2"></path></svg></span> Driver Collections / COD
+        <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h7l2 2h9v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><path d="M3 7V5h7l2 2"></path></svg></span> Sorting
         <span class="nav-badge alert">0</span>
       </button>
       <button class="nav-item" data-panel="returns-redelivery">
@@ -886,6 +902,7 @@
       </button>
       <button class="nav-item" data-panel="drivers-mgmt">
         <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg></span> Drivers
+        <span class="nav-badge alert" title="Parcels assigned to drivers but not yet ticked as handed over">0</span>
       </button>
       <button class="nav-item" data-panel="driver-tab" id="driverTabNavItem" style="display:none;">
         <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 17h1a3 3 0 0 0 6 0h4a3 3 0 0 0 6 0h1v-6l-3-5H8L5 11z"></path><circle cx="7.5" cy="17" r="1.8"></circle><circle cx="17.5" cy="17" r="1.8"></circle></svg></span> Driver Tab
@@ -952,7 +969,7 @@
 
         <div style="display:flex; justify-content:flex-end; gap:0.65rem; flex-wrap:wrap; margin-bottom:1rem;">
           <button class="btn btn-primary" type="button" onclick="showPanel('driver-import')">Open Active Delivery Import</button>
-          <button class="btn btn-primary" type="button" onclick="showPanel('sorting-manifests')">Open Driver Collections / COD</button>
+          <button class="btn btn-primary" type="button" onclick="showPanel('drivers-mgmt')">Open Drivers</button>
         </div>
 
         <div class="pending-strip">
@@ -1032,7 +1049,7 @@
             <option value="__unassigned">Unassigned</option>
           </select>
           <input class="filter-input" id="orderDateFilter" type="date" onchange="renderAllOrders()" title="Filter by order date" />
-          <input class="filter-input" id="orderSearchInput" type="search" placeholder="Search order, customer, phone, item" oninput="renderAllOrders()" />
+          <input class="filter-input" id="orderSearchInput" type="search" placeholder="Search order, customer, phone, item" />
         </div>
 
         <div class="bulk-toolbar" id="allOrdersBulkToolbar">
@@ -1139,6 +1156,12 @@
           <p>Review the customer location, choose the delivery zone, and set the delivery fee before assigning a driver.</p>
         </div>
 
+        <div class="driver-zone-filter" id="zoneConfirmFilterTabs" aria-label="Filter zone confirmation by match result">
+          <button class="btn btn-ghost btn-sm" type="button" data-zone-filter="all" aria-pressed="true" onclick="setZoneConfirmFilter('all')">All <span data-zone-filter-count="all"></span></button>
+          <button class="btn btn-ghost btn-sm" type="button" data-zone-filter="matched" aria-pressed="false" onclick="setZoneConfirmFilter('matched')" title="One zone was found from the address. Still needs your confirmation.">Matched <span data-zone-filter-count="matched"></span></button>
+          <button class="btn btn-ghost btn-sm" type="button" data-zone-filter="review" aria-pressed="false" onclick="setZoneConfirmFilter('review')" title="No zone, or more than one zone, was found. Choose the zone yourself.">Needs Review <span data-zone-filter-count="review"></span></button>
+        </div>
+
         <div class="bulk-toolbar" id="zoneConfirmBulkToolbar">
           <label><input id="zoneConfirmSelectAll" type="checkbox" onchange="toggleZoneConfirmVisibleBulk(this.checked)"> Select all visible</label>
           <button class="btn btn-primary btn-sm" type="button" onclick="confirmSelectedZones()">Confirm Selected Zones</button>
@@ -1153,64 +1176,12 @@
 
       <div class="panel" id="panel-sorting-manifests">
         <div class="section-heading">
-          <h2>Driver Collections / COD</h2>
-          <p>Select a driver to review their assigned orders, mark the manifest ready, confirm driver collection, or close the manifest.</p>
+          <h2>Sorting</h2>
+          <p>Mark received parcels as sorted so they can be assigned to a driver. Driver handovers, cash owed and pay now live under <a href="#" onclick="showPanel('drivers-mgmt'); return false;">Drivers</a>.</p>
         </div>
 
-        <div class="card" style="margin-bottom:1rem;">
-          <div class="card-title">All Drivers — Cash Currently Held</div>
-          <div class="td-sub" style="margin-bottom:0.75rem;">Cash collected on delivery that has not yet been handed to VirtuDrop and reconciled. <button class="btn btn-ghost btn-sm" type="button" onclick="loadAllDriversCashSummary()">Refresh</button></div>
-          <div class="table-wrap"><table>
-            <thead><tr><th>Driver</th><th>Cash on Hand</th></tr></thead>
-            <tbody id="allDriversCashBody"><tr><td colspan="2">Loading...</td></tr></tbody>
-          </table></div>
-        </div>
-
-        <div class="filter-bar">
-          <select class="filter-select" id="manifestDriverFilter" onchange="renderManifests();"><option value="">Select driver</option></select>
-          <select class="filter-select" id="manifestStatusFilter" onchange="renderManifests()"><option value="active">Current Manifests</option><option value="draft">Draft</option><option value="ready">Ready</option><option value="collected">Collected by Driver</option><option value="closed">Closed</option><option value="all">All Manifests</option></select>
-          <input class="filter-input" id="manifestSearch" type="search" placeholder="Search order or customer" oninput="renderManifests()" />
-          <button class="btn btn-ghost btn-sm" type="button" onclick="showDriverReturnList()">Items to Return</button>
-        </div>
-
-        <div class="card" id="driverBatchStatsCard" style="margin-bottom:1rem; display:none;">
-          <div class="card-title">Selected Driver — Current Deliveries Out</div>
-          <div class="td-sub" style="margin-bottom:0.75rem;">Only orders on this driver's current (non-closed) manifest(s) — not their history.</div>
-          <div id="driverBatchStatsBody">Loading...</div>
-        </div>
-
-        <div class="card" id="driverFlatDeliveriesCard" style="margin-bottom:1rem; display:none;">
-          <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
-            <span>Deliveries Assigned to This Driver</span>
-            <label style="font-size:0.78rem; font-weight:500; color:var(--grey); display:flex; align-items:center; gap:0.35rem;"><input type="checkbox" id="driverFlatDeliveriesShowClosed" onchange="renderDriverFlatDeliveries(document.getElementById('manifestDriverFilter')?.value)"> Show closed deliveries</label>
-          </div>
-          <div class="td-sub" style="margin-bottom:0.75rem;">A simple list of this driver's assigned deliveries with when each was assigned. Close a delivery once it's been delivered and (if it had cash to collect) reconciled as balanced.</div>
-          <div class="bulk-toolbar" id="driverFlatDeliveriesBulkToolbar">
-            <label><input id="driverFlatDeliveriesSelectAll" type="checkbox" onchange="toggleDriverFlatDeliveriesVisibleBulk(this.checked)"> Select all</label>
-            <button class="btn btn-primary btn-sm" type="button" id="closeSelectedDriverFlatDeliveriesBtn" onclick="closeSelectedManifestOrders()" disabled>Close Selected</button>
-            <button class="btn btn-ghost btn-sm" type="button" onclick="clearDriverFlatDeliveriesSelection()">Clear</button>
-            <span class="bulk-count" id="driverFlatDeliveriesBulkCount">0 selected</span>
-          </div>
-          <div class="table-wrap"><table>
-            <thead><tr><th></th><th>Order</th><th>Customer</th><th>Address</th><th>Assigned</th><th>Status</th><th>Collect</th><th>Reconciliation</th><th>Action</th></tr></thead>
-            <tbody id="driverFlatDeliveriesBody"><tr><td colspan="9">Loading...</td></tr></tbody>
-          </table></div>
-        </div>
-
-        <div class="bulk-toolbar" id="manifestBulkToolbar">
-          <label><input id="manifestSelectAll" type="checkbox" onchange="toggleManifestVisibleBulk(this.checked)"> Select all visible</label>
-          <select class="filter-select" id="manifestBulkAction">
-            <option value="">Choose manifest action</option>
-            <option value="ready">Mark selected ready</option>
-            <option value="mark_all_collected">Check off all parcels as handed over</option>
-            <option value="collected">Confirm selected driver collection</option>
-            <option value="close">Close selected eligible manifests</option>
-          </select>
-          <button class="btn btn-primary btn-sm" type="button" onclick="runManifestBulkAction()">Apply</button>
-          <button class="btn btn-ghost btn-sm" type="button" onclick="clearManifestSelection()">Clear</button>
-          <span class="bulk-count" id="manifestBulkCount">0 selected</span>
-        </div>
-        <div id="manifestList"><div class="card">Select a driver to manage their manifest.</div></div>
+        <!-- Kept (hidden) so older code that still writes a loading/error message here keeps working. -->
+        <div id="manifestList" style="display:none;"></div>
         <div class="card" style="margin-top:1rem;">
           <div class="card-title">Parcels Ready for Sorting</div>
           <div class="td-sub" style="margin-bottom:0.75rem;">Use this only for received parcels that still need to be marked sorted before driver assignment.</div>
@@ -1258,7 +1229,13 @@
             <option value="held">Held Parcels</option>
             <option value="all">All Needs-Review Records</option>
           </select>
-          <label id="cancelledHistoryWrap" style="display:none; align-self:center; gap:0.35rem; align-items:center; font-size:0.85rem;"><input type="checkbox" id="cancelledHistoryToggle" onchange="toggleCancelledHistory(this.checked)"> Show history (already returned / closed)</label>
+          <select class="filter-select" id="returnOutcomeFilter" onchange="renderReturnManagement()" title="Filter by what happened to the delivery">
+            <option value="">All outcomes</option>
+            <option value="no_response">No response</option>
+            <option value="refused">Refused</option>
+            <option value="reschedule_requested">Reschedule requested</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
           <input class="filter-input" id="returnManagementSearch" type="search" placeholder="Search order, client or customer" oninput="renderReturnManagement()" />
           <span class="td-sub" id="returnAwaitingCount" style="align-self:center;"></span>
         </div>
@@ -1296,7 +1273,37 @@
           <button class="btn btn-ghost btn-sm" type="button" onclick="clearExStatusSelection()">Clear</button>
           <span class="bulk-count" id="exStatusBulkCount">0 selected</span>
         </div>
-        <div class="card">
+        <!-- Checklist view for Needs Review and Returns to Client. The older single
+             table below is still used by the other tabs. -->
+        <div id="returnChecklist" style="display:none;">
+          <style>
+            .rc-count { display:inline-block; min-width:1.6rem; padding:0.05rem 0.5rem; margin-left:0.4rem; border-radius:999px; background:var(--teal-light); color:var(--teal-dark); font-size:0.78rem; font-weight:700; text-align:center; }
+            .rc-help { margin:-0.6rem 0 0.9rem; }
+            .rc-staged { margin-top:1.1rem; padding:1rem; border:2px dashed var(--teal-mid); border-radius:12px; background:var(--teal-pale); }
+            .rc-staged-head { display:flex; flex-wrap:wrap; align-items:center; gap:0.7rem; margin-bottom:0.7rem; }
+            .rc-staged-head strong { margin-right:auto; color:var(--teal-dark); }
+            .rc-empty { padding:0.9rem 0.2rem; color:var(--grey); font-size:0.88rem; }
+            /* Let these tables fit the screen: wrap text and buttons instead of
+               running off to the right. */
+            #returnChecklist table { min-width:0; }
+            #returnChecklist th, #returnChecklist td { white-space:normal; }
+            #returnChecklist .td-id { white-space:nowrap; }
+            #returnChecklist .finance-actions { display:flex; flex-wrap:wrap; gap:0.35rem; }
+          </style>
+          <div class="card" id="rcStageHub"></div>
+          <div class="card" id="rcStageDecide">
+            <div class="card-title" id="rcDecideTitle">2. At the hub — decide what happens next</div>
+            <div class="td-sub rc-help">These parcels are back at the hub. Tick the ones you want, choose what happens next, and apply.</div>
+            <div id="rcDecisionHost"></div>
+            <div class="table-wrap"><table>
+              <thead><tr><th></th><th>Order</th><th>Customer / Client</th><th>Item</th><th>Why it came back</th><th>At the hub</th><th>Actions</th></tr></thead>
+              <tbody id="rcDecisionBody"><tr><td colspan="7">Loading...</td></tr></tbody>
+            </table></div>
+          </div>
+          <div class="card" id="rcStageClient"></div>
+        </div>
+
+        <div class="card" id="returnLegacyCard">
           <div class="table-wrap"><table>
             <thead><tr><th></th><th>Order</th><th>Client / Customer</th><th>Area</th><th>Outcome</th><th>Parcel</th><th>Fees / Payer</th><th>Schedule / Hold</th><th>Actions</th></tr></thead>
             <tbody id="returnManagementBody"><tr><td colspan="9">Loading returned parcels...</td></tr></tbody>
@@ -1373,34 +1380,61 @@
       </div>
 
       <div class="panel" id="panel-drivers-mgmt">
-        <div class="section-heading">
-          <h2>Drivers</h2>
-          <p>Driver profiles: vehicle, insurance, unique driver code, and a reassignable route/role label. Repointing a route label to a different driver takes effect immediately &mdash; no code changes needed.</p>
-        </div>
-
-        <div class="card">
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Driver Code</th>
-                  <th>Name</th>
-                  <th>Phone</th>
-                  <th>Vehicle #</th>
-                  <th>Insurance #</th>
-                  <th>Route Label</th>
-                  <th>Assigned Zones</th>
-                  <th>Status</th>
-                  <th>Action</th>
-                  <th>Live Sheet</th>
-                </tr>
-              </thead>
-              <tbody id="driversMgmtTbody">
-                <tr><td colspan="10">Loading drivers...</td></tr>
-              </tbody>
-            </table>
+        <style>
+          .dv-tiles { display:grid; grid-template-columns:repeat(auto-fit, minmax(135px, 1fr)); gap:0.6rem; margin-bottom:1rem; }
+          .dv-tiles .stat-card { margin:0; padding:0.7rem 0.85rem; }
+          .dv-tiles .stat-card[onclick] { cursor:pointer; }
+          .dv-tiles .stat-label { font-size:0.68rem; line-height:1.25; margin-bottom:0.15rem; }
+          .dv-tiles .stat-val { font-size:1.3rem; line-height:1.2; white-space:nowrap; }
+          .dv-tiles .stat-sub { font-size:0.7rem; line-height:1.3; }
+          .dv-head { display:flex; flex-wrap:wrap; align-items:center; gap:0.9rem; margin-bottom:1rem; }
+          .dv-head h2 { font-size:1.3rem; }
+          .dv-head p { margin:0.15rem 0 0; color:var(--grey); font-size:0.86rem; }
+          .dv-head .dv-head-actions { margin-left:auto; display:flex; gap:0.5rem; flex-wrap:wrap; }
+          .dv-manifests { display:flex; flex-wrap:wrap; gap:0.6rem; margin-bottom:0.9rem; }
+          .dv-manifest { display:flex; flex-wrap:wrap; align-items:center; gap:0.45rem; padding:0.5rem 0.75rem; border:1px solid var(--grey-mid); border-radius:10px; background:var(--grey-light); font-size:0.8rem; }
+          .dv-handover { display:flex; flex-wrap:wrap; align-items:center; gap:0.7rem; padding:0.75rem 1rem; margin-bottom:0.8rem; border-radius:10px; background:var(--teal-pale); border:1px solid var(--teal-light); }
+          .dv-handover strong { color:var(--teal-dark); }
+          .dv-handover .dv-handover-actions { margin-left:auto; display:flex; gap:0.5rem; flex-wrap:wrap; }
+          .dv-note { color:var(--grey); font-size:0.82rem; margin:0.2rem 0 0.8rem; }
+          #driverDetailView table, #driversListView table { min-width:0; }
+          #driversListView td, #driversListView th { white-space:normal; }
+          #driverDetailView td, #driverDetailView th { white-space:normal; }
+          #driverDetailView .td-id, #driverDetailView td.nw, #driverDetailView th.nw { white-space:nowrap; }
+          #driverDetailView td.dv-wide { min-width:170px; }
+          .dv-row-notready { background:#fffaf0; }
+        </style>
+        <div id="driversListView">
+          <div class="section-heading">
+            <h2>Drivers</h2>
+            <p>Pick a driver to see everything about them in one place: what is assigned to them, what you have handed over, cash they owe and their pay.</p>
+          </div>
+          <div class="dv-tiles" id="driversListTotals"></div>
+          <div class="card">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Code</th>
+                    <th>Driver</th>
+                    <th>Route</th>
+                    <th>Zones</th>
+                    <th>Open Orders</th>
+                    <th>Not Handed Over</th>
+                    <th>Cash Owed</th>
+                    <th>Pay (cycle)</th>
+                    <th>Status</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="driversMgmtTbody">
+                  <tr><td colspan="10">Loading drivers...</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
+        <div id="driverDetailView" style="display:none;"></div>
       </div>
 
       <div class="panel" id="panel-driver-tab">
@@ -1570,7 +1604,7 @@
 
         <div class="card" id="managedReturnExportCard" style="display:none; margin-top:1rem;">
           <div class="card-title">Return Export</div>
-          <div class="accounting-note">Every order in the batch picked above that isn't delivered, right now, plus delivered Exchange orders (the original item collected back for Middleman) — this is what will go into Middleman's return sheet if you export this batch this moment. Includes orders still out for delivery (blank Comment until an outcome is known) alongside failed / cancelled / rescheduled ones with their current status and comment. Fills in Middleman's Return template the same way.</div>
+          <div class="accounting-note">Every order in the batch picked above that isn't delivered, right now — this is what will go into Middleman's return sheet if you export this batch this moment. Includes orders still out for delivery (blank Comment until an outcome is known) alongside failed / cancelled / rescheduled ones with their current status and comment. Fills in Middleman's Return template the same way.</div>
           <div class="finance-actions" style="margin-top:0.75rem;">
             <button class="btn btn-ghost" type="button" onclick="toggleAllManagedExportRows('return')">Select All / None</button>
             <button class="btn btn-primary" type="button" onclick="exportManagedReturnXlsx()">Export Selected as Return (.xlsx)</button>
@@ -2222,7 +2256,7 @@
       'parcel-checkin': 'Parcel Check-In',
       'pickup-management': 'Pickup Management',
       'zone-confirm': 'Zone Confirmation',
-      'sorting-manifests': 'Driver Collections / COD',
+      'sorting-manifests': 'Sorting',
       'returns-redelivery': 'Delivery Exceptions',
       'driver-assign': 'Driver Assignment',
       'drivers-mgmt': 'Drivers',
@@ -2265,16 +2299,16 @@
     const sideListsDirty = new Set();
     let allOrdersBulkSelection = new Set();
     let allOrdersVisibleIds = [];
+    const ALL_ORDERS_PAGE_SIZE = 100;
+    let allOrdersPageLimit = ALL_ORDERS_PAGE_SIZE;
+    let allOrdersFilterSignature = '';
     let parcelCheckinSelection = new Set();
     let parcelCheckinVisibleIds = [];
     let zoneConfirmSelection = new Set();
     let zoneConfirmVisibleIds = [];
     let sortingSelection = new Set();
     let sortingVisibleIds = [];
-    let manifestSelection = new Set();
-    let manifestVisibleIds = [];
     let returnMgmtTab = 'needs_review';
-    let showCancelledHistory = false;
     let returnSelection = new Set();
     let returnVisibleIds = [];
     let returnDecisionSelection = new Set();
@@ -2289,9 +2323,6 @@
     let driverAssignSort = { key: '', dir: 'asc' };
     let sortingQueueSort = { key: '', dir: 'asc' };
     let allOrdersSort = { key: '', dir: 'asc' };
-    let manifestOrderSort = { key: '', dir: 'asc' };
-    let manifestColumnFilters = {};
-    let manifestFilterFocusKey = null;
 
     function filterByColumns(items, getters, filters) {
       const keys = Object.keys(filters).filter(key => filters[key]);
@@ -2977,14 +3008,6 @@
           .map(([id, client]) => `<option value="${escapeHtml(id)}">${escapeHtml(client.business_name || client.slug || id)}</option>`)
           .join('');
       }
-      const manifestDriverFilter = document.getElementById('manifestDriverFilter');
-      if (manifestDriverFilter) {
-        const currentManifestDriver = manifestDriverFilter.value;
-        manifestDriverFilter.innerHTML = '<option value="">Select driver</option>' + drivers
-          .map(driver => '<option value="' + escapeHtml(driver.id) + '">' + escapeHtml(driverName(driver.id)) + '</option>')
-          .join('');
-        manifestDriverFilter.value = currentManifestDriver;
-      }
       const acctDriver = document.getElementById('acctDriver');
       if (acctDriver) {
         acctDriver.innerHTML = '<option value="">No driver</option>' + drivers
@@ -3446,268 +3469,538 @@
       return true;
     }
 
-    function renderDriversMgmt() {
+    // ── Drivers: a list, and a single-driver view ───────────────────────────
+    // This replaces the old "Driver Collections / COD" tab and the per-driver
+    // dropdown. Pick a driver and the page becomes about that driver only:
+    //   - every delivery assigned to them in ONE table (the manifest is just a
+    //     column, there are no manifest groups);
+    //   - a tick box per parcel for "handed over to the driver", so nothing is
+    //     missed -- ticks are kept locally until you press Save;
+    //   - cash they owe VirtuDrop, and their pay;
+    //   - a Batch filter (the day the parcels were assigned to them) so the
+    //     counters show what they did in that batch, not everything ever.
+    // It uses the same database functions as before.
+    let driversViewDriverId = null;
+    const driverView = { batch: 'latest', status: 'all', search: '', showClosed: false };
+    let driverHandoverEdits = new Map();   // orderId -> ticked? (not saved yet)
+    let driverViewShellKey = '';
+    let driverViewAllRows = [];
+    let driverViewVisibleRows = [];
+
+    const DRIVER_STATUS_OPTIONS = [
+      ['all', 'All statuses'],
+      ['awaiting_handover', 'Not yet handed over'],
+      ['out_for_delivery', 'Out for delivery'],
+      ['delivered', 'Delivered'],
+      ['failed', 'Failed / returned'],
+      ['cancelled', 'Cancelled'],
+      ['cash_pending', 'Cash not yet reconciled'],
+      ['closed', 'Closed']
+    ];
+
+    function driverFinanceFor(driverId) {
+      return driverFinanceRecords.find(record => record.driver_id === driverId) || null;
+    }
+
+    // Trinidad date (YYYY-MM-DD) of a timestamp, so "same day" means the same
+    // day on your calendar rather than in UTC.
+    function ttDateKey(value) {
+      if (!value) return '';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '';
+      return date.toLocaleDateString('en-CA', { timeZone: 'America/Port_of_Spain' });
+    }
+
+    function ttDateLabel(key) {
+      return new Date(key + 'T12:00:00').toLocaleDateString('en-TT', { weekday: 'short', day: 'numeric', month: 'short' });
+    }
+
+    function driverZoneInfo(row) {
+      const code = String(row.zone_code || orderDeliveryZoneCode(row) || '').toUpperCase();
+      const zone = zones.find(item => String(item.code || '').toUpperCase() === code);
+      return { code, name: zone?.name || row.zone_name || (code ? `Zone ${code}` : '') };
+    }
+
+    // Everything assigned to a driver, one entry per order: the manifest rows
+    // (which know when each was assigned and whether it was handed over) plus
+    // any order still tied to the driver that is not on a manifest.
+    function driverViewRows(driverId) {
+      const rows = new Map();
+      deliveryManifests.filter(manifest => manifest.driver_id === driverId).forEach(manifest => {
+        (manifest.orders || []).forEach(manifestOrder => {
+          const base = orders.find(order => order.id === manifestOrder.id) || {};
+          const row = { ...base, ...manifestOrder, id: manifestOrder.id, _manifest: manifest };
+          const previous = rows.get(row.id);
+          if (!previous || new Date(row.assigned_at || 0) >= new Date(previous.assigned_at || 0)) rows.set(row.id, row);
+        });
+      });
+      orders.filter(order => order.assigned_driver_id === driverId && !rows.has(order.id)).forEach(order => {
+        rows.set(order.id, { ...order, _manifest: null, assigned_at: null, amount_to_collect: order.driver_amount_to_collect });
+      });
+      return [...rows.values()];
+    }
+
+    function driverRowStatus(row) {
+      if (isCancelledOrder(row)) return 'cancelled';
+      if (row.order_status === 'delivered') return 'delivered';
+      if (['refused', 'no_response', 'reschedule_requested'].includes(row.delivery_outcome)
+        || ['failed', 'rescheduled'].includes(row.order_status)
+        || row.delivery_return_required) return 'failed';
+      if (row.order_status === 'out_for_delivery') return 'out_for_delivery';
+      return 'awaiting_handover';
+    }
+
+    function driverRowStatusBadge(row) {
+      const status = driverRowStatus(row);
+      const labels = { cancelled: 'Cancelled', delivered: 'Delivered', failed: 'Failed / returned', out_for_delivery: 'Out for delivery', awaiting_handover: 'Assigned' };
+      const classes = { cancelled: 'badge-unpaid', delivered: 'badge-delivered', failed: 'badge-failed', out_for_delivery: 'badge-active', awaiting_handover: 'badge-pending' };
+      const detail = status === 'failed'
+        ? ({ no_response: 'No response', refused: 'Refused', reschedule_requested: 'Reschedule requested' }[row.delivery_outcome] || '')
+        : '';
+      return `<span class="badge ${classes[status]}">${escapeHtml(labels[status])}</span>${detail ? `<div class="td-sub">${escapeHtml(detail)}</div>` : ''}`;
+    }
+
+    function driverRowCashPending(row) {
+      return Number(row.amount_to_collect || 0) > 0
+        && row.order_status === 'delivered'
+        && row.reconciliation_status !== 'balanced';
+    }
+
+    // The same "still holding cash" test used by the cash-reconcile list.
+    function driverRowCashHeld(row) {
+      return row.delivery_outcome === 'delivered'
+        && String(row.delivery_collection_method || '').toLowerCase() === 'cash'
+        && row.payment_status === 'collected_by_driver';
+    }
+
+    function driverRowCanClose(row) {
+      return !row.order_closed_at
+        && row.order_status === 'delivered'
+        && (Number(row.amount_to_collect || 0) <= 0 || row.reconciliation_status === 'balanced');
+    }
+
+    function driverBatchKey(row) {
+      return ttDateKey(row.assigned_at) || 'none';
+    }
+
+    function driverBatchInfo(rows) {
+      const counts = new Map();
+      rows.forEach(row => counts.set(driverBatchKey(row), (counts.get(driverBatchKey(row)) || 0) + 1));
+      const keys = [...counts.keys()].filter(key => key !== 'none').sort().reverse();
+      return { keys, counts, latest: keys[0] || '' };
+    }
+
+    function driverRowsInBatch(rows, batch) {
+      if (batch === 'all') return rows;
+      const info = driverBatchInfo(rows);
+      const key = batch === 'latest' ? info.latest : batch;
+      if (!key) return batch === 'latest' ? rows : [];
+      return rows.filter(row => driverBatchKey(row) === key);
+    }
+
+    function driverNotHandedOverCount(driverId) {
+      return deliveryManifests
+        .filter(manifest => manifest.driver_id === driverId && ['draft', 'ready'].includes(manifest.status))
+        .reduce((sum, manifest) => sum + (manifest.orders || []).filter(order => !order.collected_at).length, 0);
+    }
+
+    // ── The list of drivers ──
+    function renderDriversList() {
       const tbody = document.getElementById('driversMgmtTbody');
+      const totals = document.getElementById('driversListTotals');
       if (!tbody) return;
       if (!drivers.length) {
         tbody.innerHTML = '<tr><td colspan="10">No active drivers.</td></tr>';
+        if (totals) totals.innerHTML = '';
         return;
       }
       const sorted = [...drivers].sort((a, b) => (a.driver_code || '').localeCompare(b.driver_code || ''));
+      let totalCash = 0;
+      let totalNotHanded = 0;
+      let totalOpen = 0;
       tbody.innerHTML = sorted.map(driver => {
-        const isOpen = expandedDriverSheetId === driver.id;
-        const mainRow = `
-        <tr>
+        const open = driverActiveSheetOrders(driver.id).length;
+        const notHanded = driverNotHandedOverCount(driver.id);
+        const cash = driverUnreconciledCollections(driver.id).reduce((sum, order) => sum + driverCollects(order), 0);
+        const pay = driverFinanceFor(driver.id)?.earned_cycle || 0;
+        totalCash += cash;
+        totalNotHanded += notHanded;
+        totalOpen += open;
+        return `<tr>
           <td><div class="td-name">${escapeHtml(driver.driver_code || '—')}</div></td>
-          <td><div class="td-name">${escapeHtml(driverLabel(driver))}</div></td>
-          <td>${escapeHtml(formatPhoneDisplay(driver.phone))}</td>
-          <td>${escapeHtml(driver.vehicle_number || '—')}</td>
-          <td>${escapeHtml(driver.insurance_number || '—')}</td>
+          <td><a href="#" style="font-weight:700; color:var(--teal-mid);" onclick="openDriverView('${driver.id}'); return false;">${escapeHtml(driverLabel(driver))}</a><div class="td-sub">${escapeHtml(formatPhoneDisplay(driver.phone) || '')}${driver.vehicle_number ? ` &middot; ${escapeHtml(driver.vehicle_number)}` : ''}</div></td>
           <td>${escapeHtml(driver.route_label || '—')}</td>
           <td><div class="td-sub">${escapeHtml(driverAssignedZonesLabel(driver))}</div></td>
+          <td>${open}</td>
+          <td>${notHanded ? `<span class="badge badge-pending">${notHanded}</span>` : '0'}</td>
+          <td>${cash > 0 ? `<strong>${moneyFull(cash)}</strong>` : '—'}</td>
+          <td>${moneyFull(pay)}</td>
           <td>${driver.status === 'active' ? '<span class="badge badge-confirmed">Active</span>' : '<span class="badge badge-pending">Inactive</span>'}</td>
-          <td><button class="btn btn-ghost btn-sm" type="button" onclick="openDriverEdit('${driver.id}')">Edit</button></td>
-          <td><button class="btn btn-ghost btn-sm" type="button" onclick="toggleDriverSheetPanel('${driver.id}')">${isOpen ? 'Hide' : 'Live Sheet'}</button></td>
-        </tr>`;
-        if (!isOpen) return mainRow;
-        const activeCount = driverActiveSheetOrders(driver.id).length;
-        return mainRow + `
-        <tr>
-          <td colspan="10" style="background:#f4f8f7;">
-            <div class="card" style="margin:0.5rem 0; box-shadow:none; border:1px solid #dfe8e6;">
-              <div class="td-name" style="margin-bottom:0.4rem;">Live Delivery Sheet &mdash; ${escapeHtml(driverLabel(driver))}</div>
-              <div class="td-sub" style="margin-bottom:0.75rem;">${activeCount} active ${activeCount === 1 ? 'delivery' : 'deliveries'} currently assigned to this driver.</div>
-              <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center; margin-bottom:0.75rem;">
-                <button id="driverSheetExportBtn_${driver.id}" class="btn btn-primary btn-sm" type="button" onclick="exportDriverLiveSheet('${driver.id}')" ${activeCount ? '' : 'disabled'}>Export Live Delivery Sheet (.xlsx)</button>
-                ${driver.google_sheet_id
-                  ? `<button id="driverSheetPushBtn_${driver.id}" class="btn btn-primary btn-sm" type="button" onclick="pushDriverLiveSheet('${driver.id}')" ${activeCount ? '' : 'disabled'}>Push to Google Sheet</button>`
-                  : `<span class="td-sub">No Google Sheet linked &mdash; add one via Edit.</span>`}
-              </div>
-              <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center; margin-bottom:0.5rem;">
-                <input id="driverSheetImportFile_${driver.id}" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/octet-stream">
-                <button id="driverSheetImportBtn_${driver.id}" class="btn btn-ghost btn-sm" type="button" onclick="importDriverLiveSheet('${driver.id}')">Import Completed Sheet</button>
-              </div>
-              <div id="driverSheetResults_${driver.id}"></div>
-              <div id="driverSheetPushResult_${driver.id}"></div>
-            </div>
-            <div class="card" style="margin:0.75rem 0 0; box-shadow:none; border:1px solid #dfe8e6;">
-              <div class="td-name" style="margin-bottom:0.6rem;">Delivery Stats &mdash; ${escapeHtml(driverLabel(driver))}</div>
-              <div style="display:flex; gap:1.5rem; flex-wrap:wrap; align-items:flex-start;">
-                <div id="driverStatsGrid_${driver.id}" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:0.6rem; flex:1 1 320px; min-width:280px;"></div>
-                <div style="width:180px; flex:0 0 180px;"><canvas id="driverStatsChart_${driver.id}" width="180" height="180"></canvas></div>
-              </div>
-              <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-top:0.75rem;">
-                <div class="stat-card" style="margin:0;">
-                  <div class="stat-label" style="display:flex; justify-content:space-between; align-items:center; gap:0.4rem;">
-                    <span>Total Deliveries Completed</span>
-                    <span style="display:flex; border:1px solid #dfe8e6; border-radius:6px; overflow:hidden;">
-                      <button type="button" id="driverDeliveriesToggleCurrent_${driver.id}" class="btn btn-sm" style="padding:0.1rem 0.45rem; border:none; border-radius:0; font-size:0.65rem;" onclick="setDriverDeliveriesView('${driver.id}','current')">Current</button>
-                      <button type="button" id="driverDeliveriesToggleOverall_${driver.id}" class="btn btn-sm" style="padding:0.1rem 0.45rem; border:none; border-radius:0; font-size:0.65rem;" onclick="setDriverDeliveriesView('${driver.id}','overall')">Overall</button>
-                    </span>
-                  </div>
-                  <div class="stat-val" id="driverTotalDeliveries_${driver.id}" style="font-size:1.4rem;">0</div>
-                  <div class="stat-sub" id="driverTotalDeliveriesSub_${driver.id}">Current assigned batch</div>
-                </div>
-                <div class="stat-card ok" style="margin:0;">
-                  <div class="stat-label">Cash Collected</div>
-                  <div class="stat-val" id="driverCashCollected_${driver.id}" style="font-size:1.4rem;">TTD 0</div>
-                  <div class="stat-sub" id="driverCashCollectedSub_${driver.id}">Current cycle</div>
-                </div>
-                <div class="stat-card blue" style="margin:0;">
-                  <div class="stat-label">Pay Earned So Far</div>
-                  <div class="stat-val" id="driverPayEarned_${driver.id}" style="font-size:1.4rem;">TTD 0</div>
-                  <div class="stat-sub" id="driverPayEarnedSub_${driver.id}">Current cycle</div>
-                </div>
-              </div>
-            </div>
-            <div class="card" style="margin:0.75rem 0 0; box-shadow:none; border:1px solid #dfe8e6;">
-              <div class="td-name" style="margin-bottom:0.4rem;">Cash Reconciliation</div>
-              <div class="accounting-note">Cash this driver is still holding from delivered COD / delivery-fee collections. Confirm what VirtuDrop actually received (one at a time, or several together).</div>
-              <div class="finance-filter-grid">
-                <button class="btn btn-ghost" type="button" onclick="toggleAllRemitDriverCashRows()">Select All / None</button>
-                <button class="btn btn-primary" type="button" onclick="openBulkRemitDriverCashReceived()">Confirm Cash Received</button>
-                <span id="remitDriverCashBulkCount" style="align-self:center; color:var(--grey);">0 selected</span>
-              </div>
-              <div id="remitDriverCashSummaryWrap" style="display:none; margin:0.25rem 0 0.75rem;">
-                <strong id="remitDriverCashSummary"></strong>
-              </div>
-              <div class="table-wrap">
-                <table>
-                  <thead>
-                    <tr><th style="width:2rem;"></th><th>Order #</th><th>Customer</th><th>Expected</th><th>Collected Via</th><th>Delivered</th><th>Action</th></tr>
-                  </thead>
-                  <tbody id="remitDriverCashBody"><tr><td colspan="7">Loading&hellip;</td></tr></tbody>
-                </table>
-              </div>
-            </div>
-          </td>
+          <td><button class="btn btn-primary btn-sm" type="button" onclick="openDriverView('${driver.id}')">Open</button></td>
         </tr>`;
       }).join('');
-      if (expandedDriverSheetId) {
-        renderDriverStatsSection(expandedDriverSheetId);
-        renderDriverCashRemittance();
+      if (totals) {
+        totals.innerHTML = `
+          <div class="stat-card warn"><div class="stat-label">Cash held by drivers</div><div class="stat-val">${moneyFull(totalCash)}</div><div class="stat-sub">Collected, not yet reconciled</div></div>
+          <div class="stat-card"><div class="stat-label">Not yet handed over</div><div class="stat-val">${totalNotHanded}</div><div class="stat-sub">Assigned, not ticked as handed over</div></div>
+          <div class="stat-card ok"><div class="stat-label">Open deliveries</div><div class="stat-val">${totalOpen}</div><div class="stat-sub">Across all drivers</div></div>
+          <div class="stat-card"><div class="stat-label">Active drivers</div><div class="stat-val">${drivers.filter(driver => driver.status === 'active').length}</div><div class="stat-sub">${drivers.length} listed</div></div>`;
       }
     }
 
-    // --- Per-driver delivery stats (counts + pie chart) ---------------------
-    // Computed client-side from the already-loaded `orders` array so the
-    // numbers/chart refresh automatically every time loadData() re-renders
-    // this tab -- no extra round trip needed.
-    const DRIVER_STAT_CATEGORIES = [
-      { key: 'out_for_delivery', label: 'Out for Delivery', color: '#2f80ed', match: o => o.order_status === 'out_for_delivery' },
-      { key: 'delivered', label: 'Delivered', color: '#27ae60', match: o => o.order_status === 'delivered' },
-      { key: 'refused', label: 'Refused', color: '#eb5757', match: o => o.delivery_outcome === 'refused' },
-      { key: 'cancelled', label: 'Cancelled', color: '#828282', match: o => isCancelledOrder(o) },
-      { key: 'rescheduled', label: 'Rescheduled', color: '#f2994a', match: o => o.order_status === 'rescheduled' }
-    ];
-
-    function driverOrdersForCategory(driverId, categoryKey) {
-      const category = DRIVER_STAT_CATEGORIES.find(c => c.key === categoryKey);
-      if (!category) return [];
-      return orders.filter(order => order.assigned_driver_id === driverId && category.match(order));
-    }
-
-    // Cash collected by this driver from delivered COD / delivery-fee orders --
-    // regardless of whether it's been reconciled yet, unlike
-    // driverUnreconciledCollections() which only shows what's still outstanding.
-    // When cycleStart/cycleEnd (YYYY-MM-DD) are given, only counts deliveries
-    // attempted within the current pay cycle; omit them for an all-time total.
-    function driverCashCollectedTotal(driverId, cycleStart, cycleEnd) {
-      return orders
-        .filter(order => order.assigned_driver_id === driverId
-          && order.delivery_outcome === 'delivered'
-          && String(order.delivery_collection_method || '').toLowerCase() === 'cash'
-          && order.payment_status === 'collected_by_driver'
-          && (!cycleStart || !cycleEnd || (() => {
-            const attemptDate = String(order.last_delivery_attempt_at || '').slice(0, 10);
-            return attemptDate && attemptDate >= cycleStart && attemptDate <= cycleEnd;
-          })()))
-        .reduce((sum, order) => sum + driverCollects(order), 0);
-    }
-
-    let driverStatsCharts = {};
-    let driverDeliveriesViewMode = {}; // driverId -> 'current' | 'overall', default 'current'
-
-    window.setDriverDeliveriesView = function(driverId, mode) {
-      driverDeliveriesViewMode[driverId] = mode;
-      renderDriverStatsSection(driverId);
+    window.openDriverView = function(driverId) {
+      driversViewDriverId = driverId;
+      driverViewShellKey = '';
+      Object.assign(driverView, { batch: 'latest', status: 'all', search: '', showClosed: false });
+      driverHandoverEdits = new Map();
+      renderDriversMgmt();
+      window.scrollTo({ top: 0 });
     };
 
-    function renderDriverStatsChart(driverId, counts) {
-      const canvas = document.getElementById(`driverStatsChart_${driverId}`);
-      if (!canvas || typeof Chart === 'undefined') return;
-      if (driverStatsCharts[driverId]) {
-        driverStatsCharts[driverId].destroy();
-        delete driverStatsCharts[driverId];
+    window.closeDriverView = function() {
+      if (driverHandoverEdits.size && !window.confirm('You have handover ticks that are not saved. Leave without saving them?')) return;
+      driversViewDriverId = null;
+      driverHandoverEdits = new Map();
+      renderDriversMgmt();
+    };
+
+    window.setDriverViewFilter = function(key, value) {
+      driverView[key] = value;
+      renderDriverDetailBody();
+    };
+
+    // ── One driver ──
+    function buildDriverDetailShell(driver) {
+      const host = document.getElementById('driverDetailView');
+      const id = driver.id;
+      const activeCount = driverActiveSheetOrders(id).length;
+      host.innerHTML = `
+        <div class="dv-head">
+          <button class="btn btn-ghost btn-sm" type="button" onclick="closeDriverView()">&larr; All drivers</button>
+          <div>
+            <h2>${escapeHtml(driverLabel(driver))}</h2>
+            <p>${escapeHtml(driver.driver_code || '')} &middot; ${escapeHtml(formatPhoneDisplay(driver.phone) || 'No phone')} &middot; ${escapeHtml(driver.vehicle_number || 'No vehicle #')} &middot; Route: ${escapeHtml(driver.route_label || '—')} &middot; Zones: ${escapeHtml(driverAssignedZonesLabel(driver))}</p>
+          </div>
+          <div class="dv-head-actions">
+            <button class="btn btn-ghost btn-sm" type="button" onclick="showDriverReturnList('${id}')">Items to return</button>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="openDriverEdit('${id}')">Edit driver</button>
+          </div>
+        </div>
+        <div class="dv-tiles" id="driverDetailTiles"></div>
+        <div class="filter-bar">
+          <select class="filter-select" id="dvBatch" onchange="setDriverViewFilter('batch', this.value)" title="The day these parcels were assigned to the driver"></select>
+          <select class="filter-select" id="dvStatus" onchange="setDriverViewFilter('status', this.value)">
+            ${DRIVER_STATUS_OPTIONS.map(([value, label]) => `<option value="${value}">${label}</option>`).join('')}
+          </select>
+          <input class="filter-input" id="dvSearch" type="search" placeholder="Search order, customer, phone, address" oninput="setDriverViewFilter('search', this.value)">
+          <label style="display:flex; align-items:center; gap:0.35rem; font-size:0.84rem; color:var(--grey);"><input type="checkbox" id="dvShowClosed" onchange="setDriverViewFilter('showClosed', this.checked)"> Show closed deliveries</label>
+        </div>
+        <div id="driverDetailBody"></div>
+
+        <div class="card">
+          <div class="card-title">Cash owed &mdash; reconcile</div>
+          <div class="accounting-note">Cash this driver is still holding from delivered COD / delivery-fee collections. Confirm what VirtuDrop actually received (one at a time, or several together).</div>
+          <div class="finance-filter-grid">
+            <button class="btn btn-ghost" type="button" onclick="toggleAllRemitDriverCashRows()">Select All / None</button>
+            <button class="btn btn-primary" type="button" onclick="openBulkRemitDriverCashReceived()">Confirm Cash Received</button>
+            <span id="remitDriverCashBulkCount" style="align-self:center; color:var(--grey);">0 selected</span>
+          </div>
+          <div id="remitDriverCashSummaryWrap" style="display:none; margin:0.25rem 0 0.75rem;">
+            <strong id="remitDriverCashSummary"></strong>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th style="width:2rem;"></th><th>Order #</th><th>Customer</th><th>Expected</th><th>Collected Via</th><th>Delivered</th><th>Action</th></tr></thead>
+              <tbody id="remitDriverCashBody"><tr><td colspan="7">Loading&hellip;</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <details class="card" id="driverLiveSheetCard">
+          <summary style="cursor:pointer; font-weight:700;">Live delivery sheet (export, push to Google Sheet, import)</summary>
+          <div class="td-sub" style="margin:0.6rem 0 0.75rem;">${activeCount} active ${activeCount === 1 ? 'delivery' : 'deliveries'} currently assigned to this driver.</div>
+          <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center; margin-bottom:0.75rem;">
+            <button id="driverSheetExportBtn_${id}" class="btn btn-primary btn-sm" type="button" onclick="exportDriverLiveSheet('${id}')" ${activeCount ? '' : 'disabled'}>Export Live Delivery Sheet (.xlsx)</button>
+            ${driver.google_sheet_id
+              ? `<button id="driverSheetPushBtn_${id}" class="btn btn-primary btn-sm" type="button" onclick="pushDriverLiveSheet('${id}')" ${activeCount ? '' : 'disabled'}>Push to Google Sheet</button>`
+              : '<span class="td-sub">No Google Sheet linked &mdash; add one via Edit driver.</span>'}
+          </div>
+          <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center; margin-bottom:0.5rem;">
+            <input id="driverSheetImportFile_${id}" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/octet-stream">
+            <button id="driverSheetImportBtn_${id}" class="btn btn-ghost btn-sm" type="button" onclick="importDriverLiveSheet('${id}')">Import Completed Sheet</button>
+          </div>
+          <div id="driverSheetResults_${id}"></div>
+          <div id="driverSheetPushResult_${id}"></div>
+        </details>`;
+      // The shell was just rebuilt, so put the filter values back.
+      const set = (elementId, value) => { const element = document.getElementById(elementId); if (element) element.value = value; };
+      set('dvStatus', driverView.status);
+      set('dvSearch', driverView.search);
+      const closed = document.getElementById('dvShowClosed');
+      if (closed) closed.checked = driverView.showClosed;
+    }
+
+    function driverHandoverCellHtml(row) {
+      const manifest = row._manifest;
+      if (!manifest) return '<span class="td-sub">—</span>';
+      const original = Boolean(row.collected_at);
+      if (!['draft', 'ready'].includes(manifest.status)) {
+        return original
+          ? `<span class="badge badge-active" title="${row.collected_at ? new Date(row.collected_at).toLocaleString('en-TT') : ''}">&check; Handed over</span>`
+          : '<span class="badge badge-pending">Not checked</span>';
       }
-      const data = DRIVER_STAT_CATEGORIES.map(c => counts[c.key] || 0);
-      if (!data.some(v => v > 0)) {
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        return;
-      }
-      driverStatsCharts[driverId] = new Chart(canvas.getContext('2d'), {
-        type: 'pie',
-        data: {
-          labels: DRIVER_STAT_CATEGORIES.map(c => c.label),
-          datasets: [{ data, backgroundColor: DRIVER_STAT_CATEGORIES.map(c => c.color) }]
-        },
-        options: {
-          responsive: false,
-          plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } }
-        }
+      const checked = driverHandoverEdits.has(row.id) ? driverHandoverEdits.get(row.id) : original;
+      return `<label class="bulk-order-check" style="font-weight:600;"><input type="checkbox" class="dv-handover-check" ${checked ? 'checked' : ''} onchange="driverTickHandover('${row.id}', this.checked)"> <span class="dv-handover-label">${checked ? 'Handed over' : 'Not yet'}</span></label>`;
+    }
+
+    function driverRowEditable(row) {
+      return Boolean(row._manifest) && ['draft', 'ready'].includes(row._manifest.status);
+    }
+
+    function driverEffectiveHandover(row) {
+      return driverHandoverEdits.has(row.id) ? driverHandoverEdits.get(row.id) : Boolean(row.collected_at);
+    }
+
+    window.driverTickHandover = function(orderId, checked) {
+      const row = driverViewAllRows.find(item => item.id === orderId);
+      if (!row) return;
+      if (checked === Boolean(row.collected_at)) driverHandoverEdits.delete(orderId);
+      else driverHandoverEdits.set(orderId, checked);
+      const box = document.querySelector(`.dv-handover-check[onchange*="'${orderId}'"]`);
+      const label = box?.parentElement?.querySelector('.dv-handover-label');
+      if (label) label.textContent = checked ? 'Handed over' : 'Not yet';
+      updateDriverHandoverBar();
+    };
+
+    function updateDriverHandoverBar() {
+      const bar = document.getElementById('dvHandoverBar');
+      if (!bar) return;
+      const editable = driverViewVisibleRows.filter(driverRowEditable);
+      const handed = editable.filter(driverEffectiveHandover).length;
+      const edits = driverHandoverEdits.size;
+      const text = bar.querySelector('[data-dv-handover-text]');
+      if (text) text.innerHTML = `<strong>${handed} of ${editable.length}</strong> parcels ticked as handed over${edits ? ` &middot; <strong>${edits} unsaved</strong>` : ''}`;
+      const save = bar.querySelector('[data-dv-save]');
+      if (save) { save.disabled = !edits; save.textContent = edits ? `Save ${edits} tick${edits === 1 ? '' : 's'}` : 'Save ticks'; }
+      const all = bar.querySelector('[data-dv-tickall]');
+      if (all) all.disabled = handed >= editable.length;
+    }
+
+    window.driverTickAllHandover = function() {
+      driverViewVisibleRows.filter(driverRowEditable).forEach(row => {
+        if (!Boolean(row.collected_at)) driverHandoverEdits.set(row.id, true);
       });
+      renderDriverDetailBody();
+    };
+
+    window.driverSaveHandover = function() {
+      const changes = [...driverHandoverEdits.entries()].map(([orderId, collected]) => {
+        const row = driverViewAllRows.find(item => item.id === orderId);
+        return row && row._manifest ? { orderId, manifestId: row._manifest.id, collected, number: row.order_number } : null;
+      }).filter(Boolean);
+      if (!changes.length) return showToast('Nothing to save. Tick parcels as you hand them to the driver first.');
+      const ticked = changes.filter(change => change.collected).length;
+      showModal('Save Handover Ticks', `Save ${changes.length} change(s): ${ticked} parcel(s) handed over${changes.length - ticked ? `, ${changes.length - ticked} un-ticked` : ''}?`, async () => {
+        const results = await Promise.allSettled(changes.map(change =>
+          supabase.rpc('admin_toggle_manifest_order_collected', {
+            p_manifest_id: change.manifestId,
+            p_order_id: change.orderId,
+            p_collected: change.collected
+          })
+        ));
+        const failed = [];
+        results.forEach((result, index) => {
+          if (result.status === 'rejected' || result.value?.error) failed.push(changes[index]);
+          else driverHandoverEdits.delete(changes[index].orderId);
+        });
+        if (failed.length) {
+          window.vdNotify('Some Parcels Not Updated', `${changes.length - failed.length} of ${changes.length} saved. ${failed.length} failed (${failed.slice(0, 3).map(item => item.number).join(', ')}) -- they stay ticked so you can try again.`, 'error');
+        } else {
+          showToast(`${changes.length} handover tick(s) saved.`);
+        }
+        await softRefresh();
+      });
+    };
+
+    window.driverCloseFinished = function() {
+      const ids = driverViewVisibleRows.filter(driverRowCanClose).map(row => row.id);
+      if (!ids.length) return showToast('No finished deliveries in this view are ready to close.');
+      showModal('Close Finished Deliveries', `Close ${ids.length} delivered, fully reconciled delivery(ies) in this view?`, async () => {
+        let closed = 0;
+        const failures = [];
+        for (const orderId of ids) {
+          const { error } = await supabase.rpc('admin_close_manifest_order', { p_order_id: orderId });
+          if (error) failures.push(error.message || 'failed'); else closed += 1;
+        }
+        if (failures.length) window.vdNotify('Some Deliveries Not Closed', `${closed} closed. ${failures.length} could not be closed (${failures[0]}).`, 'error');
+        else showToast(`${closed} delivery(ies) closed.`);
+        await softRefresh();
+      });
+    };
+
+    function driverManifestChipHtml(manifest) {
+      const total = (manifest.orders || []).length;
+      const handed = manifestCollectedCount(manifest);
+      const status = manifest.status;
+      const buttons = [];
+      if (status === 'draft') buttons.push(`<button class="btn btn-primary btn-sm" type="button" onclick="setManifestStatus('${manifest.id}', 'ready')">Mark ready</button>`);
+      if (status === 'ready') buttons.push(`<button class="btn btn-primary btn-sm" type="button" ${handed < total ? 'disabled title="Tick and save every parcel as handed over first"' : ''} onclick="setManifestStatus('${manifest.id}', 'collected')">Confirm driver collection</button>`);
+      if (status === 'collected' && manifest.close_summary?.can_close) buttons.push(`<button class="btn btn-primary btn-sm" type="button" onclick="closeDeliveryManifest('${manifest.id}')">Close manifest</button>`);
+      buttons.push(`<button class="btn btn-ghost btn-sm" type="button" onclick="printManifest('${manifest.id}')">Print</button>`);
+      return `<div class="dv-manifest"><strong class="td-id">${escapeHtml(manifest.manifest_number)}</strong>${manifestStatusBadge(status)}<span class="td-sub">${handed}/${total} handed over</span>${buttons.join('')}</div>`;
     }
 
-    function renderDriverStatsSection(driverId) {
-      const grid = document.getElementById(`driverStatsGrid_${driverId}`);
-      if (!grid) return;
-      const counts = {};
-      DRIVER_STAT_CATEGORIES.forEach(category => { counts[category.key] = driverOrdersForCategory(driverId, category.key).length; });
-      grid.innerHTML = DRIVER_STAT_CATEGORIES.map(category => `
-        <div class="stat-card" style="margin:0; cursor:pointer; border-left-color:${category.color};" onclick="showDriverStatCategoryModal('${driverId}','${category.key}')">
-          <div class="stat-label">${escapeHtml(category.label)}</div>
-          <div class="stat-val" style="font-size:1.5rem;">${counts[category.key]}</div>
-          <div class="stat-sub">Click to view</div>
-        </div>
-      `).join('');
+    function renderDriverDetailBody() {
+      const driver = drivers.find(item => item.id === driversViewDriverId);
+      const body = document.getElementById('driverDetailBody');
+      const tiles = document.getElementById('driverDetailTiles');
+      if (!driver || !body || !tiles) return;
 
-      const financeRecord = driverFinanceRecords.find(record => record.driver_id === driverId);
-      const cycle = financeRecord?.cycle || {};
+      const allRows = driverViewRows(driver.id);
+      driverViewAllRows = allRows;
+      driverHandoverEdits.forEach((value, orderId) => {
+        const row = allRows.find(item => item.id === orderId);
+        if (!row || !driverRowEditable(row)) driverHandoverEdits.delete(orderId);
+      });
 
-      // Total Deliveries Completed: toggles between "Current" (this driver's
-      // currently-assigned delivered orders -- same definition as the
-      // Delivered tile above) and "Overall" (every delivery the finance RPC
-      // has ever attributed to them, lifetime, including orders since
-      // reassigned elsewhere). Defaults to Current.
-      const deliveriesMode = driverDeliveriesViewMode[driverId] || 'current';
-      const currentDeliveries = counts.delivered || 0;
-      const overallDeliveries = financeRecord?.completed_deliveries_all_time || 0;
-      const totalEl = document.getElementById(`driverTotalDeliveries_${driverId}`);
-      if (totalEl) totalEl.textContent = deliveriesMode === 'overall' ? overallDeliveries : currentDeliveries;
-      const totalSub = document.getElementById(`driverTotalDeliveriesSub_${driverId}`);
-      if (totalSub) totalSub.textContent = deliveriesMode === 'overall' ? 'Overall (all time)' : 'Current assigned batch';
-      const toggleCurrentBtn = document.getElementById(`driverDeliveriesToggleCurrent_${driverId}`);
-      const toggleOverallBtn = document.getElementById(`driverDeliveriesToggleOverall_${driverId}`);
-      if (toggleCurrentBtn && toggleOverallBtn) {
-        const activeStyle = 'background:var(--teal-dark); color:#fff;';
-        const inactiveStyle = 'background:#fff; color:var(--grey);';
-        toggleCurrentBtn.style.cssText += deliveriesMode === 'current' ? activeStyle : inactiveStyle;
-        toggleOverallBtn.style.cssText += deliveriesMode === 'overall' ? activeStyle : inactiveStyle;
+      // Batch selector: the day each parcel was assigned to this driver.
+      const info = driverBatchInfo(allRows);
+      const batchSelect = document.getElementById('dvBatch');
+      if (batchSelect) {
+        const latestLabel = info.latest ? `Latest batch — ${ttDateLabel(info.latest)} (${info.counts.get(info.latest)})` : 'Latest batch';
+        batchSelect.innerHTML = `<option value="latest">${escapeHtml(latestLabel)}</option><option value="all">All batches (${allRows.length})</option>`
+          + info.keys.map(key => `<option value="${key}">${escapeHtml(ttDateLabel(key))} — ${info.counts.get(key)} order${info.counts.get(key) === 1 ? '' : 's'}</option>`).join('')
+          + (info.counts.has('none') ? `<option value="none">No assigned date (${info.counts.get('none')})</option>` : '');
+        batchSelect.value = driverView.batch;
+        if (batchSelect.value !== driverView.batch) { driverView.batch = 'latest'; batchSelect.value = 'latest'; }
       }
 
-      const cashEl = document.getElementById(`driverCashCollected_${driverId}`);
-      if (cashEl) cashEl.textContent = moneyFull(driverCashCollectedTotal(driverId, cycle.cycle_start, cycle.cycle_end));
-      const cashSub = document.getElementById(`driverCashCollectedSub_${driverId}`);
-      if (cashSub) cashSub.textContent = cycle.cycle_start ? `Current cycle &middot; ${cycle.cycle_start} to ${cycle.cycle_end}` : 'Current cycle';
+      const batchRows = driverRowsInBatch(allRows, driverView.batch);
+      const counts = { all: batchRows.length, awaiting_handover: 0, out_for_delivery: 0, delivered: 0, failed: 0, cancelled: 0 };
+      batchRows.forEach(row => { counts[driverRowStatus(row)] += 1; });
 
-      const payEl = document.getElementById(`driverPayEarned_${driverId}`);
-      if (payEl) payEl.textContent = moneyFull(financeRecord?.earned_cycle || 0);
-      const paySub = document.getElementById(`driverPayEarnedSub_${driverId}`);
-      // "deliveries completed" here is this driver's currently-assigned
-      // delivered orders (same count as the Delivered stat tile above), not
-      // the finance RPC's cycle/all-time completed-deliveries figure -- those
-      // can include orders that moved to another driver since, which isn't
-      // what "assigned to them currently" means.
-      if (paySub) paySub.textContent = `Pay is current-cycle &middot; ${counts.delivered || 0} delivered of their current assignments`;
+      const finance = driverFinanceFor(driver.id);
+      const cashRows = driverUnreconciledCollections(driver.id);
+      const cashOwed = cashRows.reduce((sum, order) => sum + driverCollects(order), 0);
+      const batchPay = batchRows.filter(row => row.order_status === 'delivered').reduce((sum, row) => sum + Number(row.driver_delivery_pay || 0), 0);
+      const otherOpen = allRows.filter(row => !driverRowsInBatch([row], driverView.batch).length && !row.order_closed_at && ['awaiting_handover', 'out_for_delivery', 'failed'].includes(driverRowStatus(row))).length;
+      const statusTile = (key, label, cls) => `<div class="stat-card ${cls || ''}" onclick="setDriverStatusFilter('${key}')" title="Click to show only these"><div class="stat-label">${label}</div><div class="stat-val">${counts[key]}</div><div class="stat-sub">in this view</div></div>`;
+      tiles.innerHTML = `
+        <div class="stat-card warn"><div class="stat-label">Cash owed to VirtuDrop</div><div class="stat-val">${moneyFull(cashOwed)}</div><div class="stat-sub">${cashRows.length} order${cashRows.length === 1 ? '' : 's'} not yet reconciled (all batches)</div></div>
+        <div class="stat-card blue"><div class="stat-label">Pay &mdash; this batch</div><div class="stat-val">${moneyFull(batchPay)}</div><div class="stat-sub">Delivered orders in this view</div></div>
+        <div class="stat-card blue"><div class="stat-label">Pay &mdash; this cycle</div><div class="stat-val">${moneyFull(finance?.earned_cycle || 0)}</div><div class="stat-sub">${finance?.cycle?.cycle_start ? `${finance.cycle.cycle_start} to ${finance.cycle.cycle_end}` : 'Current pay cycle'}</div></div>
+        ${statusTile('all', 'Assigned', '')}
+        ${statusTile('awaiting_handover', 'Not yet handed over', 'warn')}
+        ${statusTile('out_for_delivery', 'Out for delivery', '')}
+        ${statusTile('delivered', 'Delivered', 'ok')}
+        ${statusTile('failed', 'Failed / returned', '')}
+        ${statusTile('cancelled', 'Cancelled', '')}`;
 
-      renderDriverStatsChart(driverId, counts);
+      // The rows shown: batch, then status / search / closed.
+      const search = driverView.search.trim().toLowerCase();
+      let visible = batchRows.filter(row => {
+        if (driverView.status === 'closed') return Boolean(row.order_closed_at);
+        if (!driverView.showClosed && row.order_closed_at) return false;
+        if (driverView.status === 'all') return true;
+        if (driverView.status === 'cash_pending') return driverRowCashPending(row);
+        return driverRowStatus(row) === driverView.status;
+      });
+      if (search) {
+        visible = visible.filter(row => [row.order_number, row.customer_name, row.customer_phone, orderLabelAddress(row), row.external_item_number, row._manifest?.manifest_number]
+          .some(value => String(value || '').toLowerCase().includes(search)));
+      }
+      visible.sort((a, b) => new Date(b.assigned_at || 0) - new Date(a.assigned_at || 0) || String(a.order_number || '').localeCompare(String(b.order_number || '')));
+      driverViewVisibleRows = visible;
+
+      // Manifests in this view (shown as chips, not as separate groups).
+      const manifestsInView = [...new Map(batchRows.filter(row => row._manifest).map(row => [row._manifest.id, row._manifest])).values()]
+        .sort((a, b) => String(a.manifest_number).localeCompare(String(b.manifest_number)));
+
+      const editable = visible.filter(driverRowEditable);
+      const closable = visible.filter(driverRowCanClose);
+      body.innerHTML = `
+        ${otherOpen ? `<div class="dv-note">${otherOpen} other open ${otherOpen === 1 ? 'delivery' : 'deliveries'} from earlier batches. <a href="#" onclick="setDriverViewFilter('batch','all'); return false;">Show all batches</a></div>` : ''}
+        ${manifestsInView.length ? `<div class="dv-manifests">${manifestsInView.map(driverManifestChipHtml).join('')}</div>` : ''}
+        ${editable.length ? `<div class="dv-handover" id="dvHandoverBar">
+          <span data-dv-handover-text></span>
+          <span class="dv-handover-actions">
+            <button class="btn btn-ghost btn-sm" type="button" data-dv-tickall onclick="driverTickAllHandover()">Tick all</button>
+            <button class="btn btn-primary btn-sm" type="button" data-dv-save onclick="driverSaveHandover()">Save ticks</button>
+          </span>
+        </div>` : ''}
+        ${closable.length ? `<div class="dv-note">${closable.length} finished ${closable.length === 1 ? 'delivery is' : 'deliveries are'} ready to close. <button class="btn btn-ghost btn-sm" type="button" onclick="driverCloseFinished()">Close ${closable.length} finished</button></div>` : ''}
+        <div class="card">
+          <div class="table-wrap"><table>
+            <thead><tr><th class="nw">Handed over</th><th class="nw">Batch / manifest</th><th class="nw">Order</th><th>Customer</th><th>Address</th><th class="nw">Zone</th><th class="nw">Collect</th><th class="nw">Status</th><th class="nw">Action</th></tr></thead>
+            <tbody>${visible.map(row => {
+              const zone = driverZoneInfo(row);
+              const cashText = Number(row.amount_to_collect || 0) > 0 && row.order_status === 'delivered' ? escapeHtml(row.reconciliation_status || 'unreconciled') : '—';
+              let action;
+              if (row.order_closed_at) action = `<div class="td-sub">Closed ${new Date(row.order_closed_at).toLocaleDateString('en-TT')}</div>`;
+              else if (driverRowCashHeld(row) && row.reconciliation_status !== 'balanced') action = `<button class="btn btn-primary btn-sm" type="button" onclick="openMarkDriverCashReceived('${row.id}')">Reconcile cash</button>`;
+              else if (driverRowCanClose(row)) action = `<button class="btn btn-primary btn-sm" type="button" onclick="closeManifestOrder('${row.id}')">Close delivery</button>`;
+              else action = '<span class="td-sub">—</span>';
+              const pending = driverRowStatus(row) === 'awaiting_handover' && driverRowEditable(row) && !driverEffectiveHandover(row);
+              return `<tr class="${pending ? 'dv-row-notready' : ''}">
+                <td class="nw">${driverHandoverCellHtml(row)}</td>
+                <td class="nw"><div class="td-name">${row.assigned_at ? escapeHtml(ttDateLabel(ttDateKey(row.assigned_at))) : '—'}</div><div class="td-sub">${row._manifest ? escapeHtml(row._manifest.manifest_number) : 'no manifest'}${row.assigned_at ? ` &middot; ${escapeHtml(new Date(row.assigned_at).toLocaleTimeString('en-TT', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Port_of_Spain' }))}` : ''}</div></td>
+                <td class="td-id">${escapeHtml(row.order_number)}</td>
+                <td class="dv-wide"><div class="td-name">${escapeHtml(row.customer_name || '—')}</div><div class="td-sub">${escapeHtml(formatPhoneDisplay(row.customer_phone))}</div>${orderItemPackageHtml(row)}</td>
+                <td class="dv-wide">${escapeHtml(orderLabelAddress(row))}</td>
+                <td class="nw">${zone.code ? `<div class="td-name">${escapeHtml(/^[A-Z]\b/i.test(zone.name) ? zone.name : `Zone ${zone.code}`)}</div>${/^[A-Z]\b/i.test(zone.name) || !zone.name || zone.name === `Zone ${zone.code}` ? '' : `<div class="td-sub">${escapeHtml(zone.name)}</div>`}` : '<span class="td-sub">Not set</span>'}</td>
+                <td class="nw">${moneyFull(row.amount_to_collect)}${cashText !== '—' ? `<div class="td-sub">${cashText}</div>` : ''}</td>
+                <td class="nw">${driverRowStatusBadge(row)}</td>
+                <td class="nw">${action}</td>
+              </tr>`;
+            }).join('') || '<tr><td colspan="9">No deliveries match this view.</td></tr>'}</tbody>
+          </table></div>
+        </div>`;
+      updateDriverHandoverBar();
     }
 
-    window.showDriverStatCategoryModal = function(driverId, categoryKey) {
-      const category = DRIVER_STAT_CATEGORIES.find(c => c.key === categoryKey);
-      const driver = drivers.find(d => d.id === driverId);
-      const rows = driverOrdersForCategory(driverId, categoryKey);
-      document.getElementById('modalTitle').textContent = `${category ? category.label : 'Orders'} — ${driver ? driverLabel(driver) : ''}`;
-      document.getElementById('modalBody').innerHTML = rows.length ? `
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Order #</th><th>Customer</th><th>Address</th><th>Area</th><th>Item</th><th>Cost</th></tr></thead>
-            <tbody>
-              ${rows.map(order => `
-                <tr>
-                  <td>${escapeHtml(order.order_number || '—')}</td>
-                  <td>${escapeHtml(order.customer_name || '—')}</td>
-                  <td>${escapeHtml(orderLabelAddress(order))}</td>
-                  <td>${escapeHtml(order.area_name || '—')}</td>
-                  <td>${escapeHtml(orderPackageAssignmentText(order))}</td>
-                  <td>${moneyFull(driverCollects(order))}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-      ` : '<p>No orders in this category right now.</p>';
+    window.setDriverStatusFilter = function(status) {
+      driverView.status = status;
+      const select = document.getElementById('dvStatus');
+      if (select) select.value = status;
+      renderDriverDetailBody();
+    };
+
+    window.showDriverReturnList = function(driverIdArg) {
+      const driverId = typeof driverIdArg === 'string' ? driverIdArg : driversViewDriverId;
+      if (!driverId) return showToast('Open a driver first.');
+      document.getElementById('modalTitle').textContent = 'Items to Return - ' + driverName(driverId);
+      document.getElementById('modalBody').innerHTML = driverReturnListHtml(driverId);
       document.getElementById('modalConfirm').textContent = 'Close';
       document.getElementById('modalCancel').style.display = 'none';
       document.getElementById('modal').classList.add('show');
+      window._driverReturnCopyText = driverReturnListCopyText(driverId);
       modalCb = null;
     };
 
-    window.toggleDriverSheetPanel = function(driverId) {
-      expandedDriverSheetId = expandedDriverSheetId === driverId ? null : driverId;
-      renderDriversMgmt();
-    };
+    function renderDriversMgmt() {
+      const listView = document.getElementById('driversListView');
+      const detailView = document.getElementById('driverDetailView');
+      if (!listView || !detailView) return;
+      const driver = driversViewDriverId ? drivers.find(item => item.id === driversViewDriverId) : null;
+      if (driversViewDriverId && !driver) driversViewDriverId = null;
+      expandedDriverSheetId = driver ? driver.id : null;
+      if (!driver) {
+        listView.style.display = '';
+        detailView.style.display = 'none';
+        driverViewShellKey = '';
+        renderDriversList();
+        return;
+      }
+      listView.style.display = 'none';
+      detailView.style.display = '';
+      const shellKey = JSON.stringify([driver.id, driver.name, driver.phone, driver.vehicle_number, driver.route_label, driver.google_sheet_id, driver.assigned_zone_ids]);
+      if (driverViewShellKey !== shellKey) {
+        buildDriverDetailShell(driver);
+        driverViewShellKey = shellKey;
+      }
+      renderDriverDetailBody();
+      renderDriverCashRemittance();
+    }
 
     function downloadBlob(blob, fileName) {
       const url = URL.createObjectURL(blob);
@@ -4054,9 +4347,15 @@
       if (pickupBadge) pickupBadge.textContent = activePickups;
       const scheduleReview = orders.filter(order => order.scheduled_delivery_date && order.scheduled_delivery_date < today && !['delivered', 'cancelled', 'rejected'].includes(order.order_status)).length;
       const sortingCount = orders.filter(order => !isCancelledOrder(order) && order.parcel_status === 'parcel_received' && order.zone_status === 'confirmed').length;
-      const draftManifestCount = deliveryManifests.filter(manifest => manifest.status === 'draft').length;
       const manifestBadge = document.querySelector('[data-panel="sorting-manifests"] .nav-badge');
-      if (manifestBadge) manifestBadge.textContent = sortingCount + draftManifestCount;
+      if (manifestBadge) manifestBadge.textContent = sortingCount;
+      // Parcels assigned to a driver but not yet ticked as handed over -- the
+      // ones that could be missed.
+      const notHandedOver = deliveryManifests
+        .filter(manifest => ['draft', 'ready'].includes(manifest.status))
+        .reduce((sum, manifest) => sum + (manifest.orders || []).filter(order => !order.collected_at).length, 0);
+      const driversBadge = document.querySelector('[data-panel="drivers-mgmt"] .nav-badge');
+      if (driversBadge) driversBadge.textContent = notHandedOver;
       const returnActionCount = orders.filter(order => returnRecordMatches(order, 'active')).length;
       const returnBadge = document.querySelector('[data-panel="returns-redelivery"] .nav-badge');
       if (returnBadge) returnBadge.textContent = returnActionCount;
@@ -4080,7 +4379,8 @@
         actions.innerHTML = [
           ['Pickup requests', activePickups, 'active', '#e9f7f5'],
           ['Schedule review', scheduleReview, 'overdue', 'var(--orange-pale)'],
-          ['Sorting / manifests', sortingCount + draftManifestCount, 'pending', '#eef4fb'],
+          ['Parcels to sort', sortingCount, 'pending', '#eef4fb'],
+          ['Not yet handed to drivers', notHandedOver, 'pending', '#eef4fb'],
           ['Returns / redelivery', returnActionCount, 'pending', 'var(--orange-pale)'],
           ['Zone confirmation', pendingZone, 'pending', 'var(--yellow-pale)'],
           ['Driver assignment', unassigned, 'unassigned', '#f0f0f0'],
@@ -6085,72 +6385,6 @@
       });
     };
 
-    function syncManifestBulkControls() {
-      updateBulkCount('manifestBulkCount', 'manifestSelectAll', manifestSelection, manifestVisibleIds);
-      syncBulkCheckboxes('.manifest-bulk-check', manifestSelection);
-    }
-
-    window.toggleManifestBulk = function(manifestId, checked) {
-      if (checked) manifestSelection.add(manifestId);
-      else manifestSelection.delete(manifestId);
-      syncManifestBulkControls();
-    };
-
-    window.toggleManifestVisibleBulk = function(checked) {
-      manifestVisibleIds.forEach(manifestId => checked ? manifestSelection.add(manifestId) : manifestSelection.delete(manifestId));
-      syncManifestBulkControls();
-    };
-
-    window.clearManifestSelection = function() {
-      manifestSelection.clear();
-      syncManifestBulkControls();
-    };
-
-    window.runManifestBulkAction = function() {
-      const action = document.getElementById('manifestBulkAction')?.value || '';
-      const selectedIds = selectedVisibleIds(manifestSelection, manifestVisibleIds);
-      if (!action) return showToast('Choose a manifest action.');
-      if (!selectedIds.length) return showToast('Select at least one manifest.');
-      const selectedManifests = selectedIds.map(id => deliveryManifests.find(item => item.id === id)).filter(Boolean);
-      const valid = selectedManifests.filter(manifest => {
-        if (action === 'ready') return manifest.status === 'draft';
-        if (action === 'mark_all_collected') return ['draft', 'ready'].includes(manifest.status) && manifestUncollectedCount(manifest) > 0;
-        if (action === 'collected') return manifest.status === 'ready';
-        if (action === 'close') return manifest.status === 'collected' && manifest.close_summary?.can_close;
-        return false;
-      });
-      if (!valid.length) return showToast('No selected manifests are eligible for that action.');
-      const label = action === 'ready' ? 'mark ready'
-        : action === 'mark_all_collected' ? 'check off every parcel as handed over on'
-        : action === 'collected' ? 'confirm driver collection for'
-        : 'close';
-      showModal('Update Selected Manifests', `Apply ${label} to ${valid.length} selected manifest(s)?`, async () => {
-        let updated = 0;
-        const failed = [];
-        for (const manifest of valid) {
-          try {
-            if (action === 'close') {
-              const { error } = await supabase.rpc('admin_close_delivery_manifest', { p_manifest_id: manifest.id, p_notes: null });
-              if (error) throw error;
-            } else if (action === 'mark_all_collected') {
-              const { error } = await supabase.rpc('admin_mark_all_manifest_orders_collected', { p_manifest_id: manifest.id });
-              if (error) throw error;
-            } else {
-              const { error } = await supabase.rpc('admin_set_manifest_status', { p_manifest_id: manifest.id, p_status: action });
-              if (error) throw error;
-            }
-            updated += 1;
-          } catch (error) {
-            failed.push(`${manifest.manifest_number}: ${error.message || 'failed'}`);
-          }
-        }
-        if (failed.length) window.vdNotify('Some Manifests Not Updated', `${updated} updated. ${failed.slice(0, 3).join(' | ')}${failed.length > 3 ? ' ...' : ''}`, 'warning');
-        else showToast(`${updated} manifest(s) updated.`);
-        clearManifestSelection();
-        await softRefresh();
-      });
-    };
-
     function parcelStatusBadge(order) {
       if (order.parcel_status === 'parcel_received') return '<span class="badge badge-confirmed">Received</span>';
       if (order.parcel_status === 'awaiting_parcel') return '<span class="badge badge-pending">Awaiting Parcel</span>';
@@ -6483,8 +6717,17 @@
         ].some(value => String(value || '').toLowerCase().includes(search));
       });
       const sortedOrders = applyColumnSort(visibleOrders, allOrdersSort, allOrdersSortGetters());
-      allOrdersVisibleIds = sortedOrders.map(order => order.id);
-      tbody.innerHTML = sortedOrders.map(order => `
+      // Only draw one page of rows at a time (thousands of rows is what made
+      // searching slow). Changing any filter or the search text starts back at
+      // the first page; refreshes and re-sorts keep however many are showing.
+      const filterSignature = [statusFilter, clientFilter, zoneFilter, driverFilter, dateFilter, search].join('|');
+      if (filterSignature !== allOrdersFilterSignature) {
+        allOrdersFilterSignature = filterSignature;
+        allOrdersPageLimit = ALL_ORDERS_PAGE_SIZE;
+      }
+      const pageOrders = sortedOrders.slice(0, allOrdersPageLimit);
+      allOrdersVisibleIds = pageOrders.map(order => order.id);
+      tbody.innerHTML = pageOrders.map(order => `
         <tr>
           <td class="td-id">
             <label class="bulk-order-check">
@@ -6518,10 +6761,23 @@
           <td>${allOrdersCreatedHtml(order)}</td>
         </tr>
       `).join('') || '<tr><td colspan="8">No orders found.</td></tr>';
+      if (sortedOrders.length > pageOrders.length) {
+        tbody.insertAdjacentHTML('beforeend', `<tr><td colspan="8" style="text-align:center; white-space:normal;">Showing ${pageOrders.length} of ${sortedOrders.length} orders. <button class="btn btn-ghost btn-sm" type="button" onclick="showMoreAllOrders()">Show ${Math.min(ALL_ORDERS_PAGE_SIZE, sortedOrders.length - pageOrders.length)} more</button> <button class="btn btn-ghost btn-sm" type="button" onclick="showAllAllOrders()">Show all</button></td></tr>`);
+      }
       updateSortArrows('#panel-all-orders thead', allOrdersSort);
       updateAllOrdersBulkControls();
     }
     window.renderAllOrders = renderAllOrders;
+
+    window.showMoreAllOrders = function() {
+      allOrdersPageLimit += ALL_ORDERS_PAGE_SIZE;
+      renderAllOrders();
+    };
+
+    window.showAllAllOrders = function() {
+      allOrdersPageLimit = Number.MAX_SAFE_INTEGER;
+      renderAllOrders();
+    };
 
     function allOrdersSortGetters() { return {
       order: order => String(order.order_number || ''),
@@ -6552,19 +6808,17 @@
       renderAllOrders();
     };
 
+    // The dropdowns and date already re-render through their inline onchange
+    // handlers, so only the search box is wired here -- waiting a moment after
+    // the last keystroke so typing doesn't redraw the whole table every key.
     function bindAllOrderFilters() {
-      [
-        ['orderStatusFilter', 'change'],
-        ['orderClientFilter', 'change'],
-        ['orderZoneFilter', 'change'],
-        ['orderDriverFilter', 'change'],
-        ['orderDateFilter', 'change'],
-        ['orderSearchInput', 'input']
-      ].forEach(([id, eventName]) => {
-        const field = document.getElementById(id);
-        if (!field || field.dataset.filterBound === 'true') return;
-        field.dataset.filterBound = 'true';
-        field.addEventListener(eventName, renderAllOrders);
+      const field = document.getElementById('orderSearchInput');
+      if (!field || field.dataset.filterBound === 'true') return;
+      field.dataset.filterBound = 'true';
+      let searchTimer = null;
+      field.addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(renderAllOrders, 250);
       });
     }
 
@@ -7289,20 +7543,321 @@
         .find(entry => normalized.includes(entry.normalized) || entry.normalized.includes(normalized)) || null;
     }
 
-    function setSuggestedZone(card, suggestion, source = 'address text') {
+    // Zone suggestions never confirm anything. Each order lands in one of two
+    // groups: "matched" (the address points at exactly one zone -- the dropdown
+    // is pre-filled, but you still click Confirm) or "review" (no area found, or
+    // areas from more than one zone were found -- the dropdown stays blank so
+    // nothing can slip through as Central by accident).
+    let zoneConfirmFilter = 'all';
+    const zoneMatchCache = new Map();
+
+    // An area can be matched by its plain name or by a shorter form of its
+    // description ("Arima up to approximately Tumpuna Road" -> "Arima",
+    // "Palmiste (Chaguanas)" -> "Palmiste"), plus any saved aliases.
+    function zoneAreaNameVariants(areaName) {
+      const base = normalizeZoneText(areaName);
+      if (!base) return [];
+      if (/^(locations?|other|difficult|accessible)\b/.test(base)) return [base];
+      const variants = new Set([base]);
+      [' up to ', ' beyond '].forEach(marker => {
+        const index = base.indexOf(marker);
+        if (index > 3) variants.add(base.slice(0, index));
+      });
+      const withoutParens = normalizeZoneText(String(areaName || '').replace(/\([^)]*\)/g, ' '));
+      if (withoutParens.length >= 4) variants.add(withoutParens);
+      return [...variants];
+    }
+
+    // Every area named in the text (whole words only), not just the longest one.
+    function zoneCandidatesFromText(text) {
+      const normalized = normalizeZoneText(text);
+      if (!normalized) return [];
+      const padded = ` ${normalized} `;
+      const found = [];
+      zones.forEach(zone => (zone.zone_areas || []).forEach(area => {
+        if (zoneAreaNameVariants(area.area_name).some(variant => variant.length >= 3 && padded.includes(` ${variant} `))) {
+          found.push({ zone, area: area.area_name, street: '' });
+        }
+        // A saved alias that is a street ("Tumpuna Road" under Arima) is flagged
+        // so it can outrank a plain area name that also appears in the address.
+        (area.zone_area_aliases || []).forEach(alias => {
+          if (alias.active === false) return;
+          const aliasText = normalizeZoneText(alias.match_value || alias.alias_name);
+          if (aliasText.length < 3 || !padded.includes(` ${aliasText} `)) return;
+          found.push({ zone, area: area.area_name, street: ZONE_STREET_WORDS.test(aliasText) ? aliasText : '' });
+        });
+      }));
+      return found;
+    }
+
+    const ZONE_STREET_WORDS = /\b(road|street|avenue|ave|drive|trace|boulevard|highway|lane|junction)\b/;
+
+    function classifyZoneCandidates(candidates, source) {
+      // Street first: "Tumpuna Road, Arima, Port of Spain" is an Arima street
+      // even though Port of Spain is also named. Only when every street hit
+      // agrees on one zone; otherwise fall through to the general check.
+      const streetHits = candidates.filter(candidate => candidate.street);
+      const streetZoneIds = [...new Set(streetHits.map(candidate => candidate.zone.id))];
+      if (streetZoneIds.length === 1) {
+        const streets = [...new Set(streetHits.map(candidate => candidate.street))];
+        const others = [...new Set(candidates.filter(candidate => candidate.zone.id !== streetZoneIds[0]).map(candidate => candidate.area))];
+        return {
+          state: 'matched',
+          zoneId: streetZoneIds[0],
+          message: `Matched: ${streetHits[0].zone.name} from street "${streets.join(', ')}" (${source})${others.length ? ` - also mentions ${others.join(', ')}, ignored in favour of the street` : ''}`
+        };
+      }
+      const zoneIds = [...new Set(candidates.map(candidate => candidate.zone.id))];
+      if (zoneIds.length === 1) {
+        const areas = [...new Set(candidates.map(candidate => candidate.area))];
+        return { state: 'matched', zoneId: zoneIds[0], zoneIds, message: `Matched: ${candidates[0].zone.name} from ${areas.join(', ')} (${source})` };
+      }
+      if (zoneIds.length > 1) {
+        const list = [...new Set(candidates.map(candidate => `${candidate.area} (${candidate.zone.name})`))];
+        return { state: 'review', zoneId: '', zoneIds, message: `Needs review - more than one area found: ${list.join(' | ')}. Pick the right zone.` };
+      }
+      return { state: 'review', zoneId: '', zoneIds: [], message: 'Needs review - no area could be found in the address. Pick the zone yourself.' };
+    }
+
+    // ── Map regions ──────────────────────────────────────────────────────
+    // The four regions drawn in the "Virtudrop" My Maps layer, as [lng, lat]
+    // rings, each tied to its delivery zone code. A pin inside one of them says
+    // which zone it is in, whatever the address text says. Regions are broad, so
+    // they decide the ZONE only -- never the area or the price band.
+    const ZONE_REGION_POLYGONS = [
+      { code: 'D', name: 'North/West', ring: [[-61.4365992, 10.6276939], [-61.3706913, 10.693992], [-61.3634781, 10.7163414], [-61.3555751, 10.7498203], [-61.3394389, 10.812214], [-61.4541141, 10.8203298], [-61.5777049, 10.7852345], [-61.6769251, 10.6847148], [-61.583198, 10.646927]] },
+      { code: 'C', name: 'East', ring: [[-61.3394389, 10.812214], [-61.3634781, 10.7163414], [-61.3706913, 10.693992], [-61.4365992, 10.6276939], [-61.4338526, 10.6057599], [-61.2355866, 10.5448961], [-61.0209422, 10.4781635], [-60.8925395, 10.7764548], [-60.9151988, 10.8749208]] },
+      { code: 'A', name: 'Central', ring: [[-61.4338526, 10.6057599], [-61.4892434, 10.5700249], [-61.5180825, 10.3796179], [-61.4830636, 10.365434], [-60.9564065, 10.358004], [-61.0209422, 10.4781635]] },
+      { code: 'B', name: 'South', ring: [[-61.5180825, 10.3796179], [-61.9562704, 10.0588145], [-61.9082052, 10.0290651], [-60.9153158, 10.0452924], [-60.9564065, 10.358004], [-61.4830636, 10.365434]] }
+    ];
+    // Closer than this to another region's edge, a map location alone is not
+    // trusted: the regions are hand-drawn and areas such as Claxton Bay straddle
+    // the line.
+    const ZONE_BORDER_WARN_METRES = 400;
+    // The point the geocoder returns for "Trinidad and Tobago" when a lookup
+    // fails. Orders saved with it have no real location.
+    const ZONE_JUNK_COORDINATES = ['10.6918,-61.2225'];
+
+    function pointInRing(lng, lat, ring) {
+      let inside = false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const [xi, yi] = ring[i];
+        const [xj, yj] = ring[j];
+        if ((yi > lat) !== (yj > lat) && lng < (xj - xi) * (lat - yi) / (yj - yi) + xi) inside = !inside;
+      }
+      return inside;
+    }
+
+    function metresToSegment(lng, lat, a, b) {
+      const kx = 111320 * Math.cos(lat * Math.PI / 180);
+      const ky = 110540;
+      const bx = (b[0] - a[0]) * kx;
+      const by = (b[1] - a[1]) * ky;
+      const px = (lng - a[0]) * kx;
+      const py = (lat - a[1]) * ky;
+      const len2 = bx * bx + by * by;
+      const t = len2 ? Math.max(0, Math.min(1, (px * bx + py * by) / len2)) : 0;
+      return Math.hypot(px - t * bx, py - t * by);
+    }
+
+    // Which region a point is in, and how far it is from the nearest OTHER
+    // region (so coast lines don't count as borders).
+    function zoneRegionForPoint(lat, lng) {
+      const region = ZONE_REGION_POLYGONS.find(item => pointInRing(lng, lat, item.ring));
+      if (!region) return null;
+      let borderMetres = Infinity;
+      ZONE_REGION_POLYGONS.forEach(other => {
+        if (other === region) return;
+        for (let i = 0; i < other.ring.length; i += 1) {
+          borderMetres = Math.min(borderMetres, metresToSegment(lng, lat, other.ring[i], other.ring[(i + 1) % other.ring.length]));
+        }
+      });
+      return { code: region.code, name: region.name, borderMetres };
+    }
+
+    function zoneCoordinateKey(order) {
+      const lat = Number(order.latitude);
+      const lng = Number(order.longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) return '';
+      return `${lat.toFixed(4)},${lng.toFixed(4)}`;
+    }
+
+    // A point shared by many orders with unrelated areas is a fallback value,
+    // not a real location. Recomputed only when the orders list changes.
+    let zoneJunkCache = { ref: null, keys: new Set() };
+    function zoneJunkCoordinateKeys() {
+      if (zoneJunkCache.ref === orders) return zoneJunkCache.keys;
+      const areasByKey = new Map();
+      orders.forEach(order => {
+        const key = zoneCoordinateKey(order);
+        if (!key) return;
+        if (!areasByKey.has(key)) areasByKey.set(key, { count: 0, areas: new Set() });
+        const entry = areasByKey.get(key);
+        entry.count += 1;
+        entry.areas.add(normalizeZoneText(order.area_name));
+      });
+      const keys = new Set(ZONE_JUNK_COORDINATES);
+      areasByKey.forEach((entry, key) => { if (entry.count >= 3 && entry.areas.size >= 3) keys.add(key); });
+      zoneJunkCache = { ref: orders, keys };
+      return keys;
+    }
+
+    function polygonZoneEvidence(order) {
+      const key = zoneCoordinateKey(order);
+      if (!key || zoneJunkCoordinateKeys().has(key)) return null;
+      const lat = Number(order.latitude);
+      const lng = Number(order.longitude);
+      const region = zoneRegionForPoint(lat, lng);
+      if (!region) return null;
+      const zone = zones.find(item => String(item.code || '').toUpperCase() === region.code);
+      if (!zone) return null;
+      return { zoneId: zone.id, zoneName: zone.name, regionName: region.name, borderMetres: region.borderMetres };
+    }
+
+    // ── Spelling tolerance ───────────────────────────────────────────────
+    function levenshteinWithin(a, b, max) {
+      if (Math.abs(a.length - b.length) > max) return max + 1;
+      let previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+      for (let i = 1; i <= a.length; i += 1) {
+        const current = [i];
+        let rowMin = i;
+        for (let j = 1; j <= b.length; j += 1) {
+          const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+          current[j] = Math.min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + cost);
+          rowMin = Math.min(rowMin, current[j]);
+        }
+        if (rowMin > max) return max + 1;
+        previous = current;
+      }
+      return previous[b.length];
+    }
+
+    // Misspelt area names ("Aruma" for "Arima", "Chaguaunas" for "Chaguanas").
+    // Only used when no area was found by exact name; compares every 1-3 word
+    // stretch of the address with each area name of the same length.
+    function zoneFuzzyCandidates(text) {
+      const tokens = normalizeZoneText(text).split(' ').filter(Boolean);
+      if (!tokens.length) return [];
+      const known = [];
+      zones.forEach(zone => (zone.zone_areas || []).forEach(area => {
+        const variants = zoneAreaNameVariants(area.area_name);
+        (area.zone_area_aliases || []).forEach(alias => {
+          if (alias.active === false) return;
+          const aliasText = normalizeZoneText(alias.match_value || alias.alias_name);
+          if (aliasText) variants.push(aliasText);
+        });
+        variants.forEach(variant => {
+          if (variant.length >= 5) known.push({ zone, area: area.area_name, variant, words: variant.split(' ').length });
+        });
+      }));
+      const found = [];
+      for (let size = 1; size <= 3; size += 1) {
+        for (let start = 0; start + size <= tokens.length; start += 1) {
+          const phrase = tokens.slice(start, start + size).join(' ');
+          if (phrase.length < 5) continue;
+          known.forEach(entry => {
+            if (entry.words !== size || entry.variant === phrase || entry.variant[0] !== phrase[0]) return;
+            const allowed = entry.variant.length <= 7 ? 1 : 2;
+            if (levenshteinWithin(phrase, entry.variant, allowed) <= allowed) {
+              found.push({ zone: entry.zone, area: entry.area, street: '', heard: phrase, read: entry.variant });
+            }
+          });
+        }
+      }
+      return found;
+    }
+
+    // ── Learning from your confirmations ─────────────────────────────────
+    // What you have confirmed before for the same area text. Only a last resort
+    // when the address and the map give nothing, and only when you were
+    // consistent (3+ confirmations, 80%+ the same zone).
+    let zoneHistoryCache = { ref: null, map: new Map() };
+    function zoneConfirmedHistory(areaText) {
+      if (zoneHistoryCache.ref !== orders) {
+        const map = new Map();
+        orders.forEach(order => {
+          if (order.zone_status !== 'confirmed') return;
+          const zoneId = order.confirmed_zone_id || order.zone_id;
+          const key = normalizeZoneText(order.area_name);
+          if (!zoneId || !key) return;
+          if (!map.has(key)) map.set(key, new Map());
+          map.get(key).set(zoneId, (map.get(key).get(zoneId) || 0) + 1);
+        });
+        zoneHistoryCache = { ref: orders, map };
+      }
+      const counts = zoneHistoryCache.map.get(normalizeZoneText(areaText));
+      if (!counts) return null;
+      const total = [...counts.values()].reduce((sum, value) => sum + value, 0);
+      const [zoneId, count] = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
+      if (total < 3 || count / total < 0.8) return null;
+      return { zoneId, count, total };
+    }
+
+    // ── Put the evidence together ────────────────────────────────────────
+    // Address text and map location each say a zone. When they agree, the order
+    // is "Matched"; when they disagree, or one is missing and the other is
+    // doubtful, it goes to "Needs review" with both reasons shown. Every order
+    // still needs your confirmation either way.
+    function combineZoneEvidence(text, polygon, history) {
+      const zoneName = id => zones.find(item => item.id === id)?.name || 'that zone';
+      const review = message => ({ state: 'review', zoneId: '', message });
+      const matched = (zoneId, message) => ({ state: 'matched', zoneId, message });
+
+      if (polygon) {
+        const mapNote = `map location is in ${polygon.regionName}`;
+        const nearBorder = polygon.borderMetres < ZONE_BORDER_WARN_METRES;
+        if (text.state === 'matched') {
+          if (text.zoneId === polygon.zoneId) return matched(text.zoneId, `${text.message} - the ${mapNote}, which agrees`);
+          return review(`Needs review - the address points to ${zoneName(text.zoneId)} but the ${mapNote} (${zoneName(polygon.zoneId)}). ${text.message.replace(/^Matched: /, 'Address: ')}`);
+        }
+        if (text.zoneIds && text.zoneIds.length > 1) {
+          if (text.zoneIds.includes(polygon.zoneId)) return matched(polygon.zoneId, `Matched: ${polygon.zoneName} - the ${mapNote}, which settles an address that names areas in more than one zone`);
+          return review(`Needs review - the address names areas in more than one zone and the ${mapNote} (${polygon.zoneName}), which is none of them. ${text.message}`);
+        }
+        if (nearBorder) return review(`Needs review - no area in the address, and the map location is only ${Math.round(polygon.borderMetres)} m from the line between zones (${polygon.zoneName} side). Check it.`);
+        return matched(polygon.zoneId, `Matched: ${polygon.zoneName} - from the map location (${polygon.regionName}); no area was found in the address`);
+      }
+
+      if (text.state === 'matched') return text;
+      if (history) return matched(history.zoneId, `Matched: ${zoneName(history.zoneId)} - you confirmed this area as ${zoneName(history.zoneId)} ${history.count} of ${history.total} times before`);
+      return text;
+    }
+
+    function applyZoneResultToCard(card, result) {
       const message = card.querySelector('.zone-suggestion');
       const select = card.querySelector('.zone-select');
       if (!message || !select) return;
+      card.dataset.matchState = result.state;
+      // Don't overwrite a zone the admin already picked by hand.
+      if (select.dataset.userSet !== '1') select.value = result.zoneId || '';
+      message.textContent = result.message;
+      message.style.color = result.state === 'matched' ? 'var(--teal-dark)' : '#b45309';
+    }
 
-      if (!suggestion) {
-        message.textContent = 'No automatic zone match found. Please review manually.';
-        message.style.color = 'var(--grey)';
-        return;
-      }
+    window.setZoneConfirmFilter = function(filter) {
+      zoneConfirmFilter = ['matched', 'review'].includes(filter) ? filter : 'all';
+      applyZoneConfirmFilter();
+    };
 
-      select.value = suggestion.zone.id;
-      message.textContent = `Suggested: ${suggestion.zone.name} from ${suggestion.area} (${source})`;
-      message.style.color = 'var(--teal-dark)';
+    function applyZoneConfirmFilter() {
+      const cards = [...document.querySelectorAll('#panel-zone-confirm .zone-card[data-order-id]')];
+      const counts = { all: cards.length, matched: 0, review: 0 };
+      cards.forEach(card => {
+        if (card.dataset.matchState === 'matched') counts.matched += 1;
+        else if (card.dataset.matchState === 'review') counts.review += 1;
+      });
+      cards.forEach(card => {
+        const state = card.dataset.matchState || 'pending';
+        card.style.display = zoneConfirmFilter === 'all' || state === zoneConfirmFilter ? '' : 'none';
+      });
+      zoneConfirmVisibleIds = cards.filter(card => card.style.display !== 'none').map(card => card.dataset.orderId);
+      document.querySelectorAll('#zoneConfirmFilterTabs [data-zone-filter]').forEach(button => {
+        button.setAttribute('aria-pressed', String(button.dataset.zoneFilter === zoneConfirmFilter));
+      });
+      document.querySelectorAll('#zoneConfirmFilterTabs [data-zone-filter-count]').forEach(span => {
+        span.textContent = `(${counts[span.dataset.zoneFilterCount]})`;
+      });
+      syncZoneConfirmBulkControls();
     }
 
     let googleMapsPromise = null;
@@ -7344,8 +7899,52 @@
             result.formatted_address,
             ...(result.address_components || []).flatMap(component => [component.long_name, component.short_name])
           ]);
-          resolve(matchZoneFromText(parts.join(' ')));
+          resolve(parts.join(' '));
         });
+      });
+    }
+
+    function zoneMatchSignature(order) {
+      return ['v3-regions', order.area_name, order.delivery_address, order.street_name, order.latitude, order.longitude].join('|');
+    }
+
+    async function classifyZoneForOrder(order) {
+      const addressText = [order.area_name, order.delivery_address, order.street_name].filter(Boolean).join(' ');
+      const polygon = polygonZoneEvidence(order);
+
+      // 1. What the address says: exact names first, then misspellings, then
+      //    (only if the order has a pin but no usable text) what Google says
+      //    about the pin.
+      let text;
+      const exact = zoneCandidatesFromText(addressText);
+      if (exact.length) {
+        text = classifyZoneCandidates(exact, 'address text');
+      } else {
+        const fuzzy = zoneFuzzyCandidates(addressText);
+        if (fuzzy.length) {
+          text = classifyZoneCandidates(fuzzy, 'address text');
+          const hints = [...new Set(fuzzy.map(item => `"${item.heard}" read as ${item.read.replace(/\b\w/g, letter => letter.toUpperCase())}`))];
+          text.message += ` - spelling corrected: ${hints.join(', ')}`;
+        } else {
+          const geoText = polygon ? '' : await reverseGeocodeOrder(order);
+          text = geoText
+            ? classifyZoneCandidates(zoneCandidatesFromText(geoText), 'Google Maps')
+            : classifyZoneCandidates([], '');
+        }
+      }
+
+      // 2. Put it together with the map location, and (as a last resort) your
+      //    own earlier confirmations of the same area.
+      return combineZoneEvidence(text, polygon, text.state === 'matched' || polygon ? null : zoneConfirmedHistory(order.area_name));
+    }
+
+    // Results are remembered per order (until its address/location changes) so
+    // a background refresh doesn't blank the dropdowns or re-ask Google.
+    function applyCachedZoneSuggestions() {
+      document.querySelectorAll('#panel-zone-confirm .zone-card[data-order-id]').forEach(card => {
+        const order = orders.find(item => item.id === card.dataset.orderId);
+        const cached = order && zoneMatchCache.get(order.id);
+        if (cached && cached.signature === zoneMatchSignature(order)) applyZoneResultToCard(card, cached);
       });
     }
 
@@ -7354,14 +7953,15 @@
       for (const card of cards) {
         const order = orders.find(item => item.id === card.dataset.orderId);
         if (!order) continue;
-        const textSuggestion = matchZoneFromText([order.area_name, order.delivery_address, order.street_name].filter(Boolean).join(' '));
-        if (textSuggestion) {
-          setSuggestedZone(card, textSuggestion, 'address text');
-          continue;
+        const signature = zoneMatchSignature(order);
+        let result = zoneMatchCache.get(order.id);
+        if (!result || result.signature !== signature) {
+          result = { ...(await classifyZoneForOrder(order)), signature };
+          zoneMatchCache.set(order.id, result);
         }
-        const geoSuggestion = await reverseGeocodeOrder(order);
-        setSuggestedZone(card, geoSuggestion, geoSuggestion ? 'Google Maps' : 'manual review');
+        if (card.isConnected) applyZoneResultToCard(card, result);
       }
+      applyZoneConfirmFilter();
     }
 
     function renderZoneConfirm() {
@@ -7382,7 +7982,7 @@
       zoneConfirmVisibleIds = pending.map(order => order.id);
       if (!pending.length) {
         panel.insertAdjacentHTML('beforeend', '<div class="card" data-live-empty="true"><p>No orders are waiting for zone confirmation.</p></div>');
-        syncZoneConfirmBulkControls();
+        applyZoneConfirmFilter();
         return;
       }
 
@@ -7443,7 +8043,7 @@
               </div>
             </div>
             <div class="zone-card-actions">
-              <select class="zone-select">${zoneOptions()}</select>
+              <select class="zone-select" onchange="this.dataset.userSet='1'"><option value="">— Select zone —</option>${zoneOptions()}</select>
               <input class="zone-select fee-input" type="number" min="0" step="0.01" value="${suggestedFee.toFixed(2)}" title="Final delivery fee" />
               <input class="zone-select driver-pay-input" type="number" min="0" step="0.01" value="${suggestedDriverPay.toFixed(2)}" placeholder="Driver pay" title="Amount the driver earns for this delivery" />
               <input class="zone-select override-reason-input" type="text" maxlength="180" placeholder="Override/quote reason" title="Required when changing the estimate or quoting a remote order" />
@@ -7455,8 +8055,9 @@
           </div>
         `);
       });
+      applyCachedZoneSuggestions();
+      applyZoneConfirmFilter();
       applyZoneSuggestions();
-      syncZoneConfirmBulkControls();
     }
 
     // Per-parcel handover checklist: lets the admin check off each item as
@@ -7620,218 +8221,9 @@
       }
     };
 
-    const manifestOrderColumnGetters = {
-      sequence: order => Number(order.route_sequence || 0),
-      zone: order => String(order.zone_code || ''),
-      order: order => String(order.order_number || ''),
-      customer: order => `${order.customer_name || ''} ${order.customer_phone || ''}`,
-      address: order => String(orderLabelAddress(order) || ''),
-      parcels: order => Number(order.parcel_count || 1),
-      collect: order => Number(order.amount_to_collect || 0),
-      delivery: order => `${order.order_status || ''} ${order.parcel_status || ''}`.replaceAll('_', ' '),
-      cash: order => (Number(order.amount_to_collect || 0) > 0 && order.order_status === 'delivered') ? String(order.reconciliation_status || 'unreconciled') : '',
-      handedover: order => order.collected_at ? 'handed over' : 'not yet',
-    };
-
-    window.setManifestOrderSort = function(key) {
-      if (manifestOrderSort.key === key) {
-        manifestOrderSort.dir = manifestOrderSort.dir === 'asc' ? 'desc' : 'asc';
-      } else {
-        manifestOrderSort = { key, dir: 'asc' };
-      }
-      manifestFilterFocusKey = null;
-      renderManifests();
-    };
-
-    window.setManifestColumnFilter = function(key, value) {
-      const trimmed = String(value || '').trim();
-      if (trimmed) manifestColumnFilters[key] = trimmed;
-      else delete manifestColumnFilters[key];
-      manifestFilterFocusKey = key;
-      renderManifests();
-    };
-
-    // Current-batch snapshot for the selected driver: only orders sitting on
-    // their non-closed manifest(s) right now, broken down by where each one
-    // currently stands. This is deliberately separate from the "Cash &
-    // Delivery Summary (Over Time)" card below, which totals across all of a
-    // driver's history -- here we only want what's out with them today.
-    function renderDriverBatchStats(driverId) {
-      const card = document.getElementById('driverBatchStatsCard');
-      const body = document.getElementById('driverBatchStatsBody');
-      if (!card || !body) return;
-      if (!driverId) {
-        card.style.display = 'none';
-        return;
-      }
-      card.style.display = '';
-
-      const currentOrders = deliveryManifests
-        .filter(manifest => manifest.driver_id === driverId && ['draft', 'ready', 'collected'].includes(manifest.status))
-        .flatMap(manifest => manifest.orders || [])
-        .filter(order => !isCancelledOrder(order));
-
-      if (!currentOrders.length) {
-        body.innerHTML = '<p>No orders on an open manifest for this driver right now.</p>';
-        return;
-      }
-
-      const counts = {
-        outForDelivery: 0,
-        delivered: 0,
-        refused: 0,
-        noResponse: 0,
-        rescheduled: 0,
-        awaitingHandover: 0
-      };
-      currentOrders.forEach(order => {
-        if (order.delivery_outcome === 'refused') counts.refused += 1;
-        else if (order.delivery_outcome === 'no_response') counts.noResponse += 1;
-        else if (order.order_status === 'rescheduled' || order.delivery_outcome === 'reschedule_requested') counts.rescheduled += 1;
-        else if (order.order_status === 'delivered') counts.delivered += 1;
-        else if (order.order_status === 'out_for_delivery') counts.outForDelivery += 1;
-        else counts.awaitingHandover += 1;
-      });
-
-      body.innerHTML = `
-        <div class="table-wrap"><table>
-          <thead><tr><th>Total</th><th>Out for Delivery</th><th>Delivered</th><th>Refused</th><th>No Response</th><th>Rescheduled</th><th>Awaiting Handover</th></tr></thead>
-          <tbody>
-            <tr>
-              <td>${currentOrders.length}</td>
-              <td>${counts.outForDelivery}</td>
-              <td>${counts.delivered}</td>
-              <td>${counts.refused}</td>
-              <td>${counts.noResponse}</td>
-              <td>${counts.rescheduled}</td>
-              <td>${counts.awaitingHandover}</td>
-            </tr>
-          </tbody>
-        </table></div>
-      `;
-    }
-
-    // Flat, per-order view of everything assigned to a driver, independent of
-    // which manifest an order sits on — shows when each was assigned and lets
-    // a single delivery be closed once it's delivered & reconciled, without
-    // needing the whole manifest closed.
-    let driverFlatDeliveriesSelection = new Set();
-    let driverFlatDeliveriesDriverId = null;
-    let driverFlatDeliveriesCloseableIds = [];
-
-    window.renderDriverFlatDeliveries = function(driverId) {
-      const card = document.getElementById('driverFlatDeliveriesCard');
-      const body = document.getElementById('driverFlatDeliveriesBody');
-      if (!card || !body) return;
-      if (driverId !== driverFlatDeliveriesDriverId) {
-        driverFlatDeliveriesSelection.clear();
-        driverFlatDeliveriesDriverId = driverId;
-      }
-      if (!driverId) {
-        card.style.display = 'none';
-        return;
-      }
-      card.style.display = '';
-      const showClosed = !!document.getElementById('driverFlatDeliveriesShowClosed')?.checked;
-
-      let flatOrders = deliveryManifests
-        .filter(manifest => manifest.driver_id === driverId && manifest.status !== 'cancelled')
-        .flatMap(manifest => (manifest.orders || []).map(order => ({ ...order, _manifest: manifest })))
-        .filter(order => !isCancelledOrder(order));
-
-      if (!showClosed) flatOrders = flatOrders.filter(order => !order.order_closed_at);
-
-      flatOrders.sort((a, b) => new Date(b.assigned_at || 0) - new Date(a.assigned_at || 0));
-
-      if (!flatOrders.length) {
-        body.innerHTML = `<tr><td colspan="9">${showClosed ? 'No deliveries assigned to this driver.' : 'No open deliveries assigned to this driver right now.'}</td></tr>`;
-        driverFlatDeliveriesCloseableIds = [];
-        syncDriverFlatDeliveriesBulkControls();
-        return;
-      }
-
-      driverFlatDeliveriesCloseableIds = [];
-      body.innerHTML = flatOrders.map(order => {
-        const canClose = !order.order_closed_at
-          && order.order_status === 'delivered'
-          && (Number(order.amount_to_collect || 0) <= 0 || order.reconciliation_status === 'balanced');
-        let actionHtml;
-        if (order.order_closed_at) {
-          actionHtml = `<div class="td-sub">Closed ${new Date(order.order_closed_at).toLocaleString('en-TT')}</div>`;
-        } else if (canClose) {
-          actionHtml = `<button class="btn btn-primary btn-sm" onclick="closeManifestOrder('${order.id}')">Close Delivery</button>`;
-        } else {
-          const why = order.order_status !== 'delivered'
-            ? 'Not yet delivered'
-            : 'Awaiting reconciliation';
-          actionHtml = `<span class="td-sub" title="${escapeHtml(why)}">${escapeHtml(why)}</span>`;
-        }
-        // Selectable for bulk-close whenever it's still open -- not only the
-        // ones already eligible to close right now. "Close Selected" tries
-        // each one and reports back on any that aren't actually ready
-        // (not delivered yet, or still unreconciled), rather than hiding the
-        // checkbox and leaving admins wondering where it went.
-        const isSelectable = !order.order_closed_at;
-        if (isSelectable) driverFlatDeliveriesCloseableIds.push(order.id);
-        const checkboxHtml = isSelectable
-          ? `<label class="bulk-order-check"><input class="driver-flat-delivery-bulk-check" type="checkbox" value="${order.id}" ${driverFlatDeliveriesSelection.has(order.id) ? 'checked' : ''} onchange="toggleDriverFlatDeliveryBulk('${order.id}', this.checked)"></label>`
-          : '';
-        return `<tr>
-          <td>${checkboxHtml}</td>
-          <td class="td-id">${escapeHtml(order.order_number)}</td>
-          <td><div class="td-name">${escapeHtml(order.customer_name || '')}</div><div class="td-sub">${escapeHtml(formatPhoneDisplay(order.customer_phone))}</div></td>
-          <td>${escapeHtml(orderLabelAddress(order))}</td>
-          <td><div class="td-sub">${order.assigned_at ? new Date(order.assigned_at).toLocaleString('en-TT') : '—'}</div></td>
-          <td><div class="td-sub">${escapeHtml(String(order.order_status || '').replaceAll('_', ' '))}</div></td>
-          <td>${moneyFull(order.amount_to_collect)}</td>
-          <td>${Number(order.amount_to_collect || 0) > 0 ? escapeHtml(order.reconciliation_status || 'unreconciled') : '—'}</td>
-          <td>${actionHtml}</td>
-        </tr>`;
-      }).join('');
-
-      // Drop any selected id that's no longer visible/closeable (e.g. it got
-      // closed from elsewhere, or "show closed" was toggled off).
-      const closeableSet = new Set(driverFlatDeliveriesCloseableIds);
-      Array.from(driverFlatDeliveriesSelection).forEach(id => {
-        if (!closeableSet.has(id)) driverFlatDeliveriesSelection.delete(id);
-      });
-      syncDriverFlatDeliveriesBulkControls();
-    };
-
-    function syncDriverFlatDeliveriesBulkControls() {
-      const selectAll = document.getElementById('driverFlatDeliveriesSelectAll');
-      const closeBtn = document.getElementById('closeSelectedDriverFlatDeliveriesBtn');
-      const count = document.getElementById('driverFlatDeliveriesBulkCount');
-      if (count) count.textContent = `${driverFlatDeliveriesSelection.size} selected`;
-      if (closeBtn) closeBtn.disabled = driverFlatDeliveriesSelection.size === 0;
-      if (selectAll) {
-        selectAll.checked = driverFlatDeliveriesCloseableIds.length > 0
-          && driverFlatDeliveriesCloseableIds.every(id => driverFlatDeliveriesSelection.has(id));
-        selectAll.disabled = driverFlatDeliveriesCloseableIds.length === 0;
-      }
-    }
-
-    window.toggleDriverFlatDeliveryBulk = function(orderId, checked) {
-      if (checked) driverFlatDeliveriesSelection.add(orderId);
-      else driverFlatDeliveriesSelection.delete(orderId);
-      syncDriverFlatDeliveriesBulkControls();
-    };
-
-    window.toggleDriverFlatDeliveriesVisibleBulk = function(checked) {
-      if (checked) driverFlatDeliveriesCloseableIds.forEach(id => driverFlatDeliveriesSelection.add(id));
-      else driverFlatDeliveriesCloseableIds.forEach(id => driverFlatDeliveriesSelection.delete(id));
-      document.querySelectorAll('.driver-flat-delivery-bulk-check').forEach(input => {
-        input.checked = driverFlatDeliveriesSelection.has(input.value);
-      });
-      syncDriverFlatDeliveriesBulkControls();
-    };
-
-    window.clearDriverFlatDeliveriesSelection = function() {
-      driverFlatDeliveriesSelection.clear();
-      document.querySelectorAll('.driver-flat-delivery-bulk-check').forEach(input => { input.checked = false; });
-      syncDriverFlatDeliveriesBulkControls();
-    };
-
+    // One delivery can be closed once it is delivered and its cash (if any) is
+    // reconciled. (The grouped manifest screens that used to sit here are gone:
+    // everything for a driver now lives on the Drivers page.)
     window.closeManifestOrder = async function(orderId) {
       try {
         const { error } = await supabase.rpc('admin_close_manifest_order', { p_order_id: orderId });
@@ -7843,85 +8235,14 @@
       }
     };
 
-    window.closeSelectedManifestOrders = async function() {
-      const ids = Array.from(driverFlatDeliveriesSelection);
-      if (!ids.length) return showToast('No deliveries selected.');
-      const closeBtn = document.getElementById('closeSelectedDriverFlatDeliveriesBtn');
-      if (closeBtn) closeBtn.disabled = true;
-      let closedCount = 0;
-      const failures = [];
-      for (const orderId of ids) {
-        try {
-          const { error } = await supabase.rpc('admin_close_manifest_order', { p_order_id: orderId });
-          if (error) throw error;
-          closedCount += 1;
-        } catch (error) {
-          failures.push({ orderId, message: error.message || 'Could not close this delivery.' });
-        }
-      }
-      driverFlatDeliveriesSelection.clear();
-      if (failures.length) {
-        const order = orders.find(o => o.id === failures[0].orderId);
-        window.vdNotify(
-          'Some Deliveries Not Closed',
-          `${closedCount} closed. ${failures.length} could not be closed${order ? ` (e.g. ${order.order_number}: ${failures[0].message})` : ''}.`,
-          'error'
-        );
-      } else {
-        showToast(`${closedCount} delivery(ies) closed.`);
-      }
-      await softRefresh();
-    };
-
+    // Older code still calls renderManifests() after data loads; the Drivers
+    // page shows everything now, so just redraw it.
     window.renderManifests = function() {
-      const list = document.getElementById('manifestList');
-      if (!list) return;
-      const selectedDriverId = document.getElementById('manifestDriverFilter')?.value || '';
-      const filter = document.getElementById('manifestStatusFilter')?.value || 'active';
-      const search = String(document.getElementById('manifestSearch')?.value || '').trim().toLowerCase();
-      renderDriverBatchStats(selectedDriverId);
-      renderDriverFlatDeliveries(selectedDriverId);
-      if (!selectedDriverId) {
-        manifestVisibleIds = [];
-        manifestSelection.clear();
-        syncManifestBulkControls();
-        list.innerHTML = '<div class="card"><strong>Select a driver to manage a manifest.</strong><div class="td-sub" style="margin-top:0.5rem;">After selecting a driver, you will see their assigned orders and can mark the manifest ready, confirm driver collection, or close it.</div></div>';
-        return;
-      }
-      const rows = deliveryManifests.map(manifest => {
-        let manifestOrders = (manifest.orders || []).filter(order => !isCancelledOrder(order));
-        manifestOrders = filterByColumns(manifestOrders, manifestOrderColumnGetters, manifestColumnFilters);
-        manifestOrders = applyColumnSort(manifestOrders, manifestOrderSort, manifestOrderColumnGetters);
-        return { ...manifest, orders: manifestOrders };
-      }).filter(manifest => {
-        if (manifest.driver_id !== selectedDriverId) return false;
-        if (!(manifest.orders || []).length) return false;
-        if (filter === 'active' && !['draft', 'ready', 'collected'].includes(manifest.status)) return false;
-        if (!['active', 'all'].includes(filter) && manifest.status !== filter) return false;
-        if (!search) return true;
-        return [manifest.manifest_number, manifest.driver_name, ...(manifest.orders || []).flatMap(order => [order.order_number, order.customer_name, order.customer_phone, order.external_item_number, order.customer_notes])]
-          .some(value => String(value || '').toLowerCase().includes(search));
-      });
-      manifestVisibleIds = rows.map(manifest => manifest.id);
-      list.innerHTML = rows.map(manifest => `
-        <div class="card" style="margin-bottom:1rem;" data-manifest-id="${manifest.id}">
-          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap; margin-bottom:1rem;">
-            <div><label class="bulk-order-check"><input class="manifest-bulk-check" type="checkbox" value="${manifest.id}" ${manifestSelection.has(manifest.id) ? 'checked' : ''} onchange="toggleManifestBulk('${manifest.id}', this.checked)"><span class="td-id" style="font-size:1rem;">${escapeHtml(manifest.manifest_number)}</span></label><div class="td-name">${escapeHtml(manifest.driver_name || 'Driver')} · ${new Date(manifest.route_date + 'T12:00:00').toLocaleDateString('en-TT')}</div><div class="td-sub">${(manifest.orders || []).length} parcel order(s)</div></div>
-            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">${manifestStatusBadge(manifest.status)}<button class="btn btn-ghost btn-sm" onclick="printManifest('${manifest.id}')">Print</button>${manifest.status === 'draft' ? `<button class="btn btn-primary btn-sm" onclick="setManifestStatus('${manifest.id}', 'ready')">Mark Ready</button>` : ''}${['draft', 'ready'].includes(manifest.status) ? `<button class="btn btn-primary btn-sm" onclick="submitManifestHandoverSelections('${manifest.id}')">Mark Selected as Handed Over</button>` : ''}${['draft', 'ready'].includes(manifest.status) && manifestUncollectedCount(manifest) > 0 ? `<button class="btn btn-ghost btn-sm" onclick="markAllManifestOrdersCollected('${manifest.id}')">Mark All Handed Over</button>` : ''}${manifest.status === 'ready' ?`<button class="btn btn-primary btn-sm" ${manifestUncollectedCount(manifest) > 0 ? 'disabled title="Check off every parcel as handed over first"' : ''} onclick="setManifestStatus('${manifest.id}', 'collected')">Confirm Driver Collection</button>` : ''}${manifest.status === 'collected' && manifest.close_summary?.can_close ? `<button class="btn btn-primary btn-sm" onclick="closeDeliveryManifest('${manifest.id}')">Close Manifest</button>` : ''}</div>
-          </div>
-          ${manifest.status === 'ready' ? `<div class="td-sub" style="margin-bottom:0.75rem;">${manifestCollectedCount(manifest)} of ${(manifest.orders || []).length} parcel(s) checked off as handed over${manifestUncollectedCount(manifest) > 0 ? ' — finish checking off every parcel before confirming driver collection.' : ' — all parcels handed over, ready to confirm.'}</div>` : ''}
-          ${manifestCloseSummaryHtml(manifest)}
-          <div class="table-wrap"><table><thead><tr><th>Sequence</th><th>Zone</th><th>Order</th><th>Customer</th><th>Address</th><th>Parcels</th><th>Collect</th><th>Delivery</th><th>Cash</th><th>Handed Over</th>${manifest.status === 'draft' ? '<th>Action</th>' : ''}</tr></thead><tbody>
-            ${(manifest.orders || []).map(order => `<tr><td>${order.route_sequence}</td><td>${escapeHtml(order.zone_code ? `Zone ${order.zone_code}` : '—')}</td><td class="td-id">${escapeHtml(order.order_number)}</td><td><div class="td-name">${escapeHtml(order.customer_name || '')}</div><div class="td-sub">${escapeHtml(formatPhoneDisplay(order.customer_phone))}</div>${orderItemPackageHtml(order)}</td><td>${escapeHtml(orderLabelAddress(order))}</td><td>${escapeHtml(String(order.parcel_count || 1))}</td><td>${moneyFull(order.amount_to_collect)}</td><td><div class="td-sub">${escapeHtml(String(order.order_status || '').replaceAll('_', ' '))}</div><div class="td-sub">${escapeHtml(String(order.parcel_status || '').replaceAll('_', ' '))}</div>${order.delivery_return_required ? '<div class="td-sub" style="color:#b42318;">Return required</div>' : ''}</td><td>${Number(order.amount_to_collect || 0) > 0 && order.order_status === 'delivered' ? escapeHtml(order.reconciliation_status || 'unreconciled') : '—'}</td><td>${manifestOrderCollectedCellHtml(manifest, order)}</td>${manifest.status === 'draft' ? `<td><button class="btn btn-ghost btn-sm" onclick="removeManifestOrder('${manifest.id}', '${order.id}')">Remove</button></td>` : ''}</tr>`).join('') || `<tr><td colspan="${manifest.status === 'draft' ? 11 : 10}">No parcels on this manifest.</td></tr>`}
-          </tbody></table></div>
-          ${manifest.handed_to_driver_at ? `<div class="td-sub" style="margin-top:0.75rem;">Handover confirmed ${new Date(manifest.handed_to_driver_at).toLocaleString('en-TT')}</div>` : ''}
-        </div>`).join('') || (deliveryManifests.length
-          ? '<div class="card">No manifests match the selected driver, status, or search.</div>'
-          : '<div class="card"><strong>No manifests have been created yet.</strong><div class="td-sub" style="margin-top:0.5rem;">Sort a received parcel, then assign it to a driver. Existing assignments require database migration 20260624_010_manifest_backfill.sql.</div></div>');
-      syncManifestBulkControls();
+      renderDriversMgmt();
     };
 
-    // ── Driver cash-on-hand and delivery outcome summary ────────────────
+    // Driver cash-on-hand summary. The Drivers list now works this out from the
+    // orders itself, so this only fills the old table if it is ever put back.
     window.loadAllDriversCashSummary = async function() {
       const body = document.getElementById('allDriversCashBody');
       if (!body) return;
@@ -8093,19 +8414,7 @@
       }
     };
 
-    window.showDriverReturnList = function() {
-      const driverId = document.getElementById('manifestDriverFilter')?.value || '';
-      if (!driverId) return showToast("Select a driver first.");
-      document.getElementById("modalTitle").textContent = "Items to Return - " + driverName(driverId);
-      document.getElementById("modalBody").innerHTML = driverReturnListHtml(driverId);
-      document.getElementById("modalConfirm").textContent = "Close";
-      document.getElementById("modalCancel").style.display = "none";
-      document.getElementById("modal").classList.add("show");
-      window._driverReturnCopyText = driverReturnListCopyText(driverId);
-      modalCb = null;
-    };
-
-    // Phase 1 item 3: Delivery Exceptions as four tabs (Needs Review /
+// Phase 1 item 3: Delivery Exceptions as four tabs (Needs Review /
     // Redeliveries / Returns to Client / Cancelled-Closed) layered on top of
     // the existing return-management data model, so no field or RPC changes
     // were needed -- only how the same records get grouped and displayed.
@@ -8113,7 +8422,7 @@
       needs_review: { title: 'Needs Review', subtitle: 'Undelivered parcels awaiting an admin decision or driver return.' },
       redeliveries: { title: 'Redeliveries', subtitle: 'Parcels scheduled to go back out for another delivery attempt.' },
       returns_to_client: { title: 'Returns to Client', subtitle: 'Parcels being sent back to the business client rather than redelivered.' },
-      cancelled_closed: { title: 'Cancelled / Closed', subtitle: 'Cancelled or rejected orders that still need action (parcel with a driver or waiting at the hub). Tick "Show history" to see the finished ones.' },
+      cancelled_closed: { title: 'Cancelled / Closed', subtitle: 'Cancelled or rejected orders, including any that still owe a parcel back to the hub.' },
       // These two catch a specific gap: a driver returns a parcel to the hub
       // but never updates its status in the field, so it never surfaces in
       // Needs Review (which only looks at parcel/return fields, not plain
@@ -8132,21 +8441,15 @@
       });
       const subFilterWrap = document.getElementById('returnManagementFilter');
       if (subFilterWrap) subFilterWrap.style.display = tab === 'needs_review' ? '' : 'none';
-      const historyWrap = document.getElementById('cancelledHistoryWrap');
-      if (historyWrap) historyWrap.style.display = tab === 'cancelled_closed' ? 'inline-flex' : 'none';
+      const outcomeWrap = document.getElementById('returnOutcomeFilter');
+      if (outcomeWrap) outcomeWrap.style.display = ['needs_review', 'returns_to_client', 'redeliveries'].includes(tab) ? '' : 'none';
       const subtitle = document.getElementById('returnExceptionsSubtitle');
       if (subtitle) subtitle.textContent = returnExceptionsTabLabels[tab]?.subtitle || '';
       renderReturnManagement();
     };
 
     function orderMatchesReturnTab(order, tab, subFilter) {
-      if (tab === 'cancelled_closed') {
-        if (!isCancelledOrder(order)) return false;
-        // Default view: only cancelled orders that still need an admin/driver
-        // action. Everything already finished (e.g. returned to the client)
-        // sits behind the "Show history" toggle -- nothing is deleted.
-        return showCancelledHistory || cancelledOrderNeedsAction(order);
-      }
+      if (tab === 'cancelled_closed') return isCancelledOrder(order);
       if (isCancelledOrder(order)) return false; // cancelled/rejected orders live only in their own tab
       // Assigned / Out for Delivery: plain order_status check, independent of
       // the return/parcel fields the other tabs key off -- this is exactly
@@ -8164,18 +8467,6 @@
         && order.redelivery_status !== 'scheduled'
         && !order.return_to_client_status;
     }
-
-    function cancelledOrderNeedsAction(order) {
-      return orderNeedsHubReturn(order)
-        || order.return_to_client_status === 'ready'
-        || order.parcel_status === 'held_for_client_instructions'
-        || (order.parcel_status === 'returned_to_hub' && order.return_disposition === 'awaiting_admin');
-    }
-
-    window.toggleCancelledHistory = function(checked) {
-      showCancelledHistory = Boolean(checked);
-      renderReturnManagement();
-    };
 
     function returnRecordMatches(order, filter) {
       // A cancelled/rejected order still belongs here if a driver already
@@ -8283,15 +8574,254 @@
       syncReturnDecisionBulkControls();
     };
 
+    // ── Delivery Exceptions: tick-then-confirm checklist ──────────────────
+    // Needs Review is now two separate jobs, so they can no longer be mixed up:
+    //   1. parcels still WITH drivers -> tick each as it is physically back; ticked
+    //      parcels wait in a box underneath until you confirm them (all at once or
+    //      one by one);
+    //   2. parcels already AT the hub -> decide what happens next (redeliver, hold,
+    //      return to the client).
+    // Returns to Client uses the same tick-then-confirm box for "handed back to
+    // the client". Nothing is saved until you press Confirm. It uses the same
+    // database functions as before, so drivers and clients see no difference.
+    let returnStagedHub = new Set();
+    let returnStagedClient = new Set();
+    let rcWaitingHubIds = [];
+    let rcWaitingClientIds = [];
+
+    function rcOutcomeMatches(order, outcome) {
+      if (!outcome) return true;
+      if (outcome === 'cancelled') return isCancelledOrder(order);
+      return order.delivery_outcome === outcome;
+    }
+
+    function rcWhyHtml(order) {
+      const outcomeLabels = { no_response: 'No response', refused: 'Refused', reschedule_requested: 'Reschedule requested' };
+      if (isCancelledOrder(order)) {
+        return `<span class="badge badge-unpaid">${escapeHtml(order.order_status === 'cancelled' ? 'Cancelled' : 'Rejected')}</span>${order.rejection_reason ? `<div class="td-sub">${escapeHtml(order.rejection_reason)}</div>` : ''}`;
+      }
+      return `<span class="badge badge-pending">${escapeHtml(outcomeLabels[order.delivery_outcome] || order.delivery_outcome || 'Undelivered')}</span>${order.delivery_outcome_notes ? `<div class="td-sub">${escapeHtml(order.delivery_outcome_notes)}</div>` : ''}`;
+    }
+
+    function rcOrderCell(order) {
+      return `<td><div class="td-id">${escapeHtml(order.order_number)}</div><div class="td-sub">Attempt ${escapeHtml(String(order.delivery_attempt_count || 1))}</div></td>`;
+    }
+
+    function rcPeopleCell(order) {
+      return `<td><div class="td-name">${escapeHtml(order.customer_name || '—')}</div><div class="td-sub">${escapeHtml(formatPhoneDisplay(order.customer_phone))} · ${escapeHtml(clientName(order))}</div></td>`;
+    }
+
+    function rcItemCell(order) {
+      return `<td>${orderItemPackageHtml(order) || '<div class="td-sub">—</div>'}<div class="td-sub">${escapeHtml(order.area_name || '')}</div></td>`;
+    }
+
+    function rcDateText(value) {
+      return value ? new Date(value).toLocaleString('en-TT') : '—';
+    }
+
+    function rcStagedBox(staged, rowsHtml, label, confirmFn, untickFn, untickOneFn, singleFn) {
+      if (!staged.length) return '';
+      return `<div class="rc-staged">
+        <div class="rc-staged-head">
+          <strong>Ticked — waiting for your confirmation <span class="rc-count">${staged.length}</span></strong>
+          <button class="btn btn-primary btn-sm" type="button" onclick="${confirmFn}()">Confirm ${staged.length} ${label}</button>
+          <button class="btn btn-ghost btn-sm" type="button" onclick="${untickFn}()">Untick all</button>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th></th><th>Order</th><th>Customer / Client</th><th>Item</th><th></th></tr></thead>
+          <tbody>${staged.map(order => `<tr>
+            <td><input type="checkbox" checked onchange="${untickOneFn}('${order.id}', this.checked)" title="Untick to move it back"></td>
+            ${rcOrderCell(order)}${rcPeopleCell(order)}${rcItemCell(order)}
+            <td><button class="btn btn-ghost btn-sm" type="button" onclick="${singleFn}('${order.id}')">Confirm just this one</button></td>
+          </tr>`).join('')}</tbody>
+        </table></div>
+      </div>`;
+    }
+
+    // Stage 1: with drivers, expected back at the hub.
+    function renderReturnStageHub(rows) {
+      const host = document.getElementById('rcStageHub');
+      if (!host) return;
+      const all = rows.filter(order => orderNeedsHubReturn(order));
+      // Ticked parcels stay in the box whatever the filters say -- a filter must
+      // never hide something you have already ticked. Only parcels that no longer
+      // need hub receipt (confirmed elsewhere) drop out.
+      returnStagedHub = new Set([...returnStagedHub].filter(id => orders.some(order => order.id === id && orderNeedsHubReturn(order))));
+      const waiting = all.filter(order => !returnStagedHub.has(order.id));
+      const staged = orders.filter(order => returnStagedHub.has(order.id));
+      rcWaitingHubIds = waiting.map(order => order.id);
+      host.innerHTML = `
+        <div class="card-title">1. Waiting to come back from drivers <span class="rc-count">${waiting.length}</span></div>
+        <div class="td-sub rc-help">Tick each parcel as it is physically back at the hub. Ticked parcels move to the box underneath until you confirm them.</div>
+        ${waiting.length ? `<div class="table-wrap"><table>
+          <thead><tr><th><input type="checkbox" onchange="rcTickAllHub(this.checked)" title="Tick every parcel in this list"></th><th>Order</th><th>Customer / Client</th><th>Item</th><th>Why it is coming back</th><th>Driver</th><th>With driver since</th></tr></thead>
+          <tbody>${waiting.map(order => `<tr>
+            <td><input type="checkbox" onchange="rcTickHub('${order.id}', this.checked)"></td>
+            ${rcOrderCell(order)}${rcPeopleCell(order)}${rcItemCell(order)}
+            <td>${rcWhyHtml(order)}</td>
+            <td>${escapeHtml(order.assigned_driver_id ? driverName(order.assigned_driver_id) : 'Unassigned')}</td>
+            <td><div class="td-sub">${escapeHtml(rcDateText(order.last_delivery_attempt_at || order.updated_at))}</div></td>
+          </tr>`).join('')}</tbody>
+        </table></div>` : `<div class="rc-empty">${staged.length ? 'Everything has been ticked. Confirm the box below.' : 'Nothing is waiting to come back from a driver.'}</div>`}
+        ${rcStagedBox(staged, '', 'received at hub', 'rcConfirmHub', 'rcUntickAllHub', 'rcTickHub', 'rcConfirmHubOne')}`;
+    }
+
+    window.rcTickHub = function(orderId, on) {
+      if (on) returnStagedHub.add(orderId); else returnStagedHub.delete(orderId);
+      renderReturnManagement();
+    };
+    window.rcTickAllHub = function(on) {
+      rcWaitingHubIds.forEach(id => on ? returnStagedHub.add(id) : returnStagedHub.delete(id));
+      renderReturnManagement();
+    };
+    window.rcUntickAllHub = function() {
+      returnStagedHub.clear();
+      renderReturnManagement();
+    };
+    window.rcConfirmHubOne = function(orderId) { confirmHubReturn(orderId); };
+
+    window.rcConfirmHub = function() {
+      const ids = [...returnStagedHub].filter(id => orders.some(order => order.id === id && orderNeedsHubReturn(order)));
+      if (!ids.length) return showToast('Tick at least one parcel first.');
+      showModal('Confirm Received at Hub', `Confirm that ${ids.length} parcel(s) were physically returned to the VirtuDrop hub?`, async () => {
+        try {
+          const { data, error } = await supabase.rpc('admin_confirm_returned_batch', { p_order_ids: ids, p_notes: null });
+          console.log('admin_confirm_returned_batch response:', { data, error });
+          if (error) throw error;
+          if (!data || !data.batch_id || !(data.order_count > 0)) {
+            throw new Error('The server did not confirm any parcels in this batch. Nothing was changed -- please try again or check the console.');
+          }
+          showToast(`${data.order_count} parcel(s) received at the hub (batch ${data.batch_number || ''}). They now appear under "At the hub".`);
+          ids.forEach(id => returnStagedHub.delete(id));
+          await softRefresh();
+          await loadReturnBatches();
+        } catch (error) {
+          // The ticks stay in place so nothing has to be ticked again.
+          const detail = [error.message, error.details, error.hint].filter(Boolean).join(' | ');
+          window.vdNotify('Not Confirmed', detail || 'Could not confirm these returns. Your ticks are kept.', 'error');
+        }
+      });
+    };
+
+    // Stage 2: at the hub, waiting for a decision.
+    function renderReturnStageDecide(rows) {
+      const body = document.getElementById('rcDecisionBody');
+      if (!body) return;
+      const atHub = rows.filter(order => orderAwaitingReturnDecision(order) && !orderNeedsHubReturn(order));
+      const title = document.getElementById('rcDecideTitle');
+      if (title) title.innerHTML = `2. At the hub — decide what happens next <span class="rc-count">${atHub.length}</span>`;
+      body.innerHTML = atHub.map(order => {
+        const holdText = order.holding_type === 'extra_stock' ? 'Held as extra stock'
+          : order.hold_until ? `Hold until ${new Date(order.hold_until + 'T12:00:00').toLocaleDateString('en-TT')}`
+            : 'Awaiting your decision';
+        return `<tr>
+          <td><input class="return-decision-check" type="checkbox" value="${order.id}" ${returnDecisionSelection.has(order.id) ? 'checked' : ''} onchange="toggleReturnDecisionBulk('${order.id}', this.checked)"></td>
+          ${rcOrderCell(order)}${rcPeopleCell(order)}${rcItemCell(order)}
+          <td>${rcWhyHtml(order)}</td>
+          <td><div class="td-name">${escapeHtml(holdText)}</div><div class="td-sub">${order.delivery_returned_hub_at ? `Back at hub ${escapeHtml(rcDateText(order.delivery_returned_hub_at))}` : ''}</div></td>
+          <td>${returnActionButtons(order)}</td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="7"><div class="rc-empty">Nothing at the hub is waiting for a decision.</div></td></tr>';
+    }
+
+    // Returns to Client: prepared returns waiting to be handed back.
+    function renderReturnStageClient(rows) {
+      const host = document.getElementById('rcStageClient');
+      if (!host) return;
+      const all = rows.filter(order => order.return_to_client_status === 'ready');
+      returnStagedClient = new Set([...returnStagedClient].filter(id => orders.some(order => order.id === id && order.return_to_client_status === 'ready')));
+      const waiting = all.filter(order => !returnStagedClient.has(order.id));
+      const staged = orders.filter(order => returnStagedClient.has(order.id));
+      rcWaitingClientIds = waiting.map(order => order.id);
+      host.innerHTML = `
+        <div class="card-title">Ready to hand back to the business client <span class="rc-count">${waiting.length}</span></div>
+        <div class="td-sub rc-help">Tick each parcel once it has been handed back to its business. Ticked parcels move to the box underneath until you confirm them.</div>
+        ${waiting.length ? `<div class="table-wrap"><table>
+          <thead><tr><th><input type="checkbox" onchange="rcTickAllClient(this.checked)" title="Tick every parcel in this list"></th><th>Order</th><th>Customer / Client</th><th>Item</th><th>How it goes back</th><th>Fee</th><th>Notes</th></tr></thead>
+          <tbody>${waiting.map(order => `<tr>
+            <td><input type="checkbox" onchange="rcTickClient('${order.id}', this.checked)"></td>
+            ${rcOrderCell(order)}${rcPeopleCell(order)}${rcItemCell(order)}
+            <td><div class="td-name">${escapeHtml(clientReturnMethodLabel(order))}</div></td>
+            <td>${order.return_to_client_fee > 0 ? moneyFull(order.return_to_client_fee) : '—'}</td>
+            <td><div class="td-sub">${escapeHtml(order.return_management_notes || '')}</div></td>
+          </tr>`).join('')}</tbody>
+        </table></div>` : `<div class="rc-empty">${staged.length ? 'Everything has been ticked. Confirm the box below.' : 'No parcels are waiting to be handed back to a client.'}</div>`}
+        ${rcStagedBox(staged, '', 'returned to client', 'rcConfirmClient', 'rcUntickAllClient', 'rcTickClient', 'completeClientReturn')}`;
+    }
+
+    window.rcTickClient = function(orderId, on) {
+      if (on) returnStagedClient.add(orderId); else returnStagedClient.delete(orderId);
+      renderReturnManagement();
+    };
+    window.rcTickAllClient = function(on) {
+      rcWaitingClientIds.forEach(id => on ? returnStagedClient.add(id) : returnStagedClient.delete(id));
+      renderReturnManagement();
+    };
+    window.rcUntickAllClient = function() {
+      returnStagedClient.clear();
+      renderReturnManagement();
+    };
+
+    window.rcConfirmClient = function() {
+      const ids = [...returnStagedClient].filter(id => orders.some(order => order.id === id && order.return_to_client_status === 'ready'));
+      if (!ids.length) return showToast('Tick at least one parcel first.');
+      showModal('Confirm Client Returns', `Confirm that ${ids.length} parcel(s) were physically returned to their business clients?`, async () => {
+        let succeeded = 0;
+        const failed = [];
+        for (const id of ids) {
+          const order = orders.find(item => item.id === id);
+          const { error } = await supabase.rpc('admin_complete_order_return_to_client', { p_order_id: id });
+          if (error) failed.push((order?.order_number || id) + ': ' + (error.message || 'failed'));
+          else { succeeded += 1; returnStagedClient.delete(id); }
+        }
+        if (succeeded) showToast(`${succeeded} parcel(s) confirmed returned to the client.`);
+        if (failed.length) window.vdNotify('Some Returns Not Confirmed', failed.slice(0, 5).join(' | ') + (failed.length > 5 ? ' | More errors omitted.' : '') + ' Those stay ticked.', 'error');
+        await softRefresh();
+      });
+    };
+
+    // Show the checklist for the tabs that use it, the older single table for the rest.
+    function setReturnChecklistMode(on, tab) {
+      const checklist = document.getElementById('returnChecklist');
+      const legacy = document.getElementById('returnLegacyCard');
+      const bulk = document.getElementById('returnBulkToolbar');
+      const decision = document.getElementById('returnDecisionBulkToolbar');
+      const host = document.getElementById('rcDecisionHost');
+      const statusToolbar = document.getElementById('exStatusBulkToolbar');
+      if (checklist) checklist.style.display = on ? '' : 'none';
+      if (legacy) legacy.style.display = on ? 'none' : '';
+      const showHub = on && tab === 'needs_review';
+      const showClient = on && tab === 'returns_to_client';
+      const hubCard = document.getElementById('rcStageHub');
+      const decideCard = document.getElementById('rcStageDecide');
+      const clientCard = document.getElementById('rcStageClient');
+      if (hubCard) hubCard.style.display = showHub ? '' : 'none';
+      if (decideCard) decideCard.style.display = showHub ? '' : 'none';
+      if (clientCard) clientCard.style.display = showClient ? '' : 'none';
+      if (on) {
+        if (bulk) bulk.style.display = 'none';
+        if (decision && host) {
+          // The "what happens next" bar lives inside step 2 on this tab.
+          if (showHub) { host.appendChild(decision); decision.style.display = ''; }
+          else decision.style.display = 'none';
+        }
+      } else if (decision && host && decision.parentElement === host && statusToolbar) {
+        statusToolbar.before(decision);
+      }
+    }
+
     window.renderReturnManagement = function() {
       const body = document.getElementById('returnManagementBody');
       if (!body) return;
       const driverId = document.getElementById('returnManagementDriverFilter')?.value || '';
       const subFilter = document.getElementById('returnManagementFilter')?.value || 'active';
+      const outcomeFilter = document.getElementById('returnOutcomeFilter')?.value || '';
+      const outcomeApplies = ['needs_review', 'returns_to_client', 'redeliveries'].includes(returnMgmtTab);
       const search = String(document.getElementById('returnManagementSearch')?.value || '').trim().toLowerCase();
       const rows = orders.filter(order => {
         if (driverId && order.assigned_driver_id !== driverId) return false;
         if (!orderMatchesReturnTab(order, returnMgmtTab, subFilter)) return false;
+        if (outcomeApplies && !rcOutcomeMatches(order, outcomeFilter)) return false;
         if (!search) return true;
         return [order.order_number, clientName(order), order.customer_name, order.customer_phone, order.external_item_number, order.customer_notes, order.delivery_outcome_notes]
           .some(value => String(value || '').toLowerCase().includes(search));
@@ -8324,6 +8854,21 @@
         : orders.filter(order => orderNeedsHubReturn(order)).length;
       const awaitingLabel = document.getElementById('returnAwaitingCount');
       if (awaitingLabel) awaitingLabel.textContent = driverId ? `Awaiting return from ${driverName(driverId)}: ${awaitingCount}` : `Awaiting return (all drivers): ${awaitingCount}`;
+
+      // Needs Review and Returns to Client use the tick-then-confirm checklist.
+      const useChecklist = returnMgmtTab === 'needs_review' || returnMgmtTab === 'returns_to_client';
+      setReturnChecklistMode(useChecklist, returnMgmtTab);
+      if (useChecklist) {
+        if (returnMgmtTab === 'needs_review') {
+          renderReturnStageHub(rows);
+          renderReturnStageDecide(rows);
+        } else {
+          renderReturnStageClient(rows);
+        }
+        syncReturnDecisionBulkControls();
+        syncExStatusControls();
+        return;
+      }
 
       body.innerHTML = rows.map(order => {
         // Assigned / Out for Delivery: a plain status check, not a return
@@ -10207,18 +10752,7 @@
     // rescheduled yet, so its note cell should read blank, not carry over a
     // stale driver/rejection note from some earlier attempt.
     const MANAGED_RETURN_RESOLVED_STATUSES = ['failed', 'cancelled', 'rescheduled'];
-    // A delivered Exchange order goes on the invoice (the delivery fee) AND
-    // on the return sheet (the original item collected back from the
-    // customer, to be returned to Middleman).
-    function managedOrderIsDeliveredExchange(order) {
-      return order.bulk_special_type === 'exchange' && order.order_status === 'delivered';
-    }
-    function managedOrderInExport(order, exportType) {
-      return managedOrderExportBucket(order) === exportType
-        || (exportType === 'return' && managedOrderIsDeliveredExchange(order));
-    }
     function managedOrderReturnNote(order) {
-      if (managedOrderIsDeliveredExchange(order)) return 'Exchange - original item collected from customer';
       return MANAGED_RETURN_RESOLVED_STATUSES.includes(order.order_status) ? managedOrderComment(order) : '';
     }
 
@@ -10271,7 +10805,7 @@
     function managedExportBatchOrders(exportType) {
       if (!selectedManagedAccountId || !selectedManagedExportBatchKey) return [];
       return managedAccountOrders().filter(order =>
-        managedBatchKey(order) === selectedManagedExportBatchKey && managedOrderInExport(order, exportType));
+        managedBatchKey(order) === selectedManagedExportBatchKey && managedOrderExportBucket(order) === exportType);
     }
 
     function naturalSortByExternalOrderNumber(a, b) {
@@ -10574,7 +11108,7 @@
         // with its real outcome and note) in whatever export is run once a
         // driver finishes with it later tonight. That's what makes a later
         // "send an updated version" export work without manual bookkeeping.
-        const resolvedIds = matched.filter(o => MANAGED_RETURN_RESOLVED_STATUSES.includes(o.order_status) || managedOrderIsDeliveredExchange(o)).map(o => o.id);
+        const resolvedIds = matched.filter(o => MANAGED_RETURN_RESOLVED_STATUSES.includes(o.order_status)).map(o => o.id);
         if (resolvedIds.length) {
           const { error } = await supabase.rpc('admin_mark_managed_orders_exported', { p_order_ids: resolvedIds, p_export_type: 'return' });
           if (error) throw error;
@@ -10598,7 +11132,7 @@
     window.regenerateManagedBatchExport = function(batchKey, exportType) {
       if (!selectedManagedAccountId) return showToast('Select a managed account first.');
       const matched = managedAccountOrders()
-        .filter(order => managedBatchKey(order) === batchKey && managedOrderInExport(order, exportType))
+        .filter(order => managedBatchKey(order) === batchKey && managedOrderExportBucket(order) === exportType)
         .sort(naturalSortByExternalOrderNumber);
       if (!matched.length) {
         return showToast(exportType === 'invoice'
@@ -10804,6 +11338,80 @@
       document.getElementById('accountsGrid').innerHTML = `<div class="account-card"><div class="acc-info"><div class="acc-name">Dashboard data unavailable</div><div class="acc-meta">${message}</div></div></div>`;
       showToast(error.message || 'Could not load admin dashboard data.');
     });
+  </script>
+
+  <div id="floatingHScroll" aria-hidden="true"><div id="floatingHScrollInner"></div></div>
+  <script>
+    // Floating sideways scrollbar for wide tables. A table's own scrollbar sits
+    // under its last row, so on a long list it is off-screen. Whenever the
+    // table in view has sideways overflow and its bottom edge is below the
+    // window, this bar shows at the bottom of the window, lined up with the
+    // table and synced both ways. Plain script: it never touches the dashboard.
+    (function initFloatingTableScroll() {
+      const bar = document.getElementById('floatingHScroll');
+      const inner = document.getElementById('floatingHScrollInner');
+      if (!bar || !inner) return;
+      let target = null;
+      let syncing = false;
+      let queued = false;
+
+      function pickTarget() {
+        let best = null;
+        let bestVisible = 0;
+        document.querySelectorAll('.panel.active .table-wrap').forEach(wrap => {
+          if (wrap.scrollWidth <= wrap.clientWidth + 2) return;
+          const rect = wrap.getBoundingClientRect();
+          if (rect.width < 50 || rect.bottom <= innerHeight - 1) return; // its own bar is already on screen
+          const visible = Math.min(rect.bottom, innerHeight) - Math.max(rect.top, 60);
+          if (visible > 40 && visible > bestVisible) { best = wrap; bestVisible = visible; }
+        });
+        return best;
+      }
+
+      function update() {
+        queued = false;
+        target = pickTarget();
+        if (!target) { bar.style.display = 'none'; return; }
+        const rect = target.getBoundingClientRect();
+        bar.style.display = 'block';
+        bar.style.left = Math.max(rect.left, 0) + 'px';
+        bar.style.width = Math.min(rect.width, innerWidth - Math.max(rect.left, 0)) + 'px';
+        inner.style.width = target.scrollWidth + 'px';
+        if (Math.abs(bar.scrollLeft - target.scrollLeft) > 1) {
+          syncing = true;
+          bar.scrollLeft = target.scrollLeft;
+          syncing = false;
+        }
+      }
+
+      function schedule() {
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(update);
+      }
+
+      bar.addEventListener('scroll', () => {
+        if (syncing || !target) return;
+        syncing = true;
+        target.scrollLeft = bar.scrollLeft;
+        syncing = false;
+      });
+
+      // scroll events don't bubble, so listen in the capture phase to catch the
+      // table's own sideways scrolling as well as the page scrolling.
+      document.addEventListener('scroll', event => {
+        if (event.target === target && !syncing) {
+          syncing = true;
+          bar.scrollLeft = target.scrollLeft;
+          syncing = false;
+        }
+        schedule();
+      }, true);
+      window.addEventListener('resize', schedule);
+      document.addEventListener('click', () => setTimeout(schedule, 50));
+      setInterval(schedule, 500); // tables are redrawn as data loads and filters change
+      schedule();
+    })();
   </script>
 
 </body>
