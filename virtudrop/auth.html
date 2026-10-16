@@ -727,6 +727,7 @@
               <div class="cta-row">
                 <button class="btn btn-primary" type="submit">Login</button>
                 <a class="btn" href="contact.html">Need help?</a>
+                <a class="btn" href="#" id="forgotPasswordLink">Forgot password?</a>
               </div>
             </form>
           </section>
@@ -808,6 +809,26 @@
               <div class="cta-row">
                 <button class="btn btn-primary" type="submit">Create account</button>
                 <a class="btn" href="pricing.html">View pricing</a>
+              </div>
+            </form>
+          </section>
+
+          <!-- Set New Password (shown after a password recovery link) -->
+          <section data-panel="reset" hidden aria-label="Set new password">
+            <form id="resetForm">
+              <div class="field">
+                <label for="newPass">New password</label>
+                <input class="input" id="newPass" type="password" required />
+                <div id="newPassError" class="error-message" style="display: none;"></div>
+              </div>
+              <div class="field">
+                <label for="newPass2">Verify new password</label>
+                <input class="input" id="newPass2" type="password" required />
+                <div id="newPass2Error" class="error-message" style="display: none;"></div>
+              </div>
+              <p class="help">At least 12 characters, with an uppercase letter, a lowercase letter, a number and a special character.</p>
+              <div class="cta-row">
+                <button class="btn btn-primary" type="submit">Save password</button>
               </div>
             </form>
           </section>
@@ -1185,6 +1206,44 @@
         toggle.textContent = navLinks.classList.contains('open') ? 'Close' : 'Menu';
       });
     }
+
+    // ── Password recovery: forgot password + set new password ──
+    function showResetPanel() {
+      document.querySelector('.tabs').style.display = 'none';
+      panels.forEach(p => { p.hidden = p.dataset.panel !== 'reset'; });
+      document.querySelector('.page-header h1').textContent = 'Set a new password';
+    }
+    if (window.location.hash.includes('type=recovery')) showResetPanel();
+    supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') showResetPanel();
+    });
+
+    document.getElementById('forgotPasswordLink').addEventListener('click', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value.trim();
+      if (!validateEmail(email)) {
+        showError('loginEmail', 'Enter your email above first, then click Forgot password');
+        return;
+      }
+      await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + window.location.pathname
+      });
+      showModal('Check Your Email', 'If an account exists for that email, a password reset link is on its way.');
+    });
+
+    document.getElementById('resetForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const p1 = document.getElementById('newPass').value;
+      const p2 = document.getElementById('newPass2').value;
+      if (!validatePassword(p1)) { showError('newPass', 'Password does not meet all requirements'); return; }
+      if (p1 !== p2) { showError('newPass2', 'Passwords do not match'); return; }
+      const { error } = await supabase.auth.updateUser({ password: p1 });
+      if (error) { showModal('Could Not Update Password', error.message); return; }
+      await supabase.auth.signOut();
+      showModal('Password Updated', 'Your password has been changed. Please log in with your new password.', () => {
+        window.location.href = window.location.pathname;
+      });
+    });
   </script>
 </body>
 </html>
