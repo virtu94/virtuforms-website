@@ -1342,6 +1342,17 @@
       return clientsById.get(order.business_client_id)?.business_name || 'Not listed';
     }
 
+    // Most clients import external_item_number with the item description.
+    // Some (e.g. YD Harvest) instead put it in customer_notes as a
+    // "Package: <items>" first line. Fall back to that so the item still
+    // shows wherever external_item_number is used (delivery cards, the
+    // "Request Location" WhatsApp message, etc).
+    function itemsLabel(order) {
+      if (order.external_item_number) return order.external_item_number;
+      const match = (order.customer_notes || '').match(/^package:\s*(.+)$/im);
+      return match ? match[1].trim() : '';
+    }
+
     function addressLabel(order) {
       return [order.house_number, order.street_name, order.area_name].filter(Boolean).join(', ')
         || order.delivery_address
@@ -1581,9 +1592,9 @@
               <div class="dcard-info-left">
                 ${clientName(order) ? `<div class="dcard-client">${escapeHtml(clientName(order))}</div>` : ''}
                 <div class="dcard-addr">${escapeHtml(addressLabel(order))}</div>
-                ${(order.external_item_number || distanceLabel) ? `
+                ${(itemsLabel(order) || distanceLabel) ? `
                   <div class="dcard-line2">
-                    <span class="dcard-item">${order.external_item_number ? escapeHtml(order.external_item_number) : ''}</span>
+                    <span class="dcard-item">${itemsLabel(order) ? escapeHtml(itemsLabel(order)) : ''}</span>
                     ${distanceLabel ? `<span class="dcard-dist">${distanceLabel}</span>` : ''}
                   </div>
                 ` : ''}
@@ -1715,13 +1726,6 @@
             <button class="nav-icon-btn" type="button" title="WhatsApp" onclick="whatsappCustomer('${phone}')">${WA_ICON}</button>
           </span>
         </div>
-        ${order.backup_phone ? `<div class="detail-row detail-row-phone">
-          <span>${escapeHtml(order.backup_phone)} <span style="opacity:0.65; font-size:0.85em;">(backup — try if primary doesn't answer)</span></span>
-          <span class="detail-contact-icons">
-            <button class="nav-icon-btn" type="button" title="Call Backup" onclick="callCustomer('${phoneForLink(order.backup_phone)}')">📞</button>
-            <button class="nav-icon-btn" type="button" title="WhatsApp Backup" onclick="whatsappCustomer('${phoneForLink(order.backup_phone)}')">${WA_ICON}</button>
-          </span>
-        </div>` : ''}
         <div class="detail-row">${escapeHtml(addressLabel(order))}</div>
         ${order.customer_notes ? `<div class="detail-instructions">${escapeHtml(order.customer_notes)}</div>` : ''}
 
@@ -1767,7 +1771,7 @@
       // external_item_number holds the item's actual name/description as
       // imported (e.g. "18\" Rechargable Solar Fan"), not a numeric code --
       // despite the column name, it's what should show here.
-      const itemName = order.external_item_number || 'your item';
+      const itemName = itemsLabel(order) || 'your item';
       const price = money(amountToCollect(order));
       const business = clientName(order);
       const message = `Good day,\n\nReaching out from VirtuDrop, a courier service, regarding delivery of ${itemName} (${price}) from ${business}.\n\nCan you send me your location 📍using the WhatsApp feature so we can confirm delivery please ?\n\nIf you'd rather not send it that way, you can share it here instead: ${shareUrl}`;
