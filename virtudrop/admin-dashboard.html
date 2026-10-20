@@ -896,6 +896,10 @@
         <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10a6 6 0 1 1 0 12h-3"></path></svg></span> Delivery Exceptions
         <span class="nav-badge alert">0</span>
       </button>
+      <button class="nav-item" data-panel="failed-proof">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l2-3h6l2 3h3v13H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg></span> Failed Delivery Proof
+        <span class="nav-badge alert">0</span>
+      </button>
       <button class="nav-item" data-panel="driver-assign">
         <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11v9H3z"></path><path d="M14 10h4l3 3v3h-7z"></path><circle cx="7" cy="18" r="2"></circle><circle cx="18" cy="18" r="2"></circle></svg></span> Driver Assignment
         <span class="nav-badge alert">8</span>
@@ -1205,6 +1209,20 @@
             <tbody id="sortingQueueBody"><tr><td colspan="6">Loading sorting queue...</td></tr></tbody>
           </table></div>
         </div>
+      </div>
+
+      <div class="panel" id="panel-failed-proof">
+        <div class="section-heading">
+          <h2>Failed Delivery Proof</h2>
+          <p>Drivers are paid for a failed delivery only after you approve their proof. Check the pictures and the times before deciding.</p>
+        </div>
+        <div class="driver-zone-filter" id="failedProofTabs" aria-label="Failed delivery proof view">
+          <button class="btn btn-ghost btn-sm" type="button" data-fdc-tab="pending" aria-pressed="true" onclick="setFailedProofTab('pending')">Needs Review</button>
+          <button class="btn btn-ghost btn-sm" type="button" data-fdc-tab="needs_reupload" onclick="setFailedProofTab('needs_reupload')">Waiting for Driver</button>
+          <button class="btn btn-ghost btn-sm" type="button" data-fdc-tab="approved" onclick="setFailedProofTab('approved')">Approved</button>
+          <button class="btn btn-ghost btn-sm" type="button" data-fdc-tab="rejected" onclick="setFailedProofTab('rejected')">Rejected</button>
+        </div>
+        <div id="failedProofList"><div class="card">Loading failed delivery proof...</div></div>
       </div>
 
       <div class="panel" id="panel-returns-redelivery">
@@ -2258,6 +2276,7 @@
       'zone-confirm': 'Zone Confirmation',
       'sorting-manifests': 'Sorting',
       'returns-redelivery': 'Delivery Exceptions',
+      'failed-proof': 'Failed Delivery Proof',
       'driver-assign': 'Driver Assignment',
       'drivers-mgmt': 'Drivers',
       'driver-tab': 'Driver Tab',
@@ -4791,7 +4810,17 @@
       const driverPayments = activeTransactions
         .filter(transaction => transaction.category === 'driver_payment' && transaction.direction === 'outflow')
         .reduce((sum, transaction) => sum + amount(transaction.amount), 0);
-      const driverEarningsIncurred = deliveredOrders.reduce((sum, order) => sum + amount(order.driver_delivery_pay), 0);
+      // Approved failed-delivery claims are driver pay too, counted by the
+      // day admin approved them, within the same date range as the ledger.
+      const { start: claimStart, end: claimEnd } = accountingDateBounds();
+      const approvedFailedPay = (typeof failedClaims === 'undefined' ? [] : failedClaims)
+        .filter(claim => claim.status === 'approved' && claim.reviewed_at)
+        .filter(claim => {
+          const date = localDate(claim.reviewed_at);
+          return !(claimStart && date < claimStart) && !(claimEnd && date > claimEnd);
+        })
+        .reduce((sum, claim) => sum + amount(claim.pay_amount), 0);
+      const driverEarningsIncurred = deliveredOrders.reduce((sum, order) => sum + amount(order.driver_delivery_pay), 0) + approvedFailedPay;
       const operatingExpenses = nonDriverOperatingExpenses + driverEarningsIncurred;
       const driverBalanceOutstanding = driverEarningsIncurred - driverPayments;
       const gasExpenses = activeTransactions
@@ -8450,7 +8479,15 @@
 
     function orderMatchesReturnTab(order, tab, subFilter) {
       if (tab === 'cancelled_closed') return isCancelledOrder(order);
-      if (isCancelledOrder(order)) return false; // cancelled/rejected orders live only in their own tab
+      // Cancelled/rejected orders live in their own tab -- except while a
+      // driver still holds the parcel (e.g. the customer cancelled at the
+      // door): those also show in Needs Review so they can be ticked off
+      // with the other parcels coming back to the hub.
+      if (isCancelledOrder(order)) {
+        if (tab !== 'needs_review' || !orderNeedsHubReturn(order)) return false;
+        const cancelledFilter = ['awaiting_return', 'returned', 'held', 'all'].includes(subFilter) ? subFilter : 'active';
+        return returnRecordMatches(order, cancelledFilter);
+      }
       // Assigned / Out for Delivery: plain order_status check, independent of
       // the return/parcel fields the other tabs key off -- this is exactly
       // for catching orders a driver never updated after handing the parcel
@@ -9786,6 +9823,9 @@
       applySettingsToControls();
       updateBadgesAndStats();
       loadAdminNotificationBadge();
+      // Failed delivery proof: fills the sidebar count and the driver-pay
+      // totals; runs in the background so it never slows the page load.
+      loadFailedClaims().then(() => renderAccounting()).catch(err => console.warn('Failed delivery proof load failed:', err));
     }
 
     // ── Light refresh ─────────────────────────────────────────────────
@@ -9833,8 +9873,194 @@
       renderDriversMgmt();
     }
 
+    // ── Failed delivery proof review ──────────────────────────────────
+    // Drivers upload proof for a failed delivery (see the driver dashboard).
+    // Admin approves it (driver is paid the order's normal driver pay), asks
+    // for new proof, or rejects it for good.
+    const FAILED_PROOF_BUCKET = 'failed-delivery-proofs';
+    let failedClaims = [];
+    let failedProofTab = 'pending';
+    let failedProofUrls = new Map(); // storage path -> signed link
+
+    window.setFailedProofTab = function(tab) {
+      failedProofTab = tab;
+      document.querySelectorAll('#failedProofTabs [data-fdc-tab]').forEach(button => {
+        button.setAttribute('aria-pressed', button.dataset.fdcTab === tab ? 'true' : 'false');
+      });
+      renderFailedProof();
+    };
+
+    async function loadFailedClaims() {
+      const { data, error } = await supabase.rpc('admin_list_failed_delivery_claims', { p_status: null });
+      if (error) {
+        console.warn('Failed delivery proof could not load:', error);
+        const list = document.getElementById('failedProofList');
+        if (list) list.innerHTML = `<div class="card">Could not load failed delivery proof: ${escapeHtml(error.message || 'unknown error')}</div>`;
+        return;
+      }
+      failedClaims = Array.isArray(data) ? data : [];
+      const badge = document.querySelector('[data-panel="failed-proof"] .nav-badge');
+      if (badge) badge.textContent = failedClaims.filter(claim => claim.status === 'pending').length;
+      await renderFailedProof();
+    }
+
+    function fdcMinutesBetween(earlier, later) {
+      return Math.round((new Date(later).getTime() - new Date(earlier).getTime()) / 60000);
+    }
+
+    function fdcAgo(minutes) {
+      if (minutes < 1) return 'just before';
+      if (minutes < 60) return `${minutes} min before`;
+      const hours = Math.floor(minutes / 60);
+      return `${hours} h ${minutes % 60} min before`;
+    }
+
+    function fdcTime(value) {
+      if (!value) return '—';
+      return new Date(value).toLocaleString('en-GB', { timeZone: 'America/Port_of_Spain', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    function fdcDistanceM(lat1, lon1, lat2, lon2) {
+      const rad = Math.PI / 180;
+      const dLat = (lat2 - lat1) * rad;
+      const dLon = (lon2 - lon1) * rad;
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLon / 2) ** 2;
+      return 6371000 * 2 * Math.asin(Math.sqrt(a));
+    }
+
+    function fdcFileLine(label, path, takenAt, submittedAt) {
+      if (!path) return '';
+      const url = failedProofUrls.get(path);
+      let timing = '<span style="color:#b36b00;">Picture time not available</span>';
+      if (takenAt) {
+        const minutes = fdcMinutesBetween(takenAt, submittedAt);
+        const late = minutes > 30 || minutes < -2;
+        timing = `<span style="color:${late ? '#c0392b' : '#155724'}; font-weight:${late ? '700' : '500'};">Picture time ${escapeHtml(fdcTime(takenAt))} (${minutes >= 0 ? escapeHtml(fdcAgo(minutes)) + ' submitting' : 'after submitting'})${late ? ' ⚠' : ''}</span>`;
+      }
+      const image = url
+        ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener"><img src="${escapeHtml(url)}" alt="${escapeHtml(label)}" style="width:100%; max-height:260px; object-fit:contain; background:#f3f3f3; border-radius:8px; border:1px solid #ddd;"></a>`
+        : '<div style="padding:1rem; background:#f3f3f3; border-radius:8px;">Picture could not be loaded</div>';
+      return `<div style="min-width:0;"><div style="font-weight:700; margin-bottom:0.25rem;">${escapeHtml(label)}</div>${image}<div style="font-size:0.78rem; margin-top:0.25rem;">${timing}</div></div>`;
+    }
+
+    function fdcLocationLine(claim) {
+      if (claim.submit_latitude == null || claim.submit_longitude == null) {
+        return '<span style="color:#b36b00;">Driver phone location was not recorded</span>';
+      }
+      const lat = Number(claim.submit_latitude);
+      const lng = Number(claim.submit_longitude);
+      const mapLink = `<a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" rel="noopener">Open where they submitted</a>`;
+      if (claim.order_latitude == null || claim.order_longitude == null) {
+        return `${mapLink} <span style="color:#666;">(order has no map pin to compare with)</span>`;
+      }
+      const metres = fdcDistanceM(lat, lng, Number(claim.order_latitude), Number(claim.order_longitude));
+      const far = metres > 300;
+      const distance = metres >= 1000 ? `${(metres / 1000).toFixed(1)} km` : `${Math.round(metres)} m`;
+      return `${mapLink} · <span style="color:${far ? '#c0392b' : '#155724'}; font-weight:${far ? '700' : '500'};">${distance} from the delivery address${far ? ' ⚠' : ''}</span>`;
+    }
+
+    function fdcClaimCard(claim) {
+      const typeLabel = claim.claim_type === 'customer_returned_item'
+        ? 'Customer did not want the item and gave it back'
+        : 'Failed delivery attempt';
+      const address = [claim.house_number, claim.street_name, claim.area_name].filter(Boolean).join(', ') || '—';
+      const sinceAttempt = claim.attempt_at ? fdcMinutesBetween(claim.attempt_at, claim.submitted_at) : null;
+      const attemptLine = claim.attempt_at
+        ? `Outcome recorded ${escapeHtml(fdcTime(claim.attempt_at))}${sinceAttempt != null ? ` · proof sent ${sinceAttempt < 1 ? 'at the same time' : sinceAttempt + ' min later'}` : ''}`
+        : '';
+      const statusBadge = {
+        pending: '<span class="badge badge-pending">Needs review</span>',
+        needs_reupload: '<span class="badge badge-rescheduled">Waiting for driver</span>',
+        approved: '<span class="badge badge-paid">Approved</span>',
+        rejected: '<span class="badge badge-failed">Rejected</span>'
+      }[claim.status] || '';
+      const files = [
+        fdcFileLine('Told to come (call / WhatsApp)', claim.call_proof_path, claim.call_file_taken_at, claim.submitted_at),
+        fdcFileLine('Google location at the address', claim.location_proof_path, claim.location_file_taken_at, claim.submitted_at),
+        fdcFileLine('Opened item with label', claim.opened_package_proof_path, claim.opened_file_taken_at, claim.submitted_at)
+      ].join('');
+      const reviewControls = claim.status === 'pending' ? `
+        <textarea id="fdc-note-${claim.id}" placeholder="Reason (needed to ask for new proof or reject)" style="width:100%; box-sizing:border-box; padding:0.6rem; border:1px solid #ccc; border-radius:8px; min-height:60px; margin:0.75rem 0 0.5rem; font-family:inherit;"></textarea>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <button class="btn btn-primary btn-sm" type="button" onclick="reviewFailedClaim('${claim.id}', 'approve')">Approve payment (${moneyFull(claim.order_driver_pay)})</button>
+          <button class="btn btn-warn btn-sm" type="button" onclick="reviewFailedClaim('${claim.id}', 'request_reupload')">Ask driver to re-upload</button>
+          <button class="btn btn-danger btn-sm" type="button" onclick="reviewFailedClaim('${claim.id}', 'reject')">Reject (final)</button>
+        </div>` : `
+        <div style="margin-top:0.6rem; font-size:0.85rem;">${claim.reviewed_at ? `Reviewed ${escapeHtml(fdcTime(claim.reviewed_at))}` : ''}${claim.status === 'approved' ? ` · Paid ${moneyFull(claim.pay_amount)}` : ''}${claim.review_note ? `<br>Note: ${escapeHtml(claim.review_note)}` : ''}</div>`;
+      return `
+        <div class="card" style="margin-bottom:1rem;">
+          <div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:0.5rem;">
+            <div>
+              <div style="font-weight:800;">${escapeHtml(claim.order_number || '')} · ${escapeHtml(claim.customer_name || '')}</div>
+              <div class="td-sub">${escapeHtml(address)}</div>
+              <div class="td-sub">Driver: <strong>${escapeHtml(claim.driver_name || '')}</strong> · ${escapeHtml(typeLabel)}${claim.package_opened && claim.claim_type !== 'customer_returned_item' ? ' · parcel was opened' : ''}</div>
+            </div>
+            <div style="text-align:right;">${statusBadge}<div class="td-sub">Driver pay ${moneyFull(claim.order_driver_pay)}</div></div>
+          </div>
+          <div style="font-size:0.88rem; padding:0.5rem 0.7rem; background:#f7f7f7; border-radius:8px; margin-bottom:0.75rem;">
+            <div><strong>Proof submitted: ${escapeHtml(fdcTime(claim.submitted_at))}</strong>${claim.submission_count > 1 ? ` · attempt ${claim.submission_count} (driver re-uploaded)` : ''}</div>
+            ${attemptLine ? `<div>${attemptLine}</div>` : ''}
+            <div>${fdcLocationLine(claim)}</div>
+            ${claim.driver_note ? `<div>Driver note: ${escapeHtml(claim.driver_note)}</div>` : ''}
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.75rem;">${files}</div>
+          ${reviewControls}
+        </div>`;
+    }
+
+    async function renderFailedProof() {
+      const list = document.getElementById('failedProofList');
+      if (!list) return;
+      let visible = failedClaims.filter(claim => claim.status === failedProofTab);
+      if (['approved', 'rejected'].includes(failedProofTab)) visible = visible.slice(0, 30);
+      if (!visible.length) {
+        list.innerHTML = '<div class="card">Nothing here.</div>';
+        return;
+      }
+      const missing = visible
+        .flatMap(claim => [claim.call_proof_path, claim.location_proof_path, claim.opened_package_proof_path])
+        .filter(path => path && !failedProofUrls.has(path));
+      if (missing.length) {
+        const { data, error } = await supabase.storage.from(FAILED_PROOF_BUCKET).createSignedUrls(missing, 3600);
+        if (error) console.warn('Proof pictures could not be linked:', error);
+        (data || []).forEach(item => { if (item.signedUrl) failedProofUrls.set(item.path, item.signedUrl); });
+      }
+      list.innerHTML = visible.map(fdcClaimCard).join('');
+    }
+
+    window.reviewFailedClaim = function(claimId, decision) {
+      const claim = failedClaims.find(item => item.id === claimId);
+      if (!claim) return;
+      const note = document.getElementById(`fdc-note-${claimId}`)?.value.trim() || '';
+      if (decision !== 'approve' && note.length < 3) {
+        showToast('Type a reason first so the driver knows what is wrong.');
+        return;
+      }
+      const message = {
+        approve: `Approve ${claim.driver_name} for ${claim.order_number}? ${moneyFull(claim.order_driver_pay)} will be added to their earnings.`,
+        request_reupload: `Ask ${claim.driver_name} to upload new proof for ${claim.order_number}?`,
+        reject: `Reject the proof for ${claim.order_number}? This is final and the driver will not be paid for this attempt.`
+      }[decision];
+      showModal('Confirm Decision', message, async () => {
+        const { error } = await supabase.rpc('admin_review_failed_delivery_claim', {
+          p_claim_id: claimId,
+          p_decision: decision,
+          p_note: note || null
+        });
+        if (error) {
+          window.vdNotify('Decision Not Saved', error.message || 'Could not save this decision.', 'error');
+          return false;
+        }
+        showToast(decision === 'approve' ? 'Approved. Driver payment added.' : decision === 'reject' ? 'Rejected.' : 'Driver asked to re-upload.');
+        await loadFailedClaims();
+        refreshSideLists(['driverFinance']).then(renderFinanceViews).catch(err => console.warn('Driver finance refresh failed:', err));
+        return true;
+      });
+    };
+
     async function refreshDirtyForPanel(id) {
       try {
+        if (id === 'failed-proof') loadFailedClaims();
         if (FINANCE_PANELS.has(id)) {
           const names = ['remittance', 'cod', 'accounting', 'driverFinance'].filter(name => sideListsDirty.has(name));
           if (names.length) {

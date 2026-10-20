@@ -1342,17 +1342,6 @@
       return clientsById.get(order.business_client_id)?.business_name || 'Not listed';
     }
 
-    // Most clients import external_item_number with the item description.
-    // Some (e.g. YD Harvest) instead put it in customer_notes as a
-    // "Package: <items>" first line. Fall back to that so the item still
-    // shows wherever external_item_number is used (delivery cards, the
-    // "Request Location" WhatsApp message, etc).
-    function itemsLabel(order) {
-      if (order.external_item_number) return order.external_item_number;
-      const match = (order.customer_notes || '').match(/^package:\s*(.+)$/im);
-      return match ? match[1].trim() : '';
-    }
-
     function addressLabel(order) {
       return [order.house_number, order.street_name, order.area_name].filter(Boolean).join(', ')
         || order.delivery_address
@@ -1592,9 +1581,9 @@
               <div class="dcard-info-left">
                 ${clientName(order) ? `<div class="dcard-client">${escapeHtml(clientName(order))}</div>` : ''}
                 <div class="dcard-addr">${escapeHtml(addressLabel(order))}</div>
-                ${(itemsLabel(order) || distanceLabel) ? `
+                ${(order.external_item_number || distanceLabel) ? `
                   <div class="dcard-line2">
-                    <span class="dcard-item">${itemsLabel(order) ? escapeHtml(itemsLabel(order)) : ''}</span>
+                    <span class="dcard-item">${order.external_item_number ? escapeHtml(order.external_item_number) : ''}</span>
                     ${distanceLabel ? `<span class="dcard-dist">${distanceLabel}</span>` : ''}
                   </div>
                 ` : ''}
@@ -1726,6 +1715,13 @@
             <button class="nav-icon-btn" type="button" title="WhatsApp" onclick="whatsappCustomer('${phone}')">${WA_ICON}</button>
           </span>
         </div>
+        ${order.backup_phone ? `<div class="detail-row detail-row-phone">
+          <span>${escapeHtml(order.backup_phone)} <span style="opacity:0.65; font-size:0.85em;">(backup — try if primary doesn't answer)</span></span>
+          <span class="detail-contact-icons">
+            <button class="nav-icon-btn" type="button" title="Call Backup" onclick="callCustomer('${phoneForLink(order.backup_phone)}')">📞</button>
+            <button class="nav-icon-btn" type="button" title="WhatsApp Backup" onclick="whatsappCustomer('${phoneForLink(order.backup_phone)}')">${WA_ICON}</button>
+          </span>
+        </div>` : ''}
         <div class="detail-row">${escapeHtml(addressLabel(order))}</div>
         ${order.customer_notes ? `<div class="detail-instructions">${escapeHtml(order.customer_notes)}</div>` : ''}
 
@@ -1744,6 +1740,7 @@
 
         ${order.delivery_outcome ? `<div class="detail-row">Latest Outcome: <strong>${escapeHtml(String(order.delivery_outcome).replaceAll('_', ' '))}</strong></div>` : ''}
         ${order.redelivery_status === 'scheduled' ? `<div class="delivery-notes">Redelivery attempt${order.redelivery_notes ? `: ${escapeHtml(order.redelivery_notes)}` : ''}</div>` : ''}
+        ${renderClaimBlock(order)}
 
         <div class="card-actions detail-actions">
           ${renderActions(order, status)}
@@ -1771,7 +1768,7 @@
       // external_item_number holds the item's actual name/description as
       // imported (e.g. "18\" Rechargable Solar Fan"), not a numeric code --
       // despite the column name, it's what should show here.
-      const itemName = itemsLabel(order) || 'your item';
+      const itemName = order.external_item_number || 'your item';
       const price = money(amountToCollect(order));
       const business = clientName(order);
       const message = `Good day,\n\nReaching out from VirtuDrop, a courier service, regarding delivery of ${itemName} (${price}) from ${business}.\n\nCan you send me your location 📍using the WhatsApp feature so we can confirm delivery please ?\n\nIf you'd rather not send it that way, you can share it here instead: ${shareUrl}`;
@@ -2575,6 +2572,7 @@
       loadDriverNotificationBadge();
       maybeAutoPlaceNewDeliveries();
       startArrivalWatch();
+      refreshMyClaims();
     }
 
     async function readOrderStatus(orderId) {
@@ -2771,9 +2769,242 @@
       openDeliveryException(orderId, 'no_response', 'No Response', 'Customer could not be reached at the delivery location.');
     };
 
+    // ── Refused → failed-delivery payment claim ──
+    // A driver is only paid for a failed attempt once admin has approved the
+    // proof uploaded here (see failed_delivery_claims in the database). The
+    // time of submission is stamped by the server, and the phone's location
+    // at that moment is recorded so admin can compare it with the address.
+    const PROOF_BUCKET = 'failed-delivery-proofs';
+    let proofDraft = null;
+    let myClaims = new Map(); // order id -> latest claim for that order
+
     window.markRefused = function(orderId) {
-      openDeliveryException(orderId, 'refused', 'Customer Refused Parcel', 'Customer refused to accept the parcel.');
+      const order = findOrder(orderId);
+      if (!order) return showToast('Order not found. Refresh and try again.');
+      openModal(
+        'Refused',
+        `What happened for ${order.order_number}? To be paid, you must upload proof that admin will review.`,
+        `<button class="modal-menu-btn" onclick="startProofClaim('${orderId}', 'failed_attempt')"><span class="mm-icon">🚫</span> Failed delivery attempt (claim payment)</button>
+         <button class="modal-menu-btn" onclick="startProofClaim('${orderId}', 'customer_returned_item')"><span class="mm-icon">↩</span> Customer doesn't want the item and gave it back (claim payment)</button>
+         <button class="modal-menu-btn" onclick="closeModal(); markRefusedNoClaim('${orderId}')"><span class="mm-icon">✕</span> Customer cancelled (no payment)</button>
+         <button class="modal-menu-cancel" onclick="closeModal()">Cancel</button>`
+      );
     };
+
+    window.markRefusedNoClaim = function(orderId) {
+      const order = findOrder(orderId);
+      if (!order) return showToast('Order not found. Refresh and try again.');
+      openModal(
+        'Customer Cancelled',
+        `${order.order_number} will be cancelled. No payment is made for this. Bring the parcel back to the hub.`,
+        `<textarea id="cancelNoteInput" style="width:100%; padding:0.75rem; border:2px solid #e0e0e0; border-radius:8px; font-family:inherit; min-height:75px; box-sizing:border-box;" placeholder="Anything admin should know (optional)"></textarea>
+         <button class="modal-btn danger" id="cancelConfirmBtn" onclick="confirmCustomerCancelled('${orderId}')">Confirm Cancelled</button>
+         <button class="modal-btn cancel" onclick="closeModal()">Back</button>`
+      );
+    };
+
+    window.confirmCustomerCancelled = async function(orderId) {
+      const note = document.getElementById('cancelNoteInput')?.value.trim() || '';
+      const button = document.getElementById('cancelConfirmBtn');
+      if (button) { button.disabled = true; button.textContent = 'Saving…'; }
+      try {
+        const { error } = await supabase.rpc('driver_cancel_order_return_to_hub', {
+          p_order_id: orderId,
+          p_note: note || null
+        });
+        if (error) throw error;
+        // Cancelled orders leave the driver's list; admin confirms hub receipt.
+        orders = orders.filter(item => item.id !== orderId);
+        if (arrivalPromptShownForId === orderId) arrivalPromptShownForId = null;
+        closeModal();
+        closeDeliveryDetail();
+        renderOrders();
+        loadDriverData().catch(err => console.error('Background reload after cancel failed:', err));
+        showToast('Order cancelled. Return the parcel to the hub.');
+      } catch (error) {
+        console.error('Customer cancelled error:', error);
+        if (button) { button.disabled = false; button.textContent = 'Confirm Cancelled'; }
+        window.vdNotify('Not Saved', error.message || 'Could not cancel this order.', 'error');
+      }
+    };
+
+    // claimId is set only when re-uploading after admin asked for new proof.
+    window.startProofClaim = function(orderId, claimType, claimId = null) {
+      const order = findOrder(orderId);
+      if (!order) return showToast('Order not found. Refresh and try again.');
+      proofDraft = { orderId, claimType, claimId, files: {}, busy: false };
+      const isReturn = claimType === 'customer_returned_item';
+      const fileRow = (key, label, help, hidden) => `
+        <div id="proof-row-${key}" style="text-align:left; margin-bottom:0.9rem; ${hidden ? 'display:none;' : ''}">
+          <div style="font-weight:700; margin-bottom:0.15rem;">${label}</div>
+          <div style="font-size:0.8rem; color:#666; margin-bottom:0.4rem;">${help}</div>
+          <input type="file" accept="image/*" onchange="onProofFile('${key}', this)" style="width:100%;">
+          <div id="proof-status-${key}" style="font-size:0.8rem; margin-top:0.3rem; color:#666;">No picture chosen</div>
+        </div>`;
+      openModal(
+        isReturn ? 'Customer Returned the Item' : 'Failed Delivery Attempt',
+        `Upload your proof for ${order.order_number} now. The time you submit is recorded and checked by admin, and your phone's location is recorded too. You can choose a picture from your gallery or take one with the camera.`,
+        `${isReturn ? '' : `<label style="display:flex; gap:0.6rem; align-items:flex-start; text-align:left; margin-bottom:0.9rem; font-weight:600;">
+            <input type="checkbox" id="proofOpenedCheck" onchange="toggleProofOpened(this.checked)" style="margin-top:0.2rem;">
+            <span>The customer opened the parcel and said they didn't want it</span></label>`}
+         ${fileRow('call', '1. Proof you were told to come', 'Screenshot of the phone call log or WhatsApp message asking you to deliver.', false)}
+         ${fileRow('location', '2. Proof you were at the address', 'Screenshot of your Google Maps location showing you at the delivery address.', false)}
+         ${fileRow('opened', '3. Opened item with its label', 'Photo of the opened item with the item label visible.', !isReturn)}
+         <textarea id="proofNoteInput" style="width:100%; padding:0.75rem; border:2px solid #e0e0e0; border-radius:8px; font-family:inherit; min-height:70px; box-sizing:border-box; margin-bottom:0.75rem;" placeholder="Anything admin should know (optional)"></textarea>
+         <button class="modal-btn confirm" id="proofSubmitBtn" onclick="submitProofClaim()">Submit Proof</button>
+         <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>`
+      );
+    };
+
+    window.toggleProofOpened = function(checked) {
+      const row = document.getElementById('proof-row-opened');
+      if (row) row.style.display = checked ? '' : 'none';
+    };
+
+    window.onProofFile = function(key, input) {
+      if (!proofDraft) return;
+      const file = input.files && input.files[0];
+      const status = document.getElementById(`proof-status-${key}`);
+      if (!file) {
+        delete proofDraft.files[key];
+        if (status) status.textContent = 'No picture chosen';
+        return;
+      }
+      proofDraft.files[key] = file;
+      if (status) status.textContent = `✅ ${file.name}`;
+    };
+
+    function getSubmitPosition() {
+      return new Promise(resolve => {
+        if (!navigator.geolocation) return resolve(null);
+        navigator.geolocation.getCurrentPosition(
+          pos => resolve(pos.coords),
+          () => resolve(null),
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+        );
+      });
+    }
+
+    // Shrinks big phone pictures so they upload quickly on mobile data.
+    // If the browser can't read the picture (e.g. some HEIC files) the
+    // original is uploaded as it is.
+    async function prepareProofImage(file) {
+      try {
+        const bitmap = await createImageBitmap(file);
+        const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(bitmap.width * scale);
+        canvas.height = Math.round(bitmap.height * scale);
+        canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.82));
+        if (blob) return { blob, type: 'image/jpeg', ext: 'jpg' };
+      } catch (err) {
+        console.warn('Could not resize proof picture; uploading original:', err);
+      }
+      const ext = (file.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
+      return { blob: file, type: file.type || 'image/jpeg', ext };
+    }
+
+    window.submitProofClaim = async function() {
+      const draft = proofDraft;
+      if (!draft || draft.busy) return;
+      const isReturn = draft.claimType === 'customer_returned_item';
+      const opened = isReturn || Boolean(document.getElementById('proofOpenedCheck')?.checked);
+      if (!draft.files.call) return showToast('Add the call or WhatsApp screenshot.');
+      if (!draft.files.location) return showToast('Add the Google location screenshot.');
+      if (opened && !draft.files.opened) return showToast('Add the photo of the opened item with its label.');
+      const note = document.getElementById('proofNoteInput')?.value.trim() || '';
+      const button = document.getElementById('proofSubmitBtn');
+      draft.busy = true;
+      if (button) { button.disabled = true; button.textContent = 'Uploading…'; }
+      try {
+        const position = await getSubmitPosition();
+        const keys = opened ? ['call', 'location', 'opened'] : ['call', 'location'];
+        const stamp = Date.now();
+        const paths = {};
+        const taken = {};
+        for (const key of keys) {
+          const file = draft.files[key];
+          taken[key] = file.lastModified ? new Date(file.lastModified).toISOString() : null;
+          const prepared = await prepareProofImage(file);
+          const path = `${currentProfile.id}/${draft.orderId}/${stamp}-${key}.${prepared.ext}`;
+          const { error: uploadError } = await supabase.storage
+            .from(PROOF_BUCKET)
+            .upload(path, prepared.blob, { contentType: prepared.type, upsert: false });
+          if (uploadError) throw uploadError;
+          paths[key] = path;
+        }
+        const common = {
+          p_package_opened: opened,
+          p_call_proof_path: paths.call,
+          p_location_proof_path: paths.location,
+          p_opened_proof_path: opened ? paths.opened : null,
+          p_note: note || null,
+          p_latitude: position ? position.latitude : null,
+          p_longitude: position ? position.longitude : null,
+          p_accuracy_m: position ? position.accuracy : null,
+          p_call_taken_at: taken.call || null,
+          p_location_taken_at: taken.location || null,
+          p_opened_taken_at: opened ? (taken.opened || null) : null
+        };
+        const { error } = draft.claimId
+          ? await supabase.rpc('driver_resubmit_failed_delivery_claim', { p_claim_id: draft.claimId, ...common })
+          : await supabase.rpc('driver_submit_failed_delivery_claim', { p_order_id: draft.orderId, p_claim_type: draft.claimType, ...common });
+        if (error) throw error;
+
+        const savedOrder = findOrder(draft.orderId);
+        if (savedOrder) {
+          savedOrder.delivery_outcome = 'refused';
+          savedOrder.order_status = 'failed';
+        }
+        proofDraft = null;
+        closeModal();
+        if (arrivalPromptShownForId === draft.orderId) arrivalPromptShownForId = null;
+        renderOrders();
+        refreshMyClaims();
+        loadDriverData().catch(err => console.error('Background reload after proof submit failed:', err));
+        showToast('Proof submitted. Payment is decided after admin reviews it. Return the parcel to the hub.');
+      } catch (error) {
+        console.error('Proof submit error:', error);
+        draft.busy = false;
+        if (button) { button.disabled = false; button.textContent = 'Submit Proof'; }
+        window.vdNotify('Proof Not Submitted', error.message || 'Could not submit your proof. Check your connection and try again.', 'error');
+      }
+    };
+
+    async function refreshMyClaims() {
+      if (!currentDriver) return;
+      const { data, error } = await supabase
+        .from('failed_delivery_claims')
+        .select('id, order_id, claim_type, status, pay_amount, review_note, submitted_at, submission_count')
+        .eq('driver_id', currentDriver.id)
+        .order('submitted_at', { ascending: false });
+      if (error) { console.warn('Failed-delivery claims could not load:', error); return; }
+      const next = new Map();
+      (data || []).forEach(claim => { if (!next.has(claim.order_id)) next.set(claim.order_id, claim); });
+      const changed = JSON.stringify([...next]) !== JSON.stringify([...myClaims]);
+      myClaims = next;
+      if (changed) renderOrders();
+    }
+
+    function renderClaimBlock(order) {
+      const claim = myClaims.get(order.id);
+      if (!claim) return '';
+      const pay = money(claim.pay_amount || 0);
+      const when = claim.submitted_at ? new Date(claim.submitted_at).toLocaleString() : '';
+      const box = (color, html) => `<div class="delivery-notes" style="border-left:4px solid ${color}; margin-top:0.6rem;">${html}</div>`;
+      if (claim.status === 'approved') {
+        return box('#1b8a52', `<strong>Failed-delivery payment approved</strong><br>${pay} has been added to your earnings.`);
+      }
+      if (claim.status === 'needs_reupload') {
+        return box('#d98a00', `<strong>Admin needs new proof</strong><br>${escapeHtml(claim.review_note || '')}<br>
+          <button class="action-btn btn-collected" type="button" style="margin-top:0.5rem;" onclick="startProofClaim('${order.id}', '${claim.claim_type}', '${claim.id}')">Re-upload proof</button>`);
+      }
+      if (claim.status === 'rejected') {
+        return box('#c0392b', `<strong>Failed-delivery payment rejected (final)</strong><br>${escapeHtml(claim.review_note || '')}`);
+      }
+      return box('#2da69b', `<strong>Proof submitted${when ? ` ${escapeHtml(when)}` : ''}</strong><br>Waiting for admin review. You are paid ${pay} once it is approved.`);
+    }
 
     window.markRescheduleRequested = function(orderId) {
       openDeliveryException(orderId, 'reschedule_requested', 'Reschedule Requested', 'Customer requested another delivery date.', true);
