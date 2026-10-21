@@ -9975,9 +9975,10 @@
         rejected: '<span class="badge badge-failed">Rejected</span>'
       }[claim.status] || '';
       const files = [
-        fdcFileLine('Told to come (call / WhatsApp)', claim.call_proof_path, claim.call_file_taken_at, claim.submitted_at),
-        fdcFileLine('Google location at the address', claim.location_proof_path, claim.location_file_taken_at, claim.submitted_at),
-        fdcFileLine('Opened item with label', claim.opened_package_proof_path, claim.opened_file_taken_at, claim.submitted_at)
+        fdcFileLine('1. Told to come (call / WhatsApp)', claim.call_proof_path, claim.call_file_taken_at, claim.submitted_at),
+        fdcFileLine('2. Photo of the place (house / meeting point)', claim.place_proof_path, claim.place_file_taken_at, claim.submitted_at),
+        fdcFileLine('3. Google Maps / Waze at the location', claim.location_proof_path, claim.location_file_taken_at, claim.submitted_at),
+        fdcFileLine('4. Opened item with label', claim.opened_package_proof_path, claim.opened_file_taken_at, claim.submitted_at)
       ].join('');
       const reviewControls = claim.status === 'pending' ? `
         <textarea id="fdc-note-${claim.id}" placeholder="Reason (needed to ask for new proof or reject)" style="width:100%; box-sizing:border-box; padding:0.6rem; border:1px solid #ccc; border-radius:8px; min-height:60px; margin:0.75rem 0 0.5rem; font-family:inherit;"></textarea>
@@ -9993,7 +9994,7 @@
             <div>
               <div style="font-weight:800;">${escapeHtml(claim.order_number || '')} · ${escapeHtml(claim.customer_name || '')}</div>
               <div class="td-sub">${escapeHtml(address)}</div>
-              <div class="td-sub">Driver: <strong>${escapeHtml(claim.driver_name || '')}</strong> · ${escapeHtml(typeLabel)}${claim.package_opened && claim.claim_type !== 'customer_returned_item' ? ' · parcel was opened' : ''}</div>
+              <div class="td-sub">Driver: <strong>${escapeHtml(claim.driver_name || '')}</strong> · ${escapeHtml(typeLabel)}</div>
             </div>
             <div style="text-align:right;">${statusBadge}<div class="td-sub">Driver pay ${moneyFull(claim.order_driver_pay)}</div></div>
           </div>

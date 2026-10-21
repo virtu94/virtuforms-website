@@ -2834,8 +2834,8 @@
       if (!order) return showToast('Order not found. Refresh and try again.');
       proofDraft = { orderId, claimType, claimId, files: {}, busy: false };
       const isReturn = claimType === 'customer_returned_item';
-      const fileRow = (key, label, help, hidden) => `
-        <div id="proof-row-${key}" style="text-align:left; margin-bottom:0.9rem; ${hidden ? 'display:none;' : ''}">
+      const fileRow = (key, label, help) => `
+        <div id="proof-row-${key}" style="text-align:left; margin-bottom:0.9rem;">
           <div style="font-weight:700; margin-bottom:0.15rem;">${label}</div>
           <div style="font-size:0.8rem; color:#666; margin-bottom:0.4rem;">${help}</div>
           <input type="file" accept="image/*" onchange="onProofFile('${key}', this)" style="width:100%;">
@@ -2844,21 +2844,14 @@
       openModal(
         isReturn ? 'Customer Returned the Item' : 'Failed Delivery Attempt',
         `Upload your proof for ${order.order_number} now. The time you submit is recorded and checked by admin, and your phone's location is recorded too. You can choose a picture from your gallery or take one with the camera.`,
-        `${isReturn ? '' : `<label style="display:flex; gap:0.6rem; align-items:flex-start; text-align:left; margin-bottom:0.9rem; font-weight:600;">
-            <input type="checkbox" id="proofOpenedCheck" onchange="toggleProofOpened(this.checked)" style="margin-top:0.2rem;">
-            <span>The customer opened the parcel and said they didn't want it</span></label>`}
-         ${fileRow('call', '1. Proof you were told to come', 'Screenshot of the phone call log or WhatsApp message asking you to deliver.', false)}
-         ${fileRow('location', '2. Proof you were at the address', 'Screenshot of your Google Maps location showing you at the delivery address.', false)}
-         ${fileRow('opened', '3. Opened item with its label', 'Photo of the opened item with the item label visible.', !isReturn)}
+        `${fileRow('call', '1. Proof you were told to come', 'Screenshot of the phone call log or WhatsApp message asking you to deliver.')}
+         ${fileRow('place', '2. Photo of the place', 'Photo of where you are: the house or the meeting point.')}
+         ${fileRow('location', '3. Google Maps or Waze screenshot', 'Screenshot showing your location at the delivery address.')}
+         ${isReturn ? fileRow('opened', '4. Opened item with its label', 'Photo of the opened item with the item label visible.') : ''}
          <textarea id="proofNoteInput" style="width:100%; padding:0.75rem; border:2px solid #e0e0e0; border-radius:8px; font-family:inherit; min-height:70px; box-sizing:border-box; margin-bottom:0.75rem;" placeholder="Anything admin should know (optional)"></textarea>
          <button class="modal-btn confirm" id="proofSubmitBtn" onclick="submitProofClaim()">Submit Proof</button>
          <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>`
       );
-    };
-
-    window.toggleProofOpened = function(checked) {
-      const row = document.getElementById('proof-row-opened');
-      if (row) row.style.display = checked ? '' : 'none';
     };
 
     window.onProofFile = function(key, input) {
@@ -2909,9 +2902,10 @@
       const draft = proofDraft;
       if (!draft || draft.busy) return;
       const isReturn = draft.claimType === 'customer_returned_item';
-      const opened = isReturn || Boolean(document.getElementById('proofOpenedCheck')?.checked);
+      const opened = isReturn;
       if (!draft.files.call) return showToast('Add the call or WhatsApp screenshot.');
-      if (!draft.files.location) return showToast('Add the Google location screenshot.');
+      if (!draft.files.place) return showToast('Add the photo of the place (house or meeting point).');
+      if (!draft.files.location) return showToast('Add the Google Maps or Waze screenshot.');
       if (opened && !draft.files.opened) return showToast('Add the photo of the opened item with its label.');
       const note = document.getElementById('proofNoteInput')?.value.trim() || '';
       const button = document.getElementById('proofSubmitBtn');
@@ -2919,7 +2913,7 @@
       if (button) { button.disabled = true; button.textContent = 'Uploading…'; }
       try {
         const position = await getSubmitPosition();
-        const keys = opened ? ['call', 'location', 'opened'] : ['call', 'location'];
+        const keys = opened ? ['call', 'place', 'location', 'opened'] : ['call', 'place', 'location'];
         const stamp = Date.now();
         const paths = {};
         const taken = {};
@@ -2935,8 +2929,8 @@
           paths[key] = path;
         }
         const common = {
-          p_package_opened: opened,
           p_call_proof_path: paths.call,
+          p_place_proof_path: paths.place,
           p_location_proof_path: paths.location,
           p_opened_proof_path: opened ? paths.opened : null,
           p_note: note || null,
@@ -2944,6 +2938,7 @@
           p_longitude: position ? position.longitude : null,
           p_accuracy_m: position ? position.accuracy : null,
           p_call_taken_at: taken.call || null,
+          p_place_taken_at: taken.place || null,
           p_location_taken_at: taken.location || null,
           p_opened_taken_at: opened ? (taken.opened || null) : null
         };
