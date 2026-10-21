@@ -1428,6 +1428,21 @@
             <p>Pick a driver to see everything about them in one place: what is assigned to them, what you have handed over, cash they owe and their pay.</p>
           </div>
           <div class="dv-tiles" id="driversListTotals"></div>
+          <div class="card" id="unassignedCashCard" style="display:none;">
+            <div class="card-title">Delivered with no driver &mdash; cash to reconcile</div>
+            <div class="accounting-note" id="unassignedCashSummary"></div>
+            <div class="finance-filter-grid">
+              <button class="btn btn-ghost" type="button" onclick="toggleAllUnassignedCash()">Select All / None</button>
+              <button class="btn btn-primary" type="button" onclick="openBulkUnassignedCash()">Confirm Cash Received</button>
+              <span id="unassignedCashCount" style="align-self:center; color:var(--grey);">0 selected</span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Order #</th><th>Customer / Client</th><th>Expected</th><th>Collected Via</th><th>Delivered</th><th>Action</th></tr></thead>
+                <tbody id="unassignedCashBody"></tbody>
+              </table>
+            </div>
+          </div>
           <div class="card">
             <div class="table-wrap">
               <table>
@@ -4008,6 +4023,7 @@
         detailView.style.display = 'none';
         driverViewShellKey = '';
         renderDriversList();
+        renderUnassignedCash();
         return;
       }
       listView.style.display = 'none';
@@ -5582,14 +5598,114 @@
     // the driver's cash-on-hand total unchanged (because the orders shown
     // here weren't the ones counted in that total) or can permanently hide
     // orders that ARE counted in that total but never show up to reconcile.
-    function driverUnreconciledCollections(driverId) {
-      return orders.filter(order =>
-        order.assigned_driver_id === driverId
-        && order.delivery_outcome === 'delivered'
-        && String(order.delivery_collection_method || '').toLowerCase() === 'cash'
-        && order.payment_status === 'collected_by_driver'
-      );
+    // An order you mark Delivered yourself (or one imported from a driver
+    // sheet) may have no collection method recorded, or no driver at all,
+    // because the driver never confirmed it on their phone. Cash is still
+    // owed on it, so it must be reconcilable: any delivered order with money
+    // to collect, not yet reconciled or remitted, and not paid by LINX.
+    function isCashOwedUnreconciled(order) {
+      return isDelivered(order)
+        && driverCollects(order) > 0
+        && !order.remittance_batch_id
+        && order.remittance_status !== 'paid'
+        && ['pending', 'collected_by_driver'].includes(order.payment_status)
+        && String(order.delivery_collection_method || '').toLowerCase() !== 'linx';
     }
+
+    function driverUnreconciledCollections(driverId) {
+      return orders.filter(order => order.assigned_driver_id === driverId && isCashOwedUnreconciled(order));
+    }
+
+    // Delivered orders with cash owed but no (active) driver on them -- they
+    // can't appear on any driver's page, so they get their own list on the
+    // Drivers screen.
+    function unassignedCashOrders() {
+      const activeDriverIds = new Set(drivers.map(driver => driver.id));
+      return orders.filter(order => (!order.assigned_driver_id || !activeDriverIds.has(order.assigned_driver_id)) && isCashOwedUnreconciled(order));
+    }
+
+    let unassignedCashSelection = new Set();
+
+    window.renderUnassignedCash = function() {
+      const card = document.getElementById('unassignedCashCard');
+      const body = document.getElementById('unassignedCashBody');
+      if (!card || !body) return;
+      const rows = unassignedCashOrders();
+      unassignedCashSelection = new Set([...unassignedCashSelection].filter(id => rows.some(order => order.id === id)));
+      card.style.display = rows.length ? '' : 'none';
+      if (!rows.length) return;
+      const total = rows.reduce((sum, order) => sum + driverCollects(order), 0);
+      document.getElementById('unassignedCashSummary').textContent = `${rows.length} order${rows.length === 1 ? '' : 's'} totalling ${moneyFull(total)} are marked delivered with no driver on them and the cash is not reconciled yet.`;
+      body.innerHTML = rows.map(order => `
+        <tr>
+          <td><label class="bulk-order-check"><input type="checkbox" ${unassignedCashSelection.has(order.id) ? 'checked' : ''} onchange="toggleUnassignedCash('${order.id}', this.checked)"><span>${escapeHtml(order.order_number)}</span></label></td>
+          <td>${escapeHtml(order.customer_name || '—')}<div class="td-sub">${escapeHtml(clientName(order))}</div></td>
+          <td>${moneyFull(driverCollects(order))}</td>
+          <td>${escapeHtml(String(order.delivery_collection_method || 'not recorded').replaceAll('_', ' '))}</td>
+          <td>${order.last_delivery_attempt_at ? new Date(order.last_delivery_attempt_at).toLocaleDateString('en-TT') : '—'}</td>
+          <td><button class="btn btn-primary btn-sm" onclick="openMarkDriverCashReceived('${order.id}')">Reconcile</button></td>
+        </tr>`).join('');
+      const count = document.getElementById('unassignedCashCount');
+      if (count) count.textContent = `${unassignedCashSelection.size} selected`;
+    };
+
+    window.toggleUnassignedCash = function(orderId, checked) {
+      if (checked) unassignedCashSelection.add(orderId); else unassignedCashSelection.delete(orderId);
+      const count = document.getElementById('unassignedCashCount');
+      if (count) count.textContent = `${unassignedCashSelection.size} selected`;
+    };
+
+    window.toggleAllUnassignedCash = function() {
+      const rows = unassignedCashOrders();
+      const allSelected = rows.length > 0 && rows.every(order => unassignedCashSelection.has(order.id));
+      rows.forEach(order => allSelected ? unassignedCashSelection.delete(order.id) : unassignedCashSelection.add(order.id));
+      renderUnassignedCash();
+    };
+
+    window.openBulkUnassignedCash = function() {
+      const selectedOrders = unassignedCashOrders().filter(order => unassignedCashSelection.has(order.id));
+      if (!selectedOrders.length) return showToast('Select at least one order to confirm.');
+      const total = selectedOrders.reduce((sum, order) => sum + driverCollects(order), 0);
+      document.getElementById('modalTitle').textContent = 'Confirm Cash Received';
+      document.getElementById('modalBody').innerHTML = `
+        <p style="margin:0 0 0.7rem; color:var(--grey);">Confirm ${selectedOrders.length} order(s) totalling ${moneyFull(total)} were received.</p>
+        <div class="payment-modal-form">
+          <label>Method<select id="unassignedCashMethod">
+            <option value="cash">Cash</option>
+            <option value="linx">LINX</option>
+            <option value="bank_transfer">Bank Transfer</option>
+            <option value="other">Other</option>
+          </select></label>
+          <label>Reference / Note<input id="unassignedCashReference" type="text" placeholder="Receipt, handover note, or reference"></label>
+          <label>Admin Notes<textarea id="unassignedCashNotes" placeholder="Optional note applied to every selected reconciliation"></textarea></label>
+        </div>`;
+      document.getElementById('modalConfirm').textContent = 'Confirm Received';
+      document.getElementById('modal').classList.add('show');
+      modalCb = async () => {
+        const method = document.getElementById('unassignedCashMethod')?.value || 'cash';
+        const reference = document.getElementById('unassignedCashReference')?.value.trim() || null;
+        const notes = document.getElementById('unassignedCashNotes')?.value.trim() || null;
+        let reconciled = 0;
+        const failed = [];
+        for (const order of selectedOrders) {
+          const { error } = await supabase.rpc('admin_reconcile_order_collection', {
+            p_order_id: order.id,
+            p_received_amount: driverCollects(order),
+            p_handover_method: method,
+            p_reference: reference,
+            p_notes: notes
+          });
+          if (error) failed.push(order.order_number + ': ' + (error.message || 'failed'));
+          else reconciled += 1;
+        }
+        if (reconciled) showToast(reconciled + ' collection' + (reconciled === 1 ? '' : 's') + ' reconciled.');
+        if (failed.length) {
+          window.vdNotify('Some Collections Not Reconciled', failed.slice(0, 5).join(' | ') + (failed.length > 5 ? ' | More errors omitted.' : ''), 'error');
+        }
+        unassignedCashSelection.clear();
+        await loadData();
+      };
+    };
 
     function syncRemitDriverCashBulkControls() {
       updateBulkCount('remitDriverCashBulkCount', 'remitDriverCashSelectAll', remitDriverCashSelection, remitDriverCashVisibleIds);
