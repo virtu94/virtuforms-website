@@ -594,6 +594,15 @@
     .pending-strip-text { flex: 1; }
     .pending-strip-text h4 { font-size: 0.92rem; font-weight: 700; color: #7a5a00; }
     .pending-strip-text p  { font-size: 0.82rem; color: #856404; }
+    .stale-strip {
+      background: var(--red-pale); border: 1px solid var(--red);
+      border-radius: 12px; padding: 1rem 1.4rem;
+      margin-bottom: 1.5rem;
+    }
+    .stale-strip-head { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .stale-strip-head h4 { flex: 1; font-size: 0.95rem; font-weight: 800; color: #8b2020; }
+    .stale-strip-list { margin-top: 0.7rem; display: grid; gap: 0.35rem; }
+    .stale-strip-row { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.85rem; color: #5c1a1a; border-top: 1px solid rgba(224,85,85,0.25); padding-top: 0.35rem; }
 
     /* ── Overview two-col ── */
     .overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
@@ -975,6 +984,8 @@
           <button class="btn btn-primary" type="button" onclick="showPanel('driver-import')">Open Active Delivery Import</button>
           <button class="btn btn-primary" type="button" onclick="showPanel('drivers-mgmt')">Open Drivers</button>
         </div>
+
+        <div class="stale-strip" id="staleUnassignedStrip" style="display:none;"></div>
 
         <div class="pending-strip">
           <div class="pending-strip-icon">!</div>
@@ -4481,6 +4492,25 @@
       const driverBadge = document.querySelector('[data-panel="driver-assign"] .nav-badge');
       if (driverBadge) driverBadge.textContent = unassigned;
 
+      const staleOrders = orders.filter(isStaleUnassigned).sort((a, b) => unassignedAgeDays(b) - unassignedAgeDays(a));
+      const staleStrip = document.getElementById('staleUnassignedStrip');
+      if (staleStrip) {
+        staleStrip.style.display = staleOrders.length ? '' : 'none';
+        staleStrip.innerHTML = staleOrders.length ? `
+          <div class="stale-strip-head">
+            <h4>${staleOrders.length} order${staleOrders.length === 1 ? '' : 's'} not assigned to a driver for ${UNASSIGNED_FLAG_DAYS}+ days</h4>
+            <button class="btn btn-danger btn-sm" type="button" onclick="showPanel('driver-assign')">Open Driver Assignment →</button>
+          </div>
+          <div class="stale-strip-list">
+            ${staleOrders.slice(0, 8).map(order => `
+              <div class="stale-strip-row">
+                <span><strong>${escapeHtml(order.order_number)}</strong> · ${escapeHtml(clientName(order))} · ${escapeHtml(order.customer_name || '')}</span>
+                <span>${unassignedAgeDays(order)} days waiting</span>
+              </div>`).join('')}
+            ${staleOrders.length > 8 ? `<div class="stale-strip-row"><span>…and ${staleOrders.length - 8} more</span><span></span></div>` : ''}
+          </div>` : '';
+      }
+
       const stripTitle = document.querySelector('.pending-strip h4');
       if (stripTitle) stripTitle.textContent = `${pendingZone} orders pending zone confirmation`;
 
@@ -4501,6 +4531,7 @@
           ['Returns / redelivery', returnActionCount, 'pending', 'var(--orange-pale)'],
           ['Zone confirmation', pendingZone, 'pending', 'var(--yellow-pale)'],
           ['Driver assignment', unassigned, 'unassigned', '#f0f0f0'],
+          [`No driver for ${UNASSIGNED_FLAG_DAYS}+ days`, staleOrders.length, 'overdue', 'var(--red-pale)'],
           ['Locked accounts', locked, 'locked', 'var(--red-pale)'],
           ['Remittance pending', unpaid, 'ready', 'var(--orange-pale)']
         ].map(([label, count, suffix, bg]) => `
@@ -6868,6 +6899,22 @@
         && ['sorted', 'redelivery_scheduled'].includes(order.parcel_status);
     }
 
+    // An order still waiting on a driver this many days after it was entered
+    // gets flagged so it can't be forgotten.
+    const UNASSIGNED_FLAG_DAYS = 2;
+
+    function unassignedAgeDays(order) {
+      if (!order?.created_at || order.assigned_driver_id) return 0;
+      if (['delivered', 'failed', 'cancelled', 'rejected'].includes(order.order_status)) return 0;
+      const created = new Date(order.created_at).getTime();
+      if (Number.isNaN(created)) return 0;
+      return Math.floor((Date.now() - created) / 86400000);
+    }
+
+    function isStaleUnassigned(order) {
+      return unassignedAgeDays(order) >= UNASSIGNED_FLAG_DAYS;
+    }
+
     function populateAllOrdersFilterOptions() {
       const clientSelect = document.getElementById('orderClientFilter');
       if (clientSelect) {
@@ -7024,7 +7071,10 @@
       const opts = { timeZone: 'America/Port_of_Spain' };
       const date = d.toLocaleDateString('en-TT', { ...opts, day: 'numeric', month: 'short', year: 'numeric' });
       const time = d.toLocaleTimeString('en-TT', { ...opts, hour: 'numeric', minute: '2-digit' });
-      return `<div class="td-name">${escapeHtml(date)}</div><div class="td-sub">${escapeHtml(time)}</div>`;
+      const stale = isStaleUnassigned(order)
+        ? `<div><span class="badge badge-failed" title="No driver assigned since this order was entered">No driver · ${unassignedAgeDays(order)} days</span></div>`
+        : '';
+      return `<div class="td-name">${escapeHtml(date)}</div><div class="td-sub">${escapeHtml(time)}</div>${stale}`;
     }
 
     // Click a column heading to sort; click again to reverse; a third click clears it.
@@ -10217,7 +10267,7 @@
         return;
       }
       const missing = visible
-        .flatMap(claim => [claim.call_proof_path, claim.location_proof_path, claim.opened_package_proof_path])
+        .flatMap(claim => [claim.call_proof_path, claim.place_proof_path, claim.location_proof_path, claim.opened_package_proof_path])
         .filter(path => path && !failedProofUrls.has(path));
       if (missing.length) {
         const { data, error } = await supabase.storage.from(FAILED_PROOF_BUCKET).createSignedUrls(missing, 3600);
