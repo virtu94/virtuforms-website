@@ -4092,8 +4092,25 @@
           row.getCell(12).value = batchLabel;
           row.getCell(13).value = nowStr;
           row.getCell(14).value = '';
+          row.getCell(16).value = Number(order.driver_delivery_pay || 0);
           row.commit();
         });
+
+        // Totals (only rows set to Delivered count) and locking, as on the
+        // Google Sheet. The old Total Cash Collected cell referred to its own
+        // column, so it is cleared and rebuilt in H2:I3.
+        ws.getCell('F2').value = null;
+        ws.getCell('F3').value = null;
+        ws.getCell('H2').value = 'Total Cash Collected:';
+        ws.getCell('I2').value = 'Pay Earned:';
+        ws.getCell('H3').value = { formula: DRIVER_SHEET_CASH_FORMULA };
+        ws.getCell('I3').value = { formula: DRIVER_SHEET_PAY_FORMULA };
+        ws.getCell('P1').value = 'Driver Pay';
+        for (let r = 4; r <= DRIVER_SHEET_LAST_ROW; r++) {
+          ws.getCell(r, 6).protection = { locked: false };
+          ws.getCell(r, 7).protection = { locked: false };
+        }
+        await ws.protect('', { selectLockedCells: true, selectUnlockedCells: true });
 
         const orderIds = activeOrders.map(o => o.id);
         const { error: rpcError } = await supabase.rpc('admin_mark_orders_out_for_delivery', { p_order_ids: orderIds });
@@ -4173,6 +4190,61 @@
       return resp.json();
     }
 
+    // Driver sheet totals and locking.
+    // The driver sees, per order, only the total to collect (column I) and
+    // their own pay (column P) -- never the delivery fee the customer is
+    // charged. The two totals at the top count only rows the driver has set
+    // to "Delivered". They are written on every send, so older sheets pick
+    // them up too, and they use bounded ranges (F4:F600) because the old
+    // Total Cash Collected cell pointed at its own column (a circular
+    // formula, so it never showed a number).
+    const DRIVER_SHEET_LOCK_NOTE = 'VirtuDrop driver sheet - only Status and Notes can be edited';
+    const DRIVER_SHEET_LAST_ROW = 600;
+    const DRIVER_SHEET_CASH_FORMULA = `SUMIF(F4:F${DRIVER_SHEET_LAST_ROW},"Delivered",I4:I${DRIVER_SHEET_LAST_ROW})`;
+    const DRIVER_SHEET_PAY_FORMULA = `SUMIF(F4:F${DRIVER_SHEET_LAST_ROW},"Delivered",P4:P${DRIVER_SHEET_LAST_ROW})`;
+
+    async function writeDriverSheetSummary(sheetId, accessToken) {
+      await sheetsApiFetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchUpdate`,
+        accessToken,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            valueInputOption: 'USER_ENTERED',
+            data: [
+              { range: "'Current Deliveries'!F2:F3", values: [[''], ['']] },
+              { range: "'Current Deliveries'!H2:I3", values: [['Total Cash Collected:', 'Pay Earned:'], [`=${DRIVER_SHEET_CASH_FORMULA}`, `=${DRIVER_SHEET_PAY_FORMULA}`]] },
+              { range: "'Current Deliveries'!P1", values: [['Driver Pay']] }
+            ]
+          })
+        }
+      );
+    }
+
+    // Locks everything on the Current Deliveries tab except Status (F) and
+    // Notes (G) on the delivery rows. Only the sheet owner can change the rest.
+    async function lockDriverGoogleSheet(sheetId, accessToken) {
+      const base = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}`;
+      const meta = await sheetsApiFetch(`${base}?fields=sheets(properties(sheetId,title),protectedRanges(protectedRangeId,description))`, accessToken);
+      const sheet = (meta.sheets || []).find(item => item.properties?.title === 'Current Deliveries');
+      if (!sheet) return;
+      const gid = sheet.properties.sheetId;
+      const requests = (sheet.protectedRanges || [])
+        .filter(item => item.description === DRIVER_SHEET_LOCK_NOTE)
+        .map(item => ({ deleteProtectedRange: { protectedRangeId: item.protectedRangeId } }));
+      requests.push({
+        addProtectedRange: {
+          protectedRange: {
+            range: { sheetId: gid },
+            description: DRIVER_SHEET_LOCK_NOTE,
+            warningOnly: false,
+            unprotectedRanges: [{ sheetId: gid, startRowIndex: 3, endRowIndex: DRIVER_SHEET_LAST_ROW, startColumnIndex: 5, endColumnIndex: 7 }]
+          }
+        }
+      });
+      await sheetsApiFetch(`${base}:batchUpdate`, accessToken, { method: 'POST', body: JSON.stringify({ requests }) });
+    }
+
     window.pushDriverLiveSheet = async function(driverId) {
       const driver = drivers.find(d => d.id === driverId);
       if (!driver) return showToast('Driver not found.');
@@ -4233,9 +4305,19 @@
         const { error: rpcError } = await supabase.rpc('admin_mark_orders_out_for_delivery', { p_order_ids: orderIds });
         if (rpcError) throw rpcError;
 
+        // Totals and locking are extras: if either fails the deliveries are
+        // still on the sheet, so say so rather than failing the whole push.
+        const warnings = [];
+        try { await writeDriverSheetSummary(sheetId, accessToken); }
+        catch (err) { warnings.push('totals not updated: ' + (err?.message || err)); }
+        try { await lockDriverGoogleSheet(sheetId, accessToken); }
+        catch (err) { warnings.push('sheet not locked: ' + (err?.message || err)); }
+
         const resultEl = document.getElementById(`driverSheetPushResult_${driverId}`);
-        if (resultEl) resultEl.innerHTML = `<div class="td-sub">Pushed ${activeOrders.length} ${activeOrders.length === 1 ? 'delivery' : 'deliveries'} to the Google Sheet just now.</div>`;
-        showToast(`Pushed ${activeOrders.length} ${activeOrders.length === 1 ? 'delivery' : 'deliveries'} to the driver's Google Sheet.`);
+        if (resultEl) resultEl.innerHTML = `<div class="td-sub">Pushed ${activeOrders.length} ${activeOrders.length === 1 ? 'delivery' : 'deliveries'} to the Google Sheet just now.${warnings.length ? ' Note: ' + escapeHtml(warnings.join('; ')) : ''}</div>`;
+        showToast(warnings.length
+          ? `Pushed to the driver's sheet, but ${warnings.join('; ')}`
+          : `Pushed ${activeOrders.length} ${activeOrders.length === 1 ? 'delivery' : 'deliveries'} to the driver's Google Sheet.`);
         await softRefresh();
         renderDriversMgmt();
       } catch (err) {
