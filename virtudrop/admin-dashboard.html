@@ -1658,6 +1658,23 @@
             <tbody id="managedReturnExportBody"><tr><td colspan="7">Pick a batch above to preview its not-yet-delivered orders.</td></tr></tbody>
           </table></div>
         </div>
+
+        <div class="card" id="managedResendCard" style="display:none; margin-top:1rem;">
+          <div class="card-title">Re-send Returned Orders</div>
+          <div class="accounting-note">Orders that came back to Middleman (returned to client). Tick the ones you've got back, pick where they go, and they are re-created as fresh orders in Zone Confirmation. The original stays as it is, marked returned, so the earlier batch's invoice and return sheets don't change. Driver pay is set again from today's area rates.</div>
+          <div class="finance-field" style="margin-top:0.75rem; max-width:28rem;">
+            <label for="managedResendTargetBatch">Send into</label>
+            <select class="filter-select" id="managedResendTargetBatch"><option value="">New batch</option></select>
+          </div>
+          <div class="finance-actions" style="margin-top:0.75rem;">
+            <button class="btn btn-ghost" type="button" onclick="toggleAllManagedResendRows()">Select All / None</button>
+            <button class="btn btn-primary" type="button" onclick="resendSelectedManagedOrders()">Re-send Selected</button>
+          </div>
+          <div class="table-wrap" style="margin-top:0.75rem;"><table>
+            <thead><tr><th style="width:2rem;"></th><th>Middleman Order #</th><th>Business</th><th>Customer</th><th>Area</th><th>Item</th><th>Imported</th></tr></thead>
+            <tbody id="managedResendBody"><tr><td colspan="7">Select a managed account to see its returned orders.</td></tr></tbody>
+          </table></div>
+        </div>
       </div>
 
       <!-- ════════ ACCOUNTING ════════ -->
@@ -10986,7 +11003,7 @@
       if (newAccountId !== selectedManagedAccountId) selectedManagedExportBatchKey = '';
       selectedManagedAccountId = newAccountId;
       const hasSelection = !!selectedManagedAccountId;
-      ['managedAddOrderCard', 'managedBulkImportCard', 'managedBatchFilterCard', 'managedExportBatchCard', 'managedExportsCard', 'managedReturnExportCard'].forEach(id => {
+      ['managedAddOrderCard', 'managedBulkImportCard', 'managedBatchFilterCard', 'managedExportBatchCard', 'managedExportsCard', 'managedReturnExportCard', 'managedResendCard'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = hasSelection ? '' : 'none';
       });
@@ -11563,9 +11580,71 @@
     // moving through parcel check-in / zone confirmation / driver
     // assignment) shows up right away, with a click-to-expand breakdown
     // of where its orders currently stand.
+    // ── Re-send returned orders ─────────────────────────────────────────
+    function managedReturnedOrders() {
+      const alreadyResent = new Set(orders.filter(o => o.resent_from_order_id).map(o => o.resent_from_order_id));
+      // Only the last 30 days -- the full history holds over a thousand returned orders.
+      const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+      return managedAccountOrders()
+        .filter(o => o.parcel_status === 'returned_to_client' && !alreadyResent.has(o.id) && new Date(o.imported_at || o.created_at || 0).getTime() >= cutoff)
+        .sort((a, b) => new Date(b.imported_at || 0) - new Date(a.imported_at || 0));
+    }
+
+    function renderManagedResendTable() {
+      const body = document.getElementById('managedResendBody');
+      if (!body) return;
+      if (!selectedManagedAccountId) {
+        body.innerHTML = '<tr><td colspan="7">Select a managed account to see its returned orders.</td></tr>';
+        return;
+      }
+      const ticked = new Set(Array.from(document.querySelectorAll('.managed-resend-check:checked')).map(el => el.value));
+      const businesses = new Map(managedAccountBusinessClients(selectedManagedAccountId).map(b => [b.id, b.business_name]));
+      const rows = managedReturnedOrders();
+      body.innerHTML = rows.length
+        ? rows.map(o => `<tr>
+            <td><input type="checkbox" class="managed-resend-check" value="${o.id}" ${ticked.has(o.id) ? 'checked' : ''}></td>
+            <td>${managedOrderExternalNumberCell(o)}</td>
+            <td>${escapeHtml(businesses.get(o.business_client_id) || '')}</td>
+            <td>${escapeHtml(o.customer_name || '')}</td>
+            <td>${escapeHtml(o.area_name || '')}</td>
+            <td>${escapeHtml(o.external_item_number || '')}</td>
+            <td>${escapeHtml(formatImportedAt(o.imported_at))}</td>
+          </tr>`).join('')
+        : '<tr><td colspan="7">No returned orders waiting to be re-sent.</td></tr>';
+    }
+
+    window.toggleAllManagedResendRows = function() {
+      const boxes = Array.from(document.querySelectorAll('.managed-resend-check'));
+      const allOn = boxes.length && boxes.every(b => b.checked);
+      boxes.forEach(b => { b.checked = !allOn; });
+    };
+
+    window.resendSelectedManagedOrders = async function() {
+      if (!selectedManagedAccountId) return showToast('Select a managed account first.');
+      const ids = Array.from(document.querySelectorAll('.managed-resend-check:checked')).map(el => el.value);
+      if (!ids.length) return showToast('Tick at least one returned order first.');
+      const target = document.getElementById('managedResendTargetBatch')?.value || '';
+      const where = target ? 'the batch you picked' : 'a new batch';
+      if (!confirm(`Re-send ${ids.length} returned order${ids.length === 1 ? '' : 's'} into ${where}? They will appear in Zone Confirmation.`)) return;
+      try {
+        const { data, error } = await supabase.rpc('admin_resend_returned_managed_orders', {
+          p_managed_account_id: selectedManagedAccountId,
+          p_order_ids: ids,
+          p_target_batch_id: target || null
+        });
+        if (error) throw error;
+        const skipped = (data?.skipped || []);
+        showToast(`${data?.created_count || 0} order${data?.created_count === 1 ? '' : 's'} re-sent.` +
+          (skipped.length ? ` ${skipped.length} skipped (${skipped.map(s => s.order_number + ': ' + s.reason).join('; ')}).` : ''));
+        await softRefresh();
+      } catch (error) {
+        window.vdNotify('Re-send Failed', error.message || 'Could not re-send these orders.', 'error');
+      }
+    };
+
     function renderManagedTargetBatchSelects() {
       const batches = selectedManagedAccountId ? computeManagedBatches().filter(b => b.key !== 'unbatched') : [];
-      ['managedAddTargetBatch', 'managedImportTargetBatch'].forEach(id => {
+      ['managedAddTargetBatch', 'managedImportTargetBatch', 'managedResendTargetBatch'].forEach(id => {
         const select = document.getElementById(id);
         if (!select) return;
         const current = select.value;
@@ -11579,6 +11658,7 @@
       const body = document.getElementById('managedBatchFilterBody');
       if (!body) return;
       renderManagedTargetBatchSelects();
+      renderManagedResendTable();
       if (!selectedManagedAccountId) {
         body.innerHTML = '<tr><td colspan="7">Select a managed account to see its import batches.</td></tr>';
         return;
