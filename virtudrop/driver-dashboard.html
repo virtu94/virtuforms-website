@@ -876,6 +876,8 @@
     <div class="day-strip-date" id="todayDate"></div>
   </div>
 
+  <div id="driverScheduleBar" style="display:none; margin:0.85rem 1rem 0; padding:0.8rem 1rem; border-radius:10px; font-size:0.9rem; line-height:1.5;"></div>
+
   <div class="driver-finance-panel" id="driverFinancePanel">
     <div class="driver-finance-head">
       <div>
@@ -2573,6 +2575,7 @@
       maybeAutoPlaceNewDeliveries();
       startArrivalWatch();
       refreshMyClaims();
+      refreshDriverSchedule();
     }
 
     async function readOrderStatus(orderId) {
@@ -2966,6 +2969,96 @@
         window.vdNotify('Proof Not Submitted', error.message || 'Could not submit your proof. Check your connection and try again.', 'error');
       }
     };
+
+    // ── Pickup / return times ──
+    // Admin sets when the driver collects parcels and when they must come
+    // back with undelivered items and cash. Shown as a bar all day and as a
+    // popup once a day. If the return time passes with parcels still marked
+    // out for delivery, payment is on hold until the dashboard is updated.
+    let driverSchedule = null;
+
+    function scheduleTime(value) {
+      if (!value) return '—';
+      return new Date(value).toLocaleString('en-GB', { timeZone: 'America/Port_of_Spain', weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function renderScheduleBar() {
+      const bar = document.getElementById('driverScheduleBar');
+      if (!bar) return;
+      const manifests = driverSchedule?.manifests || [];
+      const released = driverSchedule?.released || [];
+      const now = Date.now();
+      if (!manifests.length && !driverSchedule?.on_hold) {
+        if (!released.length) { bar.style.display = 'none'; return; }
+        // Every parcel on the run has an outcome: funds are released.
+        const upcoming = released.filter(item => new Date(item.return_due_at).getTime() > now);
+        const reminder = upcoming.length
+          ? `<div style="margin-top:0.35rem; opacity:0.85;">Still return by <strong>${escapeHtml(scheduleTime(upcoming[upcoming.length - 1].return_due_at))}</strong> with all undelivered items and all cash collected. If they are not handed in by then, your payment goes back on hold.</div>`
+          : '';
+        bar.style.display = '';
+        bar.style.background = '#e6f6ec';
+        bar.style.border = '1px solid #1b8a52';
+        bar.innerHTML = `<div style="color:#14683d; font-weight:700;">Funds released</div><div>All your deliveries are updated, so your funds are released. Thank you.</div>${reminder}`;
+        return;
+      }
+      const lines = manifests.map(item => {
+        const overdue = new Date(item.return_due_at).getTime() < now;
+        return `<div${overdue ? ' style="color:#a12020; font-weight:700;"' : ''}>Return by <strong>${escapeHtml(scheduleTime(item.return_due_at))}</strong>${overdue ? ' &mdash; time has passed' : ''}</div>`;
+      }).join('');
+      const releasedByAdmin = manifests.some(item => item.hold_released_by_admin);
+      const holds = driverSchedule?.holds || [];
+      const holdSum = key => holds.reduce((total, item) => total + Number(item[key] || 0), 0);
+      const holdReasons = [];
+      if (holdSum('out_count')) holdReasons.push(`Update your dashboard: ${holdSum('out_count')} parcel${holdSum('out_count') === 1 ? ' is' : 's are'} still marked out for delivery.`);
+      if (holdSum('return_count')) holdReasons.push(`Bring back the ${holdSum('return_count')} undelivered item${holdSum('return_count') === 1 ? '' : 's'} to the hub. Admin must confirm they are received.`);
+      if (holdSum('cash_count')) holdReasons.push(`Hand in the cash collected on ${holdSum('cash_count')} delivered order${holdSum('cash_count') === 1 ? '' : 's'}. Admin must confirm it is received.`);
+      const hold = driverSchedule?.on_hold
+        ? `<div style="margin-top:0.35rem; color:#a12020; font-weight:700;">Your payment is ON HOLD.</div>${holdReasons.map(text => `<div style="color:#a12020;">&bull; ${escapeHtml(text)}</div>`).join('')}<div style="margin-top:0.2rem; opacity:0.85;">The hold lifts by itself once this is done. Only admin can lift it early.</div>`
+        : `${releasedByAdmin ? '<div style="margin-top:0.35rem; color:#14683d; font-weight:700;">Your payment hold was released by admin.</div>' : ''}<div style="margin-top:0.35rem; opacity:0.85;">Bring all undelivered items and all cash collected. Funds will not be released unless your dashboard is updated.</div>`;
+      bar.style.display = '';
+      bar.style.background = driverSchedule?.on_hold ? '#fdecea' : '#e8f4f2';
+      bar.style.border = driverSchedule?.on_hold ? '1px solid #c0392b' : '1px solid #2da69b';
+      bar.innerHTML = `${lines}${hold}`;
+    }
+
+    function maybeShowSchedulePopup() {
+      const manifests = driverSchedule?.manifests || [];
+      if (!manifests.length || !currentDriver) return;
+      if (document.body.classList.contains('modal-open')) return;
+      const today = new Date().toLocaleDateString('en-CA');
+      const key = `vd_schedule_popup_${currentDriver.id}_${today}`;
+      try {
+        if (localStorage.getItem(key)) return;
+        localStorage.setItem(key, '1');
+      } catch (err) { /* storage blocked: show it anyway */ }
+      const rows = manifests.map(item => `
+        <div style="text-align:left; border:1px solid #e0e0e0; border-radius:10px; padding:0.7rem 0.85rem; margin-bottom:0.6rem;">
+          <div><strong>Pickup:</strong> ${escapeHtml(scheduleTime(item.pickup_at))}</div>
+          <div><strong>Return:</strong> ${escapeHtml(scheduleTime(item.return_due_at))}</div>
+        </div>`).join('');
+      openModal(
+        'Pickup and Return Times',
+        'Please read this carefully.',
+        `${rows}
+         <div style="text-align:left; margin:0.4rem 0 0.9rem; font-size:0.9rem; line-height:1.5;">
+           On the return day and time you must bring back <strong>all items that were not delivered</strong> together with <strong>all cash collected</strong>.<br><br>
+           <strong>Funds will not be released unless your dashboard is updated.</strong> While any parcel is marked out for delivery, your payment is on hold. It is released as soon as you update every parcel on your dashboard, even before the return time. <strong>After the return time</strong>, your payment is held again until the undelivered items are confirmed back at the hub and the cash is confirmed received by admin.
+         </div>
+         <button class="modal-btn confirm" onclick="closeModal()">I understand</button>`
+      );
+    }
+
+    async function refreshDriverSchedule() {
+      const { data, error } = await supabase.rpc('driver_get_my_schedule');
+      if (error) { console.warn('Pickup/return times could not load:', error); return; }
+      const wasOnHold = Boolean(driverSchedule?.on_hold);
+      driverSchedule = data || null;
+      if (wasOnHold && !driverSchedule?.on_hold) {
+        showToast('Funds released. Thank you for updating your dashboard.');
+      }
+      renderScheduleBar();
+      maybeShowSchedulePopup();
+    }
 
     async function refreshMyClaims() {
       if (!currentDriver) return;

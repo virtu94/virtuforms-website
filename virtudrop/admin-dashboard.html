@@ -3673,7 +3673,7 @@
         totalOpen += open;
         return `<tr>
           <td><div class="td-name">${escapeHtml(driver.driver_code || '—')}</div></td>
-          <td><a href="#" style="font-weight:700; color:var(--teal-mid);" onclick="openDriverView('${driver.id}'); return false;">${escapeHtml(driverLabel(driver))}</a><div class="td-sub">${escapeHtml(formatPhoneDisplay(driver.phone) || '')}${driver.vehicle_number ? ` &middot; ${escapeHtml(driver.vehicle_number)}` : ''}</div></td>
+          <td><a href="#" style="font-weight:700; color:var(--teal-mid);" onclick="openDriverView('${driver.id}'); return false;">${escapeHtml(driverLabel(driver))}</a>${driverOnHold(driver.id) ? ' <span class="badge badge-failed">Payment on hold</span>' : ''}${driverMissingTimes(driver.id) ? ' <span class="badge badge-pending">No return time</span>' : ''}<div class="td-sub">${escapeHtml(formatPhoneDisplay(driver.phone) || '')}${driver.vehicle_number ? ` &middot; ${escapeHtml(driver.vehicle_number)}` : ''}</div></td>
           <td>${escapeHtml(driver.route_label || '—')}</td>
           <td><div class="td-sub">${escapeHtml(driverAssignedZonesLabel(driver))}</div></td>
           <td>${open}</td>
@@ -3731,6 +3731,7 @@
             <button class="btn btn-ghost btn-sm" type="button" onclick="openDriverEdit('${id}')">Edit driver</button>
           </div>
         </div>
+        <div id="driverScheduleBanner"></div>
         <div class="dv-tiles" id="driverDetailTiles"></div>
         <div class="filter-bar">
           <select class="filter-select" id="dvBatch" onchange="setDriverViewFilter('batch', this.value)" title="The day these parcels were assigned to the driver"></select>
@@ -3923,6 +3924,9 @@
       const batchRows = driverRowsInBatch(allRows, driverView.batch);
       const counts = { all: batchRows.length, awaiting_handover: 0, out_for_delivery: 0, delivered: 0, failed: 0, cancelled: 0 };
       batchRows.forEach(row => { counts[driverRowStatus(row)] += 1; });
+
+      const scheduleBanner = document.getElementById('driverScheduleBanner');
+      if (scheduleBanner) scheduleBanner.innerHTML = driverScheduleBannerHtml(driver.id);
 
       const finance = driverFinanceFor(driver.id);
       const cashRows = driverUnreconciledCollections(driver.id);
@@ -9619,6 +9623,186 @@
       updateDriverAssignBulkControls();
     }
 
+    // ── Pickup / return times when assigning ──────────────────────────
+    // Every assignment asks when the driver collects the parcels (pickup) and
+    // when they must bring back undelivered items and cash (return). If the
+    // driver already has a return time set, it is filled in so extra parcels
+    // collected later can share it. The times are saved on the delivery
+    // manifest(s) the parcels landed on, after the assignment succeeds.
+    function scheduleLocalValue(date) {
+      const d = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+      return d.toISOString().slice(0, 16);
+    }
+
+    function scheduleDisplay(value) {
+      if (!value) return '—';
+      return new Date(value).toLocaleString('en-GB', { timeZone: 'America/Port_of_Spain', weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+    }
+
+    async function promptDriverSchedule(driverIds, onConfirm, options = {}) {
+      const ids = [...new Set(driverIds.filter(Boolean))];
+      let existing = [];
+      try {
+        const { data } = await supabase.rpc('admin_list_driver_schedules');
+        existing = Array.isArray(data) ? data : [];
+      } catch (err) {
+        console.warn('Current driver times could not load:', err);
+      }
+      const now = new Date();
+      const blocks = ids.map(driverId => {
+        const upcoming = existing.filter(item => item.driver_id === driverId && item.return_due_at && new Date(item.return_due_at) > now);
+        const distinctReturns = [...new Set(upcoming.map(item => item.return_due_at))].sort();
+        const prefillReturn = distinctReturns.length ? distinctReturns[distinctReturns.length - 1] : null;
+        const note = distinctReturns.length
+          ? `<div class="td-sub" style="margin:0.25rem 0 0.5rem; color:#155724;">${escapeHtml(driverName(driverId))} already has a return time set: <strong>${escapeHtml(distinctReturns.map(scheduleDisplay).join(' / '))}</strong>. It is filled in below &mdash; leave it to keep the same return time for these parcels.</div>`
+          : `<div class="td-sub" style="margin:0.25rem 0 0.5rem;">No return time is set for ${escapeHtml(driverName(driverId))} yet.</div>`;
+        return `
+          <div style="border:1px solid var(--grey-mid); border-radius:10px; padding:0.75rem; margin-bottom:0.75rem; text-align:left;">
+            <strong>${escapeHtml(driverName(driverId))}</strong>
+            ${note}
+            <label>Pickup (driver collects parcels)<input id="sched-pickup-${driverId}" type="datetime-local" value="${scheduleLocalValue(now)}"></label>
+            <label>Return (undelivered items and cash)<input id="sched-return-${driverId}" type="datetime-local" value="${prefillReturn ? scheduleLocalValue(new Date(prefillReturn)) : ''}"></label>
+          </div>`;
+      }).join('');
+      document.getElementById('modalTitle').textContent = options.title || 'Pickup and Return Time';
+      document.getElementById('modalBody').innerHTML = `
+        ${options.message ? `<p style="margin:0 0 0.7rem; color:var(--grey);">${escapeHtml(options.message)}</p>` : ''}
+        <div class="payment-modal-form">${blocks}</div>`;
+      document.getElementById('modalConfirm').textContent = options.confirmLabel || 'Assign';
+      document.getElementById('modalCancel').style.display = '';
+      document.getElementById('modal').classList.add('show');
+      modalCb = async () => {
+        const schedules = {};
+        for (const driverId of ids) {
+          const pickupValue = document.getElementById(`sched-pickup-${driverId}`)?.value;
+          const returnValue = document.getElementById(`sched-return-${driverId}`)?.value;
+          if (!pickupValue || !returnValue) {
+            showToast(`Enter both the pickup and return time for ${driverName(driverId)}.`);
+            return false;
+          }
+          const pickup = new Date(pickupValue);
+          const ret = new Date(returnValue);
+          if (!(ret > pickup)) {
+            showToast(`The return time must be after the pickup time for ${driverName(driverId)}.`);
+            return false;
+          }
+          if (!(ret > new Date())) {
+            showToast(`The return time for ${driverName(driverId)} must be in the future.`);
+            return false;
+          }
+          schedules[driverId] = { pickup: pickup.toISOString(), ret: ret.toISOString() };
+        }
+        await onConfirm(schedules);
+        return true;
+      };
+    }
+
+    async function applyDriverSchedules(schedules, manifestsByDriver) {
+      const problems = [];
+      for (const [driverId, schedule] of Object.entries(schedules || {})) {
+        const numbers = [...(manifestsByDriver[driverId] || [])];
+        if (!numbers.length) continue;
+        const { error } = await supabase.rpc('admin_set_manifest_schedule', {
+          p_manifest_numbers: numbers,
+          p_pickup_at: schedule.pickup,
+          p_return_due_at: schedule.ret
+        });
+        if (error) problems.push(`${driverName(driverId)}: ${error.message || 'failed'}`);
+      }
+      await loadDriverSchedules();
+      if (problems.length) {
+        window.vdNotify('Times Not Saved', `The assignment worked, but the pickup/return time could not be saved. ${problems.join(' | ')}`, 'warning');
+      }
+    }
+
+    // Pickup/return times and payment holds, per driver (Drivers page).
+    let driverSchedules = [];
+
+    async function loadDriverSchedules() {
+      const { data, error } = await supabase.rpc('admin_list_driver_schedules');
+      if (error) { console.warn('Driver pickup/return times could not load:', error); return; }
+      driverSchedules = Array.isArray(data) ? data : [];
+    }
+
+    function driverOnHold(driverId) {
+      return driverSchedules.some(item => item.driver_id === driverId && item.on_hold);
+    }
+
+    function driverMissingTimes(driverId) {
+      return driverSchedules.some(item => item.driver_id === driverId && item.missing_times);
+    }
+
+    function driverScheduleBannerHtml(driverId) {
+      const mine = driverSchedules.filter(item => item.driver_id === driverId);
+      const held = mine.filter(item => item.on_hold);
+      const timed = mine.filter(item => item.return_due_at);
+      let html = '';
+      if (held.length) {
+        const sum = key => held.reduce((total, item) => total + Number(item[key] || 0), 0);
+        const outN = sum('out_for_delivery_count');
+        const returnN = sum('awaiting_return_count');
+        const cashN = sum('cash_unreconciled_count');
+        const reasons = [];
+        if (outN) reasons.push(`${outN} parcel${outN === 1 ? ' is' : 's are'} still marked out for delivery (lifts when the driver updates the dashboard)`);
+        if (returnN) reasons.push(`${returnN} undelivered parcel${returnN === 1 ? ' has' : 's have'} not been confirmed back at the hub (the return time has passed &mdash; confirm hub receipt in Delivery Exceptions)`);
+        if (cashN) reasons.push(`${cashN} delivered order${cashN === 1 ? ' has' : 's have'} cash not yet reconciled (the return time has passed &mdash; reconcile it in the cash list below)`);
+        html += `<div class="card" style="border-left:4px solid var(--red); margin-bottom:0.75rem;">
+          <strong style="color:var(--red);">Payment on hold</strong>
+          <ul style="margin:0.35rem 0 0.5rem 1.1rem; padding:0;" class="td-sub">${reasons.map(reason => `<li>${reason}</li>`).join('')}</ul>
+          <div class="td-sub" style="margin-bottom:0.5rem;">The hold lifts by itself once all of this is cleared. Only you can release it earlier. Driver payments cannot be recorded (including manual ledger entries) while it is on.</div>
+          <button class="btn btn-danger btn-sm" type="button" onclick="releaseDriverHold('${driverId}')">Release hold</button>
+        </div>`;
+      }
+      const missing = mine.filter(item => item.missing_times);
+      if (missing.length) {
+        html += `<div class="card" style="border-left:4px solid #d98a00; margin-bottom:0.75rem;">
+          <strong style="color:#8a5a00;">No return time set</strong>
+          <div class="td-sub" style="margin:0.25rem 0 0.5rem;">${missing.length} open run${missing.length === 1 ? ' has' : 's have'} no pickup/return time (${escapeHtml(missing.map(item => item.manifest_number).join(', '))}). The driver gets no popup, and the return check cannot work until you set one.</div>
+          <button class="btn btn-warn btn-sm" type="button" onclick="changeDriverSchedule('${driverId}')">Set times now</button>
+        </div>`;
+      }
+      const lines = timed.length
+        ? timed.map(item => `<div>${escapeHtml(item.manifest_number)}: pickup <strong>${escapeHtml(scheduleDisplay(item.pickup_at))}</strong> &middot; return <strong>${escapeHtml(scheduleDisplay(item.return_due_at))}</strong>${item.hold_released_at ? ' <span class="td-sub">(hold released by admin)</span>' : ''}</div>`).join('')
+        : '<div class="td-sub">No pickup/return time is set for this driver\'s open deliveries.</div>';
+      html += `<div class="card" style="margin-bottom:0.75rem;">
+        <div class="card-title">Pickup and return times</div>
+        ${lines}
+        ${mine.length ? `<button class="btn btn-ghost btn-sm" type="button" style="margin-top:0.5rem;" onclick="changeDriverSchedule('${driverId}')">Set / change times</button>` : ''}
+      </div>`;
+      return html;
+    }
+
+    window.releaseDriverHold = function(driverId) {
+      showModal('Release Payment Hold', `Release the payment hold for ${driverName(driverId)}? Payments can then be recorded even though parcels, items or cash are still outstanding. It covers the parcels on their runs right now; anything added or sent out later is held again.`, async () => {
+        const { error } = await supabase.rpc('admin_release_driver_hold', { p_driver_id: driverId, p_note: null });
+        if (error) {
+          window.vdNotify('Hold Not Released', error.message || 'Could not release the hold.', 'error');
+          return;
+        }
+        showToast('Payment hold released.');
+        await loadDriverSchedules();
+        renderDriversMgmt();
+      });
+    };
+
+    window.changeDriverSchedule = function(driverId) {
+      const numbers = driverSchedules.filter(item => item.driver_id === driverId).map(item => item.manifest_number);
+      if (!numbers.length) return showToast('This driver has no open deliveries.');
+      promptDriverSchedule([driverId], async (schedules) => {
+        await applyDriverSchedules(schedules, { [driverId]: numbers });
+        showToast('Pickup and return times saved.');
+        renderDriversMgmt();
+      }, { title: 'Pickup and Return Time', message: `Applies to all of ${driverName(driverId)}'s open deliveries.`, confirmLabel: 'Save' });
+    };
+
+    function promptForBulkSchedule(selectedOrders) {
+      promptDriverSchedule(
+        selectedOrders.map(item => item.driverId),
+        schedules => runSelectedDriverAssignments(selectedOrders, schedules),
+        { title: 'Assign Selected Items', message: `Assign or change ${selectedOrders.length} selected item(s)? Set when the driver collects them and when they must return.` }
+      );
+    }
+
     window.assignSelectedDrivers = function() {
       const visible = new Set(driverAssignVisibleIds);
       const orderIds = [...driverAssignSelection].filter(orderId => visible.has(orderId));
@@ -9651,35 +9835,43 @@
         showModal(
           'Unmapped Delivery Locations',
           `${unresolvedCount} of ${selectedOrders.length} selected deliveries do not have a mapped location (${mappedCount} Map Ready / ${unresolvedCount} Location Required). Dispatching without a mapped location makes it harder for drivers to find the address. Cancel to review locations first, or continue to assign anyway.`,
-          () => runSelectedDriverAssignments(selectedOrders)
+          () => { promptForBulkSchedule(selectedOrders); return false; }
         );
         document.getElementById('modalConfirm').textContent = 'Assign Anyway';
         return;
       }
 
-      showModal('Assign Selected Items', `Assign or change ${selectedOrders.length} selected item(s)?`, () => runSelectedDriverAssignments(selectedOrders));
+      promptForBulkSchedule(selectedOrders);
     };
 
-    async function runSelectedDriverAssignments(selectedOrders) {
+    async function runSelectedDriverAssignments(selectedOrders, schedules = {}) {
         let assigned = 0;
         const failed = [];
+        const manifestsByDriver = {};
+        const noteManifest = (driverId, data) => {
+          if (!data?.manifest_number) return;
+          (manifestsByDriver[driverId] = manifestsByDriver[driverId] || new Set()).add(data.manifest_number);
+        };
         for (const item of selectedOrders) {
           try {
             if (item.order.assigned_driver_id) {
-              const { error } = await supabase.rpc('admin_transfer_order_driver', {
+              const { data, error } = await supabase.rpc('admin_transfer_order_driver', {
                 p_order_id: item.order.id,
                 p_to_driver_id: item.driverId,
                 p_reason: item.reason
               });
               if (error) throw error;
+              noteManifest(item.driverId, data);
             } else {
-              await saveDriverAssignment(item.order.id, item.driverId, item.routeDate);
+              const data = await saveDriverAssignment(item.order.id, item.driverId, item.routeDate);
+              noteManifest(item.driverId, data);
             }
             assigned += 1;
           } catch (error) {
             failed.push(`${item.order.order_number}: ${error.message || 'failed'}`);
           }
         }
+        await applyDriverSchedules(schedules, manifestsByDriver);
         if (failed.length) {
           window.vdNotify('Some Assignments Failed', `${assigned} assigned. ${failed.slice(0, 3).join(' | ')}${failed.length > 3 ? ' ...' : ''}`, 'warning');
         } else {
@@ -10074,6 +10266,7 @@
       // Failed delivery proof: fills the sidebar count and the driver-pay
       // totals; runs in the background so it never slows the page load.
       loadFailedClaims().then(() => renderAccounting()).catch(err => console.warn('Failed delivery proof load failed:', err));
+      loadDriverSchedules().then(() => renderDriversMgmt()).catch(err => console.warn('Driver times load failed:', err));
     }
 
     // ── Light refresh ─────────────────────────────────────────────────
@@ -10563,7 +10756,7 @@
         const confirmation = collected
           ? `Confirm that ${order.order_number} was physically handed to ${driverLabel}?`
           : `Change ${order.order_number} from ${driverName(order.assigned_driver_id)} to ${driverLabel}?`;
-        showModal('Change Driver', confirmation, async () => {
+        promptDriverSchedule([driverId], async (schedules) => {
           try {
             const { data, error } = await supabase.rpc('admin_transfer_order_driver', {
               p_order_id: orderId,
@@ -10571,21 +10764,23 @@
               p_reason: reason
             });
             if (error) throw error;
+            await applyDriverSchedules(schedules, { [driverId]: data?.manifest_number ? [data.manifest_number] : [] });
             showToast(`${order.order_number} changed to ${driverLabel} on ${data?.manifest_number || 'a delivery manifest'}.`);
             await softRefresh();
             showPanel('driver-assign');
           } catch (error) {
             window.vdNotify('Driver Change Failed', error.message || 'Could not change the assigned driver.', 'error');
           }
-        });
+        }, { title: 'Change Driver', message: confirmation, confirmLabel: 'Change Driver' });
         return;
       }
 
       const routeDate = row.querySelector('.route-date')?.value || '';
 
-      showModal('Assign Driver', `Assign ${driverLabel} to order ${order.order_number}?`, async () => {
+      promptDriverSchedule([driverId], async (schedules) => {
         try {
           const assignment = await saveDriverAssignment(orderId, driverId, routeDate);
+          await applyDriverSchedules(schedules, { [driverId]: assignment?.manifest_number ? [assignment.manifest_number] : [] });
           showToast(`${order.order_number} assigned to ${driverLabel} on ${assignment?.manifest_number || 'a delivery manifest'}.`);
           await softRefresh();
           showPanel('driver-assign');
@@ -10593,7 +10788,7 @@
           console.error('Driver assignment error:', error);
           window.vdNotify('Driver Assignment Failed', error.message || 'Driver assignment failed. Check the console for details.', 'error');
         }
-      });
+      }, { title: 'Assign Driver', message: `Assign ${driverLabel} to order ${order.order_number}?` });
     };
 
     function parseCsvLine(line) {
