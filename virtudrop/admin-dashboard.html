@@ -1666,6 +1666,11 @@
             <label for="managedResendTargetBatch">Send into</label>
             <select class="filter-select" id="managedResendTargetBatch"><option value="">New batch</option></select>
           </div>
+          <div class="finance-field" style="margin-top:0.75rem; max-width:28rem;">
+            <label for="managedResendSearch">Search</label>
+            <input class="filter-input" id="managedResendSearch" type="search" placeholder="Order #, customer, area, item or business" oninput="renderManagedResendTable()">
+          </div>
+          <div class="accounting-note" id="managedResendCount" style="margin-top:0.5rem;"></div>
           <div class="finance-actions" style="margin-top:0.75rem;">
             <button class="btn btn-ghost" type="button" onclick="toggleAllManagedResendRows()">Select All / None</button>
             <button class="btn btn-primary" type="button" onclick="resendSelectedManagedOrders()">Re-send Selected</button>
@@ -11587,22 +11592,49 @@
       const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
       return managedAccountOrders()
         .filter(o => o.parcel_status === 'returned_to_client' && !alreadyResent.has(o.id) && new Date(o.imported_at || o.created_at || 0).getTime() >= cutoff)
-        .sort((a, b) => new Date(b.imported_at || 0) - new Date(a.imported_at || 0));
+        .sort((a, b) => String(a.external_order_number || '').localeCompare(String(b.external_order_number || ''), undefined, { numeric: true, sensitivity: 'base' }));
     }
+
+    const managedResendSelected = new Set();
+
+    function managedResendVisibleOrders() {
+      const q = (document.getElementById('managedResendSearch')?.value || '').trim().toLowerCase();
+      const businesses = new Map(managedAccountBusinessClients(selectedManagedAccountId).map(b => [b.id, b.business_name]));
+      return managedReturnedOrders().filter(o => {
+        if (!q) return true;
+        const hay = [o.external_order_number, o.customer_name, o.area_name, o.external_item_number, businesses.get(o.business_client_id)]
+          .map(v => String(v || '').toLowerCase()).join(' | ');
+        return hay.includes(q);
+      });
+    }
+
+    function updateManagedResendCount(shown, total) {
+      const el = document.getElementById('managedResendCount');
+      if (el) el.textContent = `Showing ${shown} of ${total} returned orders · ${managedResendSelected.size} ticked`;
+    }
+
+    window.toggleManagedResendRow = function(id, checked) {
+      if (checked) managedResendSelected.add(id); else managedResendSelected.delete(id);
+      const all = managedReturnedOrders().length;
+      updateManagedResendCount(document.querySelectorAll('.managed-resend-check').length, all);
+    };
 
     function renderManagedResendTable() {
       const body = document.getElementById('managedResendBody');
       if (!body) return;
       if (!selectedManagedAccountId) {
         body.innerHTML = '<tr><td colspan="7">Select a managed account to see its returned orders.</td></tr>';
+        updateManagedResendCount(0, 0);
         return;
       }
-      const ticked = new Set(Array.from(document.querySelectorAll('.managed-resend-check:checked')).map(el => el.value));
+      const all = managedReturnedOrders();
+      const allIds = new Set(all.map(o => o.id));
+      [...managedResendSelected].forEach(id => { if (!allIds.has(id)) managedResendSelected.delete(id); });
       const businesses = new Map(managedAccountBusinessClients(selectedManagedAccountId).map(b => [b.id, b.business_name]));
-      const rows = managedReturnedOrders();
+      const rows = managedResendVisibleOrders();
       body.innerHTML = rows.length
         ? rows.map(o => `<tr>
-            <td><input type="checkbox" class="managed-resend-check" value="${o.id}" ${ticked.has(o.id) ? 'checked' : ''}></td>
+            <td><input type="checkbox" class="managed-resend-check" value="${o.id}" ${managedResendSelected.has(o.id) ? 'checked' : ''} onchange="toggleManagedResendRow(this.value, this.checked)"></td>
             <td>${managedOrderExternalNumberCell(o)}</td>
             <td>${escapeHtml(businesses.get(o.business_client_id) || '')}</td>
             <td>${escapeHtml(o.customer_name || '')}</td>
@@ -11610,18 +11642,20 @@
             <td>${escapeHtml(o.external_item_number || '')}</td>
             <td>${escapeHtml(formatImportedAt(o.imported_at))}</td>
           </tr>`).join('')
-        : '<tr><td colspan="7">No returned orders waiting to be re-sent.</td></tr>';
+        : `<tr><td colspan="7">${all.length ? 'No returned orders match your search.' : 'No returned orders waiting to be re-sent.'}</td></tr>`;
+      updateManagedResendCount(rows.length, all.length);
     }
 
     window.toggleAllManagedResendRows = function() {
-      const boxes = Array.from(document.querySelectorAll('.managed-resend-check'));
-      const allOn = boxes.length && boxes.every(b => b.checked);
-      boxes.forEach(b => { b.checked = !allOn; });
+      const visible = managedResendVisibleOrders();
+      const allOn = visible.length && visible.every(o => managedResendSelected.has(o.id));
+      visible.forEach(o => { if (allOn) managedResendSelected.delete(o.id); else managedResendSelected.add(o.id); });
+      renderManagedResendTable();
     };
 
     window.resendSelectedManagedOrders = async function() {
       if (!selectedManagedAccountId) return showToast('Select a managed account first.');
-      const ids = Array.from(document.querySelectorAll('.managed-resend-check:checked')).map(el => el.value);
+      const ids = [...managedResendSelected];
       if (!ids.length) return showToast('Tick at least one returned order first.');
       const target = document.getElementById('managedResendTargetBatch')?.value || '';
       const where = target ? 'the batch you picked' : 'a new batch';
@@ -11636,6 +11670,7 @@
         const skipped = (data?.skipped || []);
         showToast(`${data?.created_count || 0} order${data?.created_count === 1 ? '' : 's'} re-sent.` +
           (skipped.length ? ` ${skipped.length} skipped (${skipped.map(s => s.order_number + ': ' + s.reason).join('; ')}).` : ''));
+        managedResendSelected.clear();
         await softRefresh();
       } catch (error) {
         window.vdNotify('Re-send Failed', error.message || 'Could not re-send these orders.', 'error');
