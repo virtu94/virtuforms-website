@@ -184,6 +184,7 @@
     }
     .collapsible-card > summary { cursor: pointer; list-style: none; }
     .collapsible-card > summary::-webkit-details-marker { display: none; }
+    .collapsible-card > summary { justify-content: flex-start; gap: 0.5rem; margin-bottom: 0; }
     .collapsible-card > summary::before { content: '▸ '; }
     .collapsible-card[open] > summary::before { content: '▾ '; }
     .collapsible-card[open] > summary { margin-bottom: 0.9rem; }
@@ -902,10 +903,6 @@
         <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-5.3 7-11a7 7 0 1 0-14 0c0 5.7 7 11 7 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg></span> Zone Confirmation
         <span class="nav-badge alert">5</span>
       </button>
-      <button class="nav-item" data-panel="sorting-manifests">
-        <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h7l2 2h9v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><path d="M3 7V5h7l2 2"></path></svg></span> Sorting
-        <span class="nav-badge alert">0</span>
-      </button>
       <button class="nav-item" data-panel="returns-redelivery">
         <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10a6 6 0 1 1 0 12h-3"></path></svg></span> Delivery Exceptions
         <span class="nav-badge alert">0</span>
@@ -1194,7 +1191,7 @@
         </div>
       </div>
 
-      <div class="panel" id="panel-sorting-manifests">
+      <div class="panel" id="panel-sorting-manifests" style="display:none !important;" hidden>
         <div class="section-heading">
           <h2>Sorting</h2>
           <p>Mark received parcels as sorted so they can be assigned to a driver. Driver handovers, cash owed and pay now live under <a href="#" onclick="showPanel('drivers-mgmt'); return false;">Drivers</a>.</p>
@@ -4507,14 +4504,11 @@
       const activePickups = orders.filter(order => !isCancelledOrder(order) && order.pickup_required && ['requested', 'assigned', 'picked_up'].includes(order.pickup_status)).length;
       if (pickupBadge) pickupBadge.textContent = activePickups;
       const scheduleReview = orders.filter(order => order.scheduled_delivery_date && order.scheduled_delivery_date < today && !['delivered', 'cancelled', 'rejected'].includes(order.order_status)).length;
-      const sortingCount = orders.filter(order => !isCancelledOrder(order) && order.parcel_status === 'parcel_received' && order.zone_status === 'confirmed').length;
-      const manifestBadge = document.querySelector('[data-panel="sorting-manifests"] .nav-badge');
-      if (manifestBadge) manifestBadge.textContent = sortingCount;
       // Parcels assigned to a driver but not yet ticked as handed over -- the
       // ones that could be missed.
-      const notHandedOver = deliveryManifests
-        .filter(manifest => ['draft', 'ready'].includes(manifest.status))
-        .reduce((sum, manifest) => sum + (manifest.orders || []).filter(order => !order.collected_at).length, 0);
+      // Assigned now goes straight to Out for Delivery, so only older orders
+      // still sitting at "assigned" can be waiting on a handover.
+      const notHandedOver = orders.filter(order => !isCancelledOrder(order) && order.parcel_status === 'assigned' && order.order_status === 'assigned').length;
       const driversBadge = document.querySelector('[data-panel="drivers-mgmt"] .nav-badge');
       if (driversBadge) driversBadge.textContent = notHandedOver;
       const returnActionCount = orders.filter(order => returnRecordMatches(order, 'active')).length;
@@ -4559,8 +4553,6 @@
         actions.innerHTML = [
           ['Pickup requests', activePickups, 'active', '#e9f7f5'],
           ['Schedule review', scheduleReview, 'overdue', 'var(--orange-pale)'],
-          ['Parcels to sort', sortingCount, 'pending', '#eef4fb'],
-          ['Not yet handed to drivers', notHandedOver, 'pending', '#eef4fb'],
           ['Returns / redelivery', returnActionCount, 'pending', 'var(--orange-pale)'],
           ['Zone confirmation', pendingZone, 'pending', 'var(--yellow-pale)'],
           ['Driver assignment', unassigned, 'unassigned', '#f0f0f0'],
@@ -6964,7 +6956,7 @@
       if (['delivered', 'returned_to_client'].includes(order.parcel_status)) return false;
       if (order.assigned_driver_id) return ['assigned', 'handed_to_driver'].includes(order.parcel_status);
       return order.zone_status === 'confirmed'
-        && ['sorted', 'redelivery_scheduled'].includes(order.parcel_status);
+        && ['parcel_received', 'sorted', 'redelivery_scheduled'].includes(order.parcel_status);
     }
 
     // An order still waiting on a driver this many days after it was entered
@@ -10990,7 +10982,7 @@
         showToast(`${result.imported_count} active deliveries imported.`);
         driverImportRows = [];
         document.getElementById('confirmDriverImportBtn').disabled = true;
-        document.getElementById('driverImportPreviewBody').innerHTML = '<tr><td colspan="8">Import completed. Continue through parcel check-in, fee confirmation, sorting, and driver assignment.</td></tr>';
+        document.getElementById('driverImportPreviewBody').innerHTML = '<tr><td colspan="8">Import completed. Continue through parcel check-in, fee confirmation, and driver assignment.</td></tr>';
         document.getElementById('driverImportFile').value = '';
         await loadData();
         showPanel(result?.next_step === 'zone_confirmation' ? 'zone-confirm' : 'parcel-checkin');
