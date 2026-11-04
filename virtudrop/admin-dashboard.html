@@ -638,6 +638,13 @@
     /* Wide, compact version used by the driver earnings breakdown so it fits on one screen. */
     .modal.modal-wide { max-width: min(1150px, 96vw); width: 96vw; max-height: 94vh; padding: 1.1rem 1.4rem; }
     .modal.modal-wide h3 { margin-bottom: 0.4rem; }
+    .client-picker { position: relative; display: inline-block; margin-bottom: 0.75rem; }
+    .client-picker > summary { list-style: none; cursor: pointer; display: inline-flex; }
+    .client-picker > summary::-webkit-details-marker { display: none; }
+    .client-picker-list { position: absolute; z-index: 30; top: calc(100% + 4px); left: 0; min-width: 280px; max-height: 340px; overflow-y: auto;
+      background: var(--white); border: 1px solid #e0e0e0; border-radius: 10px; padding: 0.6rem 0.8rem; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
+    .client-picker-list label { display: flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0; font-size: 0.85rem; cursor: pointer; }
+    .client-picker-list .picker-actions { display: flex; gap: 0.5rem; margin-bottom: 0.4rem; }
     .earn-detail { display: grid; grid-template-columns: 1.3fr 1fr; gap: 1.2rem; align-items: start; }
     .earn-detail table { font-size: 0.78rem; min-width: 0; }
     .earn-detail th, .earn-detail td { padding: 0.28rem 0.55rem; }
@@ -1713,6 +1720,16 @@
             <button class="btn btn-ghost btn-sm" type="button" data-earn-period="custom" onclick="setEarningsPeriod('custom')">Pick Dates</button>
             <button class="btn btn-ghost btn-sm" type="button" data-earn-period="all" onclick="setEarningsPeriod('all')">All Time</button>
           </div>
+          <details class="client-picker" id="earningsClientPicker">
+            <summary class="btn btn-ghost btn-sm" id="earningsClientSummary">Clients: All &#9662;</summary>
+            <div class="client-picker-list">
+              <div class="picker-actions">
+                <button class="btn btn-ghost btn-sm" type="button" onclick="earningsSelectAllClients(true)">Select all</button>
+                <button class="btn btn-ghost btn-sm" type="button" onclick="earningsSelectAllClients(false)">Clear (all clients)</button>
+              </div>
+              <div id="earningsClientList"></div>
+            </div>
+          </details>
           <div class="finance-filter-grid" id="earningsCustomDates" style="margin-bottom:0.9rem;">
             <div class="finance-field"><label for="earnStart">From</label><input class="filter-input" id="earnStart" type="date" onchange="earningsDatesChanged()"></div>
             <div class="finance-field"><label for="earnEnd">To</label><input class="filter-input" id="earnEnd" type="date" onchange="earningsDatesChanged()"></div>
@@ -1724,6 +1741,12 @@
           <div class="table-wrap"><table>
             <thead><tr><th>Driver</th><th>Deliveries</th><th>Earned</th><th>Paid Out</th><th>Earned &minus; Paid</th></tr></thead>
             <tbody id="earningsDriversBody"><tr><td colspan="5">Loading...</td></tr></tbody>
+          </table></div>
+          <div class="td-sub" id="earningsDriversNote" style="margin-top:0.4rem;"></div>
+          <div class="card-title" style="font-size:0.8rem; margin-top:1rem;">Profit by Client</div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Client</th><th>Deliveries</th><th>Fees (before drivers)</th><th>Driver Pay</th><th>Profit After Drivers</th></tr></thead>
+            <tbody id="earningsClientsBody"><tr><td colspan="5">Loading...</td></tr></tbody>
           </table></div>
           <div class="card-title" style="font-size:0.8rem; margin-top:1rem;">Remittance Owed to Clients</div>
           <div class="table-wrap"><table>
@@ -10695,6 +10718,45 @@
     // Runs on the server (admin_earnings_report) so a week, month or year is
     // complete even though the dashboard only keeps recent orders in memory.
     let earningsPeriod = 'month';
+    let earningsClientIds = new Set(); // empty = all clients
+    let earningsPickerCount = -1;
+
+    function earningsClientParam() {
+      return earningsClientIds.size ? [...earningsClientIds] : null;
+    }
+
+    function renderEarningsClientPicker() {
+      const list = document.getElementById('earningsClientList');
+      const summary = document.getElementById('earningsClientSummary');
+      if (!list) return;
+      const clients = [...clientsById.values()].filter(c => c && c.business_name)
+        .sort((a, b) => String(a.business_name).localeCompare(String(b.business_name), undefined, { sensitivity: 'base' }));
+      if (clients.length !== earningsPickerCount) {
+        earningsPickerCount = clients.length;
+        list.innerHTML = clients.map(c => `<label><input type="checkbox" value="${c.id}" ${earningsClientIds.has(c.id) ? 'checked' : ''} onchange="earningsClientToggled(this.value, this.checked)"> ${escapeHtml(c.business_name)}</label>`).join('')
+          || '<div class="td-sub">No clients loaded yet.</div>';
+      }
+      if (summary) {
+        const n = earningsClientIds.size;
+        summary.innerHTML = (n === 0 ? 'Clients: All' : n === 1 ? `Clients: ${escapeHtml(clientsById.get([...earningsClientIds][0])?.business_name || '1 selected')}` : `Clients: ${n} selected`) + ' &#9662;';
+      }
+    }
+
+    let earningsClientTimer = null;
+    window.earningsClientToggled = function(id, checked) {
+      if (checked) earningsClientIds.add(id); else earningsClientIds.delete(id);
+      renderEarningsClientPicker();
+      clearTimeout(earningsClientTimer);
+      earningsClientTimer = setTimeout(() => loadEarningsReport(true), 350);
+    };
+
+    window.earningsSelectAllClients = function(selectAll) {
+      earningsClientIds = new Set(selectAll ? [...clientsById.values()].filter(c => c && c.business_name).map(c => c.id) : []);
+      document.querySelectorAll('#earningsClientList input[type="checkbox"]').forEach(box => { box.checked = earningsClientIds.has(box.value); });
+      renderEarningsClientPicker();
+      loadEarningsReport(true);
+    };
+
     let earningsLoadedAt = 0;
     let earningsLoading = false;
 
@@ -10758,7 +10820,7 @@
       document.getElementById('modal').classList.add('show');
       modalCb = null;
       try {
-        const { data, error } = await supabase.rpc('admin_driver_earnings_detail', { p_driver_id: driverId, p_start: range.start, p_end: range.end });
+        const { data, error } = await supabase.rpc('admin_driver_earnings_detail_v2', { p_driver_id: driverId, p_start: range.start, p_end: range.end, p_client_ids: earningsClientParam() });
         if (error) throw error;
         const fmt = value => value ? new Date(String(value).slice(0, 10) + 'T12:00:00').toLocaleDateString('en-TT', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
         const rangeText = range.start || range.end ? `${fmt(range.start) || 'the beginning'} to ${fmt(range.end) || 'today'}` : 'all time';
@@ -10775,7 +10837,7 @@
           : '<tr><td colspan="4">No payments to this driver in this period.</td></tr>';
         document.getElementById('modalTitle').textContent = `${data.name || 'Driver'} — ${rangeText}`;
         document.getElementById('modalBody').innerHTML = `
-          <div style="margin-bottom:0.6rem;">Earned <strong>${moneyFull(Number(data.earned_deliveries || 0) + Number(data.earned_failed || 0))}</strong> from ${data.deliveries || 0} deliveries &nbsp;|&nbsp; Paid out <strong>${moneyFull(data.paid_out)}</strong></div>
+          <div style="margin-bottom:0.6rem;">Earned <strong>${moneyFull(Number(data.earned_deliveries || 0) + Number(data.earned_failed || 0))}</strong> from ${data.deliveries || 0} deliveries  &nbsp;|&nbsp; Paid out${data.client_filtered ? ' (estimated share)' : ''} <strong>${moneyFull(data.paid_out)}</strong></div>
           <div class="earn-detail">
             <div>
               <div class="td-name">Earnings by area</div>
@@ -10785,7 +10847,8 @@
               </table></div>
             </div>
             <div>
-              <div class="td-name">Payments made</div>
+              <div class="td-name">Payments made${data.client_filtered ? ' (all clients)' : ''}</div>
+              ${data.client_filtered ? '<div class="td-sub">Payments are not split by client, so this is everything paid to this driver in the period.</div>' : ''}
               <div class="table-wrap"><table>
                 <thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Reference</th></tr></thead>
                 <tbody>${paymentRows}</tbody>
@@ -10806,7 +10869,8 @@
       earningsLoading = true;
       try {
         const { start, end } = earningsBounds();
-        const { data, error } = await supabase.rpc('admin_earnings_report', { p_start: start, p_end: end });
+        renderEarningsClientPicker();
+        const { data, error } = await supabase.rpc('admin_earnings_report_v2', { p_start: start, p_end: end, p_client_ids: earningsClientParam() });
         if (error) throw error;
         earningsLoadedAt = Date.now();
         renderEarningsReport(data || {}, start, end);
@@ -10822,16 +10886,17 @@
       const label = document.getElementById('earningsRangeLabel');
       if (label) {
         const fmt = value => value ? new Date(value + 'T12:00:00').toLocaleDateString('en-TT', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
-        label.textContent = start || end ? `Showing ${fmt(start) || 'the beginning'} to ${fmt(end) || 'today'}` : 'Showing all time';
+        const clientText = report.client_filtered ? ` · ${[...earningsClientIds].map(id => clientsById.get(id)?.business_name).filter(Boolean).join(', ')}` : ' · all clients';
+        label.textContent = (start || end ? `Showing ${fmt(start) || 'the beginning'} to ${fmt(end) || 'today'}` : 'Showing all time') + clientText;
       }
-      const tile = (labelText, value, sub, cls) => `<div class="stat-card ${cls || ''}"><div class="stat-label">${labelText}</div><div class="stat-val">${moneyFull(value)}</div><div class="stat-sub">${sub}</div></div>`;
+      const tile = (labelText, value, sub, cls) => `<div class="stat-card ${cls || ''}"><div class="stat-label">${labelText}</div><div class="stat-val">${value === null || value === undefined ? 'n/a' : moneyFull(value)}</div><div class="stat-sub">${sub}</div></div>`;
       const tiles = document.getElementById('earningsTiles');
       if (tiles) {
         tiles.innerHTML = [
           tile('Profit Before Drivers', report.profit_before_drivers, `${report.deliveries || 0} deliveries completed`, 'ok'),
           tile('Driver Pay Earned', report.driver_pay_earned, `${moneyFull(report.driver_pay_deliveries)} deliveries + ${moneyFull(report.driver_pay_failed)} failed`, 'warn'),
           tile('Profit After Drivers', report.profit_after_drivers, 'What VirtuDrop keeps', 'ok'),
-          tile('Drivers Paid Out', report.drivers_paid_out, 'Cash paid to drivers in this period', ''),
+          tile(report.client_filtered ? 'Drivers Paid Out (est.)' : 'Drivers Paid Out', report.drivers_paid_out, report.client_filtered ? 'Estimate: each driver\'s payments shared out by what they earned from these clients' : 'Cash paid to drivers in this period', ''),
           tile('Remittance Owed', report.remittance_owed_total, `${moneyFull(report.remittance_ready)} ready + ${moneyFull(report.remittance_part_paid)} part-paid`, 'warn')
         ].join('');
       }
@@ -10845,9 +10910,25 @@
             <td><a href="#" class="td-name" style="text-decoration:underline; cursor:pointer;" title="See earnings by area and payments" onclick="openDriverEarningsDetail('${row.driver_id}'); return false;">${escapeHtml(row.name || 'Driver')}</a></td>
             <td>${row.deliveries}</td>
             <td>${moneyFull(row.earned)}</td>
-            <td>${moneyFull(row.paid)}</td>
+            <td>${moneyFull(row.paid)}${report.client_filtered ? ' <span class="td-sub">est.</span>' : ''}</td>
             <td class="accounting-total">${moneyFull(Number(row.earned || 0) - Number(row.paid || 0))}</td>
           </tr>`).join('') + (drivers.length ? `<tr><td class="td-name">Total</td><td><strong>${totalDeliveries}</strong></td><td><strong>${moneyFull(totalEarned)}</strong></td><td><strong>${moneyFull(totalPaid)}</strong></td><td class="accounting-total">${moneyFull(totalEarned - totalPaid)}</td></tr>` : '<tr><td colspan="5">No driver activity in this period.</td></tr>');
+      }
+      const driversNote = document.getElementById('earningsDriversNote');
+      if (driversNote) driversNote.textContent = report.client_filtered
+        ? 'With clients selected, "Paid Out" is an estimate: each driver\'s actual payments in this period, shared out by how much of their earnings came from the selected clients.'
+        : '';
+      const clientRows = Array.isArray(report.clients) ? report.clients : [];
+      const clientsBody = document.getElementById('earningsClientsBody');
+      if (clientsBody) {
+        const sum = key => clientRows.reduce((total, row) => total + Number(row[key] || 0), 0);
+        clientsBody.innerHTML = clientRows.map(row => `<tr>
+            <td><div class="td-name">${escapeHtml(row.name || 'Client')}</div></td>
+            <td>${row.deliveries}</td>
+            <td>${moneyFull(row.revenue)}</td>
+            <td>${moneyFull(row.driver_pay)}</td>
+            <td class="accounting-total">${moneyFull(row.profit_after)}</td>
+          </tr>`).join('') + (clientRows.length ? `<tr><td class="td-name">Total</td><td><strong>${sum('deliveries')}</strong></td><td><strong>${moneyFull(sum('revenue'))}</strong></td><td><strong>${moneyFull(sum('driver_pay'))}</strong></td><td class="accounting-total">${moneyFull(sum('profit_after'))}</td></tr>` : '<tr><td colspan="5">No deliveries in this period.</td></tr>');
       }
       const remit = Array.isArray(report.remittance_by_client) ? report.remittance_by_client : [];
       const remitBody = document.getElementById('earningsRemitBody');
@@ -11330,7 +11411,7 @@
 
     function currentManagedFlatFee() {
       const ma = managedAccounts.find(m => m.id === selectedManagedAccountId);
-      return Number(ma?.flat_delivery_fee || 45);
+      return Number(ma?.flat_delivery_fee || 40);
     }
 
     function syncManagedAccountControls() {
@@ -12195,6 +12276,20 @@
       const lastRow = Math.max(2 + sorted.length, 3);
       const totalFormulaCell = includeComment ? 'E1' : 'F7';
       ws[totalFormulaCell] = { t: 'n', f: `SUM(B3:B${lastRow})` };
+      if (!includeComment) {
+        // "Total delivery" = each order's own delivery fee (45 on older batches, 40 from the
+        // 3 Nov 2026 batch on) instead of a fixed number baked into the template.
+        const feeCounts = new Map();
+        sorted.forEach(order => {
+          const fee = Math.round(Number(order.estimated_fee || 0) * 100) / 100;
+          feeCounts.set(fee, (feeCounts.get(fee) || 0) + 1);
+        });
+        const fees = [...feeCounts.entries()].sort((a, b) => b[0] - a[0]);
+        const deliveryFormula = fees.length === 1
+          ? `COUNTIF(A3:A1000,"<>")*${fees[0][0]}`
+          : fees.map(([fee, count]) => `${count}*${fee}`).join('+');
+        ws['F9'] = { t: 'n', f: deliveryFormula };
+      }
       const existingDateCell = ws['C1'] || {};
       ws['C1'] = { t: 'd', v: new Date(), z: existingDateCell.z || 'mm/dd/yy' };
       return { wb, count: sorted.length };
