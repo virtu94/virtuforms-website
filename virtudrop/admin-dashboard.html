@@ -10720,6 +10720,7 @@
     let earningsPeriod = 'month';
     let earningsClientIds = new Set(); // empty = all clients
     let earningsPickerCount = -1;
+    let earningsPickerGroupKey = '';
 
     function earningsClientParam() {
       return earningsClientIds.size ? [...earningsClientIds] : null;
@@ -10731,11 +10732,17 @@
       if (!list) return;
       const clients = [...clientsById.values()].filter(c => c && c.business_name)
         .sort((a, b) => String(a.business_name).localeCompare(String(b.business_name), undefined, { sensitivity: 'base' }));
-      if (clients.length !== earningsPickerCount) {
+      const groups = managedAccounts.map(ma => ({ ma, ids: clients.filter(c => c.managed_account_id === ma.id).map(c => c.id) })).filter(g => g.ids.length);
+      const groupKey = groups.map(g => g.ma.id + ':' + g.ids.length).join('|');
+      if (clients.length !== earningsPickerCount || groupKey !== earningsPickerGroupKey) {
         earningsPickerCount = clients.length;
-        list.innerHTML = clients.map(c => `<label><input type="checkbox" value="${c.id}" ${earningsClientIds.has(c.id) ? 'checked' : ''} onchange="earningsClientToggled(this.value, this.checked)"> ${escapeHtml(c.business_name)}</label>`).join('')
+        earningsPickerGroupKey = groupKey;
+        const groupHtml = groups.map(g => `<label style="font-weight:700;"><input type="checkbox" class="earnings-group-box" data-group="${g.ma.id}" ${g.ids.every(id => earningsClientIds.has(id)) ? 'checked' : ''} onchange="earningsGroupToggled('${g.ma.id}', this.checked)"> ${escapeHtml(g.ma.name)} (all its clients)</label>`).join('');
+        list.innerHTML = groupHtml + clients.map(c => `<label><input type="checkbox" value="${c.id}" ${earningsClientIds.has(c.id) ? 'checked' : ''} onchange="earningsClientToggled(this.value, this.checked)"> ${escapeHtml(c.business_name)}</label>`).join('')
           || '<div class="td-sub">No clients loaded yet.</div>';
       }
+      list.querySelectorAll('input[type="checkbox"]:not(.earnings-group-box)').forEach(box => { box.checked = earningsClientIds.has(box.value); });
+      groups.forEach(g => { const box = list.querySelector(`.earnings-group-box[data-group="${g.ma.id}"]`); if (box) box.checked = g.ids.every(id => earningsClientIds.has(id)); });
       if (summary) {
         const n = earningsClientIds.size;
         summary.innerHTML = (n === 0 ? 'Clients: All' : n === 1 ? `Clients: ${escapeHtml(clientsById.get([...earningsClientIds][0])?.business_name || '1 selected')}` : `Clients: ${n} selected`) + ' &#9662;';
@@ -10750,9 +10757,16 @@
       earningsClientTimer = setTimeout(() => loadEarningsReport(true), 350);
     };
 
+    window.earningsGroupToggled = function(maId, checked) {
+      [...clientsById.values()].filter(c => c.managed_account_id === maId).forEach(c => { if (checked) earningsClientIds.add(c.id); else earningsClientIds.delete(c.id); });
+      renderEarningsClientPicker();
+      clearTimeout(earningsClientTimer);
+      earningsClientTimer = setTimeout(() => loadEarningsReport(true), 350);
+    };
+
     window.earningsSelectAllClients = function(selectAll) {
       earningsClientIds = new Set(selectAll ? [...clientsById.values()].filter(c => c && c.business_name).map(c => c.id) : []);
-      document.querySelectorAll('#earningsClientList input[type="checkbox"]').forEach(box => { box.checked = earningsClientIds.has(box.value); });
+      earningsPickerGroupKey = '';
       renderEarningsClientPicker();
       loadEarningsReport(true);
     };
