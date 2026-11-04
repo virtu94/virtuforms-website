@@ -1748,11 +1748,6 @@
             <thead><tr><th>Client</th><th>Deliveries</th><th>Fees (before drivers)</th><th>Driver Pay</th><th>Profit After Drivers</th></tr></thead>
             <tbody id="earningsClientsBody"><tr><td colspan="5">Loading...</td></tr></tbody>
           </table></div>
-          <div class="card-title" style="font-size:0.8rem; margin-top:1rem;">Remittance Owed to Clients</div>
-          <div class="table-wrap"><table>
-            <thead><tr><th>Client</th><th>Ready to Pay</th><th>Part-paid Balance</th><th>Total Owed</th></tr></thead>
-            <tbody id="earningsRemitBody"><tr><td colspan="4">Loading...</td></tr></tbody>
-          </table></div>
         </div>
 
         <div class="card">
@@ -12133,6 +12128,10 @@
         select.innerHTML = '<option value="">New batch</option>' +
           batches.map(batch => `<option value="${escapeHtml(batch.key)}">Add to existing: ${escapeHtml(formatImportedAt(batch.importedAt))} — ${batch.orders.length} order${batch.orders.length === 1 ? '' : 's'}</option>`).join('');
         if (current && batches.some(b => b.key === current)) select.value = current;
+        else if (id === 'managedResendTargetBatch' && batches.length) {
+          const newest = [...batches].sort((a, b) => new Date(b.importedAt) - new Date(a.importedAt))[0];
+          if (newest) select.value = newest.key;
+        }
       });
     }
 
