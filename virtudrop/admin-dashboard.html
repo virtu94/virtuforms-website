@@ -2357,6 +2357,7 @@
     let driverImportRows = [];
     let latestPayoutRows = [];
     let remittanceRecords = [];
+    let remittanceBalances = []; // part-paid remittances that still have money owing
     let driverCashRecords = [];
     let accountingTransactions = [];
     let driverFinanceRecords = [];
@@ -5261,8 +5262,114 @@
             </div>
           </td>
         </tr>
-      `).join('') || '<tr><td colspan="7">No delivered COD payouts are ready yet.</td></tr>';
+      `).join('');
+
+      // Part-paid remittances: money still owing after a part payment.
+      const balanceClientFilter = document.getElementById('acctClientFilter')?.value || '';
+      const balanceRows = remittanceBalances.filter(item => !balanceClientFilter || item.business_client_id === balanceClientFilter);
+      payoutBody.innerHTML += balanceRows.map(item => `
+        <tr style="background:var(--orange-pale);">
+          <td><div class="td-name">${escapeHtml(clientsById.get(item.business_client_id)?.business_name || 'Client')}</div><div class="td-sub">Balance of ${escapeHtml(item.batch_number)} (paid ${escapeHtml(new Date(item.paid_at).toLocaleDateString('en-TT'))})</div></td>
+          <td>${item.order_count}</td>
+          <td>${moneyFull(item.owed_amount)}</td>
+          <td>—</td>
+          <td class="accounting-total">${moneyFull(item.remaining_amount)}</td>
+          <td><span class="badge badge-pending">Part paid</span><div class="td-sub">${moneyFull(item.paid_amount)} of ${moneyFull(item.owed_amount)} paid</div></td>
+          <td>
+            <div class="finance-actions">
+              <button class="btn btn-primary btn-sm" onclick="openPayRemittanceBalance('${item.batch_id}')">Pay Balance</button>
+              <button class="btn btn-ghost btn-sm" onclick="openCloseRemittanceBalance('${item.batch_id}')">Close</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+      if (!payoutBody.innerHTML.trim()) payoutBody.innerHTML = '<tr><td colspan="7">No delivered COD payouts are ready yet.</td></tr>';
     }
+
+    window.openPayRemittanceBalance = function(batchId) {
+      const item = remittanceBalances.find(row => row.batch_id === batchId);
+      if (!item) return showToast('Could not find this balance.');
+      const client = clientsById.get(item.business_client_id)?.business_name || 'Client';
+      document.getElementById('modalTitle').textContent = 'Pay Remittance Balance';
+      document.getElementById('modalBody').innerHTML = `
+        <strong>${escapeHtml(client)}</strong> &mdash; balance of ${escapeHtml(item.batch_number)}<br>
+        Owed: <strong>${moneyFull(item.owed_amount)}</strong> &nbsp;|&nbsp; Paid so far: <strong>${moneyFull(item.paid_amount)}</strong><br>
+        Balance remaining: <strong>${moneyFull(item.remaining_amount)}</strong>
+        <div class="payment-modal-form">
+          <label>Payment Date <input id="balPaidDate" type="date" value="${todayDateInputValue()}" /></label>
+          <label>Amount Paid <input id="balPaidAmount" type="number" min="0.01" max="${Number(item.remaining_amount).toFixed(2)}" step="0.01" value="${Number(item.remaining_amount).toFixed(2)}" /></label>
+          <div class="td-sub">Paying less than the balance leaves the rest on the list.</div>
+          <label>Method
+            <select id="balPaidMethod">
+              <option value="bank_transfer">Bank Transfer</option>
+              <option value="office_cash_collection">Cash Collected at Office</option>
+              <option value="next_pickup_cash">Cash on Next Pickup</option>
+            </select>
+          </label>
+          <label>Reference <input id="balPaidReference" type="text" placeholder="Bank ref, receipt number, or note" /></label>
+          <label>Notes <textarea id="balPaidNotes" placeholder="Optional admin note"></textarea></label>
+        </div>`;
+      document.getElementById('modalConfirm').textContent = 'Save Payment';
+      document.getElementById('modal').classList.add('show');
+      modalCb = async () => {
+        const amountPaid = Number(document.getElementById('balPaidAmount')?.value || 0);
+        if (!Number.isFinite(amountPaid) || amountPaid <= 0) {
+          window.vdNotify('Amount Required', 'Enter an amount greater than zero.', 'error');
+          return false;
+        }
+        if (amountPaid > Number(item.remaining_amount) + 0.009) {
+          window.vdNotify('Amount Too High', 'The amount cannot be more than the balance remaining.', 'error');
+          return false;
+        }
+        const { error } = await supabase.rpc('admin_pay_remittance_balance', {
+          p_batch_id: batchId,
+          p_method: document.getElementById('balPaidMethod')?.value || 'bank_transfer',
+          p_paid_date: document.getElementById('balPaidDate')?.value || null,
+          p_amount: amountPaid,
+          p_reference: document.getElementById('balPaidReference')?.value.trim() || null,
+          p_notes: document.getElementById('balPaidNotes')?.value.trim() || null
+        });
+        if (error) {
+          window.vdNotify('Payment Not Saved', error.message || 'Could not save this payment.', 'error');
+          return false;
+        }
+        showToast(`Balance payment saved for ${client}.`);
+        await refreshSideLists(['remittance']);
+        renderFinanceViews();
+        return true;
+      };
+    };
+
+    window.openCloseRemittanceBalance = function(batchId) {
+      const item = remittanceBalances.find(row => row.batch_id === batchId);
+      if (!item) return showToast('Could not find this balance.');
+      const client = clientsById.get(item.business_client_id)?.business_name || 'Client';
+      document.getElementById('modalTitle').textContent = 'Close Balance Without Paying';
+      document.getElementById('modalBody').innerHTML = `
+        <strong>${escapeHtml(client)}</strong> &mdash; ${moneyFull(item.remaining_amount)} still owing on ${escapeHtml(item.batch_number)}.<br>
+        Use this only if the balance was settled outside the system or should not be paid. It removes it from this list and keeps your reason on record.
+        <div class="payment-modal-form">
+          <label>Reason <textarea id="balCloseReason" placeholder="Required"></textarea></label>
+        </div>`;
+      document.getElementById('modalConfirm').textContent = 'Close Balance';
+      document.getElementById('modal').classList.add('show');
+      modalCb = async () => {
+        const reason = document.getElementById('balCloseReason')?.value.trim() || '';
+        if (reason.length < 3) {
+          window.vdNotify('Reason Required', 'Enter a reason for closing this balance.', 'error');
+          return false;
+        }
+        const { error } = await supabase.rpc('admin_close_remittance_balance', { p_batch_id: batchId, p_reason: reason });
+        if (error) {
+          window.vdNotify('Balance Not Closed', error.message || 'Could not close this balance.', 'error');
+          return false;
+        }
+        showToast('Balance closed.');
+        await refreshSideLists(['remittance']);
+        renderFinanceViews();
+        return true;
+      };
+    };
 
     function renderRemittanceHistory() {
       const body = document.getElementById('remittanceHistoryBody');
@@ -5270,9 +5377,9 @@
       const rows = selectedAccountingRemittanceRecords();
       body.innerHTML = rows.map(record => `
         <tr>
-          <td class="td-id">${escapeHtml(record.batch_number || String(record.id).slice(0, 8))}</td>
+          <td class="td-id">${escapeHtml(record.batch_number || String(record.id).slice(0, 8))}${record.balance_of_batch_id ? '<div class="td-sub">Balance payment</div>' : ''}</td>
           <td>${escapeHtml(clientsById.get(record.business_client_id)?.business_name || 'Client')}</td>
-          <td>${escapeHtml(String((record.order_numbers || record.order_ids || []).length))}</td>
+          <td>${record.balance_of_batch_id ? '&mdash;' : escapeHtml(String((record.order_numbers || record.order_ids || []).length))}</td>
           <td>${moneyFull(record.gross_amount ?? record.amount)}</td>
           <td>${moneyFull(record.deductions_amount)}</td>
           <td class="accounting-total">${moneyFull(record.net_amount ?? record.amount)}</td>
@@ -6398,6 +6505,7 @@
           <label>Amount Remitted
             <input id="remitPaidAmount" type="number" min="0.01" max="${Number(row.payout).toFixed(2)}" step="0.01" value="${Number(row.payout).toFixed(2)}" placeholder="0.00" />
           </label>
+          <div class="td-sub" style="margin-top:-0.4rem;">Paying less than the total? The rest stays on the Client Payout list as &ldquo;Part paid&rdquo; so you can pay it later.</div>
           <label>Method
             <select id="remitPaidMethod">
               <option value="bank_transfer">Bank Transfer</option>
@@ -10322,7 +10430,8 @@
 
     async function refreshSideLists(names) {
       const calls = {
-        remittance: () => supabase.rpc('admin_list_remittance_batches'),
+        remittance: () => Promise.all([supabase.rpc('admin_list_remittance_batches'), supabase.rpc('admin_list_remittance_balances')])
+          .then(([batches, balances]) => ({ error: batches.error, data: batches.data, balances })),
         cod: () => supabase.rpc('admin_list_cod_reconciliations'),
         accounting: () => supabase.rpc('admin_list_accounting_transactions'),
         driverFinance: () => supabase.rpc('admin_list_driver_finance')
@@ -10335,7 +10444,11 @@
           console.warn(`${name} list could not refresh:`, res.error);
           return;
         }
-        if (name === 'remittance') remittanceRecords = res.data || [];
+        if (name === 'remittance') {
+          remittanceRecords = res.data || [];
+          if (res.balances?.error) console.warn('Remittance balances could not refresh:', res.balances.error);
+          else remittanceBalances = Array.isArray(res.balances?.data) ? res.balances.data : [];
+        }
         if (name === 'cod') driverCashRecords = res.data || [];
         if (name === 'accounting') accountingTransactions = Array.isArray(res.data) ? res.data : [];
         if (name === 'driverFinance') driverFinanceRecords = Array.isArray(res.data) ? res.data : [];
