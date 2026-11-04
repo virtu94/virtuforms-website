@@ -1695,6 +1695,35 @@
           This section combines live order revenue, COD reconciliation, client remittance, and manually entered business transactions. Use the ledger for driver payments, gas, expenses, Cash/LINX/bank movements, adjustments, and any other financial activity outside an order.
         </div>
 
+        <div class="card" id="earningsReportCard">
+          <div class="card-title">Earnings &amp; Payouts Report</div>
+          <div class="driver-zone-filter" id="earningsPeriodButtons" aria-label="Report period">
+            <button class="btn btn-ghost btn-sm" type="button" data-earn-period="day" onclick="setEarningsPeriod('day')">Today</button>
+            <button class="btn btn-ghost btn-sm" type="button" data-earn-period="week" onclick="setEarningsPeriod('week')">This Week</button>
+            <button class="btn btn-ghost btn-sm" type="button" data-earn-period="month" aria-pressed="true" onclick="setEarningsPeriod('month')">This Month</button>
+            <button class="btn btn-ghost btn-sm" type="button" data-earn-period="year" onclick="setEarningsPeriod('year')">This Year</button>
+            <button class="btn btn-ghost btn-sm" type="button" data-earn-period="custom" onclick="setEarningsPeriod('custom')">Pick Dates</button>
+            <button class="btn btn-ghost btn-sm" type="button" data-earn-period="all" onclick="setEarningsPeriod('all')">All Time</button>
+          </div>
+          <div class="finance-filter-grid" id="earningsCustomDates" style="display:none; margin-bottom:0.9rem;">
+            <div class="finance-field"><label for="earnStart">From</label><input class="filter-input" id="earnStart" type="date" onchange="loadEarningsReport(true)"></div>
+            <div class="finance-field"><label for="earnEnd">To</label><input class="filter-input" id="earnEnd" type="date" onchange="loadEarningsReport(true)"></div>
+          </div>
+          <div class="td-sub" id="earningsRangeLabel" style="margin-bottom:0.75rem;"></div>
+          <div class="stats-grid" id="earningsTiles"><div class="td-sub">Loading report...</div></div>
+          <div class="td-sub" style="margin-bottom:0.75rem;">Counts completed deliveries by the day they were delivered. Profit before drivers = delivery fees (plus pickup, redelivery and return fees). Profit after drivers = that, minus what drivers earned (including approved failed-delivery pay). &ldquo;Paid out&rdquo; is cash actually paid to drivers in the period. Remittance owed is the total right now, not limited to the period.</div>
+          <div class="card-title" style="font-size:0.8rem;">Drivers</div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Driver</th><th>Deliveries</th><th>Earned</th><th>Paid Out</th><th>Earned &minus; Paid</th></tr></thead>
+            <tbody id="earningsDriversBody"><tr><td colspan="5">Loading...</td></tr></tbody>
+          </table></div>
+          <div class="card-title" style="font-size:0.8rem; margin-top:1rem;">Remittance Owed to Clients</div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Client</th><th>Ready to Pay</th><th>Part-paid Balance</th><th>Total Owed</th></tr></thead>
+            <tbody id="earningsRemitBody"><tr><td colspan="4">Loading...</td></tr></tbody>
+          </table></div>
+        </div>
+
         <div class="card">
           <div class="card-title">Accounting Filters</div>
           <div class="finance-filter-grid">
@@ -2279,8 +2308,9 @@
   <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="vendor/supabase.umd.js"></script>
   <script type="module">
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+    const { createClient } = window.supabase;
 
     const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_riDvZH96FeYGnF0bLYQErg_tlRv71CX';
@@ -10649,8 +10679,112 @@
       });
     };
 
+    // ── Earnings & payouts report ───────────────────────────────────────
+    // Runs on the server (admin_earnings_report) so a week, month or year is
+    // complete even though the dashboard only keeps recent orders in memory.
+    let earningsPeriod = 'month';
+    let earningsLoadedAt = 0;
+    let earningsLoading = false;
+
+    function earningsLocalDate(date) {
+      const pad = n => String(n).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    }
+
+    function earningsBounds() {
+      const now = new Date();
+      const today = earningsLocalDate(now);
+      if (earningsPeriod === 'day') return { start: today, end: today };
+      if (earningsPeriod === 'week') {
+        const first = new Date(now);
+        first.setDate(now.getDate() - now.getDay());
+        return { start: earningsLocalDate(first), end: today };
+      }
+      if (earningsPeriod === 'month') return { start: today.slice(0, 7) + '-01', end: today };
+      if (earningsPeriod === 'year') return { start: now.getFullYear() + '-01-01', end: today };
+      if (earningsPeriod === 'custom') {
+        return { start: document.getElementById('earnStart')?.value || null, end: document.getElementById('earnEnd')?.value || null };
+      }
+      return { start: null, end: null };
+    }
+
+    window.setEarningsPeriod = function(period) {
+      earningsPeriod = period;
+      document.querySelectorAll('#earningsPeriodButtons [data-earn-period]').forEach(button => {
+        button.setAttribute('aria-pressed', String(button.dataset.earnPeriod === period));
+      });
+      const custom = document.getElementById('earningsCustomDates');
+      if (custom) custom.style.display = period === 'custom' ? '' : 'none';
+      if (period === 'custom' && !document.getElementById('earnStart')?.value) return;
+      loadEarningsReport(true);
+    };
+
+    window.loadEarningsReport = async function(force) {
+      if (earningsLoading) return;
+      if (!force && Date.now() - earningsLoadedAt < 20000) return;
+      const tiles = document.getElementById('earningsTiles');
+      if (!tiles) return;
+      earningsLoading = true;
+      try {
+        const { start, end } = earningsBounds();
+        const { data, error } = await supabase.rpc('admin_earnings_report', { p_start: start, p_end: end });
+        if (error) throw error;
+        earningsLoadedAt = Date.now();
+        renderEarningsReport(data || {}, start, end);
+      } catch (error) {
+        console.warn('Earnings report failed:', error);
+        tiles.innerHTML = `<div class="td-sub">Could not load the report: ${escapeHtml(error.message || 'unknown error')}. <button class="btn btn-ghost btn-sm" type="button" onclick="loadEarningsReport(true)">Retry</button></div>`;
+      } finally {
+        earningsLoading = false;
+      }
+    };
+
+    function renderEarningsReport(report, start, end) {
+      const label = document.getElementById('earningsRangeLabel');
+      if (label) {
+        const fmt = value => value ? new Date(value + 'T12:00:00').toLocaleDateString('en-TT', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+        label.textContent = start || end ? `Showing ${fmt(start) || 'the beginning'} to ${fmt(end) || 'today'}` : 'Showing all time';
+      }
+      const tile = (labelText, value, sub, cls) => `<div class="stat-card ${cls || ''}"><div class="stat-label">${labelText}</div><div class="stat-val">${moneyFull(value)}</div><div class="stat-sub">${sub}</div></div>`;
+      const tiles = document.getElementById('earningsTiles');
+      if (tiles) {
+        tiles.innerHTML = [
+          tile('Profit Before Drivers', report.profit_before_drivers, `${report.deliveries || 0} deliveries completed`, 'ok'),
+          tile('Driver Pay Earned', report.driver_pay_earned, `${moneyFull(report.driver_pay_deliveries)} deliveries + ${moneyFull(report.driver_pay_failed)} failed`, 'warn'),
+          tile('Profit After Drivers', report.profit_after_drivers, 'What VirtuDrop keeps', 'ok'),
+          tile('Drivers Paid Out', report.drivers_paid_out, 'Cash paid to drivers in this period', ''),
+          tile('Remittance Owed', report.remittance_owed_total, `${moneyFull(report.remittance_ready)} ready + ${moneyFull(report.remittance_part_paid)} part-paid`, 'warn')
+        ].join('');
+      }
+      const drivers = Array.isArray(report.drivers) ? report.drivers : [];
+      const driversBody = document.getElementById('earningsDriversBody');
+      if (driversBody) {
+        const totalEarned = drivers.reduce((sum, row) => sum + Number(row.earned || 0), 0);
+        const totalPaid = drivers.reduce((sum, row) => sum + Number(row.paid || 0), 0);
+        const totalDeliveries = drivers.reduce((sum, row) => sum + Number(row.deliveries || 0), 0);
+        driversBody.innerHTML = drivers.map(row => `<tr>
+            <td><div class="td-name">${escapeHtml(row.name || 'Driver')}</div></td>
+            <td>${row.deliveries}</td>
+            <td>${moneyFull(row.earned)}</td>
+            <td>${moneyFull(row.paid)}</td>
+            <td class="accounting-total">${moneyFull(Number(row.earned || 0) - Number(row.paid || 0))}</td>
+          </tr>`).join('') + (drivers.length ? `<tr><td class="td-name">Total</td><td><strong>${totalDeliveries}</strong></td><td><strong>${moneyFull(totalEarned)}</strong></td><td><strong>${moneyFull(totalPaid)}</strong></td><td class="accounting-total">${moneyFull(totalEarned - totalPaid)}</td></tr>` : '<tr><td colspan="5">No driver activity in this period.</td></tr>');
+      }
+      const remit = Array.isArray(report.remittance_by_client) ? report.remittance_by_client : [];
+      const remitBody = document.getElementById('earningsRemitBody');
+      if (remitBody) {
+        remitBody.innerHTML = remit.map(row => `<tr>
+            <td><div class="td-name">${escapeHtml(row.name || 'Client')}</div></td>
+            <td>${moneyFull(row.ready)}</td>
+            <td>${moneyFull(row.part_paid)}</td>
+            <td class="accounting-total">${moneyFull(row.total)}</td>
+          </tr>`).join('') + (remit.length ? `<tr><td class="td-name">Total</td><td><strong>${moneyFull(report.remittance_ready)}</strong></td><td><strong>${moneyFull(report.remittance_part_paid)}</strong></td><td class="accounting-total">${moneyFull(report.remittance_owed_total)}</td></tr>` : '<tr><td colspan="4">Nothing owed to clients right now.</td></tr>');
+      }
+    }
+
     async function refreshDirtyForPanel(id) {
       try {
+        if (id === 'cod-mgmt') loadEarningsReport();
         if (id === 'failed-proof') loadFailedClaims();
         if (FINANCE_PANELS.has(id)) {
           const names = ['remittance', 'cod', 'accounting', 'driverFinance'].filter(name => sideListsDirty.has(name));
