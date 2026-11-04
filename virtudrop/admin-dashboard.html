@@ -3195,7 +3195,7 @@
     };
 
     function driverCollects(order) {
-      if (order.financial_model_version >= 2 && order.driver_amount_to_collect !== null) {
+      if (order.financial_model_version >= 2 && order.driver_amount_to_collect != null) {
         return amount(order.driver_amount_to_collect);
       }
       if (order.payment_type === 'prepaid') return 0;
