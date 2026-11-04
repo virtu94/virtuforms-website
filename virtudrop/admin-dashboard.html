@@ -182,6 +182,11 @@
       background: var(--white); border-radius: 14px; padding: 1.5rem;
       box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 1.5rem;
     }
+    .collapsible-card > summary { cursor: pointer; list-style: none; }
+    .collapsible-card > summary::-webkit-details-marker { display: none; }
+    .collapsible-card > summary::before { content: '▸ '; }
+    .collapsible-card[open] > summary::before { content: '▾ '; }
+    .collapsible-card[open] > summary { margin-bottom: 0.9rem; }
     .card-title {
       font-size: 0.88rem; font-weight: 700; color: var(--black);
       margin-bottom: 1.2rem; display: flex; align-items: center;
@@ -1839,8 +1844,8 @@
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-title">🧾 Accounting Ledger</div>
+        <details class="card collapsible-card">
+          <summary class="card-title">🧾 Accounting Ledger <span class="td-sub" id="accountingLedgerSummaryNote"></span></summary>
           <div class="finance-filter-grid" style="margin-bottom:0.9rem;">
             <div class="finance-field"><label for="acctFilterType">Type</label><select class="filter-select" id="acctFilterType" onchange="renderAccounting()"><option value="">All types</option><option value="income">Income</option><option value="expense">Expense</option><option value="asset_in">Asset In</option><option value="asset_out">Asset Out</option><option value="liability_in">Liability In</option><option value="liability_out">Liability Out</option><option value="transfer">Transfer</option><option value="adjustment">Adjustment</option></select></div>
             <div class="finance-field"><label for="acctFilterCategory">Category</label><select class="filter-select" id="acctFilterCategory" onchange="renderAccounting()"><option value="">All categories</option></select></div>
@@ -1861,10 +1866,11 @@
               <tbody id="accountingLedgerBody"><tr><td colspan="8">Loading accounting ledger...</td></tr></tbody>
             </table>
           </div>
-        </div>
+          <div style="margin-top:0.6rem;"><button class="btn btn-ghost btn-sm" type="button" id="accountingLedgerMoreBtn" style="display:none;" onclick="toggleAccountingLedgerAll()"></button></div>
+        </details>
 
-        <div class="card">
-          <div class="card-title">Driver Collection Records</div>
+        <details class="card collapsible-card">
+          <summary class="card-title">Driver Collection Records</summary>
           <div class="bulk-toolbar" id="accountingCollectionBulkToolbar">
             <label><input id="accountingCollectionSelectAll" type="checkbox" onchange="toggleAccountingCollectionVisibleBulk(this.checked)"> Select visible unreconciled</label>
             <button class="btn btn-primary btn-sm" type="button" onclick="openBulkDriverCashReceived()">Reconcile Selected</button>
@@ -1893,7 +1899,8 @@
               </tbody>
             </table>
           </div>
-        </div>
+          <div style="margin-top:0.6rem;"><button class="btn btn-ghost btn-sm" type="button" id="accountingCollectionMoreBtn" style="display:none;" onclick="toggleAccountingCollectionAll()"></button></div>
+        </details>
       </div>
 
       <!-- ════════ REMITTANCE ════════ -->
@@ -5045,10 +5052,38 @@
       }
     }
 
+    const ACCOUNTING_LEDGER_LIMIT = 10;
+    // True when the person has picked any filter -- then they get every match, not just the latest few.
+    function accountingFiltersActive() {
+      const v = id => document.getElementById(id)?.value || '';
+      return Boolean(v('acctClientFilter') || (v('acctPeriodFilter') && v('acctPeriodFilter') !== 'all')
+        || v('acctFilterType') || v('acctFilterCategory') || v('acctFilterAccount') || v('acctFilterDirection')
+        || (v('acctFilterVoids') && v('acctFilterVoids') !== 'active'));
+    }
+    let accountingCollectionShowAll = false;
+    window.toggleAccountingCollectionAll = function() {
+      accountingCollectionShowAll = !accountingCollectionShowAll;
+      renderAccounting();
+    };
+    let accountingLedgerShowAll = false;
+    window.toggleAccountingLedgerAll = function() {
+      accountingLedgerShowAll = !accountingLedgerShowAll;
+      renderAccountingLedger();
+    };
+
     function renderAccountingLedger() {
       const body = document.getElementById('accountingLedgerBody');
       if (!body) return;
-      const rows = selectedAccountingTransactions();
+      const allRows = selectedAccountingTransactions();
+      const filtered = accountingFiltersActive();
+      const rows = (accountingLedgerShowAll || filtered) ? allRows : allRows.slice(0, ACCOUNTING_LEDGER_LIMIT);
+      const moreBtn = document.getElementById('accountingLedgerMoreBtn');
+      if (moreBtn) {
+        moreBtn.style.display = (!filtered && allRows.length > ACCOUNTING_LEDGER_LIMIT) ? '' : 'none';
+        moreBtn.textContent = accountingLedgerShowAll ? `Show latest ${ACCOUNTING_LEDGER_LIMIT} only` : `Show all ${allRows.length} entries (or use the filters above)`;
+      }
+      const note = document.getElementById('accountingLedgerSummaryNote');
+      if (note) note.textContent = allRows.length ? `(${allRows.length} entries)` : '';
       body.innerHTML = rows.map(transaction => {
         const linked = [
           transaction.order_number ? `Order ${transaction.order_number}` : '',
@@ -5140,11 +5175,18 @@
       renderAccountingLedger();
 
       const accountingBody = document.getElementById('accountingRecordsBody');
-      accountingCollectionVisibleIds = collectionOrders.filter(canBulkReconcileCollection).map(order => order.id);
+      const collectionCapped = !accountingCollectionShowAll && !accountingFiltersActive() && collectionOrders.length > ACCOUNTING_LEDGER_LIMIT;
+      const shownCollectionOrders = collectionCapped ? collectionOrders.slice(0, ACCOUNTING_LEDGER_LIMIT) : collectionOrders;
+      const collMoreBtn = document.getElementById('accountingCollectionMoreBtn');
+      if (collMoreBtn) {
+        collMoreBtn.style.display = (!accountingFiltersActive() && collectionOrders.length > ACCOUNTING_LEDGER_LIMIT) ? '' : 'none';
+        collMoreBtn.textContent = collectionCapped ? `Show all ${collectionOrders.length} records (or use the filters above)` : `Show latest ${ACCOUNTING_LEDGER_LIMIT} only`;
+      }
+      accountingCollectionVisibleIds = shownCollectionOrders.filter(canBulkReconcileCollection).map(order => order.id);
       if (accountingBody) {
         const selectedClientId = document.getElementById('acctClientFilter')?.value || '';
         const selectedClientName = selectedClientId ? clientsById.get(selectedClientId)?.business_name || 'selected client' : '';
-        accountingBody.innerHTML = collectionOrders.map(order => {
+        accountingBody.innerHTML = shownCollectionOrders.map(order => {
           const record = driverCashRecordForOrder(order.id);
           const expected = record ? amount(record.expected_amount) : driverCollects(order);
           const received = record ? amount(record.received_amount ?? record.amount) : null;
@@ -10181,13 +10223,12 @@
         return;
       }
 
-      const [bootstrapRes, remittanceRes, driverCashRes, manifestsRes, accountingRes, driverFinanceRes, managedAccountsRes] = await Promise.all([
+      // Only the essentials load up front. The four big finance lists load
+      // right after the page is drawn (and again whenever a finance tab is
+      // opened), so five heavy requests never hit the database at once.
+      const [bootstrapRes, manifestsRes, managedAccountsRes] = await Promise.all([
         supabase.rpc('admin_dashboard_bootstrap'),
-        supabase.rpc('admin_list_remittance_batches'),
-        supabase.rpc('admin_list_cod_reconciliations'),
         supabase.rpc('admin_list_delivery_manifests'),
-        supabase.rpc('admin_list_accounting_transactions'),
-        supabase.rpc('admin_list_driver_finance'),
         supabase.from('managed_accounts').select('*').order('name')
       ]);
 
@@ -10214,31 +10255,6 @@
       } else {
         deliveryManifests = Array.isArray(manifestsRes.data) ? manifestsRes.data : [];
       }
-      if (remittanceRes.error) {
-        console.warn('Remittance records could not load:', remittanceRes.error);
-        remittanceRecords = [];
-      } else {
-        remittanceRecords = remittanceRes.data || [];
-      }
-      if (driverCashRes.error) {
-        console.warn('Driver cash records could not load:', driverCashRes.error);
-        driverCashRecords = [];
-      } else {
-        driverCashRecords = driverCashRes.data || [];
-      }
-      if (accountingRes.error) {
-        console.warn('Accounting ledger could not load:', accountingRes.error);
-        accountingTransactions = [];
-      } else {
-        accountingTransactions = Array.isArray(accountingRes.data) ? accountingRes.data : [];
-      }
-      if (driverFinanceRes.error) {
-        console.warn('Driver finance records could not load:', driverFinanceRes.error);
-        driverFinanceRecords = [];
-      } else {
-        driverFinanceRecords = Array.isArray(driverFinanceRes.data) ? driverFinanceRes.data : [];
-      }
-
       clientsById = new Map(clientRows.map(client => [client.id, client]));
       if (managedAccountsRes.error) {
         console.warn('Managed accounts could not load:', managedAccountsRes.error);
@@ -10252,6 +10268,7 @@
       ordersSyncAt = snapshot.server_time || null;
       lastFullLoadAt = Date.now();
       sideListsDirty.clear();
+      ['remittance', 'cod', 'accounting', 'driverFinance'].forEach(name => sideListsDirty.add(name));
       allProfiles = profileRows;
       // Note: this intentionally is NOT filtered to role === 'driver'. A profile whose
       // primary role is admin or business can also hold an active drivers row (used for
@@ -10289,6 +10306,11 @@
       // totals; runs in the background so it never slows the page load.
       loadFailedClaims().then(() => renderAccounting()).catch(err => console.warn('Failed delivery proof load failed:', err));
       loadDriverSchedules().then(() => renderDriversMgmt()).catch(err => console.warn('Driver times load failed:', err));
+      // Finance lists, two at a time, after the page is already usable.
+      refreshSideLists(['accounting', 'driverFinance'])
+        .then(() => refreshSideLists(['remittance', 'cod']))
+        .then(renderFinanceViews)
+        .catch(err => console.warn('Finance lists load failed:', err));
     }
 
     // ── Light refresh ─────────────────────────────────────────────────
@@ -11590,8 +11612,19 @@
       const alreadyResent = new Set(orders.filter(o => o.resent_from_order_id).map(o => o.resent_from_order_id));
       // Only the last 30 days -- the full history holds over a thousand returned orders.
       const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
-      return managedAccountOrders()
-        .filter(o => o.parcel_status === 'returned_to_client' && !alreadyResent.has(o.id) && new Date(o.imported_at || o.created_at || 0).getTime() >= cutoff)
+      const candidates = managedAccountOrders()
+        .filter(o => o.parcel_status === 'returned_to_client' && !alreadyResent.has(o.id) && new Date(o.imported_at || o.created_at || 0).getTime() >= cutoff);
+      // Same Middleman order number (same business) more than once? Keep only the most recent one.
+      const newestByNumber = new Map();
+      const noNumber = [];
+      candidates.forEach(o => {
+        const num = String(o.external_order_number || '').trim().toLowerCase();
+        if (!num) { noNumber.push(o); return; }
+        const key = `${o.business_client_id}|${num}`;
+        const existing = newestByNumber.get(key);
+        if (!existing || new Date(o.created_at || 0).getTime() > new Date(existing.created_at || 0).getTime()) newestByNumber.set(key, o);
+      });
+      return [...newestByNumber.values(), ...noNumber]
         .sort((a, b) => String(a.external_order_number || '').localeCompare(String(b.external_order_number || ''), undefined, { numeric: true, sensitivity: 'base' }));
     }
 
@@ -11645,6 +11678,7 @@
         : `<tr><td colspan="7">${all.length ? 'No returned orders match your search.' : 'No returned orders waiting to be re-sent.'}</td></tr>`;
       updateManagedResendCount(rows.length, all.length);
     }
+    window.renderManagedResendTable = renderManagedResendTable;
 
     window.toggleAllManagedResendRows = function() {
       const visible = managedResendVisibleOrders();
