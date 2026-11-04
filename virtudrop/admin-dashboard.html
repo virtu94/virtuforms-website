@@ -1705,9 +1705,9 @@
             <button class="btn btn-ghost btn-sm" type="button" data-earn-period="custom" onclick="setEarningsPeriod('custom')">Pick Dates</button>
             <button class="btn btn-ghost btn-sm" type="button" data-earn-period="all" onclick="setEarningsPeriod('all')">All Time</button>
           </div>
-          <div class="finance-filter-grid" id="earningsCustomDates" style="display:none; margin-bottom:0.9rem;">
-            <div class="finance-field"><label for="earnStart">From</label><input class="filter-input" id="earnStart" type="date" onchange="loadEarningsReport(true)"></div>
-            <div class="finance-field"><label for="earnEnd">To</label><input class="filter-input" id="earnEnd" type="date" onchange="loadEarningsReport(true)"></div>
+          <div class="finance-filter-grid" id="earningsCustomDates" style="margin-bottom:0.9rem;">
+            <div class="finance-field"><label for="earnStart">From</label><input class="filter-input" id="earnStart" type="date" onchange="earningsDatesChanged()"></div>
+            <div class="finance-field"><label for="earnEnd">To</label><input class="filter-input" id="earnEnd" type="date" onchange="earningsDatesChanged()"></div>
           </div>
           <div class="td-sub" id="earningsRangeLabel" style="margin-bottom:0.75rem;"></div>
           <div class="stats-grid" id="earningsTiles"><div class="td-sub">Loading report...</div></div>
@@ -2310,7 +2310,10 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="vendor/supabase.umd.js"></script>
   <script type="module">
-    const { createClient } = window.supabase;
+    // Uses the local copy when it is on the site; falls back to the online copy if
+    // vendor/supabase.umd.js was not uploaded, so the page can never load blank.
+    let createClient = window.supabase?.createClient;
+    if (!createClient) ({ createClient } = await import('https://esm.sh/@supabase/supabase-js@2'));
 
     const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_riDvZH96FeYGnF0bLYQErg_tlRv71CX';
@@ -10713,10 +10716,70 @@
       document.querySelectorAll('#earningsPeriodButtons [data-earn-period]').forEach(button => {
         button.setAttribute('aria-pressed', String(button.dataset.earnPeriod === period));
       });
-      const custom = document.getElementById('earningsCustomDates');
-      if (custom) custom.style.display = period === 'custom' ? '' : 'none';
-      if (period === 'custom' && !document.getElementById('earnStart')?.value) return;
+      if (period !== 'custom') {
+        // Show the dates the preset covers, so they can be tweaked into a custom range.
+        const range = earningsBounds();
+        const startInput = document.getElementById('earnStart');
+        const endInput = document.getElementById('earnEnd');
+        if (startInput) startInput.value = range.start || '';
+        if (endInput) endInput.value = range.end || '';
+      } else if (!document.getElementById('earnStart')?.value && !document.getElementById('earnEnd')?.value) {
+        return;
+      }
       loadEarningsReport(true);
+    };
+
+    // Typing or picking dates switches the report to a custom range.
+    window.earningsDatesChanged = function() {
+      earningsPeriod = 'custom';
+      document.querySelectorAll('#earningsPeriodButtons [data-earn-period]').forEach(button => {
+        button.setAttribute('aria-pressed', String(button.dataset.earnPeriod === 'custom'));
+      });
+      loadEarningsReport(true);
+    };
+
+    // Click a driver's name to see what they earned, by area, and what they were paid.
+    window.openDriverEarningsDetail = async function(driverId) {
+      const range = earningsBounds();
+      document.getElementById('modalTitle').textContent = 'Driver Earnings';
+      document.getElementById('modalBody').innerHTML = 'Loading...';
+      document.getElementById('modalConfirm').textContent = 'Close';
+      document.getElementById('modalCancel').style.display = 'none';
+      document.getElementById('modal').classList.add('show');
+      modalCb = null;
+      try {
+        const { data, error } = await supabase.rpc('admin_driver_earnings_detail', { p_driver_id: driverId, p_start: range.start, p_end: range.end });
+        if (error) throw error;
+        const fmt = value => value ? new Date(String(value).slice(0, 10) + 'T12:00:00').toLocaleDateString('en-TT', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+        const rangeText = range.start || range.end ? `${fmt(range.start) || 'the beginning'} to ${fmt(range.end) || 'today'}` : 'all time';
+        const areas = data.areas || [];
+        const failed = data.failed || [];
+        const payments = data.payments || [];
+        const areaRows = areas.map(row => `<tr><td>${escapeHtml(row.area)}</td><td>${moneyFull(row.rate)}</td><td>${row.deliveries}</td><td>${moneyFull(row.total)}</td></tr>`).join('')
+          || '<tr><td colspan="4">No completed deliveries in this period.</td></tr>';
+        const failedRows = failed.length
+          ? `<div class="td-name" style="margin-top:0.9rem;">Approved failed-delivery pay</div><div class="table-wrap"><table><thead><tr><th>Area</th><th>Order</th><th>Pay</th></tr></thead><tbody>${failed.map(row => `<tr><td>${escapeHtml(row.area)}</td><td>${escapeHtml(row.order_number || '')}</td><td>${moneyFull(row.amount)}</td></tr>`).join('')}</tbody></table></div>`
+          : '';
+        const paymentRows = payments.length
+          ? payments.map(row => `<tr><td>${escapeHtml(fmt(row.date))}</td><td>${moneyFull(row.amount)}</td><td>${escapeHtml(String(row.method || '').replaceAll('_', ' '))}</td><td>${escapeHtml(row.reference || row.notes || '')}</td></tr>`).join('')
+          : '<tr><td colspan="4">No payments to this driver in this period.</td></tr>';
+        document.getElementById('modalTitle').textContent = `${data.name || 'Driver'} — ${rangeText}`;
+        document.getElementById('modalBody').innerHTML = `
+          <div style="margin-bottom:0.6rem;">Earned <strong>${moneyFull(Number(data.earned_deliveries || 0) + Number(data.earned_failed || 0))}</strong> from ${data.deliveries || 0} deliveries &nbsp;|&nbsp; Paid out <strong>${moneyFull(data.paid_out)}</strong></div>
+          <div class="td-name">Earnings by area</div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Area</th><th>Pay per delivery</th><th>Deliveries</th><th>Total</th></tr></thead>
+            <tbody>${areaRows}${areas.length ? `<tr><td class="td-name">Total</td><td></td><td><strong>${data.deliveries || 0}</strong></td><td><strong>${moneyFull(data.earned_deliveries)}</strong></td></tr>` : ''}</tbody>
+          </table></div>
+          ${failedRows}
+          <div class="td-name" style="margin-top:0.9rem;">Payments made</div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Reference</th></tr></thead>
+            <tbody>${paymentRows}</tbody>
+          </table></div>`;
+      } catch (error) {
+        document.getElementById('modalBody').textContent = 'Could not load this driver: ' + (error.message || 'unknown error');
+      }
     };
 
     window.loadEarningsReport = async function(force) {
@@ -10763,7 +10826,7 @@
         const totalPaid = drivers.reduce((sum, row) => sum + Number(row.paid || 0), 0);
         const totalDeliveries = drivers.reduce((sum, row) => sum + Number(row.deliveries || 0), 0);
         driversBody.innerHTML = drivers.map(row => `<tr>
-            <td><div class="td-name">${escapeHtml(row.name || 'Driver')}</div></td>
+            <td><a href="#" class="td-name" style="text-decoration:underline; cursor:pointer;" title="See earnings by area and payments" onclick="openDriverEarningsDetail('${row.driver_id}'); return false;">${escapeHtml(row.name || 'Driver')}</a></td>
             <td>${row.deliveries}</td>
             <td>${moneyFull(row.earned)}</td>
             <td>${moneyFull(row.paid)}</td>
