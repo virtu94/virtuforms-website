@@ -1006,8 +1006,9 @@
   <div class="toast" id="toast"></div>
 
   <script src="vd-modal.js"></script>
+  <script src="vendor/supabase.umd.js"></script>
   <script type="module">
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+    const { createClient } = window.supabase;
 
     const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_riDvZH96FeYGnF0bLYQErg_tlRv71CX';
@@ -1773,7 +1774,9 @@
       const itemName = order.external_item_number || 'your item';
       const price = money(amountToCollect(order));
       const business = clientName(order);
-      const message = `Good day,\n\nReaching out from VirtuDrop, a courier service, regarding delivery of ${itemName} (${price}) from ${business}.\n\nCan you send me your location 📍using the WhatsApp feature so we can confirm delivery please ?\n\nIf you'd rather not send it that way, you can share it here instead: ${shareUrl}`;
+      const customerName = String(order.customer_name || '').trim();
+      const greeting = customerName && customerName.toLowerCase() !== 'customer' ? `Good day ${customerName},` : 'Good day,';
+      const message = `${greeting}\n\nReaching out from VirtuDrop, a courier service, regarding delivery of ${itemName} (${price}) from ${business}.\n\nCan you send me your location 📍using the WhatsApp feature so we can confirm delivery please ?\n\nIf you'd rather not send it that way, you can share it here instead: ${shareUrl}`;
       const url = `https://wa.me/${phoneForWhatsApp(order.customer_phone)}?text=${encodeURIComponent(message)}`;
       window.open(url, '_blank');
     };
