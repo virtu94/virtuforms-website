@@ -769,6 +769,9 @@
       word-break: normal;
       overflow-wrap: break-word;
     }
+    #moveDeliveriesCard table { table-layout: auto; min-width: 0; }
+    #moveDeliveriesCard th, #moveDeliveriesCard td { width: auto !important; }
+    #moveDeliveriesCard th:nth-child(1), #moveDeliveriesCard td:nth-child(1) { width: 40px !important; }
     #panel-driver-assign table {
       table-layout: fixed;
       min-width: 1040px;
@@ -1380,6 +1383,27 @@
           <p>Filter deliveries by their confirmed zone, then assign a driver to all selected items in that zone.</p>
         </div>
 
+        <div class="card" id="moveDeliveriesCard" style="margin-bottom:1rem;">
+          <div class="card-title">Move deliveries between drivers</div>
+          <div class="td-sub" style="margin-bottom:0.75rem;">Pick a driver to see everything still assigned to them, tick the ones to move (or all), then choose who takes them. Pay on each order stays as it is.</div>
+          <div class="bulk-toolbar">
+            <label>From driver <select class="filter-select" id="moveFromDriver" onchange="moveFromDriverChanged(this.value)"><option value="">Choose driver…</option></select></label>
+            <label>To driver <select class="filter-select" id="moveToDriver" onchange="moveSelectionChanged()"><option value="">Choose driver…</option></select></label>
+            <input class="filter-input" id="moveReason" type="text" placeholder="Reason (e.g. driver unavailable)" oninput="moveSelectionChanged()" style="min-width:16rem;" />
+          </div>
+          <div class="bulk-toolbar">
+            <label><input id="moveSelectAll" type="checkbox" onchange="moveToggleAll(this.checked)"> Select all</label>
+            <span class="bulk-count" id="moveCount">0 selected</span>
+            <button class="btn btn-primary btn-sm" type="button" id="moveButton" onclick="moveSelectedDeliveries()">Move deliveries</button>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="moveClearSelection()">Clear</button>
+          </div>
+          <label id="moveHandoffWrap" style="display:none; margin:0.5rem 0;"><input id="moveHandoffConfirm" type="checkbox"> <span id="moveHandoffText">I confirm the receiving driver now has the parcels that are already out for delivery.</span></label>
+          <div class="table-wrap"><table>
+            <thead><tr><th></th><th>Order</th><th>Client</th><th>Customer</th><th>Area</th><th>Status</th><th>Driver pay</th></tr></thead>
+            <tbody id="moveBody"><tr><td colspan="7">Choose a driver to see their deliveries.</td></tr></tbody>
+          </table></div>
+        </div>
+
         <div class="driver-zone-filter" id="driverAssignZoneFilter" aria-label="Filter deliveries by confirmed zone">
           <span class="driver-zone-filter-label">Confirmed zone:</span>
           <button class="btn btn-ghost btn-sm" type="button" data-driver-zone="all" aria-pressed="true" onclick="setDriverAssignZoneFilter('all')">All <span data-zone-count="all"></span></button>
@@ -1417,7 +1441,7 @@
                   <th>Action</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody id="driverAssignBody">
                 <tr><td colspan="11">Loading driver assignments...</td></tr>
               </tbody>
             </table>
@@ -10167,7 +10191,8 @@
     };
 
     function renderDriverAssign() {
-      const tbody = document.querySelector('#panel-driver-assign tbody');
+      try { if (window.renderMoveDeliveries) window.renderMoveDeliveries(); } catch (moveError) { console.warn('Move deliveries card failed to draw:', moveError); }
+      const tbody = document.getElementById('driverAssignBody');
       const allManageable = orders.filter(isDriverAssignmentManageable);
       // Zone filter buttons are built from the zones table (code + region) rather
       // than hardcoded, so "what Zone A/B/C/D covers" always matches what's
@@ -10361,7 +10386,7 @@
 
     function clearStaticAdminData() {
       document.querySelector('#panel-all-orders tbody').innerHTML = '<tr><td colspan="8">Loading orders...</td></tr>';
-      document.querySelector('#panel-driver-assign tbody').innerHTML = '<tr><td colspan="11">Loading driver assignments...</td></tr>';
+      document.getElementById('driverAssignBody').innerHTML = '<tr><td colspan="11">Loading driver assignments...</td></tr>';
       document.getElementById('parcelCheckinBody').innerHTML = '<tr><td colspan="7">Loading parcel records...</td></tr>';
       document.getElementById('pickupManagementBody').innerHTML = '<tr><td colspan="7">Loading pickup requests...</td></tr>';
       document.getElementById('sortingQueueBody').innerHTML = '<tr><td colspan="6">Loading sorting queue...</td></tr>';
@@ -11184,6 +11209,134 @@
       );
     };
 
+
+    // ── Move deliveries between drivers ─────────────────────────────────
+    let moveFromDriverId = '';
+    let moveToDriverId = '';
+    const moveSelected = new Set();
+
+    function moveOrderEligible(order) {
+      return !!order.assigned_driver_id
+        && !['delivered', 'cancelled', 'rejected'].includes(order.order_status)
+        && ['assigned', 'handed_to_driver'].includes(order.parcel_status);
+    }
+
+    function moveEligibleOrders(driverId) {
+      if (!driverId) return [];
+      return orders.filter(o => o.assigned_driver_id === driverId && moveOrderEligible(o))
+        .sort((a, b) => String(a.area_name || '').localeCompare(String(b.area_name || '')) || String(a.order_number).localeCompare(String(b.order_number)));
+    }
+
+    window.renderMoveDeliveries = function() {
+      const fromSel = document.getElementById('moveFromDriver');
+      const toSel = document.getElementById('moveToDriver');
+      const body = document.getElementById('moveBody');
+      if (!fromSel || !toSel || !body) return;
+      const counts = new Map();
+      orders.forEach(o => { if (moveOrderEligible(o)) counts.set(o.assigned_driver_id, (counts.get(o.assigned_driver_id) || 0) + 1); });
+      const fromDrivers = drivers.filter(d => counts.has(d.id));
+      fromSel.innerHTML = '<option value="">Choose driver…</option>' + fromDrivers.map(d => `<option value="${d.id}">${escapeHtml(driverLabel(d))} (${counts.get(d.id)})</option>`).join('');
+      if (!counts.has(moveFromDriverId)) moveFromDriverId = '';
+      fromSel.value = moveFromDriverId;
+      toSel.innerHTML = '<option value="">Choose driver…</option>' + drivers.filter(d => d.id !== moveFromDriverId).map(d => `<option value="${d.id}">${escapeHtml(driverLabel(d))}</option>`).join('');
+      if (moveToDriverId === moveFromDriverId || !drivers.some(d => d.id === moveToDriverId)) moveToDriverId = '';
+      toSel.value = moveToDriverId;
+
+      const rows = moveEligibleOrders(moveFromDriverId);
+      const ids = new Set(rows.map(o => o.id));
+      [...moveSelected].forEach(id => { if (!ids.has(id)) moveSelected.delete(id); });
+      body.innerHTML = rows.length ? rows.map(o => `<tr>
+          <td><input type="checkbox" class="move-check" value="${o.id}" ${moveSelected.has(o.id) ? 'checked' : ''} onchange="moveToggleOne(this.value, this.checked)"></td>
+          <td><div class="td-name">${escapeHtml(o.order_number || '')}</div></td>
+          <td>${escapeHtml(clientName(o))}</td>
+          <td>${escapeHtml(o.customer_name || '')}</td>
+          <td>${escapeHtml(o.area_name || '')}</td>
+          <td>${o.parcel_status === 'handed_to_driver' ? 'Out for delivery' : 'Assigned'}</td>
+          <td>${moneyFull(o.driver_delivery_pay || 0)}</td>
+        </tr>`).join('')
+        : `<tr><td colspan="7">${moveFromDriverId ? 'This driver has no deliveries that can be moved.' : 'Choose a driver to see their deliveries.'}</td></tr>`;
+      moveSelectionChanged();
+    };
+
+    window.moveFromDriverChanged = function(value) {
+      moveFromDriverId = value || '';
+      moveSelected.clear();
+      renderMoveDeliveries();
+    };
+
+    window.moveToggleOne = function(id, checked) {
+      if (checked) moveSelected.add(id); else moveSelected.delete(id);
+      moveSelectionChanged();
+    };
+
+    window.moveToggleAll = function(checked) {
+      moveEligibleOrders(moveFromDriverId).forEach(o => { if (checked) moveSelected.add(o.id); else moveSelected.delete(o.id); });
+      document.querySelectorAll('#moveBody .move-check').forEach(box => { box.checked = checked; });
+      moveSelectionChanged();
+    };
+
+    window.moveClearSelection = function() {
+      moveSelected.clear();
+      document.querySelectorAll('#moveBody .move-check').forEach(box => { box.checked = false; });
+      moveSelectionChanged();
+    };
+
+    window.moveSelectionChanged = function() {
+      moveToDriverId = document.getElementById('moveToDriver')?.value || '';
+      const rows = moveEligibleOrders(moveFromDriverId);
+      const selected = rows.filter(o => moveSelected.has(o.id));
+      const count = document.getElementById('moveCount');
+      if (count) count.textContent = `${selected.length} selected` + (rows.length ? ` of ${rows.length}` : '');
+      const all = document.getElementById('moveSelectAll');
+      if (all) all.checked = rows.length > 0 && selected.length === rows.length;
+      const button = document.getElementById('moveButton');
+      if (button) button.textContent = selected.length ? `Move ${selected.length} ${selected.length === 1 ? 'delivery' : 'deliveries'}` : 'Move deliveries';
+      const needsHandoff = selected.some(o => o.parcel_status === 'handed_to_driver');
+      const wrap = document.getElementById('moveHandoffWrap');
+      if (wrap) wrap.style.display = needsHandoff ? '' : 'none';
+      const text = document.getElementById('moveHandoffText');
+      if (text) text.textContent = `I confirm ${moveToDriverId ? driverName(moveToDriverId) : 'the receiving driver'} now has the parcels that are already out for delivery.`;
+      if (!needsHandoff) { const box = document.getElementById('moveHandoffConfirm'); if (box) box.checked = false; }
+    };
+
+    window.moveSelectedDeliveries = function() {
+      const rows = moveEligibleOrders(moveFromDriverId);
+      const selected = rows.filter(o => moveSelected.has(o.id));
+      const reason = (document.getElementById('moveReason')?.value || '').trim();
+      const toId = document.getElementById('moveToDriver')?.value || '';
+      if (!moveFromDriverId) return showToast('Choose the driver to move deliveries from.');
+      if (!selected.length) return showToast('Tick at least one delivery to move.');
+      if (!toId) return showToast('Choose the driver who is taking them.');
+      if (toId === moveFromDriverId) return showToast('Choose a different driver to receive them.');
+      if (reason.length < 3) return showToast('Enter a reason for the driver change.');
+      const needsHandoff = selected.some(o => o.parcel_status === 'handed_to_driver');
+      if (needsHandoff && !document.getElementById('moveHandoffConfirm')?.checked) {
+        return showToast('Tick the box to confirm the receiving driver has the parcels that are out for delivery.');
+      }
+      const fromLabel = driverName(moveFromDriverId);
+      const toLabel = driverName(toId);
+      const n = selected.length;
+      promptDriverSchedule([toId], async (schedules) => {
+        try {
+          const { data, error } = await supabase.rpc('admin_transfer_orders_driver_bulk', {
+            p_order_ids: selected.map(o => o.id),
+            p_to_driver_id: toId,
+            p_reason: reason
+          });
+          if (error) throw error;
+          const manifestNumbers = (data?.manifest_numbers || []).filter(Boolean);
+          await applyDriverSchedules(schedules, { [toId]: manifestNumbers });
+          showToast(`${data?.moved_count || n} ${n === 1 ? 'delivery' : 'deliveries'} moved from ${fromLabel} to ${toLabel}.`);
+          moveSelected.clear();
+          const reasonBox = document.getElementById('moveReason'); if (reasonBox) reasonBox.value = '';
+          await softRefresh();
+          showPanel('driver-assign');
+        } catch (error) {
+          window.vdNotify('Move Failed', (error.message || 'Could not move these deliveries.'), 'error');
+        }
+      }, { title: 'Move Deliveries', message: `Move ${n} ${n === 1 ? 'delivery' : 'deliveries'} from ${fromLabel} to ${toLabel}? Driver pay on each order stays the same.`, confirmLabel: 'Move Deliveries' });
+    };
+
     window.assignDriver = function(orderId) {
       const order = orders.find(o => o.id === orderId);
       const row = document.querySelector(`#panel-driver-assign tr[data-driver-order-id="${orderId}"]`);
@@ -11509,8 +11662,8 @@
         issues.push(`unknown business "${row.business}"`);
       }
       if (!row.externalOrderNumber) issues.push('missing Middleman order #');
-      if (!row.isExchange && !row.isRefund && (!Number.isFinite(row.total) || row.total < currentManagedFlatFee())) {
-        issues.push(`total must be at least $${currentManagedFlatFee()}, "Exchange", or "Refund"`);
+      if (!row.isExchange && !row.isRefund && (!Number.isFinite(row.total) || (row.total !== 0 && row.total < currentManagedFlatFee()))) {
+        issues.push(`total must be $0, at least $${currentManagedFlatFee()}, "Exchange", or "Refund"`);
       }
       return issues;
     }
@@ -12566,7 +12719,7 @@
       const message = escapeHtml(error.message || 'Could not load admin dashboard data.');
       showZoneMessage(message);
       document.querySelector('#panel-all-orders tbody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
-      document.querySelector('#panel-driver-assign tbody').innerHTML = `<tr><td colspan="11">${message}</td></tr>`;
+      document.getElementById('driverAssignBody').innerHTML = `<tr><td colspan="11">${message}</td></tr>`;
       document.getElementById('parcelCheckinBody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
       document.getElementById('pickupManagementBody').innerHTML = `<tr><td colspan="7">${message}</td></tr>`;
       document.getElementById('sortingQueueBody').innerHTML = `<tr><td colspan="6">${message}</td></tr>`;
