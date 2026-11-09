@@ -1254,9 +1254,14 @@
       return '';
     }
 
-    function paymentLabel(type) {
+    function paymentLabel(typeOrOrder) {
+      const order = (typeOrOrder && typeof typeOrOrder === 'object') ? typeOrOrder : null;
+      const type = order ? order.payment_type : typeOrOrder;
+      if (order && order.bulk_special_type === 'refund') return 'Refund';
+      if (order && order.bulk_special_type === 'exchange') return 'Exchange';
       if (type === 'delivery_only') return 'Package Paid Online';
       if (type === 'prepaid') return 'Fully Paid Online';
+      if (order && amountToCollect(order) <= 0) return 'Nothing to collect';
       return 'Cash on Delivery';
     }
 
@@ -1568,7 +1573,7 @@
               <div class="dcard-main">
                 <div class="dcard-line1">
                   <div class="dcard-name">${escapeHtml(order.customer_name || '—')}</div>
-                  ${collect > 0 ? `<span class="dcard-badge cod">${collect.toFixed(2)}</span>` : `<span class="dcard-badge prepaid">${escapeHtml(paymentLabel(order.payment_type))}</span>`}
+                  ${collect > 0 ? `<span class="dcard-badge cod">${collect.toFixed(2)}</span>` : `<span class="dcard-badge prepaid">${escapeHtml(paymentLabel(order))}</span>`}
                 </div>
               </div>
               <div class="dcard-right" onclick="event.stopPropagation()">
@@ -1708,7 +1713,7 @@
             <div class="detail-client-customer">${escapeHtml(order.customer_name || '—')}</div>
             ${clientName(order) ? `<div class="detail-client-business">${escapeHtml(clientName(order))}</div>` : ''}
           </div>
-          ${collect > 0 ? `<span class="compact-cod-badge">COD</span>` : `<span class="compact-prepaid-badge">${escapeHtml(paymentLabel(order.payment_type))}</span>`}
+          ${collect > 0 ? `<span class="compact-cod-badge">COD</span>` : `<span class="compact-prepaid-badge">${escapeHtml(paymentLabel(order))}</span>`}
         </div>
         ${order.external_item_number ? `<div class="detail-row">Item ${escapeHtml(order.external_item_number)}</div>` : ''}
         <div class="detail-row detail-row-phone">
@@ -1733,7 +1738,7 @@
         <div class="detail-tiles">
           <div class="detail-tile">
             <div class="detail-tile-label">${collect > 0 ? 'COD Amount' : 'Payment'}</div>
-            <div class="detail-tile-value">${collect > 0 ? money(collect) : paymentLabel(order.payment_type)}</div>
+            <div class="detail-tile-value">${collect > 0 ? money(collect) : paymentLabel(order)}</div>
           </div>
           <div class="detail-tile">
             <div class="detail-tile-label">Driver Earns</div>
@@ -2540,7 +2545,7 @@
         console.warn('Driver delivery RPC could not load; using direct assignment fallback:', ordersRes.error);
         ordersRes = await supabase
           .from('orders')
-          .select('id, order_number, external_item_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, location_status, location_confidence, pricing_rate_band, driver_route_position, optimized_position, manually_reordered, payment_type, customer_amount_due, driver_delivery_pay, driver_amount_to_collect, pickup_required, pickup_parcel_count, pickup_fee, scheduled_delivery_date, parcel_status, delivery_outcome, delivery_attempt_count, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_recipient_name, delivery_signed_at, delivery_signature_data_url, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, redelivery_status, redelivery_notes, order_status, assigned_driver_id, customer_notes, driver_notes, tracking_token, created_at')
+          .select('id, order_number, external_item_number, financial_model_version, business_client_id, customer_name, customer_phone, delivery_address, house_number, street_name, area_name, maps_link, latitude, longitude, location_status, location_confidence, pricing_rate_band, driver_route_position, optimized_position, manually_reordered, payment_type, bulk_special_type, customer_amount_due, driver_delivery_pay, driver_amount_to_collect, pickup_required, pickup_parcel_count, pickup_fee, scheduled_delivery_date, parcel_status, delivery_outcome, delivery_attempt_count, delivery_outcome_notes, redelivery_requested_date, delivery_proof_confirmed_at, delivery_recipient_name, delivery_signed_at, delivery_signature_data_url, delivery_return_required, delivery_returned_hub_at, delivery_collection_method, delivery_collected_amount, redelivery_status, redelivery_notes, order_status, assigned_driver_id, customer_notes, driver_notes, tracking_token, created_at')
           .eq('assigned_driver_id', driver.id)
           .order('created_at', { ascending: false });
         if (ordersRes.error) throw ordersRes.error;
