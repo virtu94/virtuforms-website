@@ -10930,6 +10930,7 @@
           tile('Profit Before Drivers', report.profit_before_drivers, `${report.deliveries || 0} deliveries completed`, 'ok'),
           tile('Driver Pay Earned', report.driver_pay_earned, `${moneyFull(report.driver_pay_deliveries)} deliveries + ${moneyFull(report.driver_pay_failed)} failed`, 'warn'),
           tile('Profit After Drivers', report.profit_after_drivers, 'What VirtuDrop keeps', 'ok'),
+          tile('Our Earnings as Driver', report.owner_earnings || 0, `${report.owner_deliveries || 0} deliveries done by Admin / YD Harvest. Counted for us, money stays with VirtuDrop`, 'ok'),
           report.client_filtered ? tile('Drivers Payout (these deliveries)', report.driver_pay_earned, 'Exact: the pay recorded on each of these deliveries', '') : tile('Drivers Paid Out', report.drivers_paid_out, 'Cash paid to drivers in this period', ''),
           tile('Remittance Owed', report.remittance_owed_total, `${moneyFull(report.remittance_ready)} ready + ${moneyFull(report.remittance_part_paid)} part-paid`, 'warn')
         ].join('');
