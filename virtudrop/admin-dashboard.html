@@ -3003,11 +3003,18 @@
         ctx.font = '700 27px Inter, Arial, sans-serif';
         ctx.fillStyle = black;
         let detailY = Math.max(itemBottom + 80, 1210);
+        const labelFee = Number(order.delivery_fee ?? order.estimated_fee ?? 0) || 0;
+        const labelTotal = (Number(order.package_value) || 0) + labelFee;
+        const labelPriceText = order.bulk_special_type === 'refund' ? 'Refund'
+          : order.bulk_special_type === 'exchange' ? 'Exchange'
+          : `Total: $${labelTotal.toFixed(2)}`;
         const details = [
           `Business: ${clientName(order)}`,
-          `Qty: ${quantity}`
+          `Qty: ${quantity}`,
+          labelPriceText
         ];
-        details.forEach(detail => {
+        details.forEach((detail, detailIndex) => {
+          if (detailIndex === details.length - 1) { ctx.font = '800 40px Inter, Arial, sans-serif'; ctx.fillStyle = teal; }
           detailY = labelCanvasWrapText(ctx, detail, 880, detailY, 430, 35, 2, 'center') + 47;
         });
 
