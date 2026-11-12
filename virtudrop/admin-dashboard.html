@@ -12029,6 +12029,14 @@
     function managedOrderExportBucket(order) {
       return order.order_status === 'delivered' ? 'invoice' : 'return';
     }
+    // A delivered exchange goes on BOTH sheets (invoice, marked Exchange, and the
+    // return sheet, marked Exchanged). A delivered refund is invoice only.
+    function managedOrderIsDeliveredExchange(order) {
+      return order.order_status === 'delivered' && order.bulk_special_type === 'exchange';
+    }
+    function managedOrderInExport(order, exportType) {
+      return managedOrderExportBucket(order) === exportType || (exportType === 'return' && managedOrderIsDeliveredExchange(order));
+    }
 
     // Only a resolved outcome (failed/cancelled/rescheduled) has a real note
     // to show -- an order still out for delivery hasn't failed or been
@@ -12036,6 +12044,7 @@
     // stale driver/rejection note from some earlier attempt.
     const MANAGED_RETURN_RESOLVED_STATUSES = ['failed', 'cancelled', 'rescheduled'];
     function managedOrderReturnNote(order) {
+      if (managedOrderIsDeliveredExchange(order)) return ['Exchanged', managedOrderComment(order)].filter(Boolean).join(' - ');
       return MANAGED_RETURN_RESOLVED_STATUSES.includes(order.order_status) ? managedOrderComment(order) : '';
     }
 
@@ -12088,7 +12097,7 @@
     function managedExportBatchOrders(exportType) {
       if (!selectedManagedAccountId || !selectedManagedExportBatchKey) return [];
       return managedAccountOrders().filter(order =>
-        managedBatchKey(order) === selectedManagedExportBatchKey && managedOrderExportBucket(order) === exportType);
+        managedBatchKey(order) === selectedManagedExportBatchKey && managedOrderInExport(order, exportType));
     }
 
     function naturalSortByExternalOrderNumber(a, b) {
@@ -12314,10 +12323,10 @@
       body.innerHTML = sortedBatches.length
         ? sortedBatches.map(batch => {
             const invoiceCount = batch.orders.filter(o => o.order_status === 'delivered' && !o.managed_invoice_exported_at).length;
-            const returnCount = batch.orders.filter(o => ['failed', 'cancelled', 'rescheduled'].includes(o.order_status) && !o.managed_return_exported_at).length;
+            const returnCount = batch.orders.filter(o => (['failed', 'cancelled', 'rescheduled'].includes(o.order_status) || managedOrderIsDeliveredExchange(o)) && !o.managed_return_exported_at).length;
             const invoiceEligibleTotal = batch.orders.filter(o => o.order_status === 'delivered').length;
-            const returnEligibleTotal = batch.orders.filter(o => ['failed', 'cancelled', 'rescheduled'].includes(o.order_status)).length;
-            const notDeliveredCount = batch.orders.length - invoiceEligibleTotal - returnEligibleTotal;
+            const returnEligibleTotal = batch.orders.filter(o => ['failed', 'cancelled', 'rescheduled'].includes(o.order_status) || managedOrderIsDeliveredExchange(o)).length;
+            const notDeliveredCount = batch.orders.length - batch.orders.filter(o => o.order_status === 'delivered' || ['failed', 'cancelled', 'rescheduled'].includes(o.order_status)).length;
             const cashOwed = managedBatchCashOwed(batch.orders);
             const isExpanded = expandedKeys.has(batch.key);
             return `<tr>
@@ -12514,7 +12523,7 @@
         // with its real outcome and note) in whatever export is run once a
         // driver finishes with it later tonight. That's what makes a later
         // "send an updated version" export work without manual bookkeeping.
-        const resolvedIds = matched.filter(o => MANAGED_RETURN_RESOLVED_STATUSES.includes(o.order_status)).map(o => o.id);
+        const resolvedIds = matched.filter(o => MANAGED_RETURN_RESOLVED_STATUSES.includes(o.order_status) || managedOrderIsDeliveredExchange(o)).map(o => o.id);
         if (resolvedIds.length) {
           const { error } = await supabase.rpc('admin_mark_managed_orders_exported', { p_order_ids: resolvedIds, p_export_type: 'return' });
           if (error) throw error;
@@ -12538,7 +12547,7 @@
     window.regenerateManagedBatchExport = function(batchKey, exportType) {
       if (!selectedManagedAccountId) return showToast('Select a managed account first.');
       const matched = managedAccountOrders()
-        .filter(order => managedBatchKey(order) === batchKey && managedOrderExportBucket(order) === exportType)
+        .filter(order => managedBatchKey(order) === batchKey && managedOrderInExport(order, exportType))
         .sort(naturalSortByExternalOrderNumber);
       if (!matched.length) {
         return showToast(exportType === 'invoice'

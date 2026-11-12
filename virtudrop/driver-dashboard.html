@@ -807,6 +807,17 @@
        (an iframe on the admin or business dashboard), since the parent page
        already has its own header/nav around it. */
     html.embedded-view .topbar { display: none; }
+
+    /* Inside a delivery card: drop the VirtuDrop banner so it can't cover the back/stop arrows.
+       Only the account circle stays, floating at the right end of the card's own bar. */
+    body.detail-open .topbar {
+      position: fixed; top: 0; right: 0; left: auto; width: auto; height: calc(1.8rem + 36px);
+      padding: 0 1rem; background: none; z-index: 4500; pointer-events: none;
+    }
+    body.detail-open .topbar .topbar-brand, body.detail-open .topbar .driver-info { display: none; }
+    body.detail-open .topbar .driver-account-menu, body.detail-open .topbar .driver-avatar { pointer-events: auto; }
+    body.detail-open .detail-header { padding-right: calc(38px + 1.6rem); }
+
   </style>
 </head>
 <body>
@@ -2777,7 +2788,7 @@
     }
 
     window.markNoResponse = function(orderId) {
-      openDeliveryException(orderId, 'no_response', 'No Response', 'Customer could not be reached at the delivery location.');
+      openDeliveryException(orderId, 'no_response', 'No Response', 'Customer did not respond to contact.');
     };
 
     // ── Refused → failed-delivery payment claim ──
