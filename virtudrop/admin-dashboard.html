@@ -2029,7 +2029,7 @@
                   <th>Delivered COD Orders</th>
                   <th>Gross COD</th>
                   <th>Deductions</th>
-                  <th>Net Remittance</th>
+                  <th>Balance Owing</th>
                   <th>Status</th>
                   <th>Action</th>
                 </tr>
@@ -2042,6 +2042,22 @@
         </div>
         <div class="card" style="margin-top:1rem;">
           <div class="card-title">Remittance History</div>
+          <div class="finance-filter-grid">
+            <div class="finance-field">
+              <label for="remitHistClient">Business</label>
+              <select class="filter-select" id="remitHistClient" onchange="loadRemitClientDetail()"><option value="">All businesses</option></select>
+            </div>
+            <div class="finance-field">
+              <label for="remitHistStart">From (optional)</label>
+              <input class="filter-input" type="date" id="remitHistStart" onchange="loadRemitClientDetail()" />
+            </div>
+            <div class="finance-field">
+              <label for="remitHistEnd">To (optional)</label>
+              <input class="filter-input" type="date" id="remitHistEnd" onchange="loadRemitClientDetail()" />
+            </div>
+            <button class="btn btn-primary" type="button" id="remitHistExportBtn" onclick="exportRemitClientReport()" disabled>Export report (.xlsx)</button>
+          </div>
+          <div id="remitClientDetail" style="margin:0.75rem 0 1rem;"><div class="td-sub">Pick a business to see everything delivered, paid and still owing, and to export a report you can send them.</div></div>
           <div class="table-wrap"><table>
             <thead><tr><th>Batch</th><th>Client</th><th>Orders</th><th>Gross</th><th>Deductions</th><th>Net Paid</th><th>Method</th><th>Date</th><th>Action</th></tr></thead>
             <tbody id="remittanceHistoryBody"><tr><td colspan="8">Loading remittance history...</td></tr></tbody>
@@ -5488,46 +5504,76 @@
           byClient.set(key, current);
         });
 
-      const rows = [...byClient.entries()].sort((a, b) => b[1].payout - a[1].payout);
+      // One running balance per business: new reconciled orders plus anything
+      // still owing from earlier part payments.
+      const balanceFilter = document.getElementById('remitClientFilter')?.value || '';
+      const balancesByClient = new Map();
+      remittanceBalances
+        .filter(item => !balanceFilter || item.business_client_id === balanceFilter)
+        .slice()
+        .sort((x, y) => new Date(x.paid_at || 0) - new Date(y.paid_at || 0))
+        .forEach(item => {
+          const list = balancesByClient.get(item.business_client_id) || [];
+          list.push(item);
+          balancesByClient.set(item.business_client_id, list);
+        });
+      balancesByClient.forEach((list, clientId) => {
+        if (!byClient.has(clientId)) {
+          byClient.set(clientId, {
+            client: clientsById.get(clientId)?.business_name || 'Client',
+            count: 0, gross: 0, deductions: 0, payout: 0, orderIds: [], orderNumbers: []
+          });
+        }
+      });
+
+      const rows = [...byClient.entries()].map(([clientId, item]) => {
+        const balances = balancesByClient.get(clientId) || [];
+        const carried = balances.reduce((sum, balance) => sum + amount(balance.remaining_amount), 0);
+        return [clientId, { ...item, balances, carried, total: amount(item.payout) + carried }];
+      }).sort((a, b) => b[1].total - a[1].total);
       latestPayoutRows = rows.map(([clientId, item]) => ({ clientId, ...item }));
-      payoutBody.innerHTML = latestPayoutRows.map(item => `
+      payoutBody.innerHTML = latestPayoutRows.map(item => {
+        const last = remitLastPayment(item.clientId);
+        return `
         <tr>
-          <td><div class="td-name">${escapeHtml(item.client)}</div></td>
+          <td><div class="td-name">${escapeHtml(item.client)}</div>${last ? `<div class="td-sub">Last payment: ${escapeHtml(remitFmtPaid(last.at))} &middot; ${moneyFull(last.amount)}${last.method ? ` &middot; ${escapeHtml(last.method)}` : ''}</div>` : '<div class="td-sub">No payments yet</div>'}</td>
           <td>${item.count}</td>
           <td>${moneyFull(item.gross)}</td>
           <td>${moneyFull(item.deductions)}</td>
-          <td class="accounting-total">${moneyFull(item.payout)}</td>
-          <td><span class="badge badge-unpaid">Ready to Pay</span></td>
+          <td class="accounting-total">${moneyFull(item.total)}${item.carried > 0.009 && item.payout > 0.009 ? `<div class="td-sub">${moneyFull(item.payout)} new + ${moneyFull(item.carried)} still owing from earlier</div>` : ''}</td>
+          <td>${item.carried > 0.009 && item.payout <= 0.009 ? '<span class="badge badge-pending">Part paid</span>' : '<span class="badge badge-unpaid">Ready to Pay</span>'}</td>
           <td>
             <div class="finance-actions">
-              <button class="btn btn-ghost btn-sm" onclick="copyClientPayout('${item.clientId}')">Copy Summary</button>
+              ${item.orderIds.length ? `<button class="btn btn-ghost btn-sm" onclick="copyClientPayout('${item.clientId}')">Copy Summary</button>` : ''}
+              <button class="btn btn-ghost btn-sm" onclick="remitOpenHistory('${item.clientId}')">History / Report</button>
               <button class="btn btn-primary btn-sm" onclick="openMarkRemittancePaid('${item.clientId}')">Create Payment</button>
             </div>
           </td>
         </tr>
-      `).join('');
-
-      // Part-paid remittances: money still owing after a part payment.
-      const balanceClientFilter = document.getElementById('acctClientFilter')?.value || '';
-      const balanceRows = remittanceBalances.filter(item => !balanceClientFilter || item.business_client_id === balanceClientFilter);
-      payoutBody.innerHTML += balanceRows.map(item => `
-        <tr style="background:var(--orange-pale);">
-          <td><div class="td-name">${escapeHtml(clientsById.get(item.business_client_id)?.business_name || 'Client')}</div><div class="td-sub">Balance of ${escapeHtml(item.batch_number)} (paid ${escapeHtml(new Date(item.paid_at).toLocaleDateString('en-TT'))})</div></td>
-          <td>${item.order_count}</td>
-          <td>${moneyFull(item.owed_amount)}</td>
-          <td>—</td>
-          <td class="accounting-total">${moneyFull(item.remaining_amount)}</td>
-          <td><span class="badge badge-pending">Part paid</span><div class="td-sub">${moneyFull(item.paid_amount)} of ${moneyFull(item.owed_amount)} paid</div></td>
-          <td>
-            <div class="finance-actions">
-              <button class="btn btn-primary btn-sm" onclick="openPayRemittanceBalance('${item.batch_id}')">Pay Balance</button>
-              <button class="btn btn-ghost btn-sm" onclick="openCloseRemittanceBalance('${item.batch_id}')">Close</button>
-            </div>
-          </td>
-        </tr>
-      `).join('');
+      `;}).join('');
       if (!payoutBody.innerHTML.trim()) payoutBody.innerHTML = '<tr><td colspan="7">No delivered COD payouts are ready yet.</td></tr>';
     }
+
+    function remitLastPayment(clientId) {
+      let best = null;
+      remittanceRecords.forEach(record => {
+        if (record.business_client_id !== clientId || record.status !== 'paid') return;
+        const at = record.paid_at || record.created_at;
+        if (!at) return;
+        if (!best || new Date(at) > new Date(best.at)) {
+          best = { at, amount: amount(record.net_amount ?? record.amount), method: String(record.method || '').replaceAll('_', ' ') };
+        }
+      });
+      return best;
+    }
+
+    window.remitOpenHistory = function(clientId) {
+      const select = document.getElementById('remitHistClient');
+      if (!select) return;
+      select.value = clientId;
+      loadRemitClientDetail();
+      document.getElementById('remitClientDetail')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
 
     window.openPayRemittanceBalance = function(batchId) {
       const item = remittanceBalances.find(row => row.batch_id === batchId);
@@ -5617,7 +5663,14 @@
     function renderRemittanceHistory() {
       const body = document.getElementById('remittanceHistoryBody');
       if (!body) return;
-      const rows = selectedAccountingRemittanceRecords();
+      const histSelect = document.getElementById('remitHistClient');
+      if (histSelect && histSelect.options.length !== clientsById.size + 1) {
+        const keep = histSelect.value;
+        histSelect.innerHTML = clientOptionsHtml(true).replace('All clients', 'All businesses');
+        histSelect.value = keep;
+      }
+      const histClientId = histSelect?.value || '';
+      const rows = selectedAccountingRemittanceRecords().filter(record => !histClientId || record.business_client_id === histClientId);
       body.innerHTML = rows.map(record => `
         <tr>
           <td class="td-id">${escapeHtml(record.batch_number || String(record.id).slice(0, 8))}${record.balance_of_batch_id ? '<div class="td-sub">Balance payment</div>' : ''}</td>
@@ -6621,13 +6674,13 @@
         ['Date Range', `${start} to ${end}`],
         ['Exported', exportedAt],
         [],
-        ['Client', 'Delivered COD Orders', 'Gross COD', 'Deductions', 'Net Remittance', 'Status']
+        ['Client', 'Delivered COD Orders', 'Gross COD', 'Deductions', 'Balance Owing', 'Status']
       ];
       latestPayoutRows.forEach(row => {
-        rows.push([row.client, row.count, row.gross, row.deductions, row.payout, 'Ready to Pay']);
+        rows.push([row.client, row.count, row.gross, row.deductions, row.total, row.carried > 0.009 && row.payout <= 0.009 ? 'Part paid' : 'Ready to Pay']);
       });
       rows.push([]);
-      rows.push(['Totals', latestPayoutRows.reduce((s, r) => s + r.count, 0), latestPayoutRows.reduce((s, r) => s + r.gross, 0), latestPayoutRows.reduce((s, r) => s + r.deductions, 0), latestPayoutRows.reduce((s, r) => s + r.payout, 0)]);
+      rows.push(['Totals', latestPayoutRows.reduce((s, r) => s + r.count, 0), latestPayoutRows.reduce((s, r) => s + r.gross, 0), latestPayoutRows.reduce((s, r) => s + r.deductions, 0), latestPayoutRows.reduce((s, r) => s + r.total, 0)]);
 
       if (!window.XLSX) {
         showToast('XLSX export library is still loading. Try again in a few seconds.');
@@ -6687,10 +6740,11 @@
       const amountInput = document.getElementById('remitPaidAmount');
       if (grossEl) grossEl.textContent = moneyFull(totals.gross);
       if (deductionsEl) deductionsEl.textContent = moneyFull(totals.deductions);
-      if (balanceEl) balanceEl.textContent = moneyFull(totals.payout);
+      const carriedAmount = amount(row.carried);
+      if (balanceEl) balanceEl.textContent = moneyFull(totals.payout + carriedAmount);
       if (amountInput) {
-        amountInput.max = totals.payout.toFixed(2);
-        amountInput.value = totals.payout.toFixed(2);
+        amountInput.max = (totals.payout + carriedAmount).toFixed(2);
+        amountInput.value = (totals.payout + carriedAmount).toFixed(2);
       }
     };
 
@@ -6739,16 +6793,17 @@
         <strong>${escapeHtml(row.client)}</strong><br>
         Gross COD: <strong id="remitPreviewGross">${moneyFull(row.gross)}</strong><br>
         Deductions: <strong id="remitPreviewDeductions">${moneyFull(row.deductions)}</strong><br>
-        Total balance: <strong id="remitPreviewBalance">${moneyFull(row.payout)}</strong>
+        ${row.carried > 0.009 ? `Still owing from earlier part payments: <strong>${moneyFull(row.carried)}</strong><br>` : ''}
+        Total balance: <strong id="remitPreviewBalance">${moneyFull(row.total)}</strong>
         ${pickupReview}
         <div class="payment-modal-form">
           <label>Remittance Date
             <input id="remitPaidDate" type="date" value="${todayDateInputValue()}" />
           </label>
           <label>Amount Remitted
-            <input id="remitPaidAmount" type="number" min="0.01" max="${Number(row.payout).toFixed(2)}" step="0.01" value="${Number(row.payout).toFixed(2)}" placeholder="0.00" />
+            <input id="remitPaidAmount" type="number" min="0.01" max="${Number(row.total).toFixed(2)}" step="0.01" value="${Number(row.total).toFixed(2)}" placeholder="0.00" />
           </label>
-          <div class="td-sub" style="margin-top:-0.4rem;">Paying less than the total? The rest stays on the Client Payout list as &ldquo;Part paid&rdquo; so you can pay it later.</div>
+          <div class="td-sub" style="margin-top:-0.4rem;">Paying less than the total? Whatever is left stays on this business's balance, and new deliveries add to it.</div>
           <label>Method
             <select id="remitPaidMethod">
               <option value="bank_transfer">Bank Transfer</option>
@@ -6786,30 +6841,285 @@
         return false;
       }
       const adjustedTotals = remittanceAdjustedTotals(row);
-      if (remittedAmount > amount(adjustedTotals.payout) + 0.009) {
+      const carried = amount(row.carried);
+      if (remittedAmount > amount(adjustedTotals.payout) + carried + 0.009) {
         window.vdNotify('Amount Too High', 'The remitted amount cannot exceed the current total balance.', 'error');
         return false;
       }
 
-      const { error } = await supabase.rpc('admin_create_remittance_batch', {
-        p_business_client_id: clientId,
-        p_order_ids: row.orderIds,
-        p_method: document.getElementById('remitPaidMethod')?.value || 'bank_transfer',
-        p_paid_date: remittedDate,
-        p_remitted_amount: remittedAmount,
-        p_pickup_adjustments: remittancePickupAdjustments(row),
-        p_reference: document.getElementById('remitPaidReference')?.value.trim() || null,
-        p_notes: document.getElementById('remitPaidNotes')?.value.trim() || null
-      });
-      if (error) {
-        window.vdNotify('Remittance Not Saved', error.message || 'Could not save remittance record.', 'error');
-        return false;
+      const method = document.getElementById('remitPaidMethod')?.value || 'bank_transfer';
+      const reference = document.getElementById('remitPaidReference')?.value.trim() || null;
+      const notes = document.getElementById('remitPaidNotes')?.value.trim() || null;
+      let left = Math.round(remittedAmount * 100) / 100;
+      const done = [];
+
+      // 1) Clear what is still owing from earlier part payments, oldest first.
+      for (const balance of (row.balances || [])) {
+        if (left <= 0.009) break;
+        const pay = Math.min(left, amount(balance.remaining_amount));
+        if (pay <= 0.009) continue;
+        const { error } = await supabase.rpc('admin_pay_remittance_balance', {
+          p_batch_id: balance.batch_id,
+          p_method: method,
+          p_paid_date: remittedDate,
+          p_amount: Math.round(pay * 100) / 100,
+          p_reference: reference,
+          p_notes: notes
+        });
+        if (error) {
+          window.vdNotify('Remittance Not Fully Saved', `${done.length ? `${done.length} part saved, but ` : ''}${error.message || 'could not save a balance payment.'}`, 'error');
+          await loadData();
+          return false;
+        }
+        done.push(pay);
+        left = Math.round((left - pay) * 100) / 100;
+      }
+
+      // 2) Whatever is left goes against the newly reconciled orders.
+      if (left > 0.009 && row.orderIds.length) {
+        const { error } = await supabase.rpc('admin_create_remittance_batch', {
+          p_business_client_id: clientId,
+          p_order_ids: row.orderIds,
+          p_method: method,
+          p_paid_date: remittedDate,
+          p_remitted_amount: left,
+          p_pickup_adjustments: remittancePickupAdjustments(row),
+          p_reference: reference,
+          p_notes: notes
+        });
+        if (error) {
+          window.vdNotify('Remittance Not Fully Saved', `${done.length ? `${done.length} earlier balance payment(s) were saved, but ` : ''}${error.message || 'could not save remittance record.'}`, 'error');
+          await loadData();
+          return false;
+        }
       }
 
       showToast(`Remittance saved for ${row.client}.`);
       await loadData();
+      if (remitReportData && document.getElementById('remitHistClient')?.value) await loadRemitClientDetail();
       return true;
     }
+
+    // ── Business remittance history and exportable report ──
+    let remitReportData = null;
+
+    function remitFmtDate(value) {
+      return value ? new Date(value).toLocaleDateString('en-TT', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'America/Port_of_Spain' }) : '—';
+    }
+
+    // Payment dates are saved as a plain date (midnight UTC), so show them as that
+    // date and not the evening before in Trinidad.
+    function remitFmtPaid(value) {
+      if (!value) return '—';
+      const date = new Date(value);
+      const midnightUtc = date.getUTCHours() === 0 && date.getUTCMinutes() === 0;
+      return date.toLocaleDateString('en-TT', { day: 'numeric', month: 'short', year: 'numeric', timeZone: midnightUtc ? 'UTC' : 'America/Port_of_Spain' });
+    }
+
+    function remitMethodLabel(value) {
+      return String(value || '').replaceAll('_', ' ').replace(/^./, ch => ch.toUpperCase());
+    }
+
+    // Works out, for one order, what it is and what is owed / paid on it.
+    function remitOrderInfo(o) {
+      const net = amount(o.remittance_net_amount);
+      const paid = amount(o.remittance_paid_amount);
+      const collected = amount(o.remittance_gross_amount ?? o.cod_amount);
+      const deductions = amount(o.remittance_deductions_amount);
+      const base = { collected, deductions, net: 0, paid: 0, owing: 0, pending: 0, delivered: o.order_status === 'delivered' };
+      if (o.order_status === 'delivered') {
+        if (o.remittance_status === 'paid') {
+          const short = Math.round((net - paid) * 100) / 100;
+          if (short > 0.009 && o.balance_closed) return { ...base, net, paid, label: 'Closed with shortfall', group: 'delivered' };
+          if (short > 0.009) return { ...base, net, paid, owing: short, label: 'Part paid', group: 'delivered' };
+          return { ...base, net, paid: net, label: 'Paid', group: 'delivered' };
+        }
+        if (o.remittance_status === 'ready') return { ...base, net, paid, owing: Math.max(net - paid, 0), label: 'Reconciled – awaiting payment', group: 'delivered' };
+        if (o.payment_type === 'cod' && collected > 0) return { ...base, pending: net, label: 'Delivered – cash not yet reconciled', group: 'delivered' };
+        return { ...base, label: o.payment_type === 'cod' ? 'Delivered – no cash collected' : 'Delivered – nothing to remit', group: 'delivered' };
+      }
+      let label = 'Not yet delivered';
+      if (o.parcel_status === 'returned_to_client') label = 'Returned to client';
+      else if (o.order_status === 'out_for_delivery') label = 'Out for delivery';
+      else if (['failed', 'rescheduled'].includes(o.order_status) || ['refused', 'no_response', 'reschedule_requested'].includes(o.delivery_outcome)) label = 'Delivery failed / rescheduled';
+      return { ...base, label, group: 'other', expected: amount(o.cod_amount) };
+    }
+
+    window.loadRemitClientDetail = async function() {
+      const clientId = document.getElementById('remitHistClient')?.value || '';
+      const box = document.getElementById('remitClientDetail');
+      const exportBtn = document.getElementById('remitHistExportBtn');
+      renderRemittanceHistory();
+      if (!box) return;
+      if (!clientId) {
+        remitReportData = null;
+        if (exportBtn) exportBtn.disabled = true;
+        box.innerHTML = '<div class="td-sub">Pick a business to see everything delivered, paid and still owing, and to export a report you can send them.</div>';
+        return;
+      }
+      box.innerHTML = '<div class="td-sub">Loading this business&hellip;</div>';
+      const start = document.getElementById('remitHistStart')?.value || null;
+      const end = document.getElementById('remitHistEnd')?.value || null;
+      const { data, error } = await supabase.rpc('admin_remittance_client_report', { p_client_id: clientId, p_start: start, p_end: end });
+      if ((document.getElementById('remitHistClient')?.value || '') !== clientId) return;
+      if (error) {
+        box.innerHTML = `<div class="td-sub" style="color:var(--red);">Could not load this business: ${escapeHtml(error.message || 'try again')}</div>`;
+        if (exportBtn) exportBtn.disabled = true;
+        return;
+      }
+      remitReportData = data;
+      if (exportBtn) exportBtn.disabled = false;
+      renderRemitClientDetail();
+    };
+
+    function remitReportParts() {
+      const data = remitReportData;
+      const rows = (data.orders || []).map(order => ({ order, info: remitOrderInfo(order) }));
+      const delivered = rows.filter(row => row.info.group === 'delivered');
+      const other = rows.filter(row => row.info.group === 'other');
+      const reconciled = delivered.filter(row => ['Paid', 'Part paid', 'Closed with shortfall', 'Reconciled – awaiting payment'].includes(row.info.label));
+      const sum = (list, key) => list.reduce((total, row) => total + amount(row.info[key]), 0);
+      const paymentsTotal = (data.payments || []).reduce((total, payment) => total + amount(payment.amount_paid), 0);
+      return {
+        rows, delivered, other, reconciled,
+        pendingRows: delivered.filter(row => row.info.label === 'Delivered – cash not yet reconciled'),
+        collected: sum(reconciled, 'collected'), deductions: sum(reconciled, 'deductions'), net: sum(reconciled, 'net'),
+        pendingNet: sum(delivered.filter(row => row.info.label === 'Delivered – cash not yet reconciled'), 'pending'),
+        outForDelivery: other.filter(row => row.info.label === 'Out for delivery'),
+        paymentsTotal
+      };
+    }
+
+    function renderRemitClientDetail() {
+      const box = document.getElementById('remitClientDetail');
+      if (!box || !remitReportData) return;
+      const data = remitReportData;
+      const parts = remitReportParts();
+      const totals = data.totals || {};
+      const tile = (label, value, sub, cls) => `<div class="stat-card ${cls || ''}"><div class="stat-label">${label}</div><div class="stat-val">${value}</div><div class="stat-sub">${sub || ''}</div></div>`;
+      const rangeText = data.start || data.end ? `${data.start ? remitFmtDate(data.start + 'T12:00:00') : 'the start'} to ${data.end ? remitFmtDate(data.end + 'T12:00:00') : 'today'}` : 'all time';
+      const lastPaid = totals.last_payment_at ? remitFmtPaid(totals.last_payment_at) : 'No payments yet';
+      box.innerHTML = `
+        <div class="td-name" style="font-size:1.05rem; margin-bottom:0.5rem;">${escapeHtml(data.client?.business_name || '')} <span class="td-sub">&middot; ${escapeHtml(rangeText)}</span></div>
+        <div class="dv-tiles">
+          ${tile('Owing now', moneyFull(totals.balance_owing), 'Reconciled and not yet paid', 'warn')}
+          ${tile('Paid to date', moneyFull(totals.paid_to_date), `Last payment: ${escapeHtml(lastPaid)}`, 'ok')}
+          ${tile('Owed to date', moneyFull(totals.owed_to_date), 'All reconciled deliveries, after deductions', '')}
+          ${tile('In this view: delivered', String(parts.delivered.length), `${moneyFull(parts.collected)} collected, ${moneyFull(parts.deductions)} deducted`, '')}
+          ${tile('In this view: net owed', moneyFull(parts.net), `${moneyFull(parts.paymentsTotal)} paid in this view`, 'blue')}
+          ${tile('Cash not yet reconciled', moneyFull(parts.pendingNet), `${parts.pendingRows.length} delivered order${parts.pendingRows.length === 1 ? '' : 's'} &mdash; not owed until the cash is in`, '')}
+          ${tile('Out for delivery', String(parts.outForDelivery.length), 'Not yet delivered', '')}
+        </div>
+        ${amount(totals.balance_closed) > 0.009 ? `<div class="dv-note">${moneyFull(totals.balance_closed)} was closed without payment on earlier remittances.</div>` : ''}
+        <details open style="margin-top:0.75rem;"><summary style="cursor:pointer; font-weight:700;">Payments made (${(data.payments || []).length})</summary>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Date</th><th>Batch</th><th>Method</th><th>Reference</th><th>Deductions</th><th>Amount paid</th><th>Notes</th></tr></thead>
+            <tbody>${(data.payments || []).map(payment => `<tr>
+              <td class="nw">${escapeHtml(remitFmtPaid(payment.paid_at))}</td>
+              <td class="td-id">${escapeHtml(payment.batch_number || '')}${payment.balance_of ? `<div class="td-sub">Balance of ${escapeHtml(payment.balance_of)}</div>` : ''}</td>
+              <td>${escapeHtml(remitMethodLabel(payment.method))}</td>
+              <td>${escapeHtml(payment.reference || '—')}</td>
+              <td>${moneyFull(payment.deductions_amount)}</td>
+              <td class="accounting-total">${moneyFull(payment.amount_paid)}</td>
+              <td>${escapeHtml(payment.notes || '')}</td>
+            </tr>`).join('') || '<tr><td colspan="7">No payments in this view.</td></tr>'}</tbody>
+          </table></div>
+        </details>
+        <details open style="margin-top:0.75rem;"><summary style="cursor:pointer; font-weight:700;">Delivered orders (${parts.delivered.length})</summary>
+          <div class="table-wrap" style="max-height:28rem; overflow:auto;"><table>
+            <thead><tr><th>Order</th><th>Customer</th><th>Delivered</th><th>Collected</th><th>Deductions</th><th>Net owed</th><th>Paid</th><th>Still owing</th><th>Status</th><th>Payment batch</th></tr></thead>
+            <tbody>${parts.delivered.map(({ order, info }) => `<tr>
+              <td class="td-id">${escapeHtml(order.order_number || '')}${order.external_order_number ? `<div class="td-sub">${escapeHtml(order.external_order_number)}</div>` : ''}</td>
+              <td>${escapeHtml(order.customer_name || '—')}</td>
+              <td class="nw">${escapeHtml(remitFmtDate(order.event_at))}</td>
+              <td>${moneyFull(info.collected)}</td>
+              <td>${moneyFull(info.deductions)}</td>
+              <td>${info.label === 'Delivered – cash not yet reconciled' ? `<span class="td-sub">${moneyFull(info.pending)} (pending)</span>` : moneyFull(info.net)}</td>
+              <td>${moneyFull(info.paid)}</td>
+              <td>${info.owing > 0.009 ? `<strong>${moneyFull(info.owing)}</strong>` : '—'}</td>
+              <td>${escapeHtml(info.label)}</td>
+              <td class="td-id">${escapeHtml(order.remittance_batch_number || '—')}</td>
+            </tr>`).join('') || '<tr><td colspan="10">No delivered orders in this view.</td></tr>'}</tbody>
+          </table></div>
+        </details>
+        <details style="margin-top:0.75rem;"><summary style="cursor:pointer; font-weight:700;">Not delivered / still out (${parts.other.length})</summary>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Order</th><th>Customer</th><th>Status</th><th>Cash to collect</th></tr></thead>
+            <tbody>${parts.other.map(({ order, info }) => `<tr>
+              <td class="td-id">${escapeHtml(order.order_number || '')}${order.external_order_number ? `<div class="td-sub">${escapeHtml(order.external_order_number)}</div>` : ''}</td>
+              <td>${escapeHtml(order.customer_name || '—')}</td>
+              <td>${escapeHtml(info.label)}</td>
+              <td>${moneyFull(info.expected)}</td>
+            </tr>`).join('') || '<tr><td colspan="4">Nothing outstanding in this view.</td></tr>'}</tbody>
+          </table></div>
+        </details>`;
+    }
+
+    window.exportRemitClientReport = function() {
+      if (!remitReportData) return showToast('Pick a business first.');
+      if (!window.XLSX) return showToast('XLSX export library is still loading. Try again in a few seconds.');
+      const data = remitReportData;
+      const parts = remitReportParts();
+      const totals = data.totals || {};
+      const name = data.client?.business_name || 'Business';
+      const rangeText = data.start || data.end ? `${data.start || 'start'} to ${data.end || 'today'}` : 'All time';
+      const summary = [
+        ['VirtuDrop Remittance Report'],
+        ['Business', name],
+        ['Period', rangeText],
+        ['Prepared', new Date().toLocaleString('en-TT', { timeZone: 'America/Port_of_Spain' })],
+        [],
+        ['IN THIS REPORT'],
+        ['Delivered orders (reconciled)', parts.reconciled.length],
+        ['Cash collected from customers', parts.collected],
+        ['Deductions (delivery fees and other)', parts.deductions],
+        ['Net owed to you', parts.net],
+        ['Paid to you in this period', parts.paymentsTotal],
+        [],
+        ['POSITION TO DATE'],
+        ['Total owed to you', amount(totals.owed_to_date)],
+        ['Total paid to you', amount(totals.paid_to_date)],
+        ['Still owing to you', amount(totals.balance_owing)],
+        ['Last payment', totals.last_payment_at ? remitFmtPaid(totals.last_payment_at) : 'None yet'],
+        [],
+        ['NOT YET OWED'],
+        ['Delivered, cash not yet received by VirtuDrop (orders)', parts.pendingRows.length],
+        ['Delivered, cash not yet received (amount due to you once received)', parts.pendingNet],
+        ['Out for delivery (orders)', parts.outForDelivery.length]
+      ];
+      if (amount(totals.balance_closed) > 0.009) summary.push([], ['Closed without payment on earlier remittances', amount(totals.balance_closed)]);
+
+      const deliveredRows = [['Order #', 'Your reference', 'Customer', 'Delivered', 'Collected', 'Deductions', 'Net owed', 'Paid', 'Still owing', 'Status', 'Payment batch']];
+      parts.delivered.forEach(({ order, info }) => deliveredRows.push([
+        order.order_number || '', order.external_order_number || '', order.customer_name || '', remitFmtDate(order.event_at),
+        info.collected, info.deductions, info.label === 'Delivered – cash not yet reconciled' ? info.pending : info.net,
+        info.paid, info.owing, info.label, order.remittance_batch_number || ''
+      ]));
+      deliveredRows.push([], ['Totals', '', '', '', parts.delivered.reduce((t, r) => t + r.info.collected, 0), parts.delivered.reduce((t, r) => t + r.info.deductions, 0), '', parts.delivered.reduce((t, r) => t + r.info.paid, 0), parts.delivered.reduce((t, r) => t + r.info.owing, 0)]);
+
+      const paymentRows = [['Date', 'Payment ref', 'Method', 'Reference', 'Deductions', 'Amount paid', 'Notes']];
+      (data.payments || []).forEach(payment => paymentRows.push([
+        remitFmtPaid(payment.paid_at), payment.batch_number + (payment.balance_of ? ` (balance of ${payment.balance_of})` : ''),
+        remitMethodLabel(payment.method), payment.reference || '', amount(payment.deductions_amount), amount(payment.amount_paid), payment.notes || ''
+      ]));
+      paymentRows.push([], ['Total paid', '', '', '', '', parts.paymentsTotal]);
+
+      const otherRows = [['Order #', 'Your reference', 'Customer', 'Status', 'Cash to collect']];
+      parts.other.forEach(({ order, info }) => otherRows.push([order.order_number || '', order.external_order_number || '', order.customer_name || '', info.label, info.expected]));
+
+      const wb = XLSX.utils.book_new();
+      const add = (rows, title, widths) => {
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+        ws['!cols'] = widths.map(wch => ({ wch }));
+        XLSX.utils.book_append_sheet(wb, ws, title);
+      };
+      add(summary, 'Summary', [58, 22]);
+      add(deliveredRows, 'Delivered orders', [20, 16, 26, 14, 12, 12, 12, 12, 12, 34, 18]);
+      add(paymentRows, 'Payments', [14, 34, 22, 24, 12, 14, 36]);
+      add(otherRows, 'Not delivered', [20, 16, 26, 32, 14]);
+      const safe = name.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'Business';
+      XLSX.writeFile(wb, `VirtuDrop-Remittance-${safe}-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    };
 
     window.viewRemittanceRecord = function(recordId) {
       const record = remittanceRecords.find(item => item.id === recordId);
