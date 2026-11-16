@@ -3644,7 +3644,9 @@
     //     counters show what they did in that batch, not everything ever.
     // It uses the same database functions as before.
     let driversViewDriverId = null;
-    const driverView = { batch: 'latest', status: 'all', search: '', showClosed: false };
+    const driverView = { batch: 'latest', picked: new Set(), status: 'all', search: '', showClosed: false };
+    let driverBatchOverrides = new Map();   // orderId -> batch key chosen by hand
+    let driverRowPicks = new Set();         // orders ticked for "Move to batch"
     let driverHandoverEdits = new Map();   // orderId -> ticked? (not saved yet)
     let driverViewShellKey = '';
     let driverViewAllRows = [];
@@ -3742,20 +3744,62 @@
         && (Number(row.amount_to_collect || 0) <= 0 || row.reconciliation_status === 'balanced');
     }
 
+    // A "batch" is the delivery run an order came in with (its import batch),
+    // unless you have moved it to another batch by hand. Orders with neither
+    // are grouped as "Individual orders".
     function driverBatchKey(row) {
-      return ttDateKey(row.assigned_at) || 'none';
+      return driverBatchOverrides.get(row.id) || row.import_batch_id || 'single';
+    }
+
+    async function loadDriverBatchOverrides() {
+      try {
+        const { data, error } = await supabase.from('driver_order_batch_override').select('order_id, batch_key');
+        if (error) throw error;
+        driverBatchOverrides = new Map((data || []).map(item => [item.order_id, item.batch_key]));
+      } catch (error) {
+        console.warn('Driver batch overrides could not load:', error);
+        driverBatchOverrides = new Map();
+      }
+      if (driversViewDriverId) renderDriverDetailBody();
+    }
+
+    function driverBatchLabel(key, rows) {
+      if (key === 'single') return 'Individual orders';
+      const stamps = rows.filter(row => driverBatchKey(row) === key).map(row => row.imported_at).filter(Boolean).sort();
+      const when = stamps[0] ? ttDateLabel(ttDateKey(stamps[0])) : '';
+      return when ? `${when} batch` : 'Batch';
     }
 
     function driverBatchInfo(rows) {
       const counts = new Map();
-      rows.forEach(row => counts.set(driverBatchKey(row), (counts.get(driverBatchKey(row)) || 0) + 1));
-      const keys = [...counts.keys()].filter(key => key !== 'none').sort().reverse();
-      return { keys, counts, latest: keys[0] || '' };
+      const newest = new Map();
+      rows.forEach(row => {
+        const key = driverBatchKey(row);
+        counts.set(key, (counts.get(key) || 0) + 1);
+        const stamp = new Date(row.imported_at || row.assigned_at || row.created_at || 0).getTime();
+        if (!newest.has(key) || stamp > newest.get(key)) newest.set(key, stamp);
+      });
+      const keys = [...counts.keys()].filter(key => key !== 'single').sort((a, b) => newest.get(b) - newest.get(a));
+      if (counts.has('single')) keys.push('single');
+      const labels = new Map(keys.map(key => [key, driverBatchLabel(key, rows)]));
+      // Two batches on the same day would read the same, so letter them.
+      const seen = new Map();
+      keys.forEach(key => seen.set(labels.get(key), (seen.get(labels.get(key)) || 0) + 1));
+      const used = new Map();
+      keys.forEach(key => {
+        const label = labels.get(key);
+        if (seen.get(label) > 1) {
+          used.set(label, (used.get(label) || 0) + 1);
+          labels.set(key, `${label} (${String.fromCharCode(64 + used.get(label))})`);
+        }
+      });
+      return { keys, counts, labels, latest: keys.find(key => key !== 'single') || keys[0] || '' };
     }
 
-    function driverRowsInBatch(rows, batch) {
+    function driverRowsInBatch(rows, batch, infoArg) {
       if (batch === 'all') return rows;
-      const info = driverBatchInfo(rows);
+      if (batch === 'custom') return rows.filter(row => driverView.picked.has(driverBatchKey(row)));
+      const info = infoArg || driverBatchInfo(rows);
       const key = batch === 'latest' ? info.latest : batch;
       if (!key) return batch === 'latest' ? rows : [];
       return rows.filter(row => driverBatchKey(row) === key);
@@ -3814,7 +3858,9 @@
     window.openDriverView = function(driverId) {
       driversViewDriverId = driverId;
       driverViewShellKey = '';
-      Object.assign(driverView, { batch: 'latest', status: 'all', search: '', showClosed: false });
+      Object.assign(driverView, { batch: 'latest', picked: new Set(), status: 'all', search: '', showClosed: false });
+      driverRowPicks = new Set();
+      loadDriverBatchOverrides();
       driverHandoverEdits = new Map();
       renderDriversMgmt();
       window.scrollTo({ top: 0 });
@@ -3852,7 +3898,10 @@
         <div id="driverScheduleBanner"></div>
         <div class="dv-tiles" id="driverDetailTiles"></div>
         <div class="filter-bar">
-          <select class="filter-select" id="dvBatch" onchange="setDriverViewFilter('batch', this.value)" title="The day these parcels were assigned to the driver"></select>
+          <details class="dv-batch-pick" id="dvBatchPick" style="position:relative;">
+            <summary class="filter-select" id="dvBatchSummary" style="cursor:pointer; list-style:none; min-width:15rem;">Batches</summary>
+            <div id="dvBatchPanel" style="position:absolute; z-index:30; top:100%; left:0; min-width:19rem; max-height:22rem; overflow:auto; background:var(--white,#fff); border:1px solid var(--border,#ddd); border-radius:8px; padding:0.6rem 0.75rem; box-shadow:0 8px 24px rgba(0,0,0,0.12);"></div>
+          </details>
           <select class="filter-select" id="dvStatus" onchange="setDriverViewFilter('status', this.value)">
             ${DRIVER_STATUS_OPTIONS.map(([value, label]) => `<option value="${value}">${label}</option>`).join('')}
           </select>
@@ -4027,19 +4076,32 @@
         if (!row || !driverRowEditable(row)) driverHandoverEdits.delete(orderId);
       });
 
-      // Batch selector: the day each parcel was assigned to this driver.
+      // Batch picker: tick any batches (or use the shortcuts).
       const info = driverBatchInfo(allRows);
-      const batchSelect = document.getElementById('dvBatch');
-      if (batchSelect) {
-        const latestLabel = info.latest ? `Latest batch — ${ttDateLabel(info.latest)} (${info.counts.get(info.latest)})` : 'Latest batch';
-        batchSelect.innerHTML = `<option value="latest">${escapeHtml(latestLabel)}</option><option value="all">All batches (${allRows.length})</option>`
-          + info.keys.map(key => `<option value="${key}">${escapeHtml(ttDateLabel(key))} — ${info.counts.get(key)} order${info.counts.get(key) === 1 ? '' : 's'}</option>`).join('')
-          + (info.counts.has('none') ? `<option value="none">No assigned date (${info.counts.get('none')})</option>` : '');
-        batchSelect.value = driverView.batch;
-        if (batchSelect.value !== driverView.batch) { driverView.batch = 'latest'; batchSelect.value = 'latest'; }
+      const batchPanel = document.getElementById('dvBatchPanel');
+      const batchSummary = document.getElementById('dvBatchSummary');
+      if (driverView.batch === 'custom') {
+        driverView.picked = new Set([...driverView.picked].filter(key => info.counts.has(key)));
+        if (!driverView.picked.size) driverView.batch = 'latest';
+      }
+      const batchRows = driverRowsInBatch(allRows, driverView.batch, info);
+      if (batchPanel && batchSummary) {
+        const latestLabel = info.latest ? `${info.labels.get(info.latest)} (${info.counts.get(info.latest)})` : '';
+        const summaryText = driverView.batch === 'all' ? `All batches (${allRows.length})`
+          : driverView.batch === 'custom' ? `${driverView.picked.size} batch${driverView.picked.size === 1 ? '' : 'es'} selected (${batchRows.length} orders)`
+          : `Latest — ${latestLabel || 'no batches'}`;
+        batchSummary.textContent = summaryText + ' ▾';
+        batchPanel.innerHTML = `
+          <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
+            <button class="btn btn-ghost btn-sm" type="button" onclick="driverPickBatchShortcut('latest')">Latest</button>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="driverPickBatchShortcut('all')">All</button>
+          </div>
+          ${info.keys.map(key => {
+            const ticked = driverView.batch === 'all' || (driverView.batch === 'latest' ? key === info.latest : driverView.picked.has(key));
+            return `<label style="display:flex; gap:0.5rem; align-items:center; padding:0.2rem 0; cursor:pointer;"><input type="checkbox" ${ticked ? 'checked' : ''} onchange="driverToggleBatch('${key}', this.checked)"><span>${escapeHtml(info.labels.get(key))} <span class="td-sub">&middot; ${info.counts.get(key)} order${info.counts.get(key) === 1 ? '' : 's'}</span></span></label>`;
+          }).join('') || '<div class="td-sub">No orders yet.</div>'}`;
       }
 
-      const batchRows = driverRowsInBatch(allRows, driverView.batch);
       const counts = { all: batchRows.length, awaiting_handover: 0, out_for_delivery: 0, delivered: 0, failed: 0, cancelled: 0 };
       batchRows.forEach(row => { counts[driverRowStatus(row)] += 1; });
 
@@ -4050,11 +4112,11 @@
       const cashRows = driverUnreconciledCollections(driver.id);
       const cashOwed = cashRows.reduce((sum, order) => sum + driverCollects(order), 0);
       const batchPay = batchRows.filter(row => row.order_status === 'delivered').reduce((sum, row) => sum + Number(row.driver_delivery_pay || 0), 0);
-      const otherOpen = allRows.filter(row => !driverRowsInBatch([row], driverView.batch).length && !row.order_closed_at && ['awaiting_handover', 'out_for_delivery', 'failed'].includes(driverRowStatus(row))).length;
+      const otherOpen = allRows.filter(row => !driverRowsInBatch([row], driverView.batch, info).length && !row.order_closed_at && ['awaiting_handover', 'out_for_delivery', 'failed'].includes(driverRowStatus(row))).length;
       const statusTile = (key, label, cls) => `<div class="stat-card ${cls || ''}" onclick="setDriverStatusFilter('${key}')" title="Click to show only these"><div class="stat-label">${label}</div><div class="stat-val">${counts[key]}</div><div class="stat-sub">in this view</div></div>`;
       tiles.innerHTML = `
         <div class="stat-card warn"><div class="stat-label">Cash owed to VirtuDrop</div><div class="stat-val">${moneyFull(cashOwed)}</div><div class="stat-sub">${cashRows.length} order${cashRows.length === 1 ? '' : 's'} not yet reconciled (all batches)</div></div>
-        <div class="stat-card blue"><div class="stat-label">Pay &mdash; this batch</div><div class="stat-val">${moneyFull(batchPay)}</div><div class="stat-sub">Delivered orders in this view</div></div>
+        <div class="stat-card blue"><div class="stat-label">Pay &mdash; selected batches</div><div class="stat-val">${moneyFull(batchPay)}</div><div class="stat-sub">Delivered orders in this view</div></div>
         <div class="stat-card blue"><div class="stat-label">Pay &mdash; this cycle</div><div class="stat-val">${moneyFull(finance?.earned_cycle || 0)}</div><div class="stat-sub">${finance?.cycle?.cycle_start ? `${finance.cycle.cycle_start} to ${finance.cycle.cycle_end}` : 'Current pay cycle'}</div></div>
         ${statusTile('all', 'Assigned', '')}
         ${statusTile('awaiting_handover', 'Not yet handed over', 'warn')}
@@ -4096,9 +4158,10 @@
           </span>
         </div>` : ''}
         ${closable.length ? `<div class="dv-note">${closable.length} finished ${closable.length === 1 ? 'delivery is' : 'deliveries are'} ready to close. <button class="btn btn-ghost btn-sm" type="button" onclick="driverCloseFinished()">Close ${closable.length} finished</button></div>` : ''}
+        <div class="dv-note" id="dvMoveBar" style="${driverRowPicks.size ? '' : 'display:none;'}"><span id="dvMoveCount">${driverRowPicks.size} ticked</span> <button class="btn btn-primary btn-sm" type="button" onclick="driverMovePickedToBatch()">Move to batch&hellip;</button> <button class="btn btn-ghost btn-sm" type="button" onclick="driverClearRowPicks()">Clear</button></div>
         <div class="card">
           <div class="table-wrap"><table>
-            <thead><tr><th class="nw">Handed over</th><th class="nw">Batch / manifest</th><th class="nw">Order</th><th>Customer</th><th>Address</th><th class="nw">Zone</th><th class="nw">Collect</th><th class="nw">Status</th><th class="nw">Action</th></tr></thead>
+            <thead><tr><th style="width:2rem;"></th><th class="nw">Handed over</th><th class="nw">Batch / manifest</th><th class="nw">Order</th><th>Customer</th><th>Address</th><th class="nw">Zone</th><th class="nw">Collect</th><th class="nw">Status</th><th class="nw">Action</th></tr></thead>
             <tbody>${visible.map(row => {
               const zone = driverZoneInfo(row);
               const cashText = Number(row.amount_to_collect || 0) > 0 && row.order_status === 'delivered' ? escapeHtml(row.reconciliation_status || 'unreconciled') : '—';
@@ -4109,8 +4172,9 @@
               else action = '<span class="td-sub">—</span>';
               const pending = driverRowStatus(row) === 'awaiting_handover' && driverRowEditable(row) && !driverEffectiveHandover(row);
               return `<tr class="${pending ? 'dv-row-notready' : ''}">
+                <td><input type="checkbox" ${driverRowPicks.has(row.id) ? 'checked' : ''} onchange="driverToggleRowPick('${row.id}', this.checked)" title="Tick to move to another batch"></td>
                 <td class="nw">${driverHandoverCellHtml(row)}</td>
-                <td class="nw"><div class="td-name">${row.assigned_at ? escapeHtml(ttDateLabel(ttDateKey(row.assigned_at))) : '—'}</div><div class="td-sub">${row._manifest ? escapeHtml(row._manifest.manifest_number) : 'no manifest'}${row.assigned_at ? ` &middot; ${escapeHtml(new Date(row.assigned_at).toLocaleTimeString('en-TT', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Port_of_Spain' }))}` : ''}</div></td>
+                <td class="nw"><div class="td-name">${escapeHtml(info.labels.get(driverBatchKey(row)) || '—')}${driverBatchOverrides.has(row.id) ? ' <span class="td-sub" title="Moved by hand">(moved)</span>' : ''}</div><div class="td-sub">Assigned ${row.assigned_at ? escapeHtml(ttDateLabel(ttDateKey(row.assigned_at))) : '—'}</div><div class="td-sub">${row._manifest ? escapeHtml(row._manifest.manifest_number) : 'no manifest'}${row.assigned_at ? ` &middot; ${escapeHtml(new Date(row.assigned_at).toLocaleTimeString('en-TT', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Port_of_Spain' }))}` : ''}</div></td>
                 <td class="td-id">${escapeHtml(row.order_number)}</td>
                 <td class="dv-wide"><div class="td-name">${escapeHtml(row.customer_name || '—')}</div><div class="td-sub">${escapeHtml(formatPhoneDisplay(row.customer_phone))}</div>${orderItemPackageHtml(row)}</td>
                 <td class="dv-wide">${escapeHtml(orderLabelAddress(row))}</td>
@@ -4119,11 +4183,72 @@
                 <td class="nw">${driverRowStatusBadge(row)}</td>
                 <td class="nw">${action}</td>
               </tr>`;
-            }).join('') || '<tr><td colspan="9">No deliveries match this view.</td></tr>'}</tbody>
+            }).join('') || '<tr><td colspan="10">No deliveries match this view.</td></tr>'}</tbody>
           </table></div>
         </div>`;
       updateDriverHandoverBar();
     }
+
+    window.driverPickBatchShortcut = function(mode) {
+      driverView.batch = mode;
+      driverView.picked = new Set();
+      renderDriverDetailBody();
+    };
+
+    window.driverToggleBatch = function(key, checked) {
+      const info = driverBatchInfo(driverViewAllRows);
+      if (driverView.batch !== 'custom') {
+        driverView.picked = driverView.batch === 'all' ? new Set(info.keys) : new Set(info.latest ? [info.latest] : []);
+        driverView.batch = 'custom';
+      }
+      if (checked) driverView.picked.add(key); else driverView.picked.delete(key);
+      if (!driverView.picked.size) driverView.batch = 'latest';
+      renderDriverDetailBody();
+      const panel = document.getElementById('dvBatchPick');
+      if (panel) panel.open = true;
+    };
+
+    window.driverToggleRowPick = function(orderId, checked) {
+      if (checked) driverRowPicks.add(orderId); else driverRowPicks.delete(orderId);
+      const bar = document.getElementById('dvMoveBar');
+      if (bar) bar.style.display = driverRowPicks.size ? '' : 'none';
+      const count = document.getElementById('dvMoveCount');
+      if (count) count.textContent = `${driverRowPicks.size} ticked`;
+    };
+
+    window.driverClearRowPicks = function() {
+      driverRowPicks = new Set();
+      renderDriverDetailBody();
+    };
+
+    window.driverMovePickedToBatch = function() {
+      const ids = [...driverRowPicks];
+      if (!ids.length) return showToast('Tick the orders you want to move first.');
+      const info = driverBatchInfo(driverViewAllRows);
+      document.getElementById('modalTitle').textContent = `Move ${ids.length} order${ids.length === 1 ? '' : 's'} to a batch`;
+      document.getElementById('modalBody').innerHTML = `
+        <p style="margin-bottom:0.6rem;">This only changes where the orders show on this driver's page and in his pay totals. It does not change the orders, the pay or the client's batch.</p>
+        <label style="display:block;">Move to
+          <select id="driverMoveTarget" class="filter-select" style="width:100%; margin-top:0.35rem;">
+            ${info.keys.filter(key => key !== 'single').map(key => `<option value="${key}">${escapeHtml(info.labels.get(key))} (${info.counts.get(key)})</option>`).join('')}
+            <option value="">Individual orders (undo any move)</option>
+          </select>
+        </label>`;
+      document.getElementById('modalConfirm').textContent = 'Move';
+      document.getElementById('modalCancel').style.display = '';
+      document.getElementById('modal').classList.add('show');
+      modalCb = async () => {
+        const target = document.getElementById('driverMoveTarget')?.value || '';
+        const { error } = await supabase.rpc('admin_set_driver_batch', { p_order_ids: ids, p_batch_key: target || null });
+        if (error) {
+          window.vdNotify('Could Not Move Orders', error.message || 'The move failed.', 'error');
+          return;
+        }
+        showToast(`${ids.length} order${ids.length === 1 ? '' : 's'} moved.`);
+        driverRowPicks = new Set();
+        await loadDriverBatchOverrides();
+      };
+    };
 
     window.setDriverStatusFilter = function(status) {
       driverView.status = status;
@@ -10873,12 +10998,16 @@
         const failedRows = failed.length
           ? `<div class="td-name" style="margin-top:0.9rem;">Approved failed-delivery pay</div><div class="table-wrap"><table><thead><tr><th>Area</th><th>Order</th><th>Pay</th></tr></thead><tbody>${failed.map(row => `<tr><td>${escapeHtml(row.area)}</td><td>${escapeHtml(row.order_number || '')}</td><td>${moneyFull(row.amount)}</td></tr>`).join('')}</tbody></table></div>`
           : '';
+        const pickups = data.pickups || [];
+        const pickupRows = pickups.length
+          ? `<div class="td-name" style="margin-top:0.9rem;">Pickup pay</div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Order</th><th>Pay</th></tr></thead><tbody>${pickups.map(row => `<tr><td>${escapeHtml(fmt(row.date))}</td><td>${escapeHtml(row.order_number || '')}</td><td>${moneyFull(row.amount)}</td></tr>`).join('')}</tbody></table></div>`
+          : '';
         const paymentRows = payments.length
           ? payments.map(row => `<tr><td>${escapeHtml(fmt(row.date))}</td><td>${moneyFull(row.amount)}</td><td>${escapeHtml(String(row.method || '').replaceAll('_', ' '))}</td><td>${escapeHtml(row.reference || row.notes || '')}</td></tr>`).join('')
           : '<tr><td colspan="4">No payments to this driver in this period.</td></tr>';
         document.getElementById('modalTitle').textContent = `${data.name || 'Driver'} — ${rangeText}`;
         document.getElementById('modalBody').innerHTML = `
-          <div style="margin-bottom:0.6rem;">Earned <strong>${moneyFull(Number(data.earned_deliveries || 0) + Number(data.earned_failed || 0))}</strong> from ${data.deliveries || 0} deliveries  &nbsp;|&nbsp; ${data.client_filtered ? '' : 'Paid out <strong>' + moneyFull(data.paid_out) + '</strong>'}</div>
+          <div style="margin-bottom:0.6rem;">Earned <strong>${moneyFull(Number(data.earned_deliveries || 0) + Number(data.earned_failed || 0) + Number(data.earned_pickups || 0))}</strong> from ${data.deliveries || 0} deliveries${Number(data.earned_pickups || 0) ? ` + ${moneyFull(data.earned_pickups)} pickups` : ''}  &nbsp;|&nbsp; ${data.client_filtered ? '' : 'Paid out <strong>' + moneyFull(data.paid_out) + '</strong>'}</div>
           <div class="earn-detail">
             <div>
               <div class="td-name">Earnings by area</div>
@@ -10895,6 +11024,7 @@
                 <tbody>${paymentRows}</tbody>
               </table></div>
               ${failedRows}
+              ${pickupRows}
             </div>
           </div>`;
       } catch (error) {
@@ -10935,7 +11065,7 @@
       if (tiles) {
         tiles.innerHTML = [
           tile('Profit Before Drivers', report.profit_before_drivers, `${report.deliveries || 0} deliveries completed`, 'ok'),
-          tile('Driver Pay Earned', report.driver_pay_earned, `${moneyFull(report.driver_pay_deliveries)} deliveries + ${moneyFull(report.driver_pay_failed)} failed`, 'warn'),
+          tile('Driver Pay Earned', report.driver_pay_earned, `${moneyFull(report.driver_pay_deliveries)} deliveries + ${moneyFull(report.driver_pay_failed)} failed + ${moneyFull(report.driver_pay_pickups || 0)} pickups`, 'warn'),
           tile('Profit After Drivers', report.profit_after_drivers, 'What VirtuDrop keeps', 'ok'),
           tile('Our Earnings as Driver', report.owner_earnings || 0, `${report.owner_deliveries || 0} deliveries done by Admin / YD Harvest. Counted for us, money stays with VirtuDrop`, 'ok'),
           report.client_filtered ? tile('Drivers Payout (these deliveries)', report.driver_pay_earned, 'Exact: the pay recorded on each of these deliveries', '') : tile('Drivers Paid Out', report.drivers_paid_out, 'Cash paid to drivers in this period', ''),
