@@ -3748,7 +3748,7 @@
     // unless you have moved it to another batch by hand. Orders with neither
     // are grouped as "Individual orders".
     function driverBatchKey(row) {
-      return driverBatchOverrides.get(row.id) || row.import_batch_id || 'single';
+      return driverBatchOverrides.get(row.id) || row.import_batch_id || `single:${ttDateKey(row.assigned_at) || 'none'}`;
     }
 
     async function loadDriverBatchOverrides() {
@@ -3764,7 +3764,11 @@
     }
 
     function driverBatchLabel(key, rows) {
-      if (key === 'single') return 'Individual orders';
+      if (key.startsWith('single:')) {
+        const day = key.slice(7);
+        return day === 'none' ? 'Individual orders (no date)' : `${ttDateLabel(day)} – individual orders`;
+      }
+      if (key.startsWith('custom:')) return key.slice(7);
       const stamps = rows.filter(row => driverBatchKey(row) === key).map(row => row.imported_at).filter(Boolean).sort();
       const when = stamps[0] ? ttDateLabel(ttDateKey(stamps[0])) : '';
       return when ? `${when} batch` : 'Batch';
@@ -3776,11 +3780,10 @@
       rows.forEach(row => {
         const key = driverBatchKey(row);
         counts.set(key, (counts.get(key) || 0) + 1);
-        const stamp = new Date(row.imported_at || row.assigned_at || row.created_at || 0).getTime();
+        const stamp = new Date(row.assigned_at || row.imported_at || row.created_at || 0).getTime();
         if (!newest.has(key) || stamp > newest.get(key)) newest.set(key, stamp);
       });
-      const keys = [...counts.keys()].filter(key => key !== 'single').sort((a, b) => newest.get(b) - newest.get(a));
-      if (counts.has('single')) keys.push('single');
+      const keys = [...counts.keys()].sort((a, b) => newest.get(b) - newest.get(a));
       const labels = new Map(keys.map(key => [key, driverBatchLabel(key, rows)]));
       // Two batches on the same day would read the same, so letter them.
       const seen = new Map();
@@ -3793,7 +3796,7 @@
           labels.set(key, `${label} (${String.fromCharCode(64 + used.get(label))})`);
         }
       });
-      return { keys, counts, labels, latest: keys.find(key => key !== 'single') || keys[0] || '' };
+      return { keys, counts, labels, latest: keys[0] || '' };
     }
 
     function driverRowsInBatch(rows, batch, infoArg) {
@@ -4161,7 +4164,7 @@
         <div class="dv-note" id="dvMoveBar" style="${driverRowPicks.size ? '' : 'display:none;'}"><span id="dvMoveCount">${driverRowPicks.size} ticked</span> <button class="btn btn-primary btn-sm" type="button" onclick="driverMovePickedToBatch()">Move to batch&hellip;</button> <button class="btn btn-ghost btn-sm" type="button" onclick="driverClearRowPicks()">Clear</button></div>
         <div class="card">
           <div class="table-wrap"><table>
-            <thead><tr><th style="width:2rem;"></th><th class="nw">Handed over</th><th class="nw">Batch / manifest</th><th class="nw">Order</th><th>Customer</th><th>Address</th><th class="nw">Zone</th><th class="nw">Collect</th><th class="nw">Status</th><th class="nw">Action</th></tr></thead>
+            <thead><tr><th style="width:2rem;"><input type="checkbox" id="dvPickAll" ${visible.length && visible.every(row => driverRowPicks.has(row.id)) ? 'checked' : ''} onchange="driverPickAllRows(this.checked)" title="Tick every order shown"></th><th class="nw">Handed over</th><th class="nw">Batch / manifest</th><th class="nw">Order</th><th>Customer</th><th>Address</th><th class="nw">Zone</th><th class="nw">Collect</th><th class="nw">Status</th><th class="nw">Action</th></tr></thead>
             <tbody>${visible.map(row => {
               const zone = driverZoneInfo(row);
               const cashText = Number(row.amount_to_collect || 0) > 0 && row.order_status === 'delivered' ? escapeHtml(row.reconciliation_status || 'unreconciled') : '—';
@@ -4216,6 +4219,11 @@
       if (count) count.textContent = `${driverRowPicks.size} ticked`;
     };
 
+    window.driverPickAllRows = function(checked) {
+      driverViewVisibleRows.forEach(row => { if (checked) driverRowPicks.add(row.id); else driverRowPicks.delete(row.id); });
+      renderDriverDetailBody();
+    };
+
     window.driverClearRowPicks = function() {
       driverRowPicks = new Set();
       renderDriverDetailBody();
@@ -4230,15 +4238,34 @@
         <p style="margin-bottom:0.6rem;">This only changes where the orders show on this driver's page and in his pay totals. It does not change the orders, the pay or the client's batch.</p>
         <label style="display:block;">Move to
           <select id="driverMoveTarget" class="filter-select" style="width:100%; margin-top:0.35rem;">
-            ${info.keys.filter(key => key !== 'single').map(key => `<option value="${key}">${escapeHtml(info.labels.get(key))} (${info.counts.get(key)})</option>`).join('')}
+            ${info.keys.filter(key => !key.startsWith('single:')).map(key => `<option value="${key}">${escapeHtml(info.labels.get(key))} (${info.counts.get(key)})</option>`).join('')}
+            <option value="__new__">+ Create a new batch&hellip;</option>
             <option value="">Individual orders (undo any move)</option>
           </select>
+        </label>
+        <label id="driverNewBatchWrap" style="display:none; margin-top:0.6rem;">New batch name
+          <input id="driverNewBatchName" class="filter-input" style="width:100%; margin-top:0.35rem;" maxlength="40" placeholder="e.g. Thursday extras">
         </label>`;
+      document.getElementById('driverMoveTarget').onchange = function() {
+        document.getElementById('driverNewBatchWrap').style.display = this.value === '__new__' ? '' : 'none';
+      };
+      if (!info.keys.some(key => !key.startsWith('single:'))) {
+        document.getElementById('driverMoveTarget').value = '__new__';
+        document.getElementById('driverNewBatchWrap').style.display = '';
+      }
       document.getElementById('modalConfirm').textContent = 'Move';
       document.getElementById('modalCancel').style.display = '';
       document.getElementById('modal').classList.add('show');
       modalCb = async () => {
-        const target = document.getElementById('driverMoveTarget')?.value || '';
+        let target = document.getElementById('driverMoveTarget')?.value || '';
+        if (target === '__new__') {
+          const name = String(document.getElementById('driverNewBatchName')?.value || '').replace(/[^A-Za-z0-9 \-]/g, '').replace(/\s+/g, ' ').trim().slice(0, 40);
+          if (!name) {
+            window.vdNotify('Name Needed', 'Type a name for the new batch first.', 'error');
+            return;
+          }
+          target = `custom:${name}`;
+        }
         const { error } = await supabase.rpc('admin_set_driver_batch', { p_order_ids: ids, p_batch_key: target || null });
         if (error) {
           window.vdNotify('Could Not Move Orders', error.message || 'The move failed.', 'error');
