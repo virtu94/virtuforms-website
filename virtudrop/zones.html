@@ -239,11 +239,6 @@
       border-color: #1F8F52;
       transform: translateY(-2px);
     }
-    .location-tag.extended,
-    .drawer-tag.extended {
-      border-color: #e07a3a;
-      background: #fff8f0;
-    }
     /* See full list button */
     .see-full-btn {
       display: inline-flex;
@@ -943,7 +938,7 @@
     function buildAreaTags(areas, limit) {
       return areas.slice(0, limit).map(area => {
         const tag = document.createElement('span');
-        tag.className = `location-tag${area.rateBand === 'extended' ? ' extended' : ''}`;
+        tag.className = 'location-tag';
         tag.textContent = area.name;
         return tag;
       });
@@ -985,8 +980,9 @@
 
       zoneData = (data || []).reduce((zones, zone) => {
         const areas = (zone.zone_areas || [])
-          .map(item => ({ name: item.area_name, rateBand: item.rate_band || 'standard' }))
+          .map(item => ({ name: /^arima\b/i.test(item.area_name || '') ? 'Arima' : item.area_name }))
           .filter(item => item.name)
+          .filter((item, index, list) => list.findIndex(other => other.name === item.name) === index)
           .sort((a, b) => a.name.localeCompare(b.name));
 
         zones[zone.code] = {
@@ -1014,15 +1010,14 @@
         drawerTitle.textContent = data.label;
         drawerSub.textContent = data.subtitle;
         drawerBody.innerHTML = '';
-        const extendedCount = data.areas.filter(area => area.rateBand === 'extended').length;
-        drawerCount.textContent = `${data.areas.length} areas covered · ${extendedCount} extended`;
+        drawerCount.textContent = `${data.areas.length} areas covered`;
 
         const tagWrap = document.createElement('div');
         tagWrap.className = 'drawer-tags';
 
         data.areas.forEach((area, index) => {
           const tag = document.createElement('span');
-          tag.className = `drawer-tag${area.rateBand === 'extended' ? ' extended' : ''}`;
+          tag.className = 'drawer-tag';
           tag.textContent = area.name;
           tag.style.animationDelay = `${index * 0.02}s`;
           tagWrap.appendChild(tag);
