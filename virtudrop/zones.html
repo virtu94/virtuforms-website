@@ -244,14 +244,6 @@
       border-color: #e07a3a;
       background: #fff8f0;
     }
-    .location-tag.extended::after,
-    .drawer-tag.extended::after {
-      content: " $50";
-      color: #e07a3a;
-      font-weight: 800;
-      margin-left: 0.25rem;
-    }
-
     /* See full list button */
     .see-full-btn {
       display: inline-flex;
@@ -928,8 +920,9 @@
     </footer>
 
 
+  <script src="vendor/supabase.umd.js"></script>
   <script type="module">
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+    const { createClient } = window.supabase;
 
     const SUPABASE_URL = 'https://vgmzzavxhuarlacnvnoz.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_riDvZH96FeYGnF0bLYQErg_tlRv71CX';
