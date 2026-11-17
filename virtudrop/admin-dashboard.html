@@ -7027,30 +7027,33 @@
         </details>
         <details open style="margin-top:0.75rem;"><summary style="cursor:pointer; font-weight:700;">Delivered orders (${parts.delivered.length})</summary>
           <div class="table-wrap" style="max-height:28rem; overflow:auto;"><table>
-            <thead><tr><th>Order</th><th>Customer</th><th>Delivered</th><th>Collected</th><th>Deductions</th><th>Net owed</th><th>Paid</th><th>Still owing</th><th>Status</th><th>Payment batch</th></tr></thead>
+            <thead><tr><th>Order</th><th>Customer</th><th>Area</th><th>Delivered</th><th>Collected</th><th>Delivery fee</th><th>Deductions</th><th>Net owed</th><th>Paid</th><th>Still owing</th><th>Status</th><th>Payment batch</th></tr></thead>
             <tbody>${parts.delivered.map(({ order, info }) => `<tr>
               <td class="td-id">${escapeHtml(order.order_number || '')}${order.external_order_number ? `<div class="td-sub">${escapeHtml(order.external_order_number)}</div>` : ''}</td>
               <td>${escapeHtml(order.customer_name || '—')}</td>
+              <td>${escapeHtml(order.area_name || '—')}${order.zone_code ? `<div class="td-sub">Zone ${escapeHtml(order.zone_code)}</div>` : ''}</td>
               <td class="nw">${escapeHtml(remitFmtDate(order.event_at))}</td>
               <td>${moneyFull(info.collected)}</td>
+              <td>${moneyFull(order.delivery_fee)}</td>
               <td>${moneyFull(info.deductions)}</td>
               <td>${info.label === 'Delivered – cash not yet reconciled' ? `<span class="td-sub">${moneyFull(info.pending)} (pending)</span>` : moneyFull(info.net)}</td>
               <td>${moneyFull(info.paid)}</td>
               <td>${info.owing > 0.009 ? `<strong>${moneyFull(info.owing)}</strong>` : '—'}</td>
               <td>${escapeHtml(info.label)}</td>
               <td class="td-id">${escapeHtml(order.remittance_batch_number || '—')}</td>
-            </tr>`).join('') || '<tr><td colspan="10">No delivered orders in this view.</td></tr>'}</tbody>
+            </tr>`).join('') || '<tr><td colspan="12">No delivered orders in this view.</td></tr>'}</tbody>
           </table></div>
         </details>
         <details style="margin-top:0.75rem;"><summary style="cursor:pointer; font-weight:700;">Not delivered / still out (${parts.other.length})</summary>
           <div class="table-wrap"><table>
-            <thead><tr><th>Order</th><th>Customer</th><th>Status</th><th>Cash to collect</th></tr></thead>
+            <thead><tr><th>Order</th><th>Customer</th><th>Area</th><th>Status</th><th>Cash to collect</th></tr></thead>
             <tbody>${parts.other.map(({ order, info }) => `<tr>
               <td class="td-id">${escapeHtml(order.order_number || '')}${order.external_order_number ? `<div class="td-sub">${escapeHtml(order.external_order_number)}</div>` : ''}</td>
               <td>${escapeHtml(order.customer_name || '—')}</td>
+              <td>${escapeHtml(order.area_name || '—')}</td>
               <td>${escapeHtml(info.label)}</td>
               <td>${moneyFull(info.expected)}</td>
-            </tr>`).join('') || '<tr><td colspan="4">Nothing outstanding in this view.</td></tr>'}</tbody>
+            </tr>`).join('') || '<tr><td colspan="5">Nothing outstanding in this view.</td></tr>'}</tbody>
           </table></div>
         </details>`;
     }
@@ -7089,13 +7092,25 @@
       ];
       if (amount(totals.balance_closed) > 0.009) summary.push([], ['Closed without payment on earlier remittances', amount(totals.balance_closed)]);
 
-      const deliveredRows = [['Order #', 'Your reference', 'Customer', 'Delivered', 'Collected', 'Deductions', 'Net owed', 'Paid', 'Still owing', 'Status', 'Payment batch']];
+      const deliveredRows = [['Order #', 'Your reference', 'Customer', 'Area', 'Zone', 'Delivered', 'Collected', 'Delivery fee', 'Deductions', 'Net owed', 'Paid', 'Still owing', 'Status', 'Payment batch']];
       parts.delivered.forEach(({ order, info }) => deliveredRows.push([
-        order.order_number || '', order.external_order_number || '', order.customer_name || '', remitFmtDate(order.event_at),
-        info.collected, info.deductions, info.label === 'Delivered – cash not yet reconciled' ? info.pending : info.net,
+        order.order_number || '', order.external_order_number || '', order.customer_name || '', order.area_name || '', order.zone_code ? `Zone ${order.zone_code}` : '', remitFmtDate(order.event_at),
+        info.collected, amount(order.delivery_fee), info.deductions, info.label === 'Delivered – cash not yet reconciled' ? info.pending : info.net,
         info.paid, info.owing, info.label, order.remittance_batch_number || ''
       ]));
-      deliveredRows.push([], ['Totals', '', '', '', parts.delivered.reduce((t, r) => t + r.info.collected, 0), parts.delivered.reduce((t, r) => t + r.info.deductions, 0), '', parts.delivered.reduce((t, r) => t + r.info.paid, 0), parts.delivered.reduce((t, r) => t + r.info.owing, 0)]);
+      deliveredRows.push([], ['Totals', '', '', '', '', '', parts.delivered.reduce((t, r) => t + r.info.collected, 0), parts.delivered.reduce((t, r) => t + amount(r.order.delivery_fee), 0), parts.delivered.reduce((t, r) => t + r.info.deductions, 0), '', parts.delivered.reduce((t, r) => t + r.info.paid, 0), parts.delivered.reduce((t, r) => t + r.info.owing, 0)]);
+
+      const feeGroups = new Map();
+      parts.delivered.forEach(({ order }) => {
+        const key = `${order.area_name || 'Area not recorded'}|${order.zone_code || ''}|${amount(order.delivery_fee).toFixed(2)}`;
+        const group = feeGroups.get(key) || { area: order.area_name || 'Area not recorded', zone: order.zone_code ? `Zone ${order.zone_code}` : '', fee: amount(order.delivery_fee), count: 0 };
+        group.count += 1;
+        feeGroups.set(key, group);
+      });
+      const feeRows = [['Area', 'Zone', 'Delivery fee per order', 'Deliveries', 'Total delivery fees']];
+      [...feeGroups.values()].sort((a, b) => a.area.localeCompare(b.area) || a.fee - b.fee)
+        .forEach(group => feeRows.push([group.area, group.zone, group.fee, group.count, group.fee * group.count]));
+      feeRows.push([], ['Totals', '', '', [...feeGroups.values()].reduce((t, g) => t + g.count, 0), [...feeGroups.values()].reduce((t, g) => t + g.fee * g.count, 0)]);
 
       const paymentRows = [['Date', 'Payment ref', 'Method', 'Reference', 'Deductions', 'Amount paid', 'Notes']];
       (data.payments || []).forEach(payment => paymentRows.push([
@@ -7104,8 +7119,8 @@
       ]));
       paymentRows.push([], ['Total paid', '', '', '', '', parts.paymentsTotal]);
 
-      const otherRows = [['Order #', 'Your reference', 'Customer', 'Status', 'Cash to collect']];
-      parts.other.forEach(({ order, info }) => otherRows.push([order.order_number || '', order.external_order_number || '', order.customer_name || '', info.label, info.expected]));
+      const otherRows = [['Order #', 'Your reference', 'Customer', 'Area', 'Status', 'Cash to collect']];
+      parts.other.forEach(({ order, info }) => otherRows.push([order.order_number || '', order.external_order_number || '', order.customer_name || '', order.area_name || '', info.label, info.expected]));
 
       const wb = XLSX.utils.book_new();
       const add = (rows, title, widths) => {
@@ -7114,9 +7129,10 @@
         XLSX.utils.book_append_sheet(wb, ws, title);
       };
       add(summary, 'Summary', [58, 22]);
-      add(deliveredRows, 'Delivered orders', [20, 16, 26, 14, 12, 12, 12, 12, 12, 34, 18]);
+      add(deliveredRows, 'Delivered orders', [20, 16, 26, 20, 10, 14, 12, 12, 12, 12, 12, 12, 34, 18]);
+      add(feeRows, 'Delivery fees by area', [26, 12, 22, 12, 20]);
       add(paymentRows, 'Payments', [14, 34, 22, 24, 12, 14, 36]);
-      add(otherRows, 'Not delivered', [20, 16, 26, 32, 14]);
+      add(otherRows, 'Not delivered', [20, 16, 26, 20, 32, 14]);
       const safe = name.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'Business';
       XLSX.writeFile(wb, `VirtuDrop-Remittance-${safe}-${new Date().toISOString().slice(0, 10)}.xlsx`);
     };
