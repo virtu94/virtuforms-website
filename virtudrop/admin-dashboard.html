@@ -3998,10 +3998,10 @@
       if (!row) return;
       if (checked === Boolean(row.collected_at)) driverHandoverEdits.delete(orderId);
       else driverHandoverEdits.set(orderId, checked);
-      const box = document.querySelector(`.dv-handover-check[onchange*="'${orderId}'"]`);
-      const label = box?.parentElement?.querySelector('.dv-handover-label');
-      if (label) label.textContent = checked ? 'Handed over' : 'Not yet';
-      updateDriverHandoverBar();
+      // Re-draw so the ticked parcel moves to the bottom (keeping the page where it was).
+      const keepScroll = window.scrollY;
+      renderDriverDetailBody();
+      window.scrollTo(0, keepScroll);
     };
 
     function updateDriverHandoverBar() {
@@ -4157,7 +4157,8 @@
         visible = visible.filter(row => [row.order_number, row.customer_name, row.customer_phone, orderLabelAddress(row), row.external_item_number, row._manifest?.manifest_number]
           .some(value => String(value || '').toLowerCase().includes(search)));
       }
-      visible.sort((a, b) => new Date(b.assigned_at || 0) - new Date(a.assigned_at || 0) || String(a.order_number || '').localeCompare(String(b.order_number || '')));
+      // Parcels not yet ticked as handed over stay at the top; ticked ones drop to the bottom so a missed parcel is easy to spot.
+      visible.sort((a, b) => (driverEffectiveHandover(a) ? 1 : 0) - (driverEffectiveHandover(b) ? 1 : 0) || new Date(b.assigned_at || 0) - new Date(a.assigned_at || 0) || String(a.order_number || '').localeCompare(String(b.order_number || '')));
       driverViewVisibleRows = visible;
 
       // Manifests in this view (shown as chips, not as separate groups).
