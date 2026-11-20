@@ -3972,6 +3972,42 @@
       if (closed) closed.checked = driverView.showClosed;
     }
 
+    // Notes a driver (or the office) has put on a delivery. The button is highlighted when
+    // the driver has actually written something, so nothing gets overlooked.
+    function driverNoteSections(row) {
+      const full = orders.find(order => order.id === row.id) || {};
+      const pick = field => String(row[field] ?? full[field] ?? '').trim();
+      return [
+        ['Driver notes', pick('driver_notes')],
+        ['Delivery outcome notes (what the driver reported)', pick('delivery_outcome_notes')],
+        ['Redelivery notes', pick('redelivery_notes')],
+        ['Return notes', pick('return_management_notes')],
+        ['Customer notes (from the business)', pick('customer_notes')],
+        ['Admin notes', pick('admin_notes')],
+        ['Parcel check-in notes', pick('parcel_checkin_notes')]
+      ].filter(([, value]) => value);
+    }
+
+    function driverNotesButtonHtml(row) {
+      const sections = driverNoteSections(row);
+      const driverWrote = sections.some(([label]) => label.startsWith('Driver notes') || label.startsWith('Delivery outcome'));
+      return `<button class="btn ${driverWrote ? 'btn-primary' : 'btn-ghost'} btn-sm" type="button" onclick="driverShowNotes('${row.id}')" title="${driverWrote ? 'The driver left a note' : 'No driver notes yet'}">Notes${driverWrote ? ' &bull;' : ''}</button>`;
+    }
+
+    window.driverShowNotes = function(orderId) {
+      const row = driverViewAllRows.find(item => item.id === orderId) || orders.find(item => item.id === orderId);
+      if (!row) return showToast('Order details are not loaded yet.');
+      const sections = driverNoteSections(row);
+      document.getElementById('modalTitle').textContent = `Notes - ${row.order_number || 'Delivery'}`;
+      document.getElementById('modalBody').innerHTML = sections.length
+        ? `<div class="order-notes-list">${sections.map(([label, value]) => `<div class="order-note-block"><div class="order-note-title">${escapeHtml(label)}</div><div class="order-note-text">${escapeHtml(value)}</div></div>`).join('')}</div>`
+        : '<p>No notes have been saved on this delivery yet.</p>';
+      document.getElementById('modalConfirm').textContent = 'Close';
+      document.getElementById('modalCancel').style.display = 'none';
+      document.getElementById('modal').classList.add('show');
+      modalCb = null;
+    };
+
     function driverHandoverCellHtml(row) {
       const manifest = row._manifest;
       if (!manifest) return '<span class="td-sub">—</span>';
@@ -4188,7 +4224,7 @@
                 <td class="nw">${zone.code ? `<div class="td-name">${escapeHtml(/^[A-Z]\b/i.test(zone.name) ? zone.name : `Zone ${zone.code}`)}</div>${/^[A-Z]\b/i.test(zone.name) || !zone.name || zone.name === `Zone ${zone.code}` ? '' : `<div class="td-sub">${escapeHtml(zone.name)}</div>`}` : '<span class="td-sub">Not set</span>'}</td>
                 <td class="nw">${moneyFull(row.amount_to_collect)}${cashText !== '—' ? `<div class="td-sub">${cashText}</div>` : ''}</td>
                 <td class="nw">${driverRowStatusBadge(row)}</td>
-                <td class="nw">${action}</td>
+                <td class="nw">${action}<div style="margin-top:0.35rem;">${driverNotesButtonHtml(row)}</div></td>
               </tr>`;
 };
       const todoRows = visible.filter(row => !driverEffectiveHandover(row));
