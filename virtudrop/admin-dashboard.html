@@ -4011,7 +4011,7 @@
       const handed = editable.filter(driverEffectiveHandover).length;
       const edits = driverHandoverEdits.size;
       const text = bar.querySelector('[data-dv-handover-text]');
-      if (text) text.innerHTML = `<strong>${handed} of ${editable.length}</strong> parcels ticked as handed over${edits ? ` &middot; <strong>${edits} unsaved</strong>` : ''}`;
+      if (text) text.innerHTML = `<strong>${handed} of ${editable.length}</strong> parcels ticked as handed over (ticked ones move to the box underneath)${edits ? ` &middot; <strong>${edits} unsaved</strong>` : ''}`;
       const save = bar.querySelector('[data-dv-save]');
       if (save) { save.disabled = !edits; save.textContent = edits ? `Save ${edits} tick${edits === 1 ? '' : 's'}` : 'Save ticks'; }
       const all = bar.querySelector('[data-dv-tickall]');
@@ -4167,22 +4167,9 @@
 
       const editable = visible.filter(driverRowEditable);
       const closable = visible.filter(driverRowCanClose);
-      body.innerHTML = `
-        ${otherOpen ? `<div class="dv-note">${otherOpen} other open ${otherOpen === 1 ? 'delivery' : 'deliveries'} from earlier batches. <a href="#" onclick="setDriverViewFilter('batch','all'); return false;">Show all batches</a></div>` : ''}
-        ${manifestsInView.length ? `<div class="dv-manifests">${manifestsInView.map(driverManifestChipHtml).join('')}</div>` : ''}
-        ${editable.length ? `<div class="dv-handover" id="dvHandoverBar">
-          <span data-dv-handover-text></span>
-          <span class="dv-handover-actions">
-            <button class="btn btn-ghost btn-sm" type="button" data-dv-tickall onclick="driverTickAllHandover()">Tick all</button>
-            <button class="btn btn-primary btn-sm" type="button" data-dv-save onclick="driverSaveHandover()">Save ticks</button>
-          </span>
-        </div>` : ''}
-        ${closable.length ? `<div class="dv-note">${closable.length} finished ${closable.length === 1 ? 'delivery is' : 'deliveries are'} ready to close. <button class="btn btn-ghost btn-sm" type="button" onclick="driverCloseFinished()">Close ${closable.length} finished</button></div>` : ''}
-        <div class="dv-note" id="dvMoveBar" style="${driverRowPicks.size ? '' : 'display:none;'}"><span id="dvMoveCount">${driverRowPicks.size} ticked</span> <button class="btn btn-primary btn-sm" type="button" onclick="driverMovePickedToBatch()">Move to batch&hellip;</button> <button class="btn btn-ghost btn-sm" type="button" onclick="driverClearRowPicks()">Clear</button></div>
-        <div class="card">
-          <div class="table-wrap"><table>
-            <thead><tr><th style="width:2rem;"><input type="checkbox" id="dvPickAll" ${visible.length && visible.every(row => driverRowPicks.has(row.id)) ? 'checked' : ''} onchange="driverPickAllRows(this.checked)" title="Tick every order shown"></th><th class="nw">Handed over</th><th class="nw">Batch / manifest</th><th class="nw">Order</th><th>Customer</th><th>Address</th><th class="nw">Zone</th><th class="nw">Collect</th><th class="nw">Status</th><th class="nw">Action</th></tr></thead>
-            <tbody>${visible.map(row => {
+      // Same idea as Delivery Exceptions: parcels still to hand over stay in the main list;
+      // ticked ones move to a box underneath, so anything missed stays visible at the top.
+      const driverRowHtml = row => {
               const zone = driverZoneInfo(row);
               const cashText = Number(row.amount_to_collect || 0) > 0 && row.order_status === 'delivered' ? escapeHtml(row.reconciliation_status || 'unreconciled') : '—';
               let action;
@@ -4203,9 +4190,32 @@
                 <td class="nw">${driverRowStatusBadge(row)}</td>
                 <td class="nw">${action}</td>
               </tr>`;
-            }).join('') || '<tr><td colspan="10">No deliveries match this view.</td></tr>'}</tbody>
+};
+      const todoRows = visible.filter(row => !driverEffectiveHandover(row));
+      const doneRows = visible.filter(row => driverEffectiveHandover(row));
+      const rowsHead = withPick => `<thead><tr><th style="width:2rem;">${withPick ? `<input type="checkbox" id="dvPickAll" ${visible.length && visible.every(row => driverRowPicks.has(row.id)) ? 'checked' : ''} onchange="driverPickAllRows(this.checked)" title="Tick every order shown">` : ''}</th><th class="nw">Handed over</th><th class="nw">Batch / manifest</th><th class="nw">Order</th><th>Customer</th><th>Address</th><th class="nw">Zone</th><th class="nw">Collect</th><th class="nw">Status</th><th class="nw">Action</th></tr></thead>`;
+      body.innerHTML = `
+        ${otherOpen ? `<div class="dv-note">${otherOpen} other open ${otherOpen === 1 ? 'delivery' : 'deliveries'} from earlier batches. <a href="#" onclick="setDriverViewFilter('batch','all'); return false;">Show all batches</a></div>` : ''}
+        ${manifestsInView.length ? `<div class="dv-manifests">${manifestsInView.map(driverManifestChipHtml).join('')}</div>` : ''}
+        ${editable.length ? `<div class="dv-handover" id="dvHandoverBar">
+          <span data-dv-handover-text></span>
+          <span class="dv-handover-actions">
+            <button class="btn btn-ghost btn-sm" type="button" data-dv-tickall onclick="driverTickAllHandover()">Tick all</button>
+            <button class="btn btn-primary btn-sm" type="button" data-dv-save onclick="driverSaveHandover()">Save ticks</button>
+          </span>
+        </div>` : ''}
+        ${closable.length ? `<div class="dv-note">${closable.length} finished ${closable.length === 1 ? 'delivery is' : 'deliveries are'} ready to close. <button class="btn btn-ghost btn-sm" type="button" onclick="driverCloseFinished()">Close ${closable.length} finished</button></div>` : ''}
+        <div class="dv-note" id="dvMoveBar" style="${driverRowPicks.size ? '' : 'display:none;'}"><span id="dvMoveCount">${driverRowPicks.size} ticked</span> <button class="btn btn-primary btn-sm" type="button" onclick="driverMovePickedToBatch()">Move to batch&hellip;</button> <button class="btn btn-ghost btn-sm" type="button" onclick="driverClearRowPicks()">Clear</button></div>
+        <div class="card">
+          <div class="table-wrap"><table>
+            ${rowsHead(true)}
+            <tbody>${todoRows.map(driverRowHtml).join('') || `<tr><td colspan="10">${doneRows.length ? 'Everything in this view has been ticked as handed over.' : 'No deliveries match this view.'}</td></tr>`}</tbody>
           </table></div>
-        </div>`;
+        </div>
+        ${doneRows.length ? `<div class="rc-staged">
+          <div class="rc-staged-head"><strong>Ticked as handed over <span class="rc-count">${doneRows.length}</span></strong><span class="td-sub">Untick a parcel to move it back to the list above.</span></div>
+          <div class="table-wrap"><table>${rowsHead(false)}<tbody>${doneRows.map(driverRowHtml).join('')}</tbody></table></div>
+        </div>` : ''}`;
       updateDriverHandoverBar();
     }
 
